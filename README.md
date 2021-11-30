@@ -7,7 +7,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 > **NOTE** Make sure there is enough RAM available locally for the 
 > docker daemon, we recommend at least 5GB. 
 
-1. Clone repository `git clone https://github.com/LD4P/ils-middleware`
+1. Clone repository `git clone https://github.com/sul-dlss/folio-airflow.git`
 1. If it's commented out, uncomment the line `- ./dags:/opt/airflow/dags` in docker-compose.yaml (under `volumes`, under `x-airflow-common`).
 1. Run `docker compose up airflow-init` to initialize the Airflow
 1. Bring up airflow, `docker compose up` to run the containers in the  
