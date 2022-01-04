@@ -22,3 +22,6 @@ We are using [poetry][POET] to better manage dependency updates. To install
 
 [POET]: https://python-poetry.org/
 [PYTEST]: https://docs.pytest.org/
+
+## Symphony Mount
+MARC data to be converted will be mounted on the sul-folio-airflow server under `/sirsi_dev` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
