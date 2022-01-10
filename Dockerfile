@@ -8,5 +8,5 @@ RUN git clone https://github.com/FOLIO-FSE/migration_repo_template migration
 RUN git clone https://github.com/FOLIO-FSE/MARC21-To-FOLIO --depth=2
 RUN chmod +x migration/create_folder_structure.sh
 RUN cd migration && rm -rf .git && ./create_folder_structure.sh
-RUN rm migration/instance/data/bib_example.mrc
+RUN rm migration/data/instance/bib_example.mrc
 RUN cd MARC21-To-FOLIO && pip install -r requirements.txt

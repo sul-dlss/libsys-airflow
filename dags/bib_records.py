@@ -5,12 +5,16 @@ from textwrap import dedent
 
 from airflow import DAG
 
+from airflow.models import Variable
+from airflow.operators.bash import BashOperator
+from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
 
 
 def read_marc(*args, **kwargs) -> list:
     """Stub function for reading MARC21 records"""
+    print("in read_marc")
     return []
 
 
@@ -51,7 +55,10 @@ with DAG(
     )
 
     monitor_file_mount = FileSensor(
-        task_id="marc21_monitor", filepath="/s/SUL/Dataload/Folio/"
+        task_id="marc21_monitor",
+        fs_conn_id="bib_path",
+        filepath="/opt/airflow/symphony/*.marc",
+        timeout=60 * 30
     )
 
     monitor_file_mount.doc_md = dedent(
@@ -60,21 +67,21 @@ with DAG(
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
     )
 
-    read_marc_records = PythonOperator(
-        task_id="read_marc_records",
-        python_callable=read_marc,
+    move_marc_file = BashOperator(
+        task_id="move_marc_file",
+        bash_command="mv /opt/airflow/symphony/*.marc /opt/airflow/migration/data/instance/."
     )
 
-    read_marc_records.doc_md = dedent(
-        """\
-        #### Reads MARC21 file
-        Reads MARC21 binary file and returns a list of MARC records"""
-    )
-
-    convert_marc_to_folio = PythonOperator(
+    convert_marc_to_folio = BashOperator(
         task_id="convert_marc_to_folio",
-        python_callable=convert_to_folio,
-        op_kwargs={"marc_records": "{{ ti.xcom_pull('read_marc_records') }}"},
+        bash_command="python /opt/airflow/MARC21-To-FOLIO/main_bibs.py --password $password --ils_flavour $ils_flavor --folio_version $folio_version --holdings_records False --force_utf_8 False --dates_from_marc False --hrid_handling False --suppress False /opt/airflow/migration $okapi_url $tenant $user",
+        env={ "folio_version": "juniper", 
+            "ils_flavor": "001",
+            "okapi_url": Variable.get("OKAPI_URL"),
+            "password": Variable.get("FOLIO_PASSWORD"),
+            "tenant": "sul",
+            "user": Variable.get("FOLIO_USER")
+        }
     )
 
     convert_marc_to_folio.doc_md = dedent(
@@ -84,19 +91,9 @@ with DAG(
         Inventory Records"""
     )
 
-    load_folio_records = PythonOperator(
-        task_id="load_folio_records",
-        python_callable=load_records,
-        op_kwargs={
-            "folio_records": "{{ ti.xcom_pull('convert_marc_to_folio') }}"
-        },
+    finish_loading = DummyOperator(
+        task_id="finish_loading",
     )
 
-    load_folio_records.doc_md = dedent(
-        """\
-        #### Loads FOLIO Inventory Records
-        Loads FOLIO Inventory records into a running FOLIO instance"""
-    )
-
-    monitor_file_mount >> read_marc_records >> convert_marc_to_folio
-    convert_marc_to_folio >> load_folio_records
+    monitor_file_mount >> move_marc_file
+    move_marc_file >> convert_marc_to_folio >> finish_loading
