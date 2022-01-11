@@ -62,7 +62,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./symphony:/opt/airflow/symphony
-  user: "${AIRFLOW_UID:-50000}:0"
+  user: "${AIRFLOW_UID=$(id -u)}"
   depends_on:
     &airflow-common-depends-on
     redis:
