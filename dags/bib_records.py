@@ -57,7 +57,7 @@ with DAG(
     monitor_file_mount = FileSensor(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
-        filepath="/opt/airflow/symphony/*.marc",
+        filepath="/opt/airflow/symphony/*.*rc",
         timeout=60 * 30
     )
 
