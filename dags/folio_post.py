@@ -50,7 +50,11 @@ def _post_to_okapi(**kwargs):
         json=payload,
     )
 
+    logger.info(new_record_result.status_code)
+
 # Maybe check for empty files here...
+# Also each json file is just an object on each line, not an array
+# Parse each json file and add to (comma separated) array that gets posted as the payload on line 45.
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
     inventory_records = [fo.read_text() for fo in pathlib.Path(
