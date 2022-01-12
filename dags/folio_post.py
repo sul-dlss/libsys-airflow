@@ -52,7 +52,7 @@ def _post_to_okapi(**kwargs):
 # Maybe check for empty files here...
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    inventory_records = [fo.read() for fo in pathlib.Path(
+    inventory_records = [fo.read_text() for fo in pathlib.Path(
         "/opt/airflow/migration/results").glob("folio_instance_*.json"
         )]
 
