@@ -86,14 +86,19 @@ with DAG(
         }
     )
 
+    append_commas_to_file_lines = BashOperator(
+        task_id="append_commas",
+        bash_command="for F in /opt/airflow/migration/results/folio_instance_*.json; do sed '$!s/$/,/' $F >> /tmp/instances.json; done"
+    )
+
     post_to_folio = PythonOperator(
         task_id="post_to_folio_instances",
         python_callable=post_folio_instance_records
     )
 
-    archive_marc_instance_files = BashOperator(
+    archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/."
+        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instance_*.json /opt/airflow/migration/archive/."
     )
 
     convert_marc_to_folio.doc_md = dedent(
@@ -107,6 +112,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> copy_marc_instance_files
-    copy_marc_instance_files >> convert_marc_to_folio >> post_to_folio
-    post_to_folio >>archive_marc_instance_files >> finish_loading
+    monitor_file_mount >> copy_marc_instance_files >> convert_marc_to_folio
+    convert_marc_to_folio >> append_commas_to_file_lines >> post_to_folio
+    post_to_folio >> archive_instance_files >> finish_loading
