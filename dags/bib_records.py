@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from textwrap import dedent
+from typing_extensions import TypeAlias
 
 from airflow import DAG
 
@@ -67,21 +68,26 @@ with DAG(
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
     )
 
-    move_marc_file = BashOperator(
+    copy_marc_instance_files = BashOperator(
         task_id="move_marc_file",
-        bash_command="mv /opt/airflow/symphony/*.marc /opt/airflow/migration/data/instance/."
+        bash_command="for F in /opt/airflow/symphony/*.marc; do if [ ! -f /opt/airflow/migration/archive/$(basename $F) ];then cp $F /opt/airflow/migration/data/instance/; fi; done"
     )
 
     convert_marc_to_folio = BashOperator(
         task_id="convert_marc_to_folio",
         bash_command="python /opt/airflow/MARC21-To-FOLIO/main_bibs.py --password $password --ils_flavour $ils_flavor --folio_version $folio_version --holdings_records False --force_utf_8 False --dates_from_marc False --hrid_handling False --suppress False /opt/airflow/migration $okapi_url $tenant $user",
-        env={ "folio_version": "juniper", 
+        env={ "folio_version": "juniper",
             "ils_flavor": "001",
             "okapi_url": Variable.get("OKAPI_URL"),
             "password": Variable.get("FOLIO_PASSWORD"),
             "tenant": "sul",
             "user": Variable.get("FOLIO_USER")
         }
+    )
+
+    archive_marc_instance_files = BashOperator(
+        task_id="archive_coverted_files",
+        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/."
     )
 
     convert_marc_to_folio.doc_md = dedent(
@@ -95,5 +101,5 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> move_marc_file
-    move_marc_file >> convert_marc_to_folio >> finish_loading
+    monitor_file_mount >> copy_marc_instance_files
+    copy_marc_instance_files >> convert_marc_to_folio >> archive_marc_instance_files >> finish_loading
