@@ -42,7 +42,7 @@ def _post_to_okapi(**kwargs):
         "x-okapi-tenant": tenant,
     }
 
-    payload = {"instances": records}
+    payload = {"instances": [records]}
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -52,14 +52,9 @@ def _post_to_okapi(**kwargs):
 
     logger.info(new_record_result.status_code)
 
-# Maybe check for empty files here...
-# Also each json file is just an object on each line, not an array
-# Parse each json file and add to (comma separated) array that gets posted as the payload on line 45.
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    inventory_records = [fo.read_text() for fo in pathlib.Path(
-        "/opt/airflow/migration/results").glob("folio_instance_*.json"
-        )]
+    instance_records = pathlib.Path('/tmp/instances.json')
 
-    _post_to_okapi(records=inventory_records,
+    _post_to_okapi(records=instance_records,
                    endpoint="/instance-storage/batch/synchronous?upsert=true", **kwargs)
