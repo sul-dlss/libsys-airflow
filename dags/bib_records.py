@@ -12,6 +12,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
 
+from folio_post import post_folio_instance_records
 
 def read_marc(*args, **kwargs) -> list:
     """Stub function for reading MARC21 records"""
@@ -76,13 +77,18 @@ with DAG(
     convert_marc_to_folio = BashOperator(
         task_id="convert_marc_to_folio",
         bash_command="python /opt/airflow/MARC21-To-FOLIO/main_bibs.py --password $password --ils_flavour $ils_flavor --folio_version $folio_version --holdings_records False --force_utf_8 False --dates_from_marc False --hrid_handling False --suppress False /opt/airflow/migration $okapi_url $tenant $user",
-        env={ "folio_version": "juniper",
+        env={ "folio_version": "iris",
             "ils_flavor": "001",
             "okapi_url": Variable.get("OKAPI_URL"),
             "password": Variable.get("FOLIO_PASSWORD"),
             "tenant": "sul",
             "user": Variable.get("FOLIO_USER")
         }
+    )
+
+    post_to_folio = PythonOperator(
+        task_id="post_to_folio_instances",
+        python_callable=post_folio_instance_records
     )
 
     archive_marc_instance_files = BashOperator(
@@ -102,4 +108,5 @@ with DAG(
     )
 
     monitor_file_mount >> copy_marc_instance_files
-    copy_marc_instance_files >> convert_marc_to_folio >> archive_marc_instance_files >> finish_loading
+    copy_marc_instance_files >> convert_marc_to_folio >> post_to_folio
+    post_to_folio >>archive_marc_instance_files >> finish_loading
