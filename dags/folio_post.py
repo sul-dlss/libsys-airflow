@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 def FolioLogin(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
     okapi_url = Variable.get("OKAPI_URL")
-    username = Variable.get("FOLIO_PASSWORD")
-    password = Variable.get("FOLIO_USER")
+    username = Variable.get("FOLIO_USER")
+    password = Variable.get("FOLIO_PASSWORD")
     tenant = "sul"
 
     data = {"username": username, "password": password}
