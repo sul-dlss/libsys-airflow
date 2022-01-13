@@ -37,7 +37,7 @@ def process_instances(*args, **kwargs) -> list:
     instances = []
     for file in pathlib.Path("/opt/airflow/migration/results").glob("folio_instance_*.json"):
         with open(file) as fo:
-            instances.extend(fo.readlines())
+            instances.extend([json.loads(i) for i in fo.readlines()])
 
     with open("/tmp/instances.json", "w+") as fo:
         json.dump(instances, fo)
