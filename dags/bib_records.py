@@ -1,6 +1,8 @@
 """Imports exported MARC records from Symphony into FOLIO"""
 
 from datetime import datetime, timedelta
+import pathlib
+import json
 from textwrap import dedent
 from typing_extensions import TypeAlias
 
@@ -28,6 +30,17 @@ def convert_to_folio(*args, **kwargs) -> list:
 def load_records(*args, **kwargs) -> bool:
     """Stub function for loading Inventory records into FOLIO"""
     return True
+
+
+def process_instances(*args, **kwargs) -> list:
+    """"Function for creating valid json from file of FOLIO instance objects"""
+    instances = []
+    for file in pathlib.Path("/opt/airflow/migration/results").glob("folio_instance_*.json"):
+        with open(file) as fo:
+            instances.extend(fo.readlines())
+
+    with open("/tmp/instances.json", "w+") as fo:
+        json.dump(instances, fo)
 
 
 default_args = {
@@ -86,9 +99,9 @@ with DAG(
         }
     )
 
-    append_commas_to_file_lines = BashOperator(
+    append_commas_to_file_lines = PythonOperator(
         task_id="append_commas",
-        bash_command="for F in /opt/airflow/migration/results/folio_instance_*.json; do sed '$!s/$/,/' $F >> /tmp/instances.json; done"
+        python_callable=process_instances
     )
 
     post_to_folio = PythonOperator(
