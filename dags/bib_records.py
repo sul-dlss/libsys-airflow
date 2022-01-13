@@ -1,6 +1,8 @@
 """Imports exported MARC records from Symphony into FOLIO"""
 
 from datetime import datetime, timedelta
+import pathlib
+import json
 from textwrap import dedent
 from typing_extensions import TypeAlias
 
@@ -28,6 +30,17 @@ def convert_to_folio(*args, **kwargs) -> list:
 def load_records(*args, **kwargs) -> bool:
     """Stub function for loading Inventory records into FOLIO"""
     return True
+
+
+def process_instances(*args, **kwargs) -> list:
+    """"Function for creating valid json from file of FOLIO instance objects"""
+    instances = []
+    for file in pathlib.Path("/opt/airflow/migration/results").glob("folio_instance_*.json"):
+        with open(file) as fo:
+            instances.extend([json.loads(i) for i in fo.readlines()])
+
+    with open("/tmp/instances.json", "w+") as fo:
+        json.dump(instances, fo)
 
 
 default_args = {
@@ -86,14 +99,19 @@ with DAG(
         }
     )
 
+    append_commas_to_file_lines = PythonOperator(
+        task_id="append_commas",
+        python_callable=process_instances
+    )
+
     post_to_folio = PythonOperator(
         task_id="post_to_folio_instances",
         python_callable=post_folio_instance_records
     )
 
-    archive_marc_instance_files = BashOperator(
+    archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/."
+        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instance_*.json /opt/airflow/migration/archive/."
     )
 
     convert_marc_to_folio.doc_md = dedent(
@@ -107,6 +125,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> copy_marc_instance_files
-    copy_marc_instance_files >> convert_marc_to_folio >> post_to_folio
-    post_to_folio >>archive_marc_instance_files >> finish_loading
+    monitor_file_mount >> copy_marc_instance_files >> convert_marc_to_folio
+    convert_marc_to_folio >> append_commas_to_file_lines >> post_to_folio
+    post_to_folio >> archive_instance_files >> finish_loading

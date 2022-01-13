@@ -2,6 +2,7 @@
 import logging
 import requests
 import pathlib
+import json
 from airflow.models import Variable
 
 logger = logging.getLogger(__name__)
@@ -10,8 +11,8 @@ logger = logging.getLogger(__name__)
 def FolioLogin(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
     okapi_url = Variable.get("OKAPI_URL")
-    username = Variable.get("FOLIO_PASSWORD")
-    password = Variable.get("FOLIO_USER")
+    username = Variable.get("FOLIO_USER")
+    password = Variable.get("FOLIO_PASSWORD")
     tenant = "sul"
 
     data = {"username": username, "password": password}
@@ -42,7 +43,7 @@ def _post_to_okapi(**kwargs):
         "x-okapi-tenant": tenant,
     }
 
-    payload = {"instances": records}
+    payload = { "instances": records }
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -52,14 +53,16 @@ def _post_to_okapi(**kwargs):
 
     logger.info(new_record_result.status_code)
 
-# Maybe check for empty files here...
-# Also each json file is just an object on each line, not an array
-# Parse each json file and add to (comma separated) array that gets posted as the payload on line 45.
+    if new_record_result.status_code > 399:
+        logger.error(new_record_result.text)
+        raise ValueError(
+            f"FOLIO POST Failed with error code:{new_record_result.status_code}")
+
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    inventory_records = [fo.read_text() for fo in pathlib.Path(
-        "/opt/airflow/migration/results").glob("folio_instance_*.json"
-        )]
+    # instance_records = pathlib.Path('/tmp/instances.json').read_text()
+    with open("/tmp/instances.json") as fo:
+      instance_records = json.load(fo)
 
-    _post_to_okapi(records=inventory_records,
+    _post_to_okapi(records=instance_records,
                    endpoint="/instance-storage/batch/synchronous?upsert=true", **kwargs)
