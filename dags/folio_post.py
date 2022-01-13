@@ -54,7 +54,7 @@ def _post_to_okapi(**kwargs):
 
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    instance_records = pathlib.Path('/tmp/instances.json')
+    instance_records = pathlib.Path('/tmp/instances.json').read_text()
 
     _post_to_okapi(records=instance_records,
                    endpoint="/instance-storage/batch/synchronous?upsert=true", **kwargs)
