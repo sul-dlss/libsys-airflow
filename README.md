@@ -9,7 +9,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 1. Clone repository `git clone https://github.com/sul-dlss/folio-airflow.git`
 1. If it's commented out, uncomment the line `- ./dags:/opt/airflow/dags` in docker-compose.yaml (under `volumes`, under `x-airflow-common`).
-1. Run `docker-compose build` to buld the customized airflow image.
+1. Run `docker-compose build` to buld the customized airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
 1. Run `docker compose up airflow-init` to initialize the Airflow
 1. Bring up airflow, `docker compose up` to run the containers in the
    foreground, use `docker compose up -d` to run as a daemon.
