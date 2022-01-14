@@ -84,7 +84,7 @@ with DAG(
 
     copy_marc_instance_files = BashOperator(
         task_id="move_marc_file",
-        bash_command="for F in /opt/airflow/symphony/*.marc; do if [ ! -f /opt/airflow/migration/archive/$(basename $F) ];then cp $F /opt/airflow/migration/data/instance/; fi; done"
+        bash_command="mv /opt/airflow/symphony/*.marc /opt/airflow/migration/data/instance/"
     )
 
     convert_marc_to_folio = BashOperator(
