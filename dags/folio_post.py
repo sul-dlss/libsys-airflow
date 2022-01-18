@@ -1,7 +1,5 @@
-
 import logging
 import requests
-import pathlib
 import json
 from airflow.models import Variable
 
@@ -26,8 +24,9 @@ def FolioLogin(**kwargs):
 
     result.raise_for_status()
 
+
 def _post_to_okapi(**kwargs):
-    endpoint = kwargs.get('endpoint')
+    endpoint = kwargs.get("endpoint")
     jwt = FolioLogin(**kwargs)
 
     records = kwargs["records"]
@@ -43,7 +42,7 @@ def _post_to_okapi(**kwargs):
         "x-okapi-tenant": tenant,
     }
 
-    payload = { "instances": records }
+    payload = {"instances": records}
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -56,13 +55,29 @@ def _post_to_okapi(**kwargs):
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}")
+            f"FOLIO POST Failed with error code:{new_record_result.status_code}"
+        )
+
 
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    # instance_records = pathlib.Path('/tmp/instances.json').read_text()
     with open("/tmp/instances.json") as fo:
-      instance_records = json.load(fo)
+        instance_records = json.load(fo)
 
-    _post_to_okapi(records=instance_records,
-                   endpoint="/instance-storage/batch/synchronous?upsert=true", **kwargs)
+    _post_to_okapi(
+        records=instance_records,
+        endpoint="/instance-storage/batch/synchronous?upsert=true",
+        **kwargs,
+    )
+
+
+def post_folio_holding_records(**kwargs):
+    """Creates/overlays Holdings records in FOLIO"""
+    with open("/tmp/holdings.json") as fo:
+        holding_records = json.load(fo)
+
+    _post_to_okapi(
+        recorcds=holding_records,
+        endpoint="/holdings-storage/batch/synchronous?upsert=true",
+        **kwargs,
+    )
