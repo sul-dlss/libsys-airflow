@@ -30,6 +30,8 @@ def _post_to_okapi(**kwargs):
     jwt = FolioLogin(**kwargs)
 
     records = kwargs["records"]
+    payload_key = kwargs["payload_key"]
+
     tenant = "sul"
     okapi_url = Variable.get("OKAPI_URL")
 
@@ -42,7 +44,7 @@ def _post_to_okapi(**kwargs):
         "x-okapi-tenant": tenant,
     }
 
-    payload = {"instances": records}
+    payload = {payload_key: records}
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -67,6 +69,7 @@ def post_folio_instance_records(**kwargs):
     _post_to_okapi(
         records=instance_records,
         endpoint="/instance-storage/batch/synchronous?upsert=true",
+        payload_key="instances",
         **kwargs,
     )
 
@@ -77,7 +80,8 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     _post_to_okapi(
-        recorcds=holding_records,
+        records=holding_records,
         endpoint="/holdings-storage/batch/synchronous?upsert=true",
+        payload_key="holdingsRecords",
         **kwargs,
     )
