@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 import pathlib
 import json
+import logging
 from textwrap import dedent
 
 from airflow import DAG
@@ -16,6 +17,7 @@ from airflow.utils.task_group import TaskGroup
 
 from folio_post import post_folio_instance_records, post_folio_holding_records
 
+logger = logging.getLogger(__name__)
 
 def process_records(*args, **kwargs) -> list:
     """Function creates valid json from file of FOLIO objects"""
@@ -26,6 +28,7 @@ def process_records(*args, **kwargs) -> list:
         with open(file) as fo:
             records.extend([json.loads(i) for i in fo.readlines()])
 
+    logger.info(f"{out_filename} contains {len(records)} number of records")
     with open(f"/tmp/{out_filename}", "w+") as fo:
         json.dump(records, fo)
 
