@@ -29,7 +29,7 @@ def move_marc_files(*args, **kwargs) -> list:
         if "holdings" in path.name:
             target = pathlib.Path(f"/opt/airflow/migration/data/holdings/{path.name}")
         else:
-            target = pathlib.Path(f"/opt/airflow/migration/data/instance/{path.name}")
+            target = pathlib.Path(f"/opt/airflow/migration/data/instances/{path.name}")
         shutil.move(path, target)
         logger.info(f"Moved MARC file to {target}")
         marc_files.append(str(target))
