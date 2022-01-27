@@ -2,10 +2,69 @@ import logging
 import requests
 import pathlib
 import json
+import sys
 from airflow.models import Variable
+
+from migration_tools.library_configuration import LibraryConfiguration
+from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
+from migration_tools.migration_tasks.holdings_marc_transformer import HoldingsMarcTransformer
 
 logger = logging.getLogger(__name__)
 
+sul_config = LibraryConfiguration(
+    okapi_url=Variable.get("OKAPI_URL"),
+    tenant_id="sul",
+    okapi_username=Variable.get("FOLIO_USER"),
+    okapi_password=Variable.get("FOLIO_PASSWORD"),
+    library_name="Stanford University Libraries",
+    base_folder="/opt/airflow/migration",
+    log_level_debug=True,
+    folio_release="iris",
+    iteration_identifier="",
+)
+
+def _get_files(files: list) -> list:
+    output = []
+    for row in files:
+        file_name = row.split("/")[-1]
+        output.append({ "file_name": file_name, "suppressed": False})
+    return output
+
+def run_bibs_transformer(*args, **kwargs):
+    task_instance = kwargs["task_instance"]
+
+    files = _get_files(task_instance.xcom_pull(key="return_value", task_ids="move_marc_files"))
+    bibs_configuration= BibsTransformer.TaskConfiguration(
+        name="bibs-transformer",
+        migration_task_type="BibsTransformer",
+        hrid_handling="default",
+        files=files,
+        ils_flavour="voyager" # Voyager uses 001 field, using until 001 is available 
+    )
+
+    bibs_transformer = BibsTransformer(bibs_configuration, sul_config)
+
+    bibs_transformer.do_work()
+
+def run_holdings_tranformer(*args, **kwargs):
+    task_instance = kwargs["task_instance"]
+    files = _get_files(task_instance.xcom_pull(key="return_value", task_ids="move_marc_files"))
+
+    holdings_configuration = HoldingsMarcTransformer.TaskConfiguration(
+        name="holdings-transformer",
+        migration_task_type="HoldingsMarcTransformer",
+        use_tenant_mapping_rules=False,
+        hrid_handling="default",
+        files=files,
+        mfhd_mapping_file_name="holdings-bibs.json",
+        location_map_file_name="sul-locations.tsv",
+        default_call_number_type_name="Library of Congress",
+        default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed"
+    )
+
+    holdings_transformer = HoldingsMarcTransformer(holdings_configuration, sul_config)
+
+    holdings_transformer.do_work()
 
 def FolioLogin(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
@@ -66,8 +125,8 @@ def post_folio_instance_records(**kwargs):
     with open("/tmp/instances.json") as fo:
         instance_records = json.load(fo)
 
-    _post_to_okapi(
-        records=instance_records,
-        endpoint="/instance-storage/batch/synchronous?upsert=true",
-        **kwargs,
-    )
+    # _post_to_okapi(
+    #     records=instance_records,
+    #     endpoint="/instance-storage/batch/synchronous?upsert=true",
+    #     **kwargs,
+    # )

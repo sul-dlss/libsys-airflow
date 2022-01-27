@@ -17,7 +17,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
 
-from folio_post import post_folio_instance_records
+from folio_post import post_folio_instance_records, run_bibs_transformer, run_holdings_tranformer
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +25,21 @@ logger = logging.getLogger(__name__)
 def move_marc_files(*args, **kwargs) -> list:
     """Function moves MARC files to instances and holdings"""
     marc_files = []
+    move_locations = kwargs.get("target", "both")
     for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
-        if "holdings" in path.name:
-            target = pathlib.Path(f"/opt/airflow/migration/data/holdings/{path.name}")
+        if move_locations.startswith("both"):
+            for obj_type in ["holdings", "instances"]:
+                target =  pathlib.Path(f"/opt/airflow/migration/data/{obj_type}/{path.name}")
+                shutil.copy(path, target)
+                path.unlink() # Removes      
         else:
-            target = pathlib.Path(f"/opt/airflow/migration/data/instances/{path.name}")
-        shutil.move(path, target)
-        logger.info(f"Moved MARC file to {target}")
-        marc_files.append(str(target))
+            if move_locations.startswith("holdings") in path.name:
+                target = pathlib.Path(f"/opt/airflow/migration/data/holdings/{path.name}")
+            else:
+                target = pathlib.Path(f"/opt/airflow/migration/data/instances/{path.name}")
+            shutil.move(path, target)
+            logger.info(f"Moved MARC file to {target}")
+        marc_files.append(path.name)
     return marc_files
 
 
@@ -92,17 +99,28 @@ with DAG(
         task_id="move_marc_files", python_callable=move_marc_files
     )
 
-    convert_marc_to_folio = BashOperator(
-        task_id="convert_marc_to_folio",
-        bash_command="python /opt/airflow/MARC21-To-FOLIO/main_bibs.py --password $password --ils_flavour $ils_flavor --folio_version $folio_version --holdings_records False --force_utf_8 False --dates_from_marc False --hrid_handling default --suppress False /opt/airflow/migration $okapi_url $tenant $user",
-        env={
-            "folio_version": "iris",
-            "ils_flavor": "001",
-            "okapi_url": Variable.get("OKAPI_URL"),
-            "password": Variable.get("FOLIO_PASSWORD"),
-            "tenant": "sul",
-            "user": Variable.get("FOLIO_USER"),
-        },
+    # convert_marc_to_folio = BashOperator(
+    #     task_id="convert_marc_to_folio",
+    #     bash_command="python /opt/airflow/MARC21-To-FOLIO/main_bibs.py --password $password --ils_flavour $ils_flavor --folio_version $folio_version --holdings_records False --force_utf_8 False --dates_from_marc False --hrid_handling default --suppress False /opt/airflow/migration $okapi_url $tenant $user",
+    #     env={
+    #         "folio_version": "iris",
+    #         "ils_flavor": "001",
+    #         "okapi_url": Variable.get("OKAPI_URL"),
+    #         "password": Variable.get("FOLIO_PASSWORD"),
+    #         "tenant": "sul",
+    #         "user": Variable.get("FOLIO_USER"),
+    #     },
+    # )
+
+    convert_marc_to_folio_instances = PythonOperator(
+        task_id="convert_marc_to_folio_instances",
+        python_callable=run_bibs_transformer,
+        execution_timeout=timedelta(minutes=10),
+    )
+
+    convert_marc_to_folio_holdings = PythonOperator(
+        task_id="convert_marc_to_folio_holdings",
+        python_callable=run_holdings_tranformer,
     )
 
     append_commas_to_file_lines = PythonOperator(
@@ -118,17 +136,19 @@ with DAG(
         bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instance_*.json /opt/airflow/migration/archive/.",
     )
 
-    convert_marc_to_folio.doc_md = dedent(
-        """\
-        #### Converts MARC21 Records to validated FOLIO Inventory Records
-        Task takes a list of MARC21 Records and converts them into the FOLIO
-        Inventory Records"""
-    )
+    # convert_marc_to_folio.doc_md = dedent(
+    #     """\
+    #     #### Converts MARC21 Records to validated FOLIO Inventory Records
+    #     Task takes a list of MARC21 Records and converts them into the FOLIO
+    #     Inventory Records"""
+    # )
 
     finish_loading = DummyOperator(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> move_marc >> convert_marc_to_folio
-    convert_marc_to_folio >> append_commas_to_file_lines >> post_to_folio
+    
+    monitor_file_mount >> move_marc >> convert_marc_to_folio_instances
+    convert_marc_to_folio_instances >> convert_marc_to_folio_holdings >> append_commas_to_file_lines
+    append_commas_to_file_lines >> post_to_folio
     post_to_folio >> archive_instance_files >> finish_loading
