@@ -133,7 +133,7 @@ with DAG(
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instance/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instance_*.json /opt/airflow/migration/archive/.",
+        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.",
     )
 
     # convert_marc_to_folio.doc_md = dedent(
