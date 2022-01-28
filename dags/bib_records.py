@@ -31,7 +31,7 @@ def move_marc_files(*args, **kwargs) -> list:
             for obj_type in ["holdings", "instances"]:
                 target =  pathlib.Path(f"/opt/airflow/migration/data/{obj_type}/{path.name}")
                 shutil.copy(path, target)
-                path.unlink() # Removes      
+            path.unlink() # Removes      
         else:
             if move_locations.startswith("holdings") in path.name:
                 target = pathlib.Path(f"/opt/airflow/migration/data/holdings/{path.name}")

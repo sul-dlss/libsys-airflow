@@ -56,9 +56,9 @@ def run_holdings_tranformer(*args, **kwargs):
         use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=files,
-        mfhd_mapping_file_name="holdings-bibs.json",
-        location_map_file_name="sul-locations.tsv",
-        default_call_number_type_name="Library of Congress",
+        mfhd_mapping_file_name="holdingsrecord_mapping_sul.json",
+        location_map_file_name="locations.tsv",
+        default_call_number_type_name="Library of Congress classification",
         default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed"
     )
 
