@@ -47,7 +47,7 @@ def process_instances(*args, **kwargs) -> list:
     """ "Function for creating valid json from file of FOLIO instance objects"""
     instances = []
     for file in pathlib.Path("/opt/airflow/migration/results").glob(
-        "folio_instance_*.json"
+        "folio_instances_*.json"
     ):
         with open(file) as fo:
             instances.extend([json.loads(i) for i in fo.readlines()])
