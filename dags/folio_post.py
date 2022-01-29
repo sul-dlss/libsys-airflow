@@ -7,7 +7,9 @@ from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
-from migration_tools.migration_tasks.holdings_marc_transformer import HoldingsMarcTransformer
+from migration_tools.migration_tasks.holdings_marc_transformer import (
+    HoldingsMarcTransformer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,32 +25,41 @@ sul_config = LibraryConfiguration(
     iteration_identifier="",
 )
 
+
 def _get_files(files: list) -> list:
     output = []
     for row in files:
         file_name = row.split("/")[-1]
-        output.append({ "file_name": file_name, "suppressed": False})
+        output.append({"file_name": file_name, "suppressed": False})
     return output
+
 
 def run_bibs_transformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
 
-    files = _get_files(task_instance.xcom_pull(key="return_value", task_ids="move_marc_files"))
-    bibs_configuration= BibsTransformer.TaskConfiguration(
+    files = _get_files(
+        task_instance.xcom_pull(key="return_value", task_ids="move_marc_files")
+    )
+    bibs_configuration = BibsTransformer.TaskConfiguration(
         name="bibs-transformer",
         migration_task_type="BibsTransformer",
         hrid_handling="default",
         files=files,
-        ils_flavour="voyager" # Voyager uses 001 field, using until 001 is available 
+        ils_flavour="voyager",  # Voyager uses 001 field, using until 001 is available
     )
 
-    bibs_transformer = BibsTransformer(bibs_configuration, sul_config)
+    bibs_transformer = BibsTransformer(
+        bibs_configuration, sul_config, use_logging=False
+    )
 
     bibs_transformer.do_work()
 
+
 def run_holdings_tranformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
-    files = _get_files(task_instance.xcom_pull(key="return_value", task_ids="move_marc_files"))
+    files = _get_files(
+        task_instance.xcom_pull(key="return_value", task_ids="move_marc_files")
+    )
 
     holdings_configuration = HoldingsMarcTransformer.TaskConfiguration(
         name="holdings-transformer",
@@ -59,12 +70,15 @@ def run_holdings_tranformer(*args, **kwargs):
         mfhd_mapping_file_name="holdingsrecord_mapping_sul.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
-        default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed"
+        default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
     )
 
-    holdings_transformer = HoldingsMarcTransformer(holdings_configuration, sul_config)
+    holdings_transformer = HoldingsMarcTransformer(
+        holdings_configuration, sul_config, use_logging=False
+    )
 
     holdings_transformer.do_work()
+
 
 def FolioLogin(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
