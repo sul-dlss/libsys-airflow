@@ -33,6 +33,17 @@ def _get_files(files: list) -> list:
         output.append({"file_name": file_name, "suppressed": False})
     return output
 
+def process_records(*args, **kwargs) -> list:
+    """Function creates valid json from file of FOLIO objects"""
+    pattern = kwargs.get("pattern")
+    out_filename = kwargs.get("out_filename")
+    records = []
+    for file in pathlib.Path("/opt/airflow/migration/results").glob(pattern):
+        with open(file) as fo:
+            records.extend([json.loads(i) for i in fo.readlines()])
+
+    with open(f"/tmp/{out_filename}", "w+") as fo:
+        json.dump(records, fo)
 
 def run_bibs_transformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
@@ -53,6 +64,8 @@ def run_bibs_transformer(*args, **kwargs):
     )
 
     bibs_transformer.do_work()
+
+    bibs_transformer.wrap_up()
 
 
 def run_holdings_tranformer(*args, **kwargs):
@@ -79,6 +92,8 @@ def run_holdings_tranformer(*args, **kwargs):
 
     holdings_transformer.do_work()
 
+    holdings_transformer.wrap_up()
+
 
 def FolioLogin(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
@@ -104,6 +119,8 @@ def _post_to_okapi(**kwargs):
     jwt = FolioLogin(**kwargs)
 
     records = kwargs["records"]
+    payload_key = kwargs["payload_key"]
+
     tenant = "sul"
     okapi_url = Variable.get("OKAPI_URL")
 
@@ -116,7 +133,7 @@ def _post_to_okapi(**kwargs):
         "x-okapi-tenant": tenant,
     }
 
-    payload = {"instances": records}
+    payload = {payload_key: records}
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -139,8 +156,22 @@ def post_folio_instance_records(**kwargs):
     with open("/tmp/instances.json") as fo:
         instance_records = json.load(fo)
 
-    # _post_to_okapi(
-    #     records=instance_records,
-    #     endpoint="/instance-storage/batch/synchronous?upsert=true",
-    #     **kwargs,
-    # )
+    _post_to_okapi(
+        records=instance_records,
+        endpoint="/instance-storage/batch/synchronous?upsert=true",
+        payload_key="instances",
+        **kwargs,
+    )
+
+def post_folio_holding_records(**kwargs):
+    """Creates/overlays Holdings records in FOLIO"""
+    with open("/tmp/holdings.json") as fo:
+        holding_records = json.load(fo)
+
+    _post_to_okapi(
+        records=holding_records,
+        endpoint="/holdings-storage/batch/synchronous?upsert=true",
+        payload_key="holdingsRecords",
+        **kwargs,
+    )
+  
