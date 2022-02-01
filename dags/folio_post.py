@@ -21,7 +21,7 @@ sul_config = LibraryConfiguration(
     library_name="Stanford University Libraries",
     base_folder="/opt/airflow/migration",
     log_level_debug=True,
-    folio_release="iris",
+    folio_release="juniper",
     iteration_identifier="",
 )
 
@@ -45,6 +45,7 @@ def process_records(*args, **kwargs) -> list:
     with open(f"/tmp/{out_filename}", "w+") as fo:
         json.dump(records, fo)
 
+
 def run_bibs_transformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
 
@@ -63,6 +64,8 @@ def run_bibs_transformer(*args, **kwargs):
         bibs_configuration, sul_config, use_logging=False
     )
 
+    logger.info(f"Starting bibs_tranfers work for {files}")
+
     bibs_transformer.do_work()
 
     bibs_transformer.wrap_up()
@@ -80,6 +83,7 @@ def run_holdings_tranformer(*args, **kwargs):
         use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=files,
+        create_source_records=False,
         mfhd_mapping_file_name="holdingsrecord_mapping_sul.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
@@ -141,7 +145,7 @@ def _post_to_okapi(**kwargs):
         json=payload,
     )
 
-    logger.info(new_record_result.status_code)
+    logger.info(f"Result status code {new_record_result.status_code} for {len(records)} records")
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)

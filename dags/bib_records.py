@@ -123,8 +123,8 @@ with DAG(
             task_id="finished-conversion"
         )
 
-        convert_marc_to_folio_instances >> [convert_marc_to_folio_holdings, convert_instances_valid_json] >> finish_conversion
-        convert_marc_to_folio_holdings >> convert_holdings_valid_json >> finish_conversion
+        convert_marc_to_folio_instances >> convert_marc_to_folio_holdings >> convert_holdings_valid_json >> finish_conversion
+        convert_marc_to_folio_instances >> convert_instances_valid_json >> finish_conversion
 
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
