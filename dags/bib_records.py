@@ -19,7 +19,13 @@ from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from dags.folio_post import post_folio_holding_records
 
-from folio_post import post_folio_instance_records, run_bibs_transformer, run_holdings_tranformer, process_records
+from folio_post import (
+    post_folio_instance_records,
+    preprocess_marc,
+    run_bibs_transformer,
+    run_holdings_tranformer,
+    process_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +37,20 @@ def move_marc_files(*args, **kwargs) -> list:
     for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
         if move_locations.startswith("both"):
             for obj_type in ["holdings", "instances"]:
-                target =  pathlib.Path(f"/opt/airflow/migration/data/{obj_type}/{path.name}")
+                target = pathlib.Path(
+                    f"/opt/airflow/migration/data/{obj_type}/{path.name}"
+                )
                 shutil.copy(path, target)
-            path.unlink() # Removes      
+            path.unlink()  # Removes
         else:
             if move_locations.startswith("holdings") in path.name:
-                target = pathlib.Path(f"/opt/airflow/migration/data/holdings/{path.name}")
+                target = pathlib.Path(
+                    f"/opt/airflow/migration/data/holdings/{path.name}"
+                )
             else:
-                target = pathlib.Path(f"/opt/airflow/migration/data/instances/{path.name}")
+                target = pathlib.Path(
+                    f"/opt/airflow/migration/data/instances/{path.name}"
+                )
             shutil.move(path, target)
             logger.info(f"Moved MARC file to {target}")
         marc_files.append(path.name)
@@ -84,6 +96,10 @@ with DAG(
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
     )
 
+    preprocess_marc_files = PythonOperator(
+        task_id="preprocess_marc", python_callable=preprocess_marc
+    )
+
     move_marc = PythonOperator(
         task_id="move_marc_files", python_callable=move_marc_files
     )
@@ -105,7 +121,7 @@ with DAG(
             task_id="instances_to_valid_json",
             python_callable=process_records,
             op_kwargs={
-                "pattern": "folio_instance_*.json",
+                "pattern": "folio_instances_*.json",
                 "out_filename": "instances.json",
             },
         )
@@ -114,29 +130,34 @@ with DAG(
             task_id="holdings_to_valid_json",
             python_callable=process_records,
             op_kwargs={
-                "pattern": "folio_holdingsrecord_*.json",
+                "pattern": "folio_holdings_*.json",
                 "out_filename": "holdings.json",
             },
         )
 
-        finish_conversion = DummyOperator(
-            task_id="finished-conversion"
+        finish_conversion = DummyOperator(task_id="finished-conversion")
+
+        (
+            convert_marc_to_folio_instances
+            >> convert_marc_to_folio_holdings
+            >> convert_holdings_valid_json
+            >> finish_conversion
+        )
+        (
+            convert_marc_to_folio_instances
+            >> convert_instances_valid_json
+            >> finish_conversion
         )
 
-        convert_marc_to_folio_instances >> convert_marc_to_folio_holdings >> convert_holdings_valid_json >> finish_conversion
-        convert_marc_to_folio_instances >> convert_instances_valid_json >> finish_conversion
-
-
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
-        
+
         post_instances = PythonOperator(
-            task_id="post_to_folio_instances", 
-            python_callable=post_folio_instance_records
+            task_id="post_to_folio_instances",
+            python_callable=post_folio_instance_records,
         )
 
         post_holdings = PythonOperator(
-            task_id="post_to_folio_holdings",
-            python_callable=post_folio_holding_records
+            task_id="post_to_folio_holdings", python_callable=post_folio_holding_records
         )
 
         post_instances >> post_holdings
@@ -150,6 +171,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    
-    monitor_file_mount >> move_marc >> marc_to_folio >> post_to_folio
+    monitor_file_mount >> preprocess_marc_files >> move_marc
+    move_marc >> marc_to_folio >> post_to_folio
     post_to_folio >> archive_instance_files >> finish_loading

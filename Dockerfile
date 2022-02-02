@@ -15,6 +15,6 @@ RUN chmod +x migration/create_folder_structure.sh
 RUN cd migration && rm -rf .git && ./create_folder_structure.sh
 
 
-RUN git clone -b optional-logging https://github.com/jermnelson/MARC21-To-FOLIO --depth=2
+RUN git clone -b fix-holdings-processor-init https://github.com/jermnelson/MARC21-To-FOLIO.git --depth=2
 
 RUN cd MARC21-To-FOLIO && pip install -r requirements.txt
