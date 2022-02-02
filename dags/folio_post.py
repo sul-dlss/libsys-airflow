@@ -1,3 +1,4 @@
+import csv
 import logging
 import pathlib
 import json
@@ -9,9 +10,10 @@ from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
-from migration_tools.migration_tasks.holdings_marc_transformer import (
-    HoldingsMarcTransformer,
+from migration_tools.migration_tasks.holdings_csv_transformer import (
+    HoldingsCsvTransformer,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,28 +38,52 @@ def _get_files(files: list) -> list:
     return output
 
 
+def _generate_holdings_tsv(holdings_csv: csv.DictWriter, record: pymarc.Record):
+    field001 = record.get_fields("001")[0]
+    field999 = record.get_fields("999")[0]
+    fields = {
+        "CALL_NUMBER": "".join([r for r in field999.get_subfields("a")]),
+        "CATKEY": field001.value(),
+        "LIBRARY": "".join([r for r in field999.get_subfields("m")]),
+        "LOCATION": "".join([r for r in field999.get_subfields("l")]),
+        "CALL_NUMBER_TYPE": "".join([r for r in field999.get_subfields("w")]),
+    }
+    holdings_csv.writerow(fields)
+
+
+def _move_001_to_035(record: pymarc.Record):
+    all001 = record.get_fields("001")
+    if len(all001) < 2:
+        return
+    for field001 in all001[1:]:
+        field035 = pymarc.Field(
+            tag="035", indicators=["", ""], subfields=["a", field001.data]
+        )
+        record.add_field(field035)
+        record.remove_field(field001)
+
+
 def preprocess_marc(*args, **kwargs):
-    def move_001_to_035(record: pymarc.Record):
-        all001 = record.get_fields("001")
-        if len(all001) < 2:
-            return
-        for field001 in all001[1:]:
-            field035 = pymarc.Field(
-                tag="035", indicators=["", ""], subfields=["a", field001.data]
-            )
-            record.add_field(field035)
-            record.remove_field(field001)
+    holdings_tsv_file = open("/opt/airflow/migration/data/items/sul-holdings.tsv", "w+")
+    holdings_tsv = csv.DictWriter(
+        holdings_tsv_file,
+        fieldnames=["CALL_NUMBER", "CALL_NUMBER_TYPE", "CATKEY", "LIBRARY", "LOCATION"],
+        delimiter="\t",
+    )
+    holdings_tsv.writeheader()
 
     for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
         marc_records = []
         marc_reader = pymarc.MARCReader(path.read_bytes())
         for record in marc_reader:
-            move_001_to_035(record)
+            _move_001_to_035(record)
+            _generate_holdings_tsv(holdings_tsv, record)
             marc_records.append(record)
         with open(path.absolute(), "wb+") as fo:
             marc_writer = pymarc.MARCWriter(fo)
             for record in marc_records:
                 marc_writer.write(record)
+    holdings_tsv_file.close()
 
 
 def process_records(*args, **kwargs) -> list:
@@ -75,10 +101,14 @@ def process_records(*args, **kwargs) -> list:
 
 def run_bibs_transformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
+    dag = kwargs["dag_run"]
 
     files = _get_files(
         task_instance.xcom_pull(key="return_value", task_ids="move_marc_files")
     )
+
+    sul_config.iteration_identifier = dag.run_id
+
     bibs_configuration = BibsTransformer.TaskConfiguration(
         name="bibs-transformer",
         migration_task_type="BibsTransformer",
@@ -100,24 +130,29 @@ def run_bibs_transformer(*args, **kwargs):
 
 def run_holdings_tranformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
-    files = _get_files(
-        task_instance.xcom_pull(key="return_value", task_ids="move_marc_files")
+    dag = kwargs["dag_run"]
+
+    sul_config.iteration_identifier = dag.run_id
+
+    logger.info(
+        f"IN run_holdings_transformer {pathlib.Path('/opt/airflow/migration/data/items/sul-holdings.tsv').exists()}"
     )
 
-    holdings_configuration = HoldingsMarcTransformer.TaskConfiguration(
+    holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
         migration_task_type="HoldingsMarcTransformer",
         use_tenant_mapping_rules=False,
         hrid_handling="default",
-        files=files,
+        files=[{"file_name": "sul-holdings.tsv", "supressed": False}],
         create_source_records=False,
-        mfhd_mapping_file_name="holdingsrecord_mapping_sul.json",
+        call_number_type_map_file_name="call_number_type_mapping.tsv",
+        holdings_map_file_name="holdingsrecord_mapping_sul.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
         default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
     )
 
-    holdings_transformer = HoldingsMarcTransformer(
+    holdings_transformer = HoldingsCsvTransformer(
         holdings_configuration, sul_config, use_logging=False
     )
 
@@ -173,13 +208,13 @@ def _post_to_okapi(**kwargs):
     )
 
     logger.info(
-        f"Result status code {new_record_result.status_code} for {len(records)} records" # noqa
+        f"Result status code {new_record_result.status_code} for {len(records)} records"  # noqa
     )
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}" # noqa
+            f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
         )
 
 
