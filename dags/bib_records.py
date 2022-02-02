@@ -18,6 +18,7 @@ from airflow.utils.task_group import TaskGroup
 from dags.folio_post import post_folio_holding_records
 
 from folio_post import (
+    folio_login,
     post_folio_instance_records,
     preprocess_marc,
     run_bibs_transformer,
@@ -149,6 +150,8 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
+        folio_login = PythonOperator(task_id="folio_login", python_callable=folio_login)
+
         post_instances = PythonOperator(
             task_id="post_to_folio_instances",
             python_callable=post_folio_instance_records,
@@ -159,7 +162,7 @@ with DAG(
             python_callable=post_folio_holding_records
         )
 
-        post_instances >> post_holdings
+        folio_login >> post_instances >> post_holdings
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",

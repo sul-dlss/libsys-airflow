@@ -126,7 +126,7 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_transformer.wrap_up()
 
 
-def FolioLogin(**kwargs):
+def folio_login(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
     okapi_url = Variable.get("OKAPI_URL")
     username = Variable.get("FOLIO_USER")
@@ -147,7 +147,7 @@ def FolioLogin(**kwargs):
 
 def _post_to_okapi(**kwargs):
     endpoint = kwargs.get("endpoint")
-    jwt = FolioLogin(**kwargs)
+    jwt = kwargs["token"]
 
     records = kwargs["records"]
     payload_key = kwargs["payload_key"]
@@ -190,6 +190,9 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     _post_to_okapi(
+        token=kwargs["task_instance"].xcom_pull(
+            key="return_value", task_ids="folio_login"
+        ),
         records=instance_records,
         endpoint="/instance-storage/batch/synchronous?upsert=true",
         payload_key="instances",
@@ -203,6 +206,9 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     _post_to_okapi(
+        token=kwargs["task_instance"].xcom_pull(
+            key="return_value", task_ids="folio_login"
+        ),
         records=holding_records,
         endpoint="/holdings-storage/batch/synchronous?upsert=true",
         payload_key="holdingsRecords",
