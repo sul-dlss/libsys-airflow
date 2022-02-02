@@ -84,7 +84,7 @@ def run_bibs_transformer(*args, **kwargs):
         migration_task_type="BibsTransformer",
         hrid_handling="default",
         files=files,
-        ils_flavour="voyager",  # Voyager uses 001 field, using until 001 is available
+        ils_flavour="voyager",  # Voyager uses 001 field, using tag001 works
     )
 
     bibs_transformer = BibsTransformer(
@@ -173,13 +173,13 @@ def _post_to_okapi(**kwargs):
     )
 
     logger.info(
-        f"Result status code {new_record_result.status_code} for {len(records)} records"
+        f"Result status code {new_record_result.status_code} for {len(records)} records" # noqa
     )
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}"
+            f"FOLIO POST Failed with error code:{new_record_result.status_code}" # noqa
         )
 
 

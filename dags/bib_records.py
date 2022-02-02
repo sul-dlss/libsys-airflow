@@ -1,17 +1,15 @@
 """Imports exported MARC records from Symphony into FOLIO"""
 
 from datetime import datetime, timedelta
-import json
 import logging
 import pathlib
 
 import shutil
 from textwrap import dedent
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias # noqa
 
 from airflow import DAG
 
-from airflow.models import Variable
 from airflow.operators.bash import BashOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
@@ -157,14 +155,15 @@ with DAG(
         )
 
         post_holdings = PythonOperator(
-            task_id="post_to_folio_holdings", python_callable=post_folio_holding_records
+            task_id="post_to_folio_holdings",
+            python_callable=post_folio_holding_records
         )
 
         post_instances >> post_holdings
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.",
+        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.", # noqa
     )
 
     finish_loading = DummyOperator(
