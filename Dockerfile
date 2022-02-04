@@ -8,7 +8,7 @@ RUN apt-get -y update && apt-get -y install git
 ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/MARC21-To-FOLIO"
 
 USER airflow
-COPY --chown=airflow migration migration/
+COPY --chown=airflow:root migration migration/
 
 
 RUN chmod +x migration/create_folder_structure.sh
