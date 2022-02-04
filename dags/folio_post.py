@@ -40,15 +40,16 @@ def _get_files(files: list) -> list:
 
 def _generate_holdings_tsv(holdings_csv: csv.DictWriter, record: pymarc.Record):
     field001 = record.get_fields("001")[0]
-    field999 = record.get_fields("999")[0]
-    fields = {
-        "CALL_NUMBER": "".join([r for r in field999.get_subfields("a")]),
-        "CATKEY": field001.value(),
-        "LIBRARY": "".join([r for r in field999.get_subfields("m")]),
-        "LOCATION": "".join([r for r in field999.get_subfields("l")]),
-        "CALL_NUMBER_TYPE": "".join([r for r in field999.get_subfields("w")]),
-    }
-    holdings_csv.writerow(fields)
+    field999s = record.get_fields("999")
+    for field999 in field999s:
+        fields = {
+            "CALL_NUMBER": "".join([r for r in field999.get_subfields("a")]),
+            "CATKEY": field001.value(),
+            "LIBRARY": "".join([r for r in field999.get_subfields("m")]),
+            "LOCATION": "".join([r for r in field999.get_subfields("l")]),
+            "CALL_NUMBER_TYPE": "".join([r for r in field999.get_subfields("w")]),
+        }
+        holdings_csv.writerow(fields)
 
 
 def _move_001_to_035(record: pymarc.Record):
