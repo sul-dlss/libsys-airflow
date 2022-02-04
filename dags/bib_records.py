@@ -150,7 +150,7 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        folio_login = PythonOperator(task_id="folio_login", python_callable=folio_login)
+        login = PythonOperator(task_id="folio_login", python_callable=folio_login)
 
         post_instances = PythonOperator(
             task_id="post_to_folio_instances",
@@ -162,7 +162,7 @@ with DAG(
             python_callable=post_folio_holding_records
         )
 
-        folio_login >> post_instances >> post_holdings
+        login >> post_instances >> post_holdings
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
