@@ -191,7 +191,7 @@ def post_folio_instance_records(**kwargs):
 
     _post_to_okapi(
         token=kwargs["task_instance"].xcom_pull(
-            key="return_value", task_ids="folio_login"
+            key="return_value", task_ids="post-to-folio.folio_login"
         ),
         records=instance_records,
         endpoint="/instance-storage/batch/synchronous?upsert=true",
@@ -207,7 +207,7 @@ def post_folio_holding_records(**kwargs):
 
     _post_to_okapi(
         token=kwargs["task_instance"].xcom_pull(
-            key="return_value", task_ids="folio_login"
+            key="return_value", task_ids="post-to-folio.folio_login"
         ),
         records=holding_records,
         endpoint="/holdings-storage/batch/synchronous?upsert=true",
