@@ -221,32 +221,43 @@ def _post_to_okapi(**kwargs):
 
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
-    # instance_records = pathlib.Path('/tmp/instances.json').read_text()
+
+    batch_size = kwargs.get('MAX_ENTITIES', 9999)
+
     with open("/tmp/instances.json") as fo:
         instance_records = json.load(fo)
 
-    _post_to_okapi(
-        token=kwargs["task_instance"].xcom_pull(
-            key="return_value", task_ids="post-to-folio.folio_login"
-        ),
-        records=instance_records,
-        endpoint="/instance-storage/batch/synchronous?upsert=true",
-        payload_key="instances",
-        **kwargs,
-    )
+    for i in range(0, len(instance_records), batch_size):
+        instance_batch = instance_records[i:i+batch_size]
+        logger.info(f"Posting {i} to {i+batch_size}")
+        _post_to_okapi(
+            token=kwargs["task_instance"].xcom_pull(
+                key="return_value", task_ids="post-to-folio.folio_login"
+            ),
+            records=instance_batch,
+            endpoint="/instance-storage/batch/synchronous?upsert=true",
+            payload_key="instances",
+            **kwargs,
+        )
 
 
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
+
+    batch_size = kwargs.get('MAX_ENTITIES', 9999)
+
     with open("/tmp/holdings.json") as fo:
         holding_records = json.load(fo)
 
-    _post_to_okapi(
-        token=kwargs["task_instance"].xcom_pull(
-            key="return_value", task_ids="post-to-folio.folio_login"
-        ),
-        records=holding_records,
-        endpoint="/holdings-storage/batch/synchronous?upsert=true",
-        payload_key="holdingsRecords",
-        **kwargs,
-    )
+    for i in range(0, len(holding_records), batch_size):
+        holdings_batch = holding_records[i:i+batch_size]
+        logger.info(f"Posting {i} to {i+batch_size} holding records")
+        _post_to_okapi(
+            token=kwargs["task_instance"].xcom_pull(
+                key="return_value", task_ids="post-to-folio.folio_login"
+            ),
+            records=holdings_batch,
+            endpoint="/holdings-storage/batch/synchronous?upsert=true",
+            payload_key="holdingsRecords",
+            **kwargs,
+        )
