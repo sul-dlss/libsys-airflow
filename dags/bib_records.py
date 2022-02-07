@@ -53,7 +53,7 @@ default_args = {
 with DAG(
     "symphony_marc_import",
     default_args=default_args,
-    schedule_interval=timedelta(hours=1),
+    schedule_interval=timedelta(minutes=5),
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
@@ -71,7 +71,7 @@ with DAG(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
         filepath="/opt/airflow/symphony/*.*rc",
-        timeout=60 * 30,
+        timeout=270, # 4 1/2 minutes
     )
 
     monitor_file_mount.doc_md = dedent(
