@@ -91,13 +91,25 @@ def process_records(*args, **kwargs) -> list:
     """Function creates valid json from file of FOLIO objects"""
     pattern = kwargs.get("pattern")
     out_filename = kwargs.get("out_filename")
+
+    total_jobs = int(kwargs.get("jobs"))
+
     records = []
     for file in pathlib.Path("/opt/airflow/migration/results").glob(pattern):
         with open(file) as fo:
             records.extend([json.loads(i) for i in fo.readlines()])
 
-    with open(f"/tmp/{out_filename}", "w+") as fo:
-        json.dump(records, fo)
+    shard_size = int(len(records) / total_jobs)
+    for i in range(total_jobs):
+        start = i*shard_size
+        end = int(start + shard_size)
+        if end >= len(records):
+            end = None
+        logger.error(f"Start {start} End {end}")
+        with open(f"/tmp/{out_filename}-{i}.json", "w+") as fo:
+            json.dump(records[start:end], fo)
+
+    return len(records)
 
 
 def run_bibs_transformer(*args, **kwargs):
@@ -223,8 +235,9 @@ def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
 
     batch_size = kwargs.get('MAX_ENTITIES', 9999)
+    job_number = kwargs.get("job")
 
-    with open("/tmp/instances.json") as fo:
+    with open(f"/tmp/instances-{job_number}.json") as fo:
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
@@ -245,8 +258,9 @@ def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
 
     batch_size = kwargs.get('MAX_ENTITIES', 9999)
+    job_number = kwargs.get("job")
 
-    with open("/tmp/holdings.json") as fo:
+    with open(f"/tmp/holdings-{job_number}.json") as fo:
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
