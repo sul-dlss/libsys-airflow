@@ -49,13 +49,13 @@ default_args = {
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 1,
-    "retry_delay": timedelta(minutes=15),
+    "retry_delay": timedelta(minutes=5),
 }
 
 with DAG(
     "symphony_marc_import",
     default_args=default_args,
-    schedule_interval=timedelta(minutes=5),
+    schedule_interval=timedelta(minutes=15),
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
