@@ -234,7 +234,7 @@ def _post_to_okapi(**kwargs):
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
 
-    batch_size = kwargs.get('MAX_ENTITIES', 9999)
+    batch_size = kwargs.get('MAX_ENTITIES', 1000)
     job_number = kwargs.get("job")
 
     with open(f"/tmp/instances-{job_number}.json") as fo:
@@ -242,7 +242,7 @@ def post_folio_instance_records(**kwargs):
 
     for i in range(0, len(instance_records), batch_size):
         instance_batch = instance_records[i:i+batch_size]
-        logger.info(f"Posting {i} to {i+batch_size}")
+        logger.info(f"Posting {len(instance_batch)} in batch {i}")
         _post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
                 key="return_value", task_ids="post-to-folio.folio_login"
@@ -257,7 +257,7 @@ def post_folio_instance_records(**kwargs):
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
 
-    batch_size = kwargs.get('MAX_ENTITIES', 9999)
+    batch_size = kwargs.get('MAX_ENTITIES', 1000)
     job_number = kwargs.get("job")
 
     with open(f"/tmp/holdings-{job_number}.json") as fo:
