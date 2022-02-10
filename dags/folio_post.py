@@ -8,6 +8,7 @@ import requests
 
 from airflow.models import Variable
 
+from plugins.folio.helpers import post_to_okapi as _post_to_okapi
 
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
@@ -130,42 +131,7 @@ def folio_login(**kwargs):
     result.raise_for_status()
 
 
-def _post_to_okapi(**kwargs):
-    endpoint = kwargs.get("endpoint")
-    jwt = kwargs["token"]
 
-    records = kwargs["records"]
-    payload_key = kwargs["payload_key"]
-
-    tenant = "sul"
-    okapi_url = Variable.get("OKAPI_URL")
-
-    okapi_instance_url = f"{okapi_url}{endpoint}"
-
-    headers = {
-        "Content-type": "application/json",
-        "user-agent": "FolioAirflow",
-        "x-okapi-token": jwt,
-        "x-okapi-tenant": tenant,
-    }
-
-    payload = {payload_key: records}
-
-    new_record_result = requests.post(
-        okapi_instance_url,
-        headers=headers,
-        json=payload,
-    )
-
-    logger.info(
-        f"Result status code {new_record_result.status_code} for {len(records)} records"  # noqa
-    )
-
-    if new_record_result.status_code > 399:
-        logger.error(new_record_result.text)
-        raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
-        )
 
 
 def post_folio_instance_records(**kwargs):

@@ -21,6 +21,7 @@ from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
 from plugins.folio.holdings import run_holdings_tranformer
+from plugins.folio.items import run_item_transformer, post_folio_items_records
 
 from folio_post import (
     folio_login,
@@ -157,6 +158,14 @@ with DAG(
             }
         )
 
+        convert_tsv_to_folio_items = PythonOperator(
+            task_id="convert_tsv_to_folio_items",
+            python_callable=run_item_transformer,
+            op_kwargs={
+                "library_config": sul_config
+            }
+        )
+
         convert_instances_valid_json = PythonOperator(
             task_id="instances_to_valid_json",
             python_callable=process_records,
@@ -177,6 +186,16 @@ with DAG(
             },
         )
 
+        convert_items_valid_json = PythonOperator(
+            task_id="items_to_valid_json",
+            python_callable=process_records,
+            op_kwargs={
+                "prefix": "folio_items",
+                "out_filename": "holdings",
+                "jobs": int(parallel_posts),
+            },
+        )
+
         finish_conversion = DummyOperator(task_id="finished-conversion")
 
         (
@@ -188,6 +207,11 @@ with DAG(
         (
             convert_marc_to_folio_instances
             >> convert_instances_valid_json
+            >> finish_conversion
+        )
+        (   convert_tsv_to_folio_holdings
+            >> convert_tsv_to_folio_items
+            >> convert_items_valid_json
             >> finish_conversion
         )
 
@@ -217,6 +241,19 @@ with DAG(
             )
 
             finish_instances >> post_holdings >> finish_holdings
+
+        finish_items = DummyOperator(task_id="finish-posting-items")
+
+        for i in range(int(parallel_posts)):
+            post_items = PythonOperator(
+                task_id=f"post_to_folio_items_{i}",
+                python_callable=post_folio_items_records,
+                op_kwargs={"job": i},
+            )
+
+            finish_holdings >> post_items >> finish_items
+
+
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
