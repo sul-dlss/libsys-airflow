@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 def move_marc_files(*args, **kwargs) -> list:
     """Function moves MARC files to instances and holdings"""
-    airflow = "/opt/airflow/"
+    airflow = "/opt/airflow"
     marc_files = []
-    for path in pathlib.Path(f"{airflow}symphony/").glob("*.*rc"):
-        target = pathlib.Path(f"{airflow}migration/data/instances/{path.name}")
+    for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
+        target = pathlib.Path(f"{airflow}/migration/data/instances/{path.name}")  # noqa
         shutil.move(path, target)
         logger.info(f"Moved MARC file to {target}")
         marc_files.append(path.name)

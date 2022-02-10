@@ -38,7 +38,7 @@ def _get_files(files: list) -> list:
     return output
 
 
-def _generate_holdings_tsv(holdings_csv: csv.DictWriter,
+def _generate_holdings_tsv(holdings_tsv: csv.DictWriter,
                            record: pymarc.Record):
     field001 = record.get_fields("001")[0]
     field999s = record.get_fields("999")
@@ -50,7 +50,7 @@ def _generate_holdings_tsv(holdings_csv: csv.DictWriter,
             "LOCATION": "".join([r for r in field.get_subfields("l")]),
             "CALL_NUMBER_TYPE": "".join([r for r in field.get_subfields("w")]),
         }
-        holdings_csv.writerow(fields)
+        holdings_tsv.writerow(fields)
 
 
 def _move_001_to_035(record: pymarc.Record):
@@ -66,8 +66,8 @@ def _move_001_to_035(record: pymarc.Record):
 
 
 def preprocess_marc(*args, **kwargs):
-    airflow = "/opt/airflow/"
-    holdings_tsv_file = open(f"{airflow}migration/data/items/sul-holdings.tsv", "w+")  # noqa
+    airflow = "/opt/airflow"
+    holdings_tsv_file = open(f"{airflow}/migration/data/items/sul-holdings.tsv", "w+")  # noqa
     holdings_tsv = csv.DictWriter(
         holdings_tsv_file,
         fieldnames=["CALL_NUMBER",
@@ -79,7 +79,7 @@ def preprocess_marc(*args, **kwargs):
     )
     holdings_tsv.writeheader()
 
-    for path in pathlib.Path(f"{airflow}symphony/").glob("*.*rc"):
+    for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
         marc_records = []
         marc_reader = pymarc.MARCReader(path.read_bytes())
         for record in marc_reader:
