@@ -33,15 +33,17 @@ logger = logging.getLogger(__name__)
 
 def move_marc_files(*args, **kwargs) -> list:
     """Function moves MARC files to instances and holdings"""
+    airflow = "/opt/airflow/"
     marc_files = []
-    for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
-        target = pathlib.Path(f"/opt/airflow/migration/data/instances/{path.name}")
+    for path in pathlib.Path(f"{airflow}symphony/").glob("*.*rc"):
+        target = pathlib.Path(f"{airflow}migration/data/instances/{path.name}")
         shutil.move(path, target)
         logger.info(f"Moved MARC file to {target}")
         marc_files.append(path.name)
     return marc_files
 
-parallel_posts = Variable.get('parallel_posts', 3)
+
+parallel_posts = Variable.get("parallel_posts", 3)
 
 default_args = {
     "owner": "folio",
@@ -73,7 +75,7 @@ with DAG(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
         filepath="/opt/airflow/symphony/*.*rc",
-        timeout=270, # 4 1/2 minutes
+        timeout=270,  # 4 1/2 minutes
     )
 
     monitor_file_mount.doc_md = dedent(
@@ -109,7 +111,7 @@ with DAG(
             op_kwargs={
                 "pattern": "folio_instances_*.json",
                 "out_filename": "instances",
-                "jobs": int(parallel_posts)
+                "jobs": int(parallel_posts),
             },
         )
 
@@ -119,7 +121,7 @@ with DAG(
             op_kwargs={
                 "pattern": "folio_holdings_*.json",
                 "out_filename": "holdings",
-                "jobs": int(parallel_posts)
+                "jobs": int(parallel_posts),
             },
         )
 
@@ -139,38 +141,30 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        login = PythonOperator(task_id="folio_login", python_callable=folio_login)
+        login = PythonOperator(task_id="folio_login",
+                               python_callable=folio_login)
 
-        finish_instances = DummyOperator(
-            task_id="finish-posting-instances"
-        )
+        finish_instances = DummyOperator(task_id="finish-posting-instances")
 
         for i in range(int(parallel_posts)):
             post_instances = PythonOperator(
                 task_id=f"post_to_folio_instances_{i}",
                 python_callable=post_folio_instance_records,
-                op_kwargs={ "job": i }
+                op_kwargs={"job": i},
             )
 
             login >> post_instances >> finish_instances
 
-        finish_holdings = DummyOperator(
-            task_id="finish-posting-holdings"
-        )
+        finish_holdings = DummyOperator(task_id="finish-posting-holdings")
 
         for i in range(int(parallel_posts)):
             post_holdings = PythonOperator(
-                task_id=f"post_to_folio_holdings_{i}", 
+                task_id=f"post_to_folio_holdings_{i}",
                 python_callable=post_folio_holding_records,
-                op_kwargs={
-                    "job": i
-                }
+                op_kwargs={"job": i},
             )
 
             finish_instances >> post_holdings >> finish_holdings
-
-
-        
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",

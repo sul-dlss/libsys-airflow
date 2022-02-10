@@ -38,16 +38,17 @@ def _get_files(files: list) -> list:
     return output
 
 
-def _generate_holdings_tsv(holdings_csv: csv.DictWriter, record: pymarc.Record):
+def _generate_holdings_tsv(holdings_csv: csv.DictWriter,
+                           record: pymarc.Record):
     field001 = record.get_fields("001")[0]
     field999s = record.get_fields("999")
-    for field999 in field999s:
+    for field in field999s:
         fields = {
-            "CALL_NUMBER": "".join([r for r in field999.get_subfields("a")]),
+            "CALL_NUMBER": "".join([r for r in field.get_subfields("a")]),
             "CATKEY": field001.value(),
-            "LIBRARY": "".join([r for r in field999.get_subfields("m")]),
-            "LOCATION": "".join([r for r in field999.get_subfields("l")]),
-            "CALL_NUMBER_TYPE": "".join([r for r in field999.get_subfields("w")]),
+            "LIBRARY": "".join([r for r in field.get_subfields("m")]),
+            "LOCATION": "".join([r for r in field.get_subfields("l")]),
+            "CALL_NUMBER_TYPE": "".join([r for r in field.get_subfields("w")]),
         }
         holdings_csv.writerow(fields)
 
@@ -65,15 +66,20 @@ def _move_001_to_035(record: pymarc.Record):
 
 
 def preprocess_marc(*args, **kwargs):
-    holdings_tsv_file = open("/opt/airflow/migration/data/items/sul-holdings.tsv", "w+")
+    airflow = "/opt/airflow/"
+    holdings_tsv_file = open(f"{airflow}migration/data/items/sul-holdings.tsv", "w+")  # noqa
     holdings_tsv = csv.DictWriter(
         holdings_tsv_file,
-        fieldnames=["CALL_NUMBER", "CALL_NUMBER_TYPE", "CATKEY", "LIBRARY", "LOCATION"],
+        fieldnames=["CALL_NUMBER",
+                    "CALL_NUMBER_TYPE",
+                    "CATKEY",
+                    "LIBRARY",
+                    "LOCATION"],
         delimiter="\t",
     )
     holdings_tsv.writeheader()
 
-    for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
+    for path in pathlib.Path(f"{airflow}symphony/").glob("*.*rc"):
         marc_records = []
         marc_reader = pymarc.MARCReader(path.read_bytes())
         for record in marc_reader:
@@ -101,7 +107,7 @@ def process_records(*args, **kwargs) -> list:
 
     shard_size = int(len(records) / total_jobs)
     for i in range(total_jobs):
-        start = i*shard_size
+        start = i * shard_size
         end = int(start + shard_size)
         if end >= len(records):
             end = None
@@ -142,14 +148,9 @@ def run_bibs_transformer(*args, **kwargs):
 
 
 def run_holdings_tranformer(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
     dag = kwargs["dag_run"]
 
     sul_config.iteration_identifier = dag.run_id
-
-    logger.info(
-        f"IN run_holdings_transformer {pathlib.Path('/opt/airflow/migration/data/items/sul-holdings.tsv').exists()}"
-    )
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
@@ -234,14 +235,14 @@ def _post_to_okapi(**kwargs):
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
 
-    batch_size = kwargs.get('MAX_ENTITIES', 1000)
+    batch_size = kwargs.get("MAX_ENTITIES", 1000)
     job_number = kwargs.get("job")
 
     with open(f"/tmp/instances-{job_number}.json") as fo:
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i:i+batch_size]
+        instance_batch = instance_records[i: i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i}")
         _post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -257,14 +258,14 @@ def post_folio_instance_records(**kwargs):
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
 
-    batch_size = kwargs.get('MAX_ENTITIES', 1000)
+    batch_size = kwargs.get("MAX_ENTITIES", 1000)
     job_number = kwargs.get("job")
 
     with open(f"/tmp/holdings-{job_number}.json") as fo:
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i+batch_size]
+        holdings_batch = holding_records[i: i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         _post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
