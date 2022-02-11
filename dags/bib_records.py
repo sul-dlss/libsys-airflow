@@ -6,7 +6,7 @@ import pathlib
 
 import shutil
 from textwrap import dedent
-from typing_extensions import TypeAlias # noqa
+from typing_extensions import TypeAlias  # noqa
 
 from airflow import DAG
 
@@ -15,11 +15,13 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
-from dags.folio_post import post_folio_holding_records
+from airflow.models import Variable
+
 
 from folio_post import (
     folio_login,
     post_folio_instance_records,
+    post_folio_holding_records,
     preprocess_marc,
     run_bibs_transformer,
     run_holdings_tranformer,
@@ -31,30 +33,17 @@ logger = logging.getLogger(__name__)
 
 def move_marc_files(*args, **kwargs) -> list:
     """Function moves MARC files to instances and holdings"""
+    airflow = "/opt/airflow"
     marc_files = []
-    move_locations = kwargs.get("target", "both")
-    for path in pathlib.Path("/opt/airflow/symphony/").glob("*.*rc"):
-        if move_locations.startswith("both"):
-            for obj_type in ["holdings", "instances"]:
-                target = pathlib.Path(
-                    f"/opt/airflow/migration/data/{obj_type}/{path.name}"
-                )
-                shutil.copy(path, target)
-            path.unlink()  # Removes
-        else:
-            if move_locations.startswith("holdings") in path.name:
-                target = pathlib.Path(
-                    f"/opt/airflow/migration/data/holdings/{path.name}"
-                )
-            else:
-                target = pathlib.Path(
-                    f"/opt/airflow/migration/data/instances/{path.name}"
-                )
-            shutil.move(path, target)
-            logger.info(f"Moved MARC file to {target}")
+    for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
+        target = pathlib.Path(f"{airflow}/migration/data/instances/{path.name}")  # noqa
+        shutil.move(path, target)
+        logger.info(f"Moved MARC file to {target}")
         marc_files.append(path.name)
     return marc_files
 
+
+parallel_posts = Variable.get("parallel_posts", 3)
 
 default_args = {
     "owner": "folio",
@@ -68,7 +57,7 @@ default_args = {
 with DAG(
     "symphony_marc_import",
     default_args=default_args,
-    schedule_interval=timedelta(hours=1),
+    schedule_interval=timedelta(minutes=15),
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
@@ -86,7 +75,7 @@ with DAG(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
         filepath="/opt/airflow/symphony/*.*rc",
-        timeout=60 * 30,
+        timeout=270,  # 4 1/2 minutes
     )
 
     monitor_file_mount.doc_md = dedent(
@@ -121,7 +110,8 @@ with DAG(
             python_callable=process_records,
             op_kwargs={
                 "pattern": "folio_instances_*.json",
-                "out_filename": "instances.json",
+                "out_filename": "instances",
+                "jobs": int(parallel_posts),
             },
         )
 
@@ -130,7 +120,8 @@ with DAG(
             python_callable=process_records,
             op_kwargs={
                 "pattern": "folio_holdings_*.json",
-                "out_filename": "holdings.json",
+                "out_filename": "holdings",
+                "jobs": int(parallel_posts),
             },
         )
 
@@ -150,23 +141,34 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        login = PythonOperator(task_id="folio_login", python_callable=folio_login)
+        login = PythonOperator(task_id="folio_login",
+                               python_callable=folio_login)
 
-        post_instances = PythonOperator(
-            task_id="post_to_folio_instances",
-            python_callable=post_folio_instance_records,
-        )
+        finish_instances = DummyOperator(task_id="finish-posting-instances")
 
-        post_holdings = PythonOperator(
-            task_id="post_to_folio_holdings",
-            python_callable=post_folio_holding_records
-        )
+        for i in range(int(parallel_posts)):
+            post_instances = PythonOperator(
+                task_id=f"post_to_folio_instances_{i}",
+                python_callable=post_folio_instance_records,
+                op_kwargs={"job": i},
+            )
 
-        login >> post_instances >> post_holdings
+            login >> post_instances >> finish_instances
+
+        finish_holdings = DummyOperator(task_id="finish-posting-holdings")
+
+        for i in range(int(parallel_posts)):
+            post_holdings = PythonOperator(
+                task_id=f"post_to_folio_holdings_{i}",
+                python_callable=post_folio_holding_records,
+                op_kwargs={"job": i},
+            )
+
+            finish_instances >> post_holdings >> finish_holdings
 
     archive_instance_files = BashOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.", # noqa
+        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.",  # noqa
     )
 
     finish_loading = DummyOperator(

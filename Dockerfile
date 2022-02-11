@@ -14,7 +14,7 @@ COPY --chown=airflow:root migration migration/
 RUN chmod +x migration/create_folder_structure.sh
 RUN cd migration && rm -rf .git && ./create_folder_structure.sh
 
-# Once PR https://github.com/FOLIO-FSE/folio_migration_tools/pull/125 is merged
+# Once PR https://github.com/FOLIO-FSE/folio_migration_tools/pull/127 is merged
 # switch repo to use main branch of https://github.com/FOLIO-FSE/folio_migration_tools/
 RUN git clone -b fix-holdings-processor-init https://github.com/jermnelson/folio_migration_tools.git --depth=2
 
