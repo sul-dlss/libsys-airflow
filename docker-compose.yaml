@@ -62,6 +62,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./symphony:/opt/airflow/symphony
+    - ./migration:/opt/airflow/migration
   depends_on:
     &airflow-common-depends-on
     redis:

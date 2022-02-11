@@ -1,0 +1,18 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Reports</h2>
+    <ul>
+    {% for report in content.get('reports') %}
+    <li><a href="{{ url_for('FOLIO.folio_report', report_name=report) }}">{{ report }}</a></li>
+    {% endfor %}
+    </ul>
+    <h2>Data Issues Log</h2>
+    {% for issues_log in content.get('data_issues') %}
+    <ul>
+        <li><a href="{{ url_for('FOLIO.folio_data_issues, log_name=issues_log) }}">{{ issues_log }}</a></li>
+    </ul>
+    {% endfor %}
+</div>
+{% endblock %}
