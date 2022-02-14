@@ -1,0 +1,15 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<h2>Data Issues</h2>
+<table class="table table-striped">
+    <tr>
+        <th>Data</th>
+    </tr>
+    {% for row in content %}
+    <tr>
+        <td>{{ row.0 }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

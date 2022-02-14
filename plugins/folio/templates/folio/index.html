@@ -1,0 +1,43 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Migration by DAG Run</h2>
+    <table class="table table-striped">
+        <tr>
+            <th>DAG Run ID</th>
+            <th>Transformation Reports</th>
+            <th>Data Issues</th>
+            <th>Error MARC21 file</th>
+        </tr>
+    {% for dag_run_id, info in content.items() %}
+    <tr>
+        <td><a href="/graph?dag_id=symphony_marc_import&run_id={{ dag_run_id }}">{{ dag_run_id }}</a></td>
+        <td>
+            <ul>
+            {% for report in info.get('reports') %}
+            <li><a href="{{ url_for('FOLIO.folio_report', report_name=report) }}">{{ report }}</a></li>
+            {% endfor %}
+            </ul>
+        </td>
+        <td>
+            <ul>
+            {% for issues_log in info.get('data_issues') %}
+            <li><a href="{{ url_for('FOLIO.folio_data_issues', log_name=issues_log) }}">{{ issues_log }}</a></li>
+            {% endfor %}
+            </ul>
+        </td>
+        <td>
+            <ul>
+            {% for row in info.get('marc_errors') %}
+            <li><a href="{{ url_for('FOLIO.folio_marc_error', filename=row.file) }}">{{ row.file }}</a>
+             Size: {{ row.size }} kb
+            </li>
+            {% endfor %}
+            </ul>
+        </td>
+    </tr>
+    {% endfor %}
+    </table>
+</div>
+{% endblock %}

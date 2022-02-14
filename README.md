@@ -30,5 +30,11 @@ We are using [poetry][POET] to better manage dependency updates. To install
 Be sure to add the path to your shell configuration file for `poetry --version` to work.
 Run `poetry install` to install the dependencies.
 
+## FOLIO Plugin
+All FOLIO related code should be in the `folio` plugin. When developing
+code in the plugin, you'll need to restart the `airflow-webserver` container
+by running `docker-compose restart airflow-webserver` to see changes in 
+the running Airflow environment. 
+
 ## Symphony Mount
 MARC data to be converted will be mounted on the sul-folio-airflow server under `/sirsi_dev` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.

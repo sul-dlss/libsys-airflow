@@ -8,11 +8,6 @@ RUN apt-get -y update && apt-get -y install git
 ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/folio_migration_tools"
 
 USER airflow
-COPY --chown=airflow:root migration migration/
-
-
-RUN chmod +x migration/create_folder_structure.sh
-RUN cd migration && rm -rf .git && ./create_folder_structure.sh
 
 # Once PR https://github.com/FOLIO-FSE/folio_migration_tools/pull/127 is merged
 # switch repo to use main branch of https://github.com/FOLIO-FSE/folio_migration_tools/
