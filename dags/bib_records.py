@@ -1,6 +1,7 @@
 """Imports exported MARC records from Symphony into FOLIO"""
 
 from datetime import datetime, timedelta
+import csv
 import logging
 import pathlib
 
@@ -17,6 +18,7 @@ from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
+from plugins.folio.holdings import run_holdings_tranformer
 
 from folio_post import (
     folio_login,
@@ -24,23 +26,48 @@ from folio_post import (
     post_folio_holding_records,
     preprocess_marc,
     run_bibs_transformer,
-    run_holdings_tranformer,
     process_records,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def move_marc_files(*args, **kwargs) -> list:
-    """Function moves MARC files to instances and holdings"""
+def move_transform_files(*args, **kwargs) -> list:
+    """Function moves MARC files to instances and transforms csv to 
+    tsv holdings files,"""
     airflow = "/opt/airflow"
-    marc_files = []
-    for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
-        target = pathlib.Path(f"{airflow}/migration/data/instances/{path.name}")  # noqa
-        shutil.move(path, target)
-        logger.info(f"Moved MARC file to {target}")
-        marc_files.append(path.name)
-    return marc_files
+   
+    marc_path = next(pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"))
+    if not marc_path.exists():
+        raise ValueError(f"MARC Path {marc_path} does not exist")
+    
+    csv_path = pathlib.Path(f"{airflow}/symphony/{selected_marc.stem}.csv")
+
+    if not csv_path.exists():
+        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_path}")
+
+    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
+    shutil.move(marc_path, marc_target)
+
+    csv_reader = csv.reader(csv_path)
+    with open(f"{airflow}/migration/data/items/{marc_path.stem}.tsv", "w+") as tsv_fo:
+        tsv_writer = csv.DictWriter(
+            fo,
+            fieldnames = ['CATKEY',
+                          'CALL # TYPE',
+                          'BASE CALL NUMBER',
+                          'VOLUME INFO',
+                          'BARCODE',
+                          'LIBRARY',
+                          'HOMELOCATION',
+                          'CURRENTLOCATION',
+                          'ITEM TYPE'],
+            delimiter="\t"
+        )
+        tsv_writer.writeheader()
+        tsv_writer.writerows(csv_reader.rows)
+
+    return marc_path.stem
 
 
 parallel_posts = Variable.get("parallel_posts", 3)
@@ -88,9 +115,11 @@ with DAG(
         task_id="preprocess_marc", python_callable=preprocess_marc
     )
 
-    move_marc = PythonOperator(
-        task_id="move_marc_files", python_callable=move_marc_files
+    move_transform = PythonOperator(
+        task_id="move_transform_files", python_callable=move_transform_files
     )
+
+
 
     with TaskGroup(group_id="marc21-to-folio") as marc_to_folio:
 
@@ -175,6 +204,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> preprocess_marc_files >> move_marc
-    move_marc >> marc_to_folio >> post_to_folio
+    monitor_file_mount >> preprocess_marc_files >> move_transform_files
+    move_transform_files >> marc_to_folio >> post_to_folio
     post_to_folio >> archive_instance_files >> finish_loading

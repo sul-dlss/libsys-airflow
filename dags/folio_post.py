@@ -10,9 +10,7 @@ from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
-from migration_tools.migration_tasks.holdings_csv_transformer import (
-    HoldingsCsvTransformer,
-)
+
 
 
 logger = logging.getLogger(__name__)
@@ -38,21 +36,6 @@ def _get_files(files: list) -> list:
     return output
 
 
-def _generate_holdings_tsv(holdings_tsv: csv.DictWriter,
-                           record: pymarc.Record):
-    field001 = record.get_fields("001")[0]
-    field999s = record.get_fields("999")
-    for field in field999s:
-        fields = {
-            "CALL_NUMBER": "".join([r for r in field.get_subfields("a")]),
-            "CATKEY": field001.value(),
-            "LIBRARY": "".join([r for r in field.get_subfields("m")]),
-            "LOCATION": "".join([r for r in field.get_subfields("l")]),
-            "CALL_NUMBER_TYPE": "".join([r for r in field.get_subfields("w")]),
-        }
-        holdings_tsv.writerow(fields)
-
-
 def _move_001_to_035(record: pymarc.Record):
     all001 = record.get_fields("001")
     if len(all001) < 2:
@@ -66,25 +49,11 @@ def _move_001_to_035(record: pymarc.Record):
 
 
 def preprocess_marc(*args, **kwargs):
-    airflow = "/opt/airflow"
-    holdings_tsv_file = open(f"{airflow}/migration/data/items/sul-holdings.tsv", "w+")  # noqa
-    holdings_tsv = csv.DictWriter(
-        holdings_tsv_file,
-        fieldnames=["CALL_NUMBER",
-                    "CALL_NUMBER_TYPE",
-                    "CATKEY",
-                    "LIBRARY",
-                    "LOCATION"],
-        delimiter="\t",
-    )
-    holdings_tsv.writeheader()
-
     for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
         marc_records = []
         marc_reader = pymarc.MARCReader(path.read_bytes())
         for record in marc_reader:
             _move_001_to_035(record)
-            _generate_holdings_tsv(holdings_tsv, record)
             marc_records.append(record)
         with open(path.absolute(), "wb+") as fo:
             marc_writer = pymarc.MARCWriter(fo)
@@ -145,34 +114,6 @@ def run_bibs_transformer(*args, **kwargs):
     bibs_transformer.do_work()
 
     bibs_transformer.wrap_up()
-
-
-def run_holdings_tranformer(*args, **kwargs):
-    dag = kwargs["dag_run"]
-
-    sul_config.iteration_identifier = dag.run_id
-
-    holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="holdings-transformer",
-        migration_task_type="HoldingsMarcTransformer",
-        use_tenant_mapping_rules=False,
-        hrid_handling="default",
-        files=[{"file_name": "sul-holdings.tsv", "supressed": False}],
-        create_source_records=False,
-        call_number_type_map_file_name="call_number_type_mapping.tsv",
-        holdings_map_file_name="holdingsrecord_mapping_sul.json",
-        location_map_file_name="locations.tsv",
-        default_call_number_type_name="Library of Congress classification",
-        default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
-    )
-
-    holdings_transformer = HoldingsCsvTransformer(
-        holdings_configuration, sul_config, use_logging=False
-    )
-
-    holdings_transformer.do_work()
-
-    holdings_transformer.wrap_up()
 
 
 def folio_login(**kwargs):
