@@ -6,6 +6,7 @@ import logging
 import pathlib
 
 import shutil
+from telnetlib import SUPPRESS_LOCAL_ECHO
 from textwrap import dedent
 from typing_extensions import TypeAlias  # noqa
 
@@ -18,19 +19,31 @@ from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
+from migration_tools.library_configuration import LibraryConfiguration
 from plugins.folio.holdings import run_holdings_tranformer
 
 from folio_post import (
     folio_login,
     post_folio_instance_records,
     post_folio_holding_records,
-    preprocess_marc,
+    process_marc,
     run_bibs_transformer,
     process_records,
 )
 
 logger = logging.getLogger(__name__)
 
+sul_config = LibraryConfiguration(
+    okapi_url=Variable.get("OKAPI_URL"),
+    tenant_id="sul",
+    okapi_username=Variable.get("FOLIO_USER"),
+    okapi_password=Variable.get("FOLIO_PASSWORD"),
+    library_name="Stanford University Libraries",
+    base_folder="/opt/airflow/migration",
+    log_level_debug=True,
+    folio_release="juniper",
+    iteration_identifier="",
+)
 
 def move_transform_files(*args, **kwargs) -> list:
     """Function moves MARC files to instances and transforms csv to 
@@ -41,7 +54,7 @@ def move_transform_files(*args, **kwargs) -> list:
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
     
-    csv_path = pathlib.Path(f"{airflow}/symphony/{selected_marc.stem}.csv")
+    csv_path = pathlib.Path(f"{airflow}/symphony/{marc_path.stem}.csv")
 
     if not csv_path.exists():
         raise ValueError(f"CSV Path {csv_path} does not exist for {marc_path}")
@@ -49,24 +62,26 @@ def move_transform_files(*args, **kwargs) -> list:
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
 
-    csv_reader = csv.reader(csv_path)
-    with open(f"{airflow}/migration/data/items/{marc_path.stem}.tsv", "w+") as tsv_fo:
-        tsv_writer = csv.DictWriter(
-            fo,
-            fieldnames = ['CATKEY',
-                          'CALL # TYPE',
-                          'BASE CALL NUMBER',
-                          'VOLUME INFO',
-                          'BARCODE',
-                          'LIBRARY',
-                          'HOMELOCATION',
-                          'CURRENTLOCATION',
-                          'ITEM TYPE'],
-            delimiter="\t"
-        )
-        tsv_writer.writeheader()
-        tsv_writer.writerows(csv_reader.rows)
+    csv_reader = csv.reader(csv_path.open())
 
+    with open(f"{airflow}/migration/data/items/{marc_path.stem}.tsv", "w+") as tsv_fo:
+        tsv_writer = csv.writer(tsv_fo, delimiter="\t")
+            
+        tsv_writer.writerow(['CATKEY',
+                             'CALL_NUMBER_TYPE',
+                             'BASE_CALL_NUMBER',
+                             'VOLUME_INFO',
+                             'BARCODE',
+                             'LIBRARY',
+                             'HOMELOCATION',
+                             'CURRENTLOCATION',
+                             'ITEM_TYPE'])
+        
+        for row in csv_reader:
+            row[0] = f"a{row[0]}"
+            tsv_writer.writerow(row)
+
+    csv_path.unlink()
     return marc_path.stem
 
 
@@ -111,14 +126,16 @@ with DAG(
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
     )
 
-    preprocess_marc_files = PythonOperator(
-        task_id="preprocess_marc", python_callable=preprocess_marc
-    )
+
 
     move_transform = PythonOperator(
         task_id="move_transform_files", python_callable=move_transform_files
     )
 
+    process_marc_files = PythonOperator(
+        task_id="preprocess_marc", python_callable=process_marc,
+        op_kwargs={ "marc_stem": """{{ ti.xcom_pull('move_transform_files') }}"""}
+    )
 
 
     with TaskGroup(group_id="marc21-to-folio") as marc_to_folio:
@@ -127,18 +144,24 @@ with DAG(
             task_id="convert_marc_to_folio_instances",
             python_callable=run_bibs_transformer,
             execution_timeout=timedelta(minutes=10),
+            op_kwargs={
+                "library_config": sul_config
+            }
         )
 
-        convert_marc_to_folio_holdings = PythonOperator(
-            task_id="convert_marc_to_folio_holdings",
+        convert_tsv_to_folio_holdings = PythonOperator(
+            task_id="convert_tsv_to_folio_holdings",
             python_callable=run_holdings_tranformer,
+            op_kwargs={
+                "library_config": sul_config
+            }
         )
 
         convert_instances_valid_json = PythonOperator(
             task_id="instances_to_valid_json",
             python_callable=process_records,
             op_kwargs={
-                "pattern": "folio_instances_*.json",
+                "prefix": "folio_instances",
                 "out_filename": "instances",
                 "jobs": int(parallel_posts),
             },
@@ -148,7 +171,7 @@ with DAG(
             task_id="holdings_to_valid_json",
             python_callable=process_records,
             op_kwargs={
-                "pattern": "folio_holdings_*.json",
+                "prefix": "folio_holdings",
                 "out_filename": "holdings",
                 "jobs": int(parallel_posts),
             },
@@ -158,7 +181,7 @@ with DAG(
 
         (
             convert_marc_to_folio_instances
-            >> convert_marc_to_folio_holdings
+            >> convert_tsv_to_folio_holdings
             >> convert_holdings_valid_json
             >> finish_conversion
         )
@@ -204,6 +227,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> preprocess_marc_files >> move_transform_files
-    move_transform_files >> marc_to_folio >> post_to_folio
+    monitor_file_mount >> move_transform >> process_marc_files
+    process_marc_files >> marc_to_folio >> post_to_folio
     post_to_folio >> archive_instance_files >> finish_loading

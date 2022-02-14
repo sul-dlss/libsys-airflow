@@ -8,32 +8,12 @@ import requests
 
 from airflow.models import Variable
 
-from migration_tools.library_configuration import LibraryConfiguration
+
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
 
 
 logger = logging.getLogger(__name__)
-
-sul_config = LibraryConfiguration(
-    okapi_url=Variable.get("OKAPI_URL"),
-    tenant_id="sul",
-    okapi_username=Variable.get("FOLIO_USER"),
-    okapi_password=Variable.get("FOLIO_PASSWORD"),
-    library_name="Stanford University Libraries",
-    base_folder="/opt/airflow/migration",
-    log_level_debug=True,
-    folio_release="juniper",
-    iteration_identifier="",
-)
-
-
-def _get_files(files: list) -> list:
-    output = []
-    for row in files:
-        file_name = row.split("/")[-1]
-        output.append({"file_name": file_name, "suppressed": False})
-    return output
 
 
 def _move_001_to_035(record: pymarc.Record):
@@ -48,24 +28,37 @@ def _move_001_to_035(record: pymarc.Record):
         record.remove_field(field001)
 
 
-def preprocess_marc(*args, **kwargs):
-    for path in pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"):
-        marc_records = []
-        marc_reader = pymarc.MARCReader(path.read_bytes())
-        for record in marc_reader:
-            _move_001_to_035(record)
-            marc_records.append(record)
-        with open(path.absolute(), "wb+") as fo:
-            marc_writer = pymarc.MARCWriter(fo)
-            for record in marc_records:
-                marc_writer.write(record)
-    holdings_tsv_file.close()
+def process_marc(*args, **kwargs):
+    marc_stem = kwargs['marc_stem']
+
+    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
+    marc_reader = pymarc.MARCReader(marc_path.read_bytes())
+
+    marc_records = []
+
+    for record in marc_reader:
+        _move_001_to_035(record)
+        marc_records.append(record)
+        count = len(marc_records)
+        if not count % 10000:
+            logger.info(f"Processed {count} MARC records")
+
+    with open(marc_path.absolute(), "wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for i,record in enumerate(marc_records):
+            marc_writer.write(record)
+            if not i % 10000:
+                logger.info(f"Writing record {i}")
 
 
 def process_records(*args, **kwargs) -> list:
     """Function creates valid json from file of FOLIO objects"""
-    pattern = kwargs.get("pattern")
-    out_filename = kwargs.get("out_filename")
+    prefix = kwargs.get("prefix")
+    dag = kwargs["dag_run"]
+
+    pattern = f"{prefix}*{dag.run_id}*.json"
+
+    out_filename = f"{kwargs.get('out_filename')}-{dag.run_id}"
 
     total_jobs = int(kwargs.get("jobs"))
 
@@ -89,27 +82,29 @@ def process_records(*args, **kwargs) -> list:
 
 def run_bibs_transformer(*args, **kwargs):
     task_instance = kwargs["task_instance"]
+
     dag = kwargs["dag_run"]
 
-    files = _get_files(
-        task_instance.xcom_pull(key="return_value", task_ids="move_marc_files")
-    )
+    library_config = kwargs["library_config"]
 
-    sul_config.iteration_identifier = dag.run_id
+    marc_stem = task_instance.xcom_pull(key="return_value", task_ids="move_transform_files")
+    
+    library_config.iteration_identifier = dag.run_id
 
     bibs_configuration = BibsTransformer.TaskConfiguration(
         name="bibs-transformer",
         migration_task_type="BibsTransformer",
+        library_config=library_config,
         hrid_handling="default",
-        files=files,
+        files=[{ "file_name": f"{marc_stem}.mrc", "suppress": False}],
         ils_flavour="voyager",  # Voyager uses 001 field, using tag001 works
     )
 
     bibs_transformer = BibsTransformer(
-        bibs_configuration, sul_config, use_logging=False
+        bibs_configuration, library_config, use_logging=False
     )
 
-    logger.info(f"Starting bibs_tranfers work for {files}")
+    logger.info(f"Starting bibs_tranfers work for {marc_stem}.mrc")
 
     bibs_transformer.do_work()
 
@@ -175,11 +170,12 @@ def _post_to_okapi(**kwargs):
 
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
+    dag = kwargs["dag_run"]
 
     batch_size = kwargs.get("MAX_ENTITIES", 1000)
     job_number = kwargs.get("job")
 
-    with open(f"/tmp/instances-{job_number}.json") as fo:
+    with open(f"/tmp/instances-{dag.run_id}-{job_number}.json") as fo:
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
@@ -198,11 +194,12 @@ def post_folio_instance_records(**kwargs):
 
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
+    dag = kwargs["dag_run"]
 
     batch_size = kwargs.get("MAX_ENTITIES", 1000)
     job_number = kwargs.get("job")
 
-    with open(f"/tmp/holdings-{job_number}.json") as fo:
+    with open(f"/tmp/holdings-{dag.run_id}-{job_number}.json") as fo:
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):

@@ -50,9 +50,13 @@ class FOLIO(AppBuilderBaseView):
                 content[dag_run_id]["reports"].append(path.name)
             if path.name.startswith("data_issues"):
                 content[dag_run_id]["data_issues"].append(path.name)
+        
         for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob("failed_*.mrc"):  # noqa
             dag_run_id = _extract_dag_run_id(path)
             if dag_run_id is None:
+                continue
+            if dag_run_id not in content:
+                print(content.keys())
                 continue
             content[dag_run_id]["marc_errors"].append(
                 {"file": path.name, "size": path.stat().st_size}
