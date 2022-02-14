@@ -1,5 +1,4 @@
 import csv
-import logging
 import pathlib
 
 import markdown
@@ -16,8 +15,9 @@ bp = Blueprint(
     __name__,
     template_folder="templates",
     static_folder="static",
-    static_url_path="/static/folio_plugin"
+    static_url_path="/static/folio_plugin",
 )
+
 
 def _extract_dag_run_id(file_path: pathlib.Path) -> str:
     """Extracts DAG ID run from file name, varies depending on file type"""
@@ -25,11 +25,12 @@ def _extract_dag_run_id(file_path: pathlib.Path) -> str:
     path_parts = file_path.name.split("_")
     if path_parts[0].startswith("transformation"):
         dag_run_id = "_".join(path_parts[3:6])
-    if path_parts[0].startswith("failed_bib_records") and file_path.suffix == ".mrc":
+    if path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc":  # noqa
         dag_run_id = "_".join(path_parts[3:6])
         # remove file extension
-        dag_run_id = dag_run_id.split(".")[0]
+        dag_run_id = dag_run_id.replace(".mrc", "")
     return dag_run_id
+
 
 class FOLIO(AppBuilderBaseView):
     default_view = "folio_view"
@@ -39,19 +40,23 @@ class FOLIO(AppBuilderBaseView):
         content = {}
         for path in pathlib.Path(f"{MIGRATION_HOME}/reports").iterdir():
             dag_run_id = _extract_dag_run_id(path)
-            if not dag_run_id in content:
-                content[dag_run_id] = { "reports": [], "data_issues": [], "marc_errors": []}
+            if dag_run_id not in content:
+                content[dag_run_id] = {
+                    "reports": [],
+                    "data_issues": [],
+                    "marc_errors": [],
+                }
             if path.name.startswith("transformation"):
                 content[dag_run_id]["reports"].append(path.name)
             if path.name.startswith("data_issues"):
                 content[dag_run_id]["data_issues"].append(path.name)
-        for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob("failed_*.mrc"):
+        for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob("failed_*.mrc"):  # noqa
             dag_run_id = _extract_dag_run_id(path)
             if dag_run_id is None:
                 continue
-            content[dag_run_id]["marc_errors"].append( 
-                { "file": path.name, 
-                  "size": path.stat().st_size })
+            content[dag_run_id]["marc_errors"].append(
+                {"file": path.name, "size": path.stat().st_size}
+            )
         return self.render_template("folio/index.html", content=content)
 
     @expose("/reports/<report_name>")
@@ -59,8 +64,10 @@ class FOLIO(AppBuilderBaseView):
         markdown_path = pathlib.Path(f"{MIGRATION_HOME}/reports/{report_name}")
         raw_text = markdown_path.read_text()
         # Sets attribute to convert markdown in embedded HTML tags
-        final_mrkdown = raw_text.replace("<details>", """<details markdown="block">""")
-        rendered = markdown.markdown(final_mrkdown, extensions=['tables', 'md_in_html'])
+        final_mrkdown = raw_text.replace("<details>",
+                                         """<details markdown="block">""")
+        rendered = markdown.markdown(final_mrkdown,
+                                     extensions=["tables", "md_in_html"])
         return self.render_template("folio/report.html", content=rendered)
 
     @expose("/data_issues/<log_name>")
@@ -72,7 +79,7 @@ class FOLIO(AppBuilderBaseView):
 
     @expose("/marc/<filename>")
     def folio_marc_error(self, filename):
-        file_bytes = pathlib.Path(f"{MIGRATION_HOME}/results/{filename}").read_bytes()
+        file_bytes = pathlib.Path(f"{MIGRATION_HOME}/results/{filename}").read_bytes()  # noqa
         return file_bytes
 
 
@@ -80,8 +87,9 @@ v_appbuilder_view = FOLIO()
 v_appbuilder_package = {
     "name": "FOLIO Reports and Logs",
     "category": "FOLIO",
-    "view": v_appbuilder_view
+    "view": v_appbuilder_view,
 }
+
 
 class FOLIOPlugin(AirflowPlugin):
     name = "FOLIOInformation"
