@@ -6,6 +6,7 @@ from plugins.folio.helpers import post_to_okapi
 
 logger = logging.getLogger(__name__)
 
+
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -17,7 +18,7 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i: i + batch_size]
+        instance_batch = instance_records[i : i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -36,7 +37,7 @@ def run_bibs_transformer(*args, **kwargs):
     library_config = kwargs["library_config"]
 
     marc_stem = kwargs["marc_stem"]
-    
+
     library_config.iteration_identifier = dag.run_id
 
     bibs_configuration = BibsTransformer.TaskConfiguration(
@@ -44,7 +45,7 @@ def run_bibs_transformer(*args, **kwargs):
         migration_task_type="BibsTransformer",
         library_config=library_config,
         hrid_handling="default",
-        files=[{ "file_name": f"{marc_stem}.mrc", "suppress": False}],
+        files=[{"file_name": f"{marc_stem}.mrc", "suppress": False}],
         ils_flavour="voyager",  # Voyager uses 001 field, using tag001 works
     )
 
@@ -57,4 +58,3 @@ def run_bibs_transformer(*args, **kwargs):
     bibs_transformer.do_work()
 
     bibs_transformer.wrap_up()
-

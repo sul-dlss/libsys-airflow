@@ -10,6 +10,7 @@ from plugins.folio.helpers import post_to_okapi
 
 logger = logging.getLogger(__name__)
 
+
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -21,7 +22,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i: i + batch_size]
+        holdings_batch = holding_records[i : i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         _post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -46,7 +47,7 @@ def run_holdings_tranformer(*args, **kwargs):
         migration_task_type="HoldingsMarcTransformer",
         use_tenant_mapping_rules=False,
         hrid_handling="default",
-        files=[{ "file_name": f"{holdings_stem}.tsv", "suppress": False}],
+        files=[{"file_name": f"{holdings_stem}.tsv", "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
         holdings_map_file_name="holdingsrecord_mapping.json",

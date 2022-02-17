@@ -2,6 +2,7 @@ import requests
 
 from airflow.models import Variable
 
+
 def folio_login(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
     okapi_url = Variable.get("OKAPI_URL")

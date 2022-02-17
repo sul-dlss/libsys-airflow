@@ -3,7 +3,6 @@
 from datetime import datetime, timedelta
 import logging
 
-from telnetlib import SUPPRESS_LOCAL_ECHO
 from textwrap import dedent
 from typing_extensions import TypeAlias  # noqa
 
@@ -18,7 +17,13 @@ from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.helpers import archive_artifacts, move_marc_files, process_marc, process_records, tranform_csv_to_tsv
+from plugins.folio.helpers import (
+    archive_artifacts,
+    move_marc_files,
+    process_marc,
+    process_records,
+    tranform_csv_to_tsv,
+)
 from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
 from plugins.folio.login import folio_login
 from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
@@ -67,7 +72,6 @@ with DAG(
     """
     )
 
-
     monitor_file_mount = FileSensor(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
@@ -83,11 +87,10 @@ with DAG(
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
 
-
         move_marc_to_instances = PythonOperator(
-            task_id="move-marc-files", 
+            task_id="move-marc-files",
             python_callable=move_marc_files,
-            op_kwargs={ "source": "symphony"}
+            op_kwargs={"source": "symphony"},
         )
 
         symphony_csv_to_tsv = PythonOperator(
@@ -95,37 +98,36 @@ with DAG(
             python_callable=tranform_csv_to_tsv,
             op_kwargs={
                 "column_names": [
-                    'CATKEY',
-                    'CALL_NUMBER_TYPE',
-                    'BASE_CALL_NUMBER',
-                    'VOLUME_INFO',
-                    'BARCODE',
-                    'LIBRARY',
-                    'HOMELOCATION',
-                    'CURRENTLOCATION',
-                    'ITEM_TYPE'],
+                    "CATKEY",
+                    "CALL_NUMBER_TYPE",
+                    "BASE_CALL_NUMBER",
+                    "VOLUME_INFO",
+                    "BARCODE",
+                    "LIBRARY",
+                    "HOMELOCATION",
+                    "CURRENTLOCATION",
+                    "ITEM_TYPE",
+                ],
                 "column_transforms": [
-                    ('CATKEY', lambda x: f"a{x}")  # Adds a prefix to match bib 001
+                    ("CATKEY", lambda x: f"a{x}")  # Adds a prefix to match bib 001
                 ],
                 "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
-                "source": "symphony"
-            }
+                "source": "symphony",
+            },
         )
 
         process_marc_files = PythonOperator(
-            task_id="preprocess_marc", 
+            task_id="preprocess_marc",
             python_callable=process_marc,
-            op_kwargs={ "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""}
+            op_kwargs={
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
+            },
         )
 
-        finished_move_transform = DummyOperator(
-            task_id="finished-move-transform"
-        )
+        finished_move_transform = DummyOperator(task_id="finished-move-transform")
 
         move_marc_to_instances >> process_marc_files >> finished_move_transform
         move_marc_to_instances >> symphony_csv_to_tsv >> finished_move_transform
-
-
 
     with TaskGroup(group_id="marc21-and-tsv-to-folio") as marc_to_folio:
 
@@ -135,8 +137,8 @@ with DAG(
             execution_timeout=timedelta(minutes=10),
             op_kwargs={
                 "library_config": sul_config,
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
-            }
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+            },
         )
 
         convert_tsv_to_folio_holdings = PythonOperator(
@@ -144,8 +146,8 @@ with DAG(
             python_callable=run_holdings_tranformer,
             op_kwargs={
                 "library_config": sul_config,
-                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
-            }
+                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+            },
         )
 
         convert_tsv_to_folio_items = PythonOperator(
@@ -153,8 +155,8 @@ with DAG(
             python_callable=run_items_transformer,
             op_kwargs={
                 "library_config": sul_config,
-                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
-            }
+                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+            },
         )
 
         convert_instances_valid_json = PythonOperator(
@@ -200,7 +202,8 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        (   convert_tsv_to_folio_holdings
+        (
+            convert_tsv_to_folio_holdings
             >> convert_tsv_to_folio_items
             >> convert_items_valid_json
             >> finish_conversion
@@ -208,8 +211,7 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        login = PythonOperator(task_id="folio_login",
-                               python_callable=folio_login)
+        login = PythonOperator(task_id="folio_login", python_callable=folio_login)
 
         finish_instances = DummyOperator(task_id="finish-posting-instances")
 
@@ -244,12 +246,9 @@ with DAG(
 
             finish_holdings >> post_items >> finish_items
 
-
     archive_instances_holdings_items = PythonOperator(
-        task_id="archive_coverted_files",
-        python_callable=archive_artifacts
+        task_id="archive_coverted_files", python_callable=archive_artifacts
     )
-
 
     finish_loading = DummyOperator(
         task_id="finish_loading",
@@ -257,4 +256,4 @@ with DAG(
 
     monitor_file_mount >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio
-    post_to_folio >>  archive_instances_holdings_items >> finish_loading
+    post_to_folio >> archive_instances_holdings_items >> finish_loading

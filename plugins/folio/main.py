@@ -25,7 +25,9 @@ def _extract_dag_run_id(file_path: pathlib.Path) -> str:
     path_parts = file_path.name.split("_")
     if path_parts[0].startswith("transformation"):
         dag_run_id = "_".join(path_parts[3:6])
-    if path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc":  # noqa
+    if (
+        path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc"
+    ):  # noqa
         dag_run_id = "_".join(path_parts[3:6])
         # remove file extension
         dag_run_id = dag_run_id.replace(".mrc", "")
@@ -50,8 +52,10 @@ class FOLIO(AppBuilderBaseView):
                 content[dag_run_id]["reports"].append(path.name)
             if path.name.startswith("data_issues"):
                 content[dag_run_id]["data_issues"].append(path.name)
-        
-        for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob("failed_*.mrc"):  # noqa
+
+        for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob(
+            "failed_*.mrc"
+        ):  # noqa
             dag_run_id = _extract_dag_run_id(path)
             if dag_run_id is None or dag_run_id not in content:
                 continue
@@ -65,10 +69,8 @@ class FOLIO(AppBuilderBaseView):
         markdown_path = pathlib.Path(f"{MIGRATION_HOME}/reports/{report_name}")
         raw_text = markdown_path.read_text()
         # Sets attribute to convert markdown in embedded HTML tags
-        final_mrkdown = raw_text.replace("<details>",
-                                         """<details markdown="block">""")
-        rendered = markdown.markdown(final_mrkdown,
-                                     extensions=["tables", "md_in_html"])
+        final_mrkdown = raw_text.replace("<details>", """<details markdown="block">""")
+        rendered = markdown.markdown(final_mrkdown, extensions=["tables", "md_in_html"])
         return self.render_template("folio/report.html", content=rendered)
 
     @expose("/data_issues/<log_name>")
@@ -80,7 +82,9 @@ class FOLIO(AppBuilderBaseView):
 
     @expose("/marc/<filename>")
     def folio_marc_error(self, filename):
-        file_bytes = pathlib.Path(f"{MIGRATION_HOME}/results/{filename}").read_bytes()  # noqa
+        file_bytes = pathlib.Path(
+            f"{MIGRATION_HOME}/results/{filename}"
+        ).read_bytes()  # noqa
         return file_bytes
 
 

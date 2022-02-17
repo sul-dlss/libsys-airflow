@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 from airflow.models import Variable
 
+
 def archive_artifacts(*args, **kwargs):
     """Archives JSON Instances, Items, and Holdings"""
     dag = kwargs["dag_run"]
@@ -24,8 +25,6 @@ def archive_artifacts(*args, **kwargs):
 
         shutil.move(artifact, target)
         logger.info("Moved {artifact} to {target}")
-    
-
 
 
 def move_marc_files(*args, **kwargs) -> str:
@@ -33,16 +32,16 @@ def move_marc_files(*args, **kwargs) -> str:
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
-   
+
     marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
-
 
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
 
     return marc_path.stem
+
 
 def _move_001_to_035(record: pymarc.Record):
     all001 = record.get_fields("001")
@@ -55,8 +54,9 @@ def _move_001_to_035(record: pymarc.Record):
         record.add_field(field035)
         record.remove_field(field001)
 
+
 def process_marc(*args, **kwargs):
-    marc_stem = kwargs['marc_stem']
+    marc_stem = kwargs["marc_stem"]
 
     marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
@@ -72,10 +72,11 @@ def process_marc(*args, **kwargs):
 
     with open(marc_path.absolute(), "wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        for i,record in enumerate(marc_records):
+        for i, record in enumerate(marc_records):
             marc_writer.write(record)
             if not i % 10000:
                 logger.info(f"Writing record {i}")
+
 
 def post_to_okapi(**kwargs):
     endpoint = kwargs.get("endpoint")
@@ -113,6 +114,7 @@ def post_to_okapi(**kwargs):
         raise ValueError(
             f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
         )
+
 
 def process_records(*args, **kwargs) -> list:
     """Function creates valid json from file of FOLIO objects"""
@@ -161,9 +163,7 @@ def tranform_csv_to_tsv(*args, **kwargs):
         function = transform[1]
         df[column] = df[column].apply(function)
     tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{marc_stem}.tsv")
-    df.to_csv(tsv_path,
-              sep="\t",
-              index=False)
+    df.to_csv(tsv_path, sep="\t", index=False)
 
     csv_path.unlink()
     return tsv_path.name
