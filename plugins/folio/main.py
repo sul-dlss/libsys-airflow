@@ -53,10 +53,7 @@ class FOLIO(AppBuilderBaseView):
         
         for path in pathlib.Path(f"{MIGRATION_HOME}/results").glob("failed_*.mrc"):  # noqa
             dag_run_id = _extract_dag_run_id(path)
-            if dag_run_id is None:
-                continue
-            if dag_run_id not in content:
-                print(content.keys())
+            if dag_run_id is None or dag_run_id not in content:
                 continue
             content[dag_run_id]["marc_errors"].append(
                 {"file": path.name, "size": path.stat().st_size}

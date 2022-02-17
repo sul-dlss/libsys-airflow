@@ -121,3 +121,31 @@ def post_to_okapi(**kwargs):
         raise ValueError(
             f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
         )
+
+def process_records(*args, **kwargs) -> list:
+    """Function creates valid json from file of FOLIO objects"""
+    prefix = kwargs.get("prefix")
+    dag = kwargs["dag_run"]
+
+    pattern = f"{prefix}*{dag.run_id}*.json"
+
+    out_filename = f"{kwargs.get('out_filename')}-{dag.run_id}"
+
+    total_jobs = int(kwargs.get("jobs"))
+
+    records = []
+    for file in pathlib.Path("/opt/airflow/migration/results").glob(pattern):
+        with open(file) as fo:
+            records.extend([json.loads(i) for i in fo.readlines()])
+
+    shard_size = int(len(records) / total_jobs)
+    for i in range(total_jobs):
+        start = i * shard_size
+        end = int(start + shard_size)
+        if end >= len(records):
+            end = None
+        logger.error(f"Start {start} End {end}")
+        with open(f"/tmp/{out_filename}-{i}.json", "w+") as fo:
+            json.dump(records[start:end], fo)
+
+    return len(records)
