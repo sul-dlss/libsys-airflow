@@ -10,34 +10,26 @@ logger = logging.getLogger(__name__)
 
 from airflow.models import Variable
 
-def tranform_csv_to_tsv(*args, **kwargs):
+def archive_artifacts(*args, **kwargs):
+    """Archives JSON Instances, Items, and Holdings"""
+    dag = kwargs["dag_run"]
+
     airflow = kwargs.get("airflow", "/opt/airflow")
-    marc_stem = kwargs["marc_stem"]
-    column_names = kwargs["column_names"]
-    column_transforms = kwargs.get("column_transforms", [])
-    source_directory = kwargs["source"]
+    airflow_path = pathlib.Path(airflow)
 
-    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_stem}.csv")
-    if not csv_path.exists():
-        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_stem}.mrc")
-    df = pd.read_csv(csv_path, names=column_names)
+    archive_directory = airflow_path / "migration/archive"
 
-    # Performs any transformations to values
-    for transform in column_transforms:
-        column = transform[0]
-        function = transform[1]
-        df[column] = df[column].apply(function)
-    tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{marc_stem}.tsv")
-    df.to_csv(tsv_path,
-              sep="\t",
-              index=False)
+    for artifact in airflow_path.glob(f"*-{dag.run_id}*.json"):
+        target = archive_directory / artifact.name
 
-    csv_path.unlink()
-    return tsv_path.name
+        shutil.move(artifact, target)
+        logger.info("Moved {artifact} to {target}")
+    
+
 
 
 def move_marc_files(*args, **kwargs) -> str:
-    """Function moves MARC files to instances"""
+    """Moves MARC files to migration/data/instances"""
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
@@ -149,3 +141,29 @@ def process_records(*args, **kwargs) -> list:
             json.dump(records[start:end], fo)
 
     return len(records)
+
+
+def tranform_csv_to_tsv(*args, **kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    marc_stem = kwargs["marc_stem"]
+    column_names = kwargs["column_names"]
+    column_transforms = kwargs.get("column_transforms", [])
+    source_directory = kwargs["source"]
+
+    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_stem}.csv")
+    if not csv_path.exists():
+        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_stem}.mrc")
+    df = pd.read_csv(csv_path, names=column_names)
+
+    # Performs any transformations to values
+    for transform in column_transforms:
+        column = transform[0]
+        function = transform[1]
+        df[column] = df[column].apply(function)
+    tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{marc_stem}.tsv")
+    df.to_csv(tsv_path,
+              sep="\t",
+              index=False)
+
+    csv_path.unlink()
+    return tsv_path.name

@@ -17,17 +17,12 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
-from plugins.folio.helpers import move_marc_files, process_marc, tranform_csv_to_tsv
-from plugins.folio.holdings import run_holdings_tranformer
-from plugins.folio.items import run_items_transformer, post_folio_items_records
 
-from folio_post import (
-    folio_login,
-    post_folio_instance_records,
-    post_folio_holding_records,
-    run_bibs_transformer,
-    process_records,
-)
+from plugins.folio.helpers import archive_artifacts, move_marc_files, process_marc, process_records, tranform_csv_to_tsv
+from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
+from plugins.folio.login import folio_login
+from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
+from plugins.folio.items import run_items_transformer, post_folio_items_records
 
 logger = logging.getLogger(__name__)
 
@@ -250,11 +245,11 @@ with DAG(
             finish_holdings >> post_items >> finish_items
 
 
-
-    archive_instance_files = BashOperator(
+    archive_instances_holdings_items = PythonOperator(
         task_id="archive_coverted_files",
-        bash_command="mv /opt/airflow/migration/data/instances/* /opt/airflow/migration/archive/.; mv /opt/airflow/migration/results/folio_instances_*.json /opt/airflow/migration/archive/.",  # noqa
+        python_callable=archive_artifacts
     )
+
 
     finish_loading = DummyOperator(
         task_id="finish_loading",
@@ -262,4 +257,4 @@ with DAG(
 
     monitor_file_mount >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio
-    post_to_folio >> archive_instance_files >> finish_loading
+    post_to_folio >>  archive_instances_holdings_items >> finish_loading
