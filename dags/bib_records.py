@@ -1,11 +1,8 @@
 """Imports exported MARC records from Symphony into FOLIO"""
 
 from datetime import datetime, timedelta
-import csv
 import logging
-import pathlib
 
-import shutil
 from telnetlib import SUPPRESS_LOCAL_ECHO
 from textwrap import dedent
 from typing_extensions import TypeAlias  # noqa
@@ -20,14 +17,14 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
 from migration_tools.library_configuration import LibraryConfiguration
+from plugins.folio.helpers import move_marc_files, process_marc, tranform_csv_to_tsv
 from plugins.folio.holdings import run_holdings_tranformer
-from plugins.folio.items import run_item_transformer, post_folio_items_records
+from plugins.folio.items import run_items_transformer, post_folio_items_records
 
 from folio_post import (
     folio_login,
     post_folio_instance_records,
     post_folio_holding_records,
-    process_marc,
     run_bibs_transformer,
     process_records,
 )
@@ -45,45 +42,6 @@ sul_config = LibraryConfiguration(
     folio_release="juniper",
     iteration_identifier="",
 )
-
-def move_transform_files(*args, **kwargs) -> list:
-    """Function moves MARC files to instances and transforms csv to 
-    tsv holdings files,"""
-    airflow = "/opt/airflow"
-   
-    marc_path = next(pathlib.Path(f"{airflow}/symphony/").glob("*.*rc"))
-    if not marc_path.exists():
-        raise ValueError(f"MARC Path {marc_path} does not exist")
-    
-    csv_path = pathlib.Path(f"{airflow}/symphony/{marc_path.stem}.csv")
-
-    if not csv_path.exists():
-        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_path}")
-
-    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
-    shutil.move(marc_path, marc_target)
-
-    csv_reader = csv.reader(csv_path.open())
-
-    with open(f"{airflow}/migration/data/items/{marc_path.stem}.tsv", "w+") as tsv_fo:
-        tsv_writer = csv.writer(tsv_fo, delimiter="\t")
-            
-        tsv_writer.writerow(['CATKEY',
-                             'CALL_NUMBER_TYPE',
-                             'BASE_CALL_NUMBER',
-                             'VOLUME_INFO',
-                             'BARCODE',
-                             'LIBRARY',
-                             'HOMELOCATION',
-                             'CURRENTLOCATION',
-                             'ITEM_TYPE'])
-        
-        for row in csv_reader:
-            row[0] = f"a{row[0]}"
-            tsv_writer.writerow(row)
-
-    csv_path.unlink()
-    return marc_path.stem
 
 
 parallel_posts = Variable.get("parallel_posts", 3)
@@ -114,6 +72,7 @@ with DAG(
     """
     )
 
+
     monitor_file_mount = FileSensor(
         task_id="marc21_monitor",
         fs_conn_id="bib_path",
@@ -127,26 +86,61 @@ with DAG(
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
     )
 
+    with TaskGroup(group_id="move-transform") as move_transform_process:
 
 
-    move_transform = PythonOperator(
-        task_id="move_transform_files", python_callable=move_transform_files
-    )
+        move_marc_to_instances = PythonOperator(
+            task_id="move-marc-files", 
+            python_callable=move_marc_files,
+            op_kwargs={ "source": "symphony"}
+        )
 
-    process_marc_files = PythonOperator(
-        task_id="preprocess_marc", python_callable=process_marc,
-        op_kwargs={ "marc_stem": """{{ ti.xcom_pull('move_transform_files') }}"""}
-    )
+        symphony_csv_to_tsv = PythonOperator(
+            task_id="symphony-csv-to-tsv",
+            python_callable=tranform_csv_to_tsv,
+            op_kwargs={
+                "column_names": [
+                    'CATKEY',
+                    'CALL_NUMBER_TYPE',
+                    'BASE_CALL_NUMBER',
+                    'VOLUME_INFO',
+                    'BARCODE',
+                    'LIBRARY',
+                    'HOMELOCATION',
+                    'CURRENTLOCATION',
+                    'ITEM_TYPE'],
+                "column_transforms": [
+                    ('CATKEY', lambda x: f"a{x}")  # Adds a prefix to match bib 001
+                ],
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+                "source": "symphony"
+            }
+        )
+
+        process_marc_files = PythonOperator(
+            task_id="preprocess_marc", 
+            python_callable=process_marc,
+            op_kwargs={ "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""}
+        )
+
+        finished_move_transform = DummyOperator(
+            task_id="finished-move-transform"
+        )
+
+        move_marc_to_instances >> process_marc_files >> finished_move_transform
+        move_marc_to_instances >> symphony_csv_to_tsv >> finished_move_transform
 
 
-    with TaskGroup(group_id="marc21-to-folio") as marc_to_folio:
+
+    with TaskGroup(group_id="marc21-and-tsv-to-folio") as marc_to_folio:
 
         convert_marc_to_folio_instances = PythonOperator(
             task_id="convert_marc_to_folio_instances",
             python_callable=run_bibs_transformer,
             execution_timeout=timedelta(minutes=10),
             op_kwargs={
-                "library_config": sul_config
+                "library_config": sul_config,
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
             }
         )
 
@@ -154,15 +148,17 @@ with DAG(
             task_id="convert_tsv_to_folio_holdings",
             python_callable=run_holdings_tranformer,
             op_kwargs={
-                "library_config": sul_config
+                "library_config": sul_config,
+                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
             }
         )
 
         convert_tsv_to_folio_items = PythonOperator(
             task_id="convert_tsv_to_folio_items",
-            python_callable=run_item_transformer,
+            python_callable=run_items_transformer,
             op_kwargs={
-                "library_config": sul_config
+                "library_config": sul_config,
+                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
             }
         )
 
@@ -191,7 +187,7 @@ with DAG(
             python_callable=process_records,
             op_kwargs={
                 "prefix": "folio_items",
-                "out_filename": "holdings",
+                "out_filename": "items",
                 "jobs": int(parallel_posts),
             },
         )
@@ -264,6 +260,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> move_transform >> process_marc_files
-    process_marc_files >> marc_to_folio >> post_to_folio
+    monitor_file_mount >> move_transform_process >> marc_to_folio
+    marc_to_folio >> post_to_folio
     post_to_folio >> archive_instance_files >> finish_loading

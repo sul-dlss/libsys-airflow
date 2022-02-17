@@ -12,44 +12,7 @@ from plugins.folio.helpers import post_to_okapi as _post_to_okapi
 
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
-
-
 logger = logging.getLogger(__name__)
-
-
-def _move_001_to_035(record: pymarc.Record):
-    all001 = record.get_fields("001")
-    if len(all001) < 2:
-        return
-    for field001 in all001[1:]:
-        field035 = pymarc.Field(
-            tag="035", indicators=["", ""], subfields=["a", field001.data]
-        )
-        record.add_field(field035)
-        record.remove_field(field001)
-
-
-def process_marc(*args, **kwargs):
-    marc_stem = kwargs['marc_stem']
-
-    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
-    marc_reader = pymarc.MARCReader(marc_path.read_bytes())
-
-    marc_records = []
-
-    for record in marc_reader:
-        _move_001_to_035(record)
-        marc_records.append(record)
-        count = len(marc_records)
-        if not count % 10000:
-            logger.info(f"Processed {count} MARC records")
-
-    with open(marc_path.absolute(), "wb+") as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for i,record in enumerate(marc_records):
-            marc_writer.write(record)
-            if not i % 10000:
-                logger.info(f"Writing record {i}")
 
 
 def process_records(*args, **kwargs) -> list:
@@ -82,13 +45,11 @@ def process_records(*args, **kwargs) -> list:
 
 
 def run_bibs_transformer(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
-
     dag = kwargs["dag_run"]
 
     library_config = kwargs["library_config"]
 
-    marc_stem = task_instance.xcom_pull(key="return_value", task_ids="move_transform_files")
+    marc_stem = kwargs["marc_stem"]
     
     library_config.iteration_identifier = dag.run_id
 
@@ -146,7 +107,7 @@ def post_folio_instance_records(**kwargs):
 
     for i in range(0, len(instance_records), batch_size):
         instance_batch = instance_records[i: i + batch_size]
-        logger.info(f"Posting {len(instance_batch)} in batch {i}")
+        logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         _post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
                 key="return_value", task_ids="post-to-folio.folio_login"

@@ -11,9 +11,8 @@ def run_holdings_tranformer(*args, **kwargs):
     dag = kwargs["dag_run"]
     library_config = kwargs["library_config"]
     library_config.iteration_identifier = dag.run_id
-    task_instance = kwargs["task_instance"]
 
-    holdings_stem = task_instance.xcom_pull(key="return_value", task_ids="move_transform_files")
+    holdings_stem = kwargs["holdings_stem"]
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
@@ -23,7 +22,7 @@ def run_holdings_tranformer(*args, **kwargs):
         files=[{ "file_name": f"{holdings_stem}.tsv", "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
-        holdings_map_file_name=Variable.get("HOLDINGS_MAP_FILE_NAME"),
+        holdings_map_file_name="holdingsrecord_mapping.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
         default_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
