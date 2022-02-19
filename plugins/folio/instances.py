@@ -1,3 +1,4 @@
+import json
 import logging
 
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer

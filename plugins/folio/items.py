@@ -27,7 +27,7 @@ def post_folio_items_records(**kwargs):
             ),
             records=items_batch,
             endpoint="/item-storage/batch/synchronous?upsert=true",
-            payload_key="itemsRecords",
+            payload_key="items",
             **kwargs,
         )
 

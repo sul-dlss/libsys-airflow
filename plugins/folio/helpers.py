@@ -1,3 +1,4 @@
+import json
 import logging
 import pathlib
 import shutil
@@ -27,8 +28,9 @@ def archive_artifacts(*args, **kwargs):
         logger.info("Moved {artifact} to {target}")
 
 
-def move_marc_files(*args, **kwargs) -> str:
-    """Moves MARC files to migration/data/instances"""
+def move_marc_files_check_csv(*args, **kwargs) -> str:
+    """Moves MARC files to migration/data/instances, sets XCOM if csv is present"""
+    task_instance = kwargs["task_instance"]
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
@@ -37,8 +39,16 @@ def move_marc_files(*args, **kwargs) -> str:
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
+    # Checks for CSV file and sets XCOM marc_only if not present
+    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.csv")
+    marc_only = True
+    if csv_path.exists():
+        marc_only = False
+    task_instance.xcom_push(key="marc_only", value=marc_only)
+
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
+
 
     return marc_path.stem
 

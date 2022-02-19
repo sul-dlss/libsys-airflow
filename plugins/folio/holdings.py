@@ -1,3 +1,4 @@
+import json
 import logging
 
 from airflow.models import Variable
@@ -24,7 +25,7 @@ def post_folio_holding_records(**kwargs):
     for i in range(0, len(holding_records), batch_size):
         holdings_batch = holding_records[i : i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
-        _post_to_okapi(
+        post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
                 key="return_value", task_ids="post-to-folio.folio_login"
             ),
