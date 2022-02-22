@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 import logging
-import pathlib
 
 from textwrap import dedent
 from typing_extensions import TypeAlias  # noqa
@@ -24,10 +23,22 @@ from plugins.folio.helpers import (
     process_records,
     tranform_csv_to_tsv,
 )
-from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
+from plugins.folio.holdings import (
+    run_holdings_tranformer,
+    post_folio_holding_records
+)
+
 from plugins.folio.login import folio_login
-from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
-from plugins.folio.items import run_items_transformer, post_folio_items_records
+
+from plugins.folio.instances import (
+    post_folio_instance_records,
+    run_bibs_transformer
+)
+
+from plugins.folio.items import (
+    run_items_transformer,
+    post_folio_items_records
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +66,7 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
+
 # Determines marc_only workflow
 def marc_only(*args, **kwargs):
     task_instance = kwargs["task_instance"]
@@ -63,12 +75,13 @@ def marc_only(*args, **kwargs):
     marc_only_task_id = kwargs.get("marc_only_task")
 
     marc_only_workflow = task_instance.xcom_pull(
-        key="marc_only", 
-        task_ids="move-transform.move-marc-files")
+        key="marc_only", task_ids="move-transform.move-marc-files"
+    )
 
     if marc_only_workflow:
         return marc_only_task_id
     return all_next_task_id
+
 
 with DAG(
     "symphony_marc_import",
@@ -112,10 +125,10 @@ with DAG(
             task_id="marc-only-transform-check",
             python_callable=marc_only,
             op_kwargs={
-                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",
+                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
                 "default_task": "move-transform.symphony-csv-to-tsv",
-                "marc_only_task": "move-transform.finished-move-transform"
-            }
+                "marc_only_task": "move-transform.finished-move-transform",
+            },
         )
 
         symphony_csv_to_tsv = PythonOperator(
@@ -134,9 +147,10 @@ with DAG(
                     "ITEM_TYPE",
                 ],
                 "column_transforms": [
-                    ("CATKEY", lambda x: f"a{x}")  # Adds a prefix to match bib 001
+                    # Adds a prefix to match bib 001
+                    ("CATKEY", lambda x: f"a{x}")
                 ],
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
                 "source": "symphony",
             },
         )
@@ -145,7 +159,7 @@ with DAG(
             task_id="preprocess_marc",
             python_callable=process_marc,
             op_kwargs={
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""  # noqa
             },
         )
 
@@ -166,18 +180,18 @@ with DAG(
             execution_timeout=timedelta(minutes=10),
             op_kwargs={
                 "library_config": sul_config,
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",   # noqa
             },
         )
 
         marc_only_convert_check = BranchPythonOperator(
             task_id="marc-only-convert-check",
             python_callable=marc_only,
-            op_kwargs= {
-                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",
-                "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",
-                "marc_only_task": "marc21-and-tsv-to-folio.finished-conversion"
-            }
+            op_kwargs={
+                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
+                "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",  # noqa
+                "marc_only_task": "marc21-and-tsv-to-folio.finished-conversion",  # noqa
+            },
         )
 
         convert_tsv_to_folio_holdings = PythonOperator(
@@ -185,7 +199,7 @@ with DAG(
             python_callable=run_holdings_tranformer,
             op_kwargs={
                 "library_config": sul_config,
-                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
             },
         )
 
@@ -194,7 +208,7 @@ with DAG(
             python_callable=run_items_transformer,
             op_kwargs={
                 "library_config": sul_config,
-                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
+                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
             },
         )
 
@@ -230,42 +244,36 @@ with DAG(
 
         finish_conversion = DummyOperator(
             task_id="finished-conversion",
-            trigger_rule="none_failed_or_skipped",)
+            trigger_rule="none_failed_or_skipped",
+        )
 
         convert_marc_to_folio_instances >> marc_only_convert_check
-        convert_marc_to_folio_instances >> convert_instances_valid_json >> finish_conversion
-        marc_only_convert_check >> [convert_tsv_to_folio_holdings, finish_conversion]
-        convert_tsv_to_folio_holdings >> convert_holdings_valid_json >> finish_conversion
-        convert_tsv_to_folio_holdings >> convert_tsv_to_folio_items >> convert_items_valid_json >> finish_conversion
-        # (
-        #     convert_marc_to_folio_instances
-        #     >> marc_only_convert_check
-        #     >> convert_tsv_to_folio_holdings
-        #     >> convert_holdings_valid_json
-        #     >> finish_conversion
-        # )
-
-        # (
-        #     convert_marc_to_folio_instances
-        #     >> convert_instances_valid_json
-        #     >> finish_conversion
-        # )
-        # (
-        #     convert_tsv_to_folio_holdings
-        #     >> convert_tsv_to_folio_items
-        #     >> convert_items_valid_json
-        #     >> finish_conversion
-        # )
+        (
+            convert_marc_to_folio_instances
+            >> convert_instances_valid_json
+            >> finish_conversion
+        )
+        marc_only_convert_check >> [convert_tsv_to_folio_holdings, finish_conversion]  # noqa
+        (
+            convert_tsv_to_folio_holdings
+            >> convert_holdings_valid_json
+            >> finish_conversion
+        )
+        (
+            convert_tsv_to_folio_holdings
+            >> convert_tsv_to_folio_items
+            >> convert_items_valid_json
+            >> finish_conversion
+        )
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        login = PythonOperator(task_id="folio_login", python_callable=folio_login)
+        login = PythonOperator(task_id="folio_login", python_callable=folio_login)  # noqa
 
         finish_instances = DummyOperator(task_id="finish-posting-instances")
 
         finished_all_posts = DummyOperator(
-            task_id="finish-all-posts",
-            trigger_rule="none_failed_or_skipped"
+            task_id="finish-all-posts", trigger_rule="none_failed_or_skipped"
         )
 
         for i in range(int(parallel_posts)):
@@ -280,19 +288,18 @@ with DAG(
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
             python_callable=marc_only,
-            op_kwargs= {
+            op_kwargs={
                 "default_task": "post-to-folio.start-holdings-posting",
-                "marc_only_task": "post-to-folio.finish-all-posts"
-            }
+                "marc_only_task": "post-to-folio.finish-all-posts",
+            },
         )
 
         start_holdings = DummyOperator(task_id="start-holdings-posting")
 
-        finish_instances >> marc_only_post_check >> [start_holdings, finished_all_posts]
+        finish_instances >> marc_only_post_check >> [start_holdings, finished_all_posts]  # noqa
 
         finish_holdings = DummyOperator(task_id="finish-posting-holdings")
 
-        
         for i in range(int(parallel_posts)):
             post_holdings = PythonOperator(
                 task_id=f"post_to_folio_holdings_{i}",

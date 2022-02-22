@@ -7,9 +7,9 @@ import pandas as pd
 import pymarc
 import requests
 
-logger = logging.getLogger(__name__)
-
 from airflow.models import Variable
+
+logger = logging.getLogger(__name__)
 
 
 def archive_artifacts(*args, **kwargs):
@@ -29,26 +29,32 @@ def archive_artifacts(*args, **kwargs):
 
 
 def move_marc_files_check_csv(*args, **kwargs) -> str:
-    """Moves MARC files to migration/data/instances, sets XCOM if csv is present"""
+    """Moves MARC files to migration/data/instances, sets XCOM
+    if csv is present"""
     task_instance = kwargs["task_instance"]
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
 
-    marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
+    marc_path = next(
+        pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc")
+    )
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
     # Checks for CSV file and sets XCOM marc_only if not present
-    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.csv")
+    csv_path = pathlib.Path(
+        f"{airflow}/{source_directory}/{marc_path.stem}.csv"
+    )
     marc_only = True
     if csv_path.exists():
         marc_only = False
     task_instance.xcom_push(key="marc_only", value=marc_only)
 
-    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
+    marc_target = pathlib.Path(
+        f"{airflow}/migration/data/instances/{marc_path.name}"
+    )
     shutil.move(marc_path, marc_target)
-
 
     return marc_path.stem
 
@@ -68,7 +74,9 @@ def _move_001_to_035(record: pymarc.Record):
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
 
-    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
+    marc_path = pathlib.Path(
+        f"/opt/airflow/migration/data/instances/{marc_stem}.mrc"
+    )
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
     marc_records = []
@@ -162,9 +170,13 @@ def tranform_csv_to_tsv(*args, **kwargs):
     column_transforms = kwargs.get("column_transforms", [])
     source_directory = kwargs["source"]
 
-    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_stem}.csv")
+    csv_path = pathlib.Path(
+        f"{airflow}/{source_directory}/{marc_stem}.csv"
+    )
     if not csv_path.exists():
-        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_stem}.mrc")
+        raise ValueError(
+            f"CSV Path {csv_path} does not exist for {marc_stem}.mrc"
+        )
     df = pd.read_csv(csv_path, names=column_names)
 
     # Performs any transformations to values

@@ -26,7 +26,7 @@ def _extract_dag_run_id(file_path: pathlib.Path) -> str:
     if path_parts[0].startswith("transformation"):
         dag_run_id = "_".join(path_parts[3:6])
     if (
-        path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc"
+        path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc"  # noqa
     ):  # noqa
         dag_run_id = "_".join(path_parts[3:6])
         # remove file extension
@@ -69,8 +69,14 @@ class FOLIO(AppBuilderBaseView):
         markdown_path = pathlib.Path(f"{MIGRATION_HOME}/reports/{report_name}")
         raw_text = markdown_path.read_text()
         # Sets attribute to convert markdown in embedded HTML tags
-        final_mrkdown = raw_text.replace("<details>", """<details markdown="block">""")
-        rendered = markdown.markdown(final_mrkdown, extensions=["tables", "md_in_html"])
+        final_mrkdown = raw_text.replace(
+            "<details>",
+            """<details markdown="block">"""
+        )
+        rendered = markdown.markdown(
+            final_mrkdown,
+            extensions=["tables", "md_in_html"]
+        )
         return self.render_template("folio/report.html", content=rendered)
 
     @expose("/data_issues/<log_name>")

@@ -1,8 +1,6 @@
 import json
 import logging
 
-from airflow.models import Variable
-
 from migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
@@ -23,7 +21,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i : i + batch_size]
+        holdings_batch = holding_records[i:i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
