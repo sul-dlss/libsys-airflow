@@ -10,7 +10,7 @@ on:
     branches: [ main ]
 
 env:
-  PYTHONPATH: /Users/runner/folio_migration_tools
+  PYTHONPATH: /Users/Shared/folio_migration_tools
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
         flake8
     - name: Install support repos
       run: |
-        git clone https://github.com/FOLIO-FSE/folio_migration_tools.git --depth=2
+        git clone https://github.com/FOLIO-FSE/folio_migration_tools.git /Users/Shared/folio_migration_tools --depth=2
     - name: Test with pytest
       run: |
         pytest
