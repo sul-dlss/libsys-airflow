@@ -1,4 +1,5 @@
-import pytest
+import pytest  # noqa
+
 
 from plugins.folio.helpers import (
     archive_artifacts,
@@ -6,6 +7,7 @@ from plugins.folio.helpers import (
     process_marc,
     tranform_csv_to_tsv,
 )
+
 
 def test_archive_artifacts():
     assert archive_artifacts
