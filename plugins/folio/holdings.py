@@ -43,8 +43,7 @@ def run_holdings_tranformer(*args, **kwargs):
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
-        migration_task_type="HoldingsMarcTransformer",
-        use_tenant_mapping_rules=False,
+        migration_task_type="HoldingsCsvTransformer",
         hrid_handling="default",
         files=[{"file_name": f"{holdings_stem}.tsv", "suppress": False}],
         create_source_records=False,

@@ -100,6 +100,8 @@ def post_to_okapi(**kwargs):
     endpoint = kwargs.get("endpoint")
     jwt = kwargs["token"]
 
+    dag_id = kwargs["dag_id"]
+
     records = kwargs["records"]
     payload_key = kwargs["payload_key"]
 
@@ -129,9 +131,7 @@ def post_to_okapi(**kwargs):
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
-        raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
-        )
+
 
 
 def process_records(*args, **kwargs) -> list:
