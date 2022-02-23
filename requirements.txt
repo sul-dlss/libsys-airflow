@@ -1,8 +1,9 @@
+apache-airflow
 flake8
-pytest
-poetry
-folio_uuid
+folioclient
+folio-uuid
 numpy
 pandas
 pydantic
-apache-airflow
+pymarc
+pytest
