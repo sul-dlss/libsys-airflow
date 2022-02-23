@@ -14,33 +14,23 @@ env:
 
 jobs:
   build:
-
     runs-on: macos-11
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
         python-version: "3.9"
-    - name: Install dependencies
+    - name: Install airflow dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest poetry
-        poetry install
-      # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements.txt
     - name: Lint with flake8
       run: |
         flake8
     - name: Install support repos
-      # Once PR https://github.com/FOLIO-FSE/folio_migration_tools/pull/127 is merged
-      # switch repo to use main branch of https://github.com/FOLIO-FSE/folio_migration_tools/
       run: |
-        git clone -b fix-holdings-processor-init https://github.com/jermnelson/folio_migration_tools.git --depth=2
-        cd folio_migration_tools
-        pip install -r requirements.txt
-        pip install -U folioclient
-        cd ..
+        git clone https://github.com/FOLIO-FSE/folio_migration_tools.git --depth=2
     - name: Test with pytest
       run: |
-        poetry run pytest
+        pytest

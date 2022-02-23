@@ -19,25 +19,16 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. In the Airflow UI under Admin > Variables, import the `folio-dev-variables.json` from [shared_configs](https://github.com/sul-dlss/shared_configs).
 
 ## Dependency Management and Packaging
-We are using [poetry][POET] to better manage dependency updates. To install
-[poetry][POET], run the following command in your shell:
-
-`curl -sSL https://install.python-poetry.org | python3 -`
-
-[POET]: https://python-poetry.org/
-[PYTEST]: https://docs.pytest.org/
-
-Be sure to add the path to your shell configuration file for `poetry --version` to work.
-Run `poetry install` to install the dependencies.
+Run `pip install -r requirements.txt` to install the dependencies.
 
 ## FOLIO Plugin
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
-by running `docker-compose restart airflow-webserver` to see changes in 
-the running Airflow environment. 
+by running `docker-compose restart airflow-webserver` to see changes in
+the running Airflow environment.
 
 ## Testing
-To run the test suite, use [pytest](https://docs.pytest.org/) with poetry, passing in the location of where you have local clone repository of the 
+To run the test suite, use [pytest](https://docs.pytest.org/) with poetry, passing in the location of where you have local clone repository of the
 [folio_migration_tools/](https://github.com/foLIO-FSE/folio_migration_tools/)with the **PYTHONPATH** i.e.
 
 `PYTHONPATH='{path-to-folio_migration_tools}' poetry run pytest`

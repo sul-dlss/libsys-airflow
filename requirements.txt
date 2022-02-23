@@ -1,0 +1,8 @@
+flake8
+pytest
+poetry
+folio_uuid
+numpy
+pandas
+pydantic
+apache-airflow
