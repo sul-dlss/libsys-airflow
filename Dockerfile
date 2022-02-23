@@ -13,4 +13,4 @@ USER airflow
 # switch repo to use main branch of https://github.com/FOLIO-FSE/folio_migration_tools/
 RUN git clone -b fix-holdings-processor-init https://github.com/jermnelson/folio_migration_tools.git --depth=2
 
-RUN cd folio_migration_tools && pip install -r requirements.txt
+RUN cd folio_migration_tools && pip install -r requirements.txt && pip install -U folioclient
