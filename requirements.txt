@@ -1,0 +1,10 @@
+apache-airflow
+argparse_prompt
+flake8
+folioclient
+folio-uuid
+numpy
+pandas
+pydantic
+pymarc
+pytest
