@@ -11,4 +11,6 @@ USER airflow
 
 RUN git clone https://github.com/FOLIO-FSE/folio_migration_tools.git --depth=2
 
-RUN cd folio_migration_tools && pip install -r requirements.txt
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
