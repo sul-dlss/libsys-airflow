@@ -28,10 +28,11 @@ by running `docker-compose restart airflow-webserver` to see changes in
 the running Airflow environment.
 
 ## Testing
-To run the test suite, use [pytest](https://docs.pytest.org/) with poetry, passing in the location of where you have local clone repository of the
+To run the test suite, use [pytest](https://docs.pytest.org/) passing in 
+the location of where you have local clone repository of the
 [folio_migration_tools/](https://github.com/foLIO-FSE/folio_migration_tools/)with the **PYTHONPATH** i.e.
 
-`PYTHONPATH='{path-to-folio_migration_tools}' poetry run pytest`
+`PYTHONPATH='{path-to-folio_migration_tools}' pytest`
 
 ## Symphony Mount
 MARC data to be converted will be mounted on the sul-folio-airflow server under `/sirsi_dev` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
