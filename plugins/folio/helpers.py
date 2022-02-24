@@ -36,18 +36,24 @@ def move_marc_files_check_csv(*args, **kwargs) -> str:
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
 
-    marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))  # noqa
+    marc_path = next(
+        pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc")
+    )
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
     # Checks for CSV file and sets XCOM marc_only if not present
-    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.csv")  # noqa
+    csv_path = pathlib.Path(
+        f"{airflow}/{source_directory}/{marc_path.stem}.csv"
+    )
     marc_only = True
     if csv_path.exists():
         marc_only = False
     task_instance.xcom_push(key="marc_only", value=marc_only)
 
-    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")  # noqa
+    marc_target = pathlib.Path(
+        f"{airflow}/migration/data/instances/{marc_path.name}"
+    )
     shutil.move(marc_path, marc_target)
 
     return marc_path.stem
@@ -68,7 +74,9 @@ def _move_001_to_035(record: pymarc.Record):
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
 
-    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")  # noqa
+    marc_path = pathlib.Path(
+        f"/opt/airflow/migration/data/instances/{marc_stem}.mrc"
+    )
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
     marc_records = []
@@ -149,7 +157,6 @@ def post_to_okapi(**kwargs) -> bool:
 def process_records(*args, **kwargs) -> list:
     """Function creates valid json from file of FOLIO objects"""
     prefix = kwargs.get("prefix")
-
     dag = kwargs["dag_run"]
 
     pattern = f"{prefix}*{dag.run_id}*.json"
@@ -183,9 +190,13 @@ def tranform_csv_to_tsv(*args, **kwargs):
     column_transforms = kwargs.get("column_transforms", [])
     source_directory = kwargs["source"]
 
-    csv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_stem}.csv")
+    csv_path = pathlib.Path(
+        f"{airflow}/{source_directory}/{marc_stem}.csv"
+    )
     if not csv_path.exists():
-        raise ValueError(f"CSV Path {csv_path} does not exist for {marc_stem}.mrc")  # noqa
+        raise ValueError(
+            f"CSV Path {csv_path} does not exist for {marc_stem}.mrc"
+        )
     df = pd.read_csv(csv_path, names=column_names)
 
     # Performs any transformations to values
