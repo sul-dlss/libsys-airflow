@@ -96,7 +96,26 @@ def process_marc(*args, **kwargs):
                 logger.info(f"Writing record {i}")
 
 
-def post_to_okapi(**kwargs):
+def _save_error_record_ids(**kwargs):
+    dag = kwargs["dag_run"]
+    records = kwargs["records"]
+    endpoint = kwargs["endpoint"]
+    error_code = kwargs["error_code"]
+    airflow = kwargs.get("airflow", pathlib.Path("/opt/airflow/"))
+
+    record_base = endpoint.split("/")[1]
+
+    error_filepath = (
+        airflow
+        / "migration/results"
+        / f"errors-{record_base}-{error_code}-{dag.run_id}.json"
+    )
+
+    record_ids = [r["id"] for r in records]
+    error_filepath.write_text(json.dumps(record_ids))
+
+
+def post_to_okapi(**kwargs) -> bool:
     endpoint = kwargs.get("endpoint")
     jwt = kwargs["token"]
 
@@ -129,8 +148,9 @@ def post_to_okapi(**kwargs):
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
-        raise ValueError(
-            f"FOLIO POST Failed with error code:{new_record_result.status_code}"  # noqa
+        _save_error_record_ids(
+            error_code=new_record_result.status_code,
+            **kwargs
         )
 
 

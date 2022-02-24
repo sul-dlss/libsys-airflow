@@ -8,3 +8,4 @@ pandas
 pydantic
 pymarc
 pytest
+pytest_mock
