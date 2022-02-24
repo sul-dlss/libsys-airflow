@@ -20,7 +20,7 @@ def post_folio_items_records(**kwargs):
 
     for i in range(0, len(items_records), batch_size):
         items_batch = items_records[i:i + batch_size]
-        logger.info(f"Posting {i} to {i/batch_size} items records")
+        logger.info(f"Posting {len(items_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
                 key="return_value", task_ids="post-to-folio.folio_login"
@@ -65,4 +65,8 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     items_transformer.wrap_up()
 
-    return True
+    # Manually set item HRID setting
+    items_transformer.mapper.hrid_settings['items']['startNumber'] += \
+        items_transformer.total_records + 1
+    items_transformer.mapper.store_hrid_settings() 
+    
