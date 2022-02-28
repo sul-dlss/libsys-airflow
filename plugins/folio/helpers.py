@@ -19,9 +19,12 @@ def archive_artifacts(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     airflow_path = pathlib.Path(airflow)
 
+    airflow_results = airflow_path / "migration/results"
     archive_directory = airflow_path / "migration/archive"
 
-    for artifact in airflow_path.glob(f"*-{dag.run_id}*.json"):
+
+    for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
+
         target = archive_directory / artifact.name
 
         shutil.move(artifact, target)
