@@ -1,6 +1,7 @@
 import pytest
 import requests
 
+from pymarc import Record, Field
 from airflow.models import Variable
 from pytest_mock import MockerFixture
 
@@ -9,6 +10,7 @@ from plugins.folio.helpers import (
     move_marc_files_check_csv,
     post_to_okapi,
     process_marc,
+    _move_001_to_035,
     tranform_csv_to_tsv,
 )
 
@@ -114,6 +116,31 @@ def test_post_to_okapi_failures(
 
 def test_process_marc():
     assert process_marc
+
+
+@pytest.fixture
+def mock_marc_record():
+    record = Record()
+    field_245 = Field(
+        tag="245",
+        indicators=["0", "1"],
+        subfields=[
+            "a", "The pragmatic programmer : ",
+            "b", "from journeyman to master /",
+            "c", "Andrew Hunt, David Thomas.",
+        ],
+    )
+    field_001_1 = Field(tag="001", data="a123456789")
+    field_001_2 = Field(tag="001", data="gls_0987654321")
+
+    record.add_field(field_001_1, field_001_2, field_245)
+    return record
+
+
+def test_move_001_to_035(mock_marc_record):
+    record = mock_marc_record
+    _move_001_to_035(record)
+    assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
 def test_tranform_csv_to_tsv():
