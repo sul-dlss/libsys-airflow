@@ -22,7 +22,6 @@ def archive_artifacts(*args, **kwargs):
     airflow_results = airflow_path / "migration/results"
     archive_directory = airflow_path / "migration/archive"
 
-
     for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
 
         target = archive_directory / artifact.name
