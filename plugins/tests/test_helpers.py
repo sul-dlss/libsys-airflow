@@ -15,12 +15,39 @@ from plugins.folio.helpers import (
 )
 
 
-def test_archive_artifacts():
-    assert archive_artifacts
-
-
 def test_move_marc_files():
     assert move_marc_files_check_csv
+
+
+@pytest.fixture
+def mock_dag_run(mocker: MockerFixture):
+    dag_run = mocker.stub(name="dag_run")
+    dag_run.run_id = "manual_2022-02-24"
+    return dag_run
+
+
+def test_archive_artifacts(mock_dag_run, tmp_path):
+    dag = mock_dag_run
+    airflow_path = tmp_path / "opt/airflow/"
+
+    # Mock Results and Archive Directories
+    results_dir = airflow_path / "migration/results"
+    results_dir.mkdir(parents=True)
+    archive_dir = airflow_path / "migration/archive"
+    archive_dir.mkdir(parents=True)
+
+    # Create mock Instance JSON file
+    instance_filename = f"folio_instances_{dag.run_id}_bibs-transformer.json"
+    instance_file = results_dir / instance_filename
+
+    instance_file.write_text("""{ "id":"abcded2345"}""")
+
+    target_file = archive_dir / instance_filename
+
+    archive_artifacts(dag_run=dag, airflow=airflow_path)
+
+    assert not instance_file.exists()
+    assert target_file.exists()
 
 
 @pytest.fixture
@@ -29,13 +56,6 @@ def mock_okapi_variable(monkeypatch):
         return "https://okapi-folio.dev.edu"
 
     monkeypatch.setattr(Variable, "get", mock_get)
-
-
-@pytest.fixture
-def mock_dag_run(mocker: MockerFixture):
-    dag_run = mocker.stub(name="dag_run")
-    dag_run.run_id = "manual_2022-02-24"
-    return dag_run
 
 
 @pytest.fixture
