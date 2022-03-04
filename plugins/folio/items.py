@@ -68,5 +68,4 @@ def run_items_transformer(*args, **kwargs) -> bool:
     # Manually set item HRID setting
     items_transformer.mapper.hrid_settings['items']['startNumber'] += \
         items_transformer.total_records + 1
-    items_transformer.mapper.store_hrid_settings() 
-    
+    items_transformer.mapper.store_hrid_settings()

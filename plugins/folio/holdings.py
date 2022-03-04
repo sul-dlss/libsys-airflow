@@ -74,4 +74,3 @@ def run_holdings_tranformer(*args, **kwargs):
 
     # Manually increment HRID holdings and save
     holdings_transformer.mapper.store_hrid_settings()
-
