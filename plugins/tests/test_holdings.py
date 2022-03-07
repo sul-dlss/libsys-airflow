@@ -5,7 +5,11 @@ import requests
 from pytest_mock import MockerFixture
 from airflow.models import Variable
 
-from plugins.folio.holdings import post_folio_holding_records, run_holdings_tranformer
+from plugins.folio.holdings import (
+    post_folio_holding_records,
+    run_holdings_tranformer,
+    _add_hrid,
+)
 
 
 @pytest.fixture
@@ -35,7 +39,7 @@ def mock_okapi_variable(monkeypatch):
 
 
 class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = lambda *args, **kwargs: "a0token"
+    xcom_pull = lambda *args, **kwargs: "a0token"  # noqa
 
 
 def test_post_folio_holding_records(
@@ -46,7 +50,7 @@ def test_post_folio_holding_records(
 
     holdings_json = tmp_path / f"holdings-{dag.run_id}-1.json"
     holdings_json.write_text(
-        """[{ "id": "1233adf" }, 
+        """[{ "id": "1233adf" },
     { "id": "45ryry" }]"""
     )
 
@@ -58,4 +62,30 @@ def test_post_folio_holding_records(
 
 
 def test_run_holdings_tranformer():
+    # Waiting until https://github.com/FOLIO-FSE/folio_migration_tools can be
+    # installed with pip to test.
     assert run_holdings_tranformer
+
+
+holdings = [{"id": "abcdedf123345"}]
+
+
+class MockHoldings(pydantic.BaseModel):
+    values = lambda *args, **kwargs: holdings  # noqa
+
+
+class MockMapper(pydantic.BaseModel):
+    holdings_hrid_counter: int = 1
+    holdings_hrid_prefix: str = "hold"
+
+
+class MockHoldingsTransformer(pydantic.BaseModel):
+    holdings: MockHoldings = MockHoldings()
+    mapper: MockMapper = MockMapper()
+
+
+def test_add_hrid():
+    transformer = MockHoldingsTransformer()
+    _add_hrid(transformer)
+
+    assert transformer.holdings.values()[0]["hrid"] == "hold00000000001"
