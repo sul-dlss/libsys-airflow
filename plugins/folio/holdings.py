@@ -22,14 +22,16 @@ def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
     dag = kwargs["dag_run"]
 
+    tmp_location = kwargs.get("tmp_dir", "/tmp")
+
     batch_size = kwargs.get("MAX_ENTITIES", 1000)
     job_number = kwargs.get("job")
 
-    with open(f"/tmp/holdings-{dag.run_id}-{job_number}.json") as fo:
+    with open(f"{tmp_location}/holdings-{dag.run_id}-{job_number}.json") as fo:
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i + batch_size]
+        holdings_batch = holding_records[i : i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
