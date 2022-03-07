@@ -10,6 +10,14 @@ from plugins.folio.helpers import post_to_okapi
 logger = logging.getLogger(__name__)
 
 
+def _add_hrid(holdings_transformer):
+    mapper = holdings_transformer.mapper
+    for record in holdings_transformer.holdings.values():
+        num_part = str(mapper.holdings_hrid_counter).zfill(11)
+        record['hrid'] = f"{mapper.holdings_hrid_prefix}{num_part}"
+        mapper.holdings_hrid_counter += 1
+
+
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -60,4 +68,9 @@ def run_holdings_tranformer(*args, **kwargs):
 
     holdings_transformer.do_work()
 
+    _add_hrid(holdings_transformer)
+
     holdings_transformer.wrap_up()
+
+    # Manually increment HRID holdings and save
+    holdings_transformer.mapper.store_hrid_settings()
