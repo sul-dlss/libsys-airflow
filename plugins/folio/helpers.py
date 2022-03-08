@@ -188,7 +188,7 @@ def process_records(*args, **kwargs) -> list:
     return len(records)
 
 
-def tranform_csv_to_tsv(*args, **kwargs):
+def transform_csv_to_tsv(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     marc_stem = kwargs["marc_stem"]
     column_names = kwargs["column_names"]
