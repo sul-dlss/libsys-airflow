@@ -12,7 +12,7 @@ from plugins.folio.helpers import (
     post_to_okapi,
     process_marc,
     _move_001_to_035,
-    tranform_csv_to_tsv,
+    transform_csv_to_tsv,
     process_records
 )
 
@@ -210,8 +210,26 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
-def test_tranform_csv_to_tsv():
-    assert tranform_csv_to_tsv
+def test_transform_csv_to_tsv(tmp_path):
+    airflow = tmp_path / "opt/airflow"
+    source_directory = airflow / "symphony"
+    source_directory.mkdir(parents=True)
+    sample_csv = source_directory / "sample.csv"
+    sample_csv.write_text("CATKEY, CALL_NUMBER_TYPE")
+    tsv_directory = airflow / "migration/data/items"
+    tsv_directory.mkdir(parents=True)
+    sample_tsv = tsv_directory / "sample.tsv"
+    column_names = ["CATKEY", "CALL_NUMBER_TYPE"]
+    column_transforms = [("CATKEY", lambda x: f"a{x}")]
+
+    transform_csv_to_tsv(airflow=airflow,
+                         marc_stem="sample",
+                         column_names=column_names,
+                         column_transforms=column_transforms,
+                         source="symphony")
+    f = open(sample_tsv, "r")
+    assert f.readlines()[1] == "aCATKEY\t CALL_NUMBER_TYPE\n"
+    f.close()
 
 
 def test_process_records(mock_dag_run, tmp_path):
