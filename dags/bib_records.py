@@ -21,7 +21,7 @@ from plugins.folio.helpers import (
     move_marc_files_check_csv,
     process_marc,
     process_records,
-    tranform_csv_to_tsv,
+    transform_csv_to_tsv,
 )
 from plugins.folio.holdings import (
     run_holdings_tranformer,
@@ -133,7 +133,7 @@ with DAG(
 
         symphony_csv_to_tsv = PythonOperator(
             task_id="symphony-csv-to-tsv",
-            python_callable=tranform_csv_to_tsv,
+            python_callable=transform_csv_to_tsv,
             op_kwargs={
                 "column_names": [
                     "CATKEY",

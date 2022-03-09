@@ -1,4 +1,5 @@
 import pytest
+import pydantic
 import requests
 
 from pymarc import Record, Field
@@ -11,12 +12,58 @@ from plugins.folio.helpers import (
     post_to_okapi,
     process_marc,
     _move_001_to_035,
-    tranform_csv_to_tsv,
+    transform_csv_to_tsv,
+    process_records
 )
 
 
-def test_move_marc_files():
-    assert move_marc_files_check_csv
+# Mock xcom messages dict
+messages = {}
+
+
+# Mock xcom
+def mock_xcom_push(*args, **kwargs):
+    key = kwargs["key"]
+    value = kwargs["value"]
+    messages[key] = value
+
+
+class MockTaskInstance(pydantic.BaseModel):
+    xcom_push = mock_xcom_push
+
+
+@pytest.fixture
+def mock_move_marc_files(tmp_path):
+    airflow_path = tmp_path / "opt/airflow/"
+
+    # Mock source and target dirs
+    source_dir = airflow_path / "symphony"
+    source_dir.mkdir(parents=True)
+
+    sample_marc = source_dir / "sample.mrc"
+    sample_marc.write_text("sample")
+
+    target_dir = airflow_path / "migration/data/instances/"
+    target_dir.mkdir(parents=True)
+    return airflow_path
+
+
+def test_move_marc_files(mock_move_marc_files):
+    task_instance = MockTaskInstance()
+
+    move_marc_files_check_csv(task_instance=task_instance, airflow=mock_move_marc_files, source="symphony")  # noqa
+    assert not (mock_move_marc_files / "symphony/sample.mrc").exists()
+    assert messages["marc_only"]
+
+
+def test_move_csv_files(tmp_path, mock_move_marc_files):
+    task_instance = MockTaskInstance()
+
+    sample_csv = mock_move_marc_files / "symphony/sample.csv"
+    sample_csv.write_text("sample")
+
+    move_marc_files_check_csv(task_instance=task_instance, airflow=mock_move_marc_files, source="symphony")  # noqa
+    assert messages["marc_only"] is False
 
 
 @pytest.fixture
@@ -163,5 +210,45 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
-def test_tranform_csv_to_tsv():
-    assert tranform_csv_to_tsv
+def test_transform_csv_to_tsv(tmp_path):
+    airflow = tmp_path / "opt/airflow"
+    source_directory = airflow / "symphony"
+    source_directory.mkdir(parents=True)
+    sample_csv = source_directory / "sample.csv"
+    sample_csv.write_text("CATKEY, CALL_NUMBER_TYPE")
+    tsv_directory = airflow / "migration/data/items"
+    tsv_directory.mkdir(parents=True)
+    sample_tsv = tsv_directory / "sample.tsv"
+    column_names = ["CATKEY", "CALL_NUMBER_TYPE"]
+    column_transforms = [("CATKEY", lambda x: f"a{x}")]
+
+    transform_csv_to_tsv(airflow=airflow,
+                         marc_stem="sample",
+                         column_names=column_names,
+                         column_transforms=column_transforms,
+                         source="symphony")
+    f = open(sample_tsv, "r")
+    assert f.readlines()[1] == "aCATKEY\t CALL_NUMBER_TYPE\n"
+    f.close()
+
+
+def test_process_records(mock_dag_run, tmp_path):
+    # mock results file
+    airflow = tmp_path / "opt/airflow/"
+    tmp = tmp_path / "tmp/"
+    tmp.mkdir(parents=True)
+    results_dir = airflow / "migration/results"
+    results_dir.mkdir(parents=True)
+    results_file = results_dir / "folio_instances-manual_2022-02-24.json"
+
+    results_file.write_text("""{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
+    {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}""")
+
+    num_records = process_records(prefix="folio_instances",
+                                  out_filename="instances",
+                                  jobs=1,
+                                  dag_run=mock_dag_run,
+                                  airflow=str(airflow),
+                                  tmp=str(tmp))
+
+    assert num_records == 2

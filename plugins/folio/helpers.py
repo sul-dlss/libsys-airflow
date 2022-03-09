@@ -167,8 +167,11 @@ def process_records(*args, **kwargs) -> list:
 
     total_jobs = int(kwargs.get("jobs"))
 
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    tmp = kwargs.get("tmp", "/tmp")
+
     records = []
-    for file in pathlib.Path("/opt/airflow/migration/results").glob(pattern):
+    for file in pathlib.Path(f"{airflow}/migration/results").glob(pattern):
         with open(file) as fo:
             records.extend([json.loads(i) for i in fo.readlines()])
 
@@ -179,13 +182,13 @@ def process_records(*args, **kwargs) -> list:
         if end >= len(records):
             end = None
         logger.error(f"Start {start} End {end}")
-        with open(f"/tmp/{out_filename}-{i}.json", "w+") as fo:
+        with open(f"{tmp}/{out_filename}-{i}.json", "w+") as fo:
             json.dump(records[start:end], fo)
 
     return len(records)
 
 
-def tranform_csv_to_tsv(*args, **kwargs):
+def transform_csv_to_tsv(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     marc_stem = kwargs["marc_stem"]
     column_names = kwargs["column_names"]
