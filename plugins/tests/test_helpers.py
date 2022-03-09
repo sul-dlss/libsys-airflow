@@ -33,7 +33,7 @@ class MockTaskInstance(pydantic.BaseModel):
 
 
 @pytest.fixture
-def mock_move_marc_files(tmp_path):
+def mock_file_system(tmp_path):
     airflow_path = tmp_path / "opt/airflow/"
 
     # Mock source and target dirs
@@ -45,24 +45,38 @@ def mock_move_marc_files(tmp_path):
 
     target_dir = airflow_path / "migration/data/instances/"
     target_dir.mkdir(parents=True)
-    return airflow_path
+
+    # Mock Results and Archive Directories
+    results_dir = airflow_path / "migration/results"
+    results_dir.mkdir(parents=True)
+    archive_dir = airflow_path / "migration/archive"
+    archive_dir.mkdir(parents=True)
+
+    # mock tmp dir
+    tmp = tmp_path / "tmp/"
+    tmp.mkdir(parents=True)
+
+    return [airflow_path, source_dir, target_dir, results_dir, archive_dir, tmp]
 
 
-def test_move_marc_files(mock_move_marc_files):
+def test_move_marc_files(mock_file_system):
     task_instance = MockTaskInstance()
+    airflow_path = mock_file_system[0]
+    source_dir = mock_file_system[1]
 
-    move_marc_files_check_csv(task_instance=task_instance, airflow=mock_move_marc_files, source="symphony")  # noqa
-    assert not (mock_move_marc_files / "symphony/sample.mrc").exists()
+    move_marc_files_check_csv(task_instance=task_instance, airflow=airflow_path, source="symphony")  # noqa
+    assert not (source_dir / "sample.mrc").exists()
     assert messages["marc_only"]
 
 
-def test_move_csv_files(tmp_path, mock_move_marc_files):
+def test_move_csv_files(mock_file_system):
     task_instance = MockTaskInstance()
-
-    sample_csv = mock_move_marc_files / "symphony/sample.csv"
+    airflow_path = mock_file_system[0]
+    source_dir = mock_file_system[1]
+    sample_csv = source_dir / "sample.csv"
     sample_csv.write_text("sample")
 
-    move_marc_files_check_csv(task_instance=task_instance, airflow=mock_move_marc_files, source="symphony")  # noqa
+    move_marc_files_check_csv(task_instance=task_instance, airflow=airflow_path, source="symphony")  # noqa
     assert messages["marc_only"] is False
 
 
@@ -73,15 +87,11 @@ def mock_dag_run(mocker: MockerFixture):
     return dag_run
 
 
-def test_archive_artifacts(mock_dag_run, tmp_path):
+def test_archive_artifacts(mock_dag_run, mock_file_system):
     dag = mock_dag_run
-    airflow_path = tmp_path / "opt/airflow/"
-
-    # Mock Results and Archive Directories
-    results_dir = airflow_path / "migration/results"
-    results_dir.mkdir(parents=True)
-    archive_dir = airflow_path / "migration/archive"
-    archive_dir.mkdir(parents=True)
+    airflow_path = mock_file_system[0]
+    results_dir = mock_file_system[3]
+    archive_dir = mock_file_system[4]
 
     # Create mock Instance JSON file
     instance_filename = f"folio_instances_{dag.run_id}_bibs-transformer.json"
@@ -160,11 +170,10 @@ def test_post_to_okapi_failures(
     mock_okapi_variable,
     mock_dag_run,
     mock_records,
-    tmp_path
+    mock_file_system
 ):
-    migration_results = tmp_path / "migration" / "results"
-
-    migration_results.mkdir(parents=True)
+    airflow_path = mock_file_system[0]
+    migration_results = mock_file_system[3]
 
     post_to_okapi(
         token="2345asdf",
@@ -172,7 +181,7 @@ def test_post_to_okapi_failures(
         records=mock_records,
         endpoint="/instance-storage/batch/synchronous",
         payload_key="instances",
-        airflow=tmp_path,
+        airflow=airflow_path,
     )
 
     error_file = (
@@ -210,19 +219,21 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
-def test_transform_csv_to_tsv(tmp_path):
-    airflow = tmp_path / "opt/airflow"
-    source_directory = airflow / "symphony"
-    source_directory.mkdir(parents=True)
-    sample_csv = source_directory / "sample.csv"
+def test_transform_csv_to_tsv(mock_file_system):
+    airflow_path = mock_file_system[0]
+    source_dir = mock_file_system[1]
+
+    # mock sample csv and tsv
+    sample_csv = source_dir / "sample.csv"
     sample_csv.write_text("CATKEY, CALL_NUMBER_TYPE")
-    tsv_directory = airflow / "migration/data/items"
+    tsv_directory = airflow_path / "migration/data/items"
     tsv_directory.mkdir(parents=True)
     sample_tsv = tsv_directory / "sample.tsv"
+
     column_names = ["CATKEY", "CALL_NUMBER_TYPE"]
     column_transforms = [("CATKEY", lambda x: f"a{x}")]
 
-    transform_csv_to_tsv(airflow=airflow,
+    transform_csv_to_tsv(airflow=airflow_path,
                          marc_stem="sample",
                          column_names=column_names,
                          column_transforms=column_transforms,
@@ -232,15 +243,13 @@ def test_transform_csv_to_tsv(tmp_path):
     f.close()
 
 
-def test_process_records(mock_dag_run, tmp_path):
-    # mock results file
-    airflow = tmp_path / "opt/airflow/"
-    tmp = tmp_path / "tmp/"
-    tmp.mkdir(parents=True)
-    results_dir = airflow / "migration/results"
-    results_dir.mkdir(parents=True)
-    results_file = results_dir / "folio_instances-manual_2022-02-24.json"
+def test_process_records(mock_dag_run, mock_file_system):
+    airflow_path = mock_file_system[0]
+    tmp = mock_file_system[5]
+    results_dir = mock_file_system[3]
 
+    # mock results file
+    results_file = results_dir / "folio_instances-manual_2022-02-24.json"
     results_file.write_text("""{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
     {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}""")
 
@@ -248,7 +257,7 @@ def test_process_records(mock_dag_run, tmp_path):
                                   out_filename="instances",
                                   jobs=1,
                                   dag_run=mock_dag_run,
-                                  airflow=str(airflow),
+                                  airflow=str(airflow_path),
                                   tmp=str(tmp))
 
     assert num_records == 2
