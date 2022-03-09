@@ -3,7 +3,7 @@ import logging
 
 from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
-from plugins.folio.helpers import post_to_okapi
+from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,8 @@ def run_bibs_transformer(*args, **kwargs):
     bibs_transformer = BibsTransformer(
         bibs_configuration, library_config, use_logging=False
     )
+
+    setup_data_logging(bibs_transformer)
 
     logger.info(f"Starting bibs_tranfers work for {marc_stem}.mrc")
 
