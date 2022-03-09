@@ -5,7 +5,7 @@ from migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
 
-from plugins.folio.helpers import post_to_okapi
+from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ def _add_hrid(holdings_transformer):
     mapper = holdings_transformer.mapper
     for record in holdings_transformer.holdings.values():
         num_part = str(mapper.holdings_hrid_counter).zfill(11)
-        record['hrid'] = f"{mapper.holdings_hrid_prefix}{num_part}"
+        record["hrid"] = f"{mapper.holdings_hrid_prefix}{num_part}"
         mapper.holdings_hrid_counter += 1
 
 
@@ -31,7 +31,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i + batch_size]
+        holdings_batch = holding_records[i : i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -67,6 +67,8 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_transformer = HoldingsCsvTransformer(
         holdings_configuration, library_config, use_logging=False
     )
+
+    setup_data_logging(holdings_transformer)
 
     holdings_transformer.do_work()
 
