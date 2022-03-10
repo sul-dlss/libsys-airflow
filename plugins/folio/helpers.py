@@ -189,14 +189,13 @@ def process_records(*args, **kwargs) -> list:
     return len(records)
 
 
-
 def setup_data_logging(transformer):
     def transformer_data_issues(transformer, message, *args, **kwargs):
         transformer._log(DATA_ISSUE_LVL_NUM, message, args, **kwargs)
 
     # Set DATA_ISSUE logging levels
     DATA_ISSUE_LVL_NUM = 26
-    logging.addLevelName(DATA_ISSUE_LVL_NUM , "DATA_ISSUES")
+    logging.addLevelName(DATA_ISSUE_LVL_NUM, "DATA_ISSUES")
     logging.Logger.data_issues = transformer_data_issues
 
     data_issue_file_formatter = logging.Formatter("%(message)s")
@@ -219,6 +218,7 @@ def transform_csv_to_tsv(*args, **kwargs):
     csv_path = pathlib.Path(
         f"{airflow}/{source_directory}/{marc_stem}.csv"
     )
+
     if not csv_path.exists():
         raise ValueError(
             f"CSV Path {csv_path} does not exist for {marc_stem}.mrc"

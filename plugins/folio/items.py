@@ -19,7 +19,7 @@ def post_folio_items_records(**kwargs):
         items_records = json.load(fo)
 
     for i in range(0, len(items_records), batch_size):
-        items_batch = items_records[i : i + batch_size]
+        items_batch = items_records[i:i + batch_size]
         logger.info(f"Posting {len(items_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -55,7 +55,11 @@ def run_items_transformer(*args, **kwargs) -> bool:
         call_number_type_map_file_name="call_number_type_mapping.tsv",
     )
 
-    items_transformer = ItemsTransformer(item_config, library_config, use_logging=False)
+    items_transformer = ItemsTransformer(
+        item_config,
+        library_config,
+        use_logging=False
+    )
 
     setup_data_logging(items_transformer)
 

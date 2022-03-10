@@ -1,4 +1,3 @@
-import csv
 import pathlib
 
 import markdown
@@ -29,7 +28,8 @@ def _extract_dag_run_id(file_path: pathlib.Path) -> str:
     if path_parts[0:2] == ["data", "issues"]:
         dag_run_id = "_".join(path_parts[4:7])
     if (
-        path_parts[0:3] == ["failed", "bib", "records"] and file_path.suffix == ".mrc"  # noqa
+        path_parts[0:3] == ["failed", "bib", "records"]
+        and file_path.suffix == ".mrc"  # noqa
     ):  # noqa
         dag_run_id = "_".join(path_parts[3:6])
         # remove file extension
@@ -85,13 +85,15 @@ class FOLIO(AppBuilderBaseView):
     @expose("/data_issues/<log_name>")
     def folio_data_issues(self, log_name):
         dag_run_id = _extract_dag_run_id(pathlib.Path(log_name))
-        data_issues_df = pd.read_csv(f"{MIGRATION_HOME}/reports/{log_name}",
-                                     sep="\t",
-                                     names=["Type", "Catkey", "Error", "Value"])
+        data_issues_df = pd.read_csv(
+            f"{MIGRATION_HOME}/reports/{log_name}",
+            sep="\t",
+            names=["Type", "Catkey", "Error", "Value"],
+        )
 
-        return self.render_template("folio/data-issues.html", 
-            content={ "df": data_issues_df,
-                      "dag_run_id": dag_run_id }
+        return self.render_template(
+            "folio/data-issues.html",
+            content={"df": data_issues_df, "dag_run_id": dag_run_id},
         )
 
     @expose("/marc/<filename>")

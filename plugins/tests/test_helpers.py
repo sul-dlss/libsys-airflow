@@ -56,7 +56,12 @@ def mock_file_system(tmp_path):
     tmp = tmp_path / "tmp/"
     tmp.mkdir(parents=True)
 
-    return [airflow_path, source_dir, target_dir, results_dir, archive_dir, tmp]
+    return [airflow_path,
+            source_dir,
+            target_dir,
+            results_dir,
+            archive_dir,
+            tmp]
 
 
 def test_move_marc_files(mock_file_system):
