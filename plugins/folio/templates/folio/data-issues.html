@@ -5,7 +5,7 @@
 <p>
     For DAG run <strong>{{ content.dag_run_id }}</strong>
 </p>
-{% if content|length < 1 %}
+{% if content.df|length < 1 %}
  <h4><em>No Data Issues</em></h4>
 {% else %}
 {{ content.df.to_html(index=False, classes=['table', 'table-striped'])| safe }}

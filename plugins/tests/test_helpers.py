@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import pydantic
 import requests
@@ -13,7 +15,8 @@ from plugins.folio.helpers import (
     process_marc,
     _move_001_to_035,
     transform_csv_to_tsv,
-    process_records
+    process_records,
+    setup_data_logging,
 )
 
 
@@ -56,12 +59,14 @@ def mock_file_system(tmp_path):
     tmp = tmp_path / "tmp/"
     tmp.mkdir(parents=True)
 
-    return [airflow_path,
-            source_dir,
-            target_dir,
-            results_dir,
-            archive_dir,
-            tmp]
+    return [
+        airflow_path,
+        source_dir,
+        target_dir,
+        results_dir,
+        archive_dir,
+        tmp
+    ]
 
 
 def test_move_marc_files(mock_file_system):
@@ -69,7 +74,9 @@ def test_move_marc_files(mock_file_system):
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    move_marc_files_check_csv(task_instance=task_instance, airflow=airflow_path, source="symphony")  # noqa
+    move_marc_files_check_csv(
+        task_instance=task_instance, airflow=airflow_path, source="symphony"
+    )  # noqa
     assert not (source_dir / "sample.mrc").exists()
     assert messages["marc_only"]
 
@@ -81,7 +88,9 @@ def test_move_csv_files(mock_file_system):
     sample_csv = source_dir / "sample.csv"
     sample_csv.write_text("sample")
 
-    move_marc_files_check_csv(task_instance=task_instance, airflow=airflow_path, source="symphony")  # noqa
+    move_marc_files_check_csv(
+        task_instance=task_instance, airflow=airflow_path, source="symphony"
+    )  # noqa
     assert messages["marc_only"] is False
 
 
@@ -175,7 +184,7 @@ def test_post_to_okapi_failures(
     mock_okapi_variable,
     mock_dag_run,
     mock_records,
-    mock_file_system
+    mock_file_system,
 ):
     airflow_path = mock_file_system[0]
     migration_results = mock_file_system[3]
@@ -206,9 +215,12 @@ def mock_marc_record():
         tag="245",
         indicators=["0", "1"],
         subfields=[
-            "a", "The pragmatic programmer : ",
-            "b", "from journeyman to master /",
-            "c", "Andrew Hunt, David Thomas.",
+            "a",
+            "The pragmatic programmer : ",
+            "b",
+            "from journeyman to master /",
+            "c",
+            "Andrew Hunt, David Thomas.",
         ],
     )
     field_001_1 = Field(tag="001", data="a123456789")
@@ -238,11 +250,13 @@ def test_transform_csv_to_tsv(mock_file_system):
     column_names = ["CATKEY", "CALL_NUMBER_TYPE"]
     column_transforms = [("CATKEY", lambda x: f"a{x}")]
 
-    transform_csv_to_tsv(airflow=airflow_path,
-                         marc_stem="sample",
-                         column_names=column_names,
-                         column_transforms=column_transforms,
-                         source="symphony")
+    transform_csv_to_tsv(
+        airflow=airflow_path,
+        marc_stem="sample",
+        column_names=column_names,
+        column_transforms=column_transforms,
+        source="symphony",
+    )
     f = open(sample_tsv, "r")
     assert f.readlines()[1] == "aCATKEY\t CALL_NUMBER_TYPE\n"
     f.close()
@@ -255,14 +269,53 @@ def test_process_records(mock_dag_run, mock_file_system):
 
     # mock results file
     results_file = results_dir / "folio_instances-manual_2022-02-24.json"
-    results_file.write_text("""{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
-    {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}""")
+    results_file.write_text(
+        """{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
+    {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}"""
+    )
 
-    num_records = process_records(prefix="folio_instances",
-                                  out_filename="instances",
-                                  jobs=1,
-                                  dag_run=mock_dag_run,
-                                  airflow=str(airflow_path),
-                                  tmp=str(tmp))
+    num_records = process_records(
+        prefix="folio_instances",
+        out_filename="instances",
+        jobs=1,
+        dag_run=mock_dag_run,
+        airflow=str(airflow_path),
+        tmp=str(tmp),
+    )
 
     assert num_records == 2
+
+
+@pytest.fixture
+def mock_logger_file_handler(monkeypatch, mocker: MockerFixture):
+    def mock_file_handler(*args, **kwargs):
+        file_handler = mocker.stub(name="file_handler")
+        file_handler.addFilter = lambda x: x
+        file_handler.setFormatter = lambda x: x
+        file_handler.setLevel = lambda x: x
+        return file_handler
+
+    monkeypatch.setattr(logging, "FileHandler", mock_file_handler)
+
+
+class MockFolderStructure(pydantic.BaseModel):
+    data_issue_file_path = "data-issues-1345.tsv"
+
+
+class MockTransform(pydantic.BaseModel):
+    _log = None
+    folder_structure = MockFolderStructure()
+
+
+def test_setup_data_logging(mock_logger_file_handler):
+    transformer = MockTransform()
+    assert hasattr(logging.Logger, "data_issues") is False
+    assert len(logging.getLogger().handlers) == 5
+
+    setup_data_logging(transformer)
+    assert hasattr(logging.Logger, "data_issues")
+    assert len(logging.getLogger().handlers) == 6
+
+    # Removes handler otherwise fails subsequent tests
+    file_handler = logging.getLogger().handlers[-1]
+    logging.getLogger().removeHandler(file_handler)
