@@ -40,6 +40,8 @@ from plugins.folio.items import (
     post_folio_items_records
 )
 
+from plugins.folio.marc import post_marc_to_srs
+
 logger = logging.getLogger(__name__)
 
 sul_config = LibraryConfiguration(
@@ -284,6 +286,16 @@ with DAG(
             )
 
             login >> post_instances >> finish_instances
+
+        marc_to_srs = PythonOperator(
+            task_id="marc-to-srs",
+            python_callable=post_marc_to_srs,
+            op_kwargs={
+                "library_config": sul_config,
+            }
+        )
+
+        finish_instances >> marc_to_srs >> finished_all_posts
 
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
