@@ -21,6 +21,15 @@ def test_extract_dag_run_id_mrc(tmp_path):
     assert dag_id == "manual__2022-02-14T23:36:51.056707+00:00"
 
 
+def test_extract_run_id_data_issues(tmp_path):
+    data_issues = (
+        tmp_path
+        / "data_issues_log_instances_scheduled__2022-03-09T22:30:49.801082+00:00_bibs-transformer.tsv"  # noqa
+    )
+    dag_id = _extract_dag_run_id(data_issues)
+    assert dag_id == "scheduled__2022-03-09T22:30:49.801082+00:00"
+
+
 def test_extract_dag_run_id_unknown(tmp_path):
     unknown_file = tmp_path / "sample.txt"
     dag_id = _extract_dag_run_id(unknown_file)

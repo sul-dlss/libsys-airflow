@@ -2,14 +2,12 @@
 
 {% block content %}
 <h2>Data Issues</h2>
-<table class="table table-striped">
-    <tr>
-        <th>Data</th>
-    </tr>
-    {% for row in content %}
-    <tr>
-        <td>{{ row.0 }}</td>
-    </tr>
-    {% endfor %}
-</table>
+<p>
+    For DAG run <strong>{{ content.dag_run_id }}</strong>
+</p>
+{% if content.df|length < 1 %}
+ <h4><em>No Data Issues</em></h4>
+{% else %}
+{{ content.df.to_html(index=False, classes=['table', 'table-striped'])| safe }}
+{% endif %}
 {% endblock %}

@@ -3,7 +3,7 @@ import logging
 
 from migration_tools.migration_tasks.items_transformer import ItemsTransformer
 
-from plugins.folio.helpers import post_to_okapi
+from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +61,14 @@ def run_items_transformer(*args, **kwargs) -> bool:
         use_logging=False
     )
 
+    setup_data_logging(items_transformer)
+
     items_transformer.do_work()
 
     items_transformer.wrap_up()
 
     # Manually set item HRID setting
-    items_transformer.mapper.hrid_settings['items']['startNumber'] += \
+    items_transformer.mapper.hrid_settings["items"]["startNumber"] += (
         items_transformer.total_records + 1
+    )
     items_transformer.mapper.store_hrid_settings()
