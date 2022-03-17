@@ -4,6 +4,7 @@ flake8
 folioclient
 folio-uuid
 numpy
+objectpath
 pandas
 pydantic
 pymarc
