@@ -263,7 +263,7 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        convert_marc_to_folio_instances >> update_record_type_srs >> finish_conversion
+        convert_marc_to_folio_instances >> update_record_type_srs >> finish_conversion  # noqa
         marc_only_convert_check >> [convert_tsv_to_folio_holdings, finish_conversion]  # noqa
         (
             convert_tsv_to_folio_holdings
