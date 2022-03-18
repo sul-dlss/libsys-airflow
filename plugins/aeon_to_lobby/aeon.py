@@ -20,7 +20,6 @@ def user_requests_in_queue():
     for entry in result:
         usernames.append(entry)
 
-    print(usernames)
     return usernames
 
 

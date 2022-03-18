@@ -1,12 +1,9 @@
-from datetime import date
 from datetime import datetime
 import pytest
 import requests
 
 from pytest_mock import MockerFixture
 from airflow.models import Variable
-
-from plugins.aeon_to_lobby.aeon import user_requests_in_queue
 
 
 @pytest.fixture
@@ -17,19 +14,17 @@ def mock_aeon_variable(monkeypatch):
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
-@pytest.fixture
 def mock_aeon_queue_data():
-    today = date.today()
-    midnight = datetime.combine(today, datetime.min.time())
+    today = datetime.today().strftime("%Y-%m-%d")
     return [
         {
             "transactionNumber": 0,
-            "creationDate": midnight,
+            "creationDate": today,
             "username": "aeonuser1",
         },
         {
             "transactionNumber": 1,
-            "creationDate": midnight,
+            "creationDate": today,
             "username": "aeonuser2",
         }
     ]
@@ -38,8 +33,9 @@ def mock_aeon_queue_data():
 @pytest.fixture
 def mock_queue_requests(monkeypatch, mocker: MockerFixture):
     def mock_get_data(*args, **kwargs):
-        get_response = mocker.stub(text=mock_aeon_queue_data)
+        get_response = mocker.stub()
         get_response.status_code = 200
+        get_response.json = mock_aeon_queue_data
 
         return get_response
 
@@ -47,4 +43,7 @@ def mock_queue_requests(monkeypatch, mocker: MockerFixture):
 
 
 def test_find_username_in_request_queue(mock_queue_requests, mock_aeon_variable):
-    user_requests_in_queue
+    from plugins.aeon_to_lobby.aeon import user_requests_in_queue
+    user_list = user_requests_in_queue()
+
+    print(f"HERE: {user_list}")
