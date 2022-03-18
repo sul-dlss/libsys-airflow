@@ -5,13 +5,13 @@ import requests
 
 from airflow.models import Variable
 
-aeon_url = Variable.get("AEON_URL")
-aeon_key = Variable.get("AEON_KEY")
+AEON_URL = Variable.get("AEON_URL")
+AEON_KEY = Variable.get("AEON_KEY")
 
-aeon_headers = {"X-AEON-API-KEY": aeon_key, "Accept": "application/json"}
+aeon_headers = {"X-AEON-API-KEY": AEON_KEY, "Accept": "application/json"}
 
 
-def users_requests_in_queue():
+def user_requests_in_queue():
     usernames = []
     data = queue_requests(id=1)
     today = datetime.today().strftime("%Y-%m-%d")
@@ -20,12 +20,13 @@ def users_requests_in_queue():
     for entry in result:
         usernames.append(entry)
 
+    print(usernames)
     return usernames
 
 
 def user_data(*args, **kwargs):
     users = []
-    for username in users_requests_in_queue():
+    for username in user_requests_in_queue():
         user = aeon_user(user=username)
         users.append(user)
 
@@ -34,12 +35,12 @@ def user_data(*args, **kwargs):
 
 def aeon_user(**kwargs):
     aeon_user = kwargs["user"]
-    return aeon_request(url=f"{aeon_url}/Users/{aeon_user}")
+    return aeon_request(url=f"{AEON_URL}/Users/{aeon_user}")
 
 
 def queue_requests(**kwargs):
     queue = kwargs["id"]
-    return aeon_request(url=f"{aeon_url}/Queues/{queue}/requests")
+    return aeon_request(url=f"{AEON_URL}/Queues/{queue}/requests")
 
 
 def aeon_request(**kwargs):
