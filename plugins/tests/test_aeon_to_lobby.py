@@ -34,6 +34,7 @@ def mock_aeon_queue_data():
         }
     ]
 
+
 @pytest.fixture
 def mock_queue_requests(monkeypatch, mocker: MockerFixture):
     def mock_get_data(*args, **kwargs):
