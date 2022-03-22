@@ -16,7 +16,7 @@ def user_requests_in_queue():
     data = queue_requests(id=1)
     today = datetime.today().strftime("%Y-%m-%d")
     tree = objectpath.Tree(data)
-    result = tree.execute(f"$.*[@.creationDate > '{today}'].username")
+    result = tree.execute(f"$.*[@.creationDate >= '{today}'].username")
     for entry in result:
         usernames.append(entry)
 
