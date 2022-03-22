@@ -25,6 +25,7 @@ def transform_data(*args, **kwargs):
         key="return_value", task_ids="get_user_data_from_aeon"
     )
 
+
     for aeon_user in aeon_users:
         # map keys and values for user
         user = {
@@ -33,12 +34,12 @@ def transform_data(*args, **kwargs):
             "BlockedReason": None,
             "ReusableBadgeBarcode": None,
         }
-        user["FirstName"] = aeon_user["firstName"]
+        user["FirstName"] = aeon_user['firstName']
         user["LastName"] = aeon_user["lastName"]
         user["Email"] = aeon_user["eMailAddress"]
         user["Phone"] = aeon_user["phone"]
         user["CustomFields"].append(
-            {"Name": "Address (Street)", "Value": aeon_user["adddress"]}
+            {"Name": "Address (Street)", "Value": f"{aeon_user['address']}, {aeon_user['address2']}"}
         )
         user["CustomFields"].append({"Name": "City", "Value": aeon_user["city"]})
         user["CustomFields"].append(
@@ -49,7 +50,7 @@ def transform_data(*args, **kwargs):
         user["CustomFields"].append(
             {
                 "Name": "Desired Library or Collection",
-                "Value": aeon_user["Special Collections"],
+                "Value": "Special Collections"
             }
         )
 
