@@ -25,7 +25,6 @@ def transform_data(*args, **kwargs):
         key="return_value", task_ids="get_user_data_from_aeon"
     )
 
-
     for aeon_user in aeon_users:
         # map keys and values for user
         user = {

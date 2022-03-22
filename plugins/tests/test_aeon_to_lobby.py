@@ -4,7 +4,6 @@ import pytest
 import requests
 
 from pytest_mock import MockerFixture
-from airflow.models.taskinstance import TaskInstance
 from airflow.models import Variable
 
 
@@ -14,6 +13,7 @@ def mock_aeon_variable(monkeypatch):
         return "https://stanford.aeon.atlas-sys.com/aeon/api"
 
     monkeypatch.setattr(Variable, "get", mock_get)
+
 
 @pytest.fixture
 def mock_lobby_variable(monkeypatch):
@@ -42,20 +42,20 @@ def mock_aeon_queue_data():
 # Mock xcom
 def mock_xcom_pull_user_data(*args, **kwargs):
     return [
-    {
-        "username": "aeonuser",
-        "lastName": "User",
-        "firstName": "Aeon",
-        "eMailAddress": "aeonu@mail.edu",
-        "phone": "999-999-9999",
-        "address": "123 Charm St",
-        "address2": "Apt A",
-        "city": "Palo Alto",
-        "state": "CA",
-        "zip": "99999",
-        "country": "US",
-    }
-]
+        {
+            "username": "aeonuser",
+            "lastName": "User",
+            "firstName": "Aeon",
+            "eMailAddress": "aeonu@mail.edu",
+            "phone": "999-999-9999",
+            "address": "123 Charm St",
+            "address2": "Apt A",
+            "city": "Palo Alto",
+            "state": "CA",
+            "zip": "99999",
+            "country": "US",
+        }
+    ]
 
 
 class MockTaskInstance(pydantic.BaseModel):
@@ -89,4 +89,3 @@ def test_transform_data(mock_lobby_variable):
     assert lobby_users[0]['LastName'] == "User"
     assert lobby_users[0]['CustomFields'][0]['Name'] == "Address (Street)"
     assert lobby_users[0]['CustomFields'][0]['Value'] == "123 Charm St, Apt A"
-
