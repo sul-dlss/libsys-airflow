@@ -26,6 +26,6 @@ def lobby_post(*args, **kwargs):
         logging.error(
             "lobbytrack api rsponded with:" f"{response.status_code}, {response.text}"
         )
-        return None
+        response.raise_for_status()
 
     return response.json()
