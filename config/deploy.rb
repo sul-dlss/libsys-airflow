@@ -22,8 +22,7 @@ set :keep_releases, 3
 
 task :deploy do
   on roles(:app) do
-    execute "source virtual-env/bin/activate"
-    execute "cd #{release_path} && pip3 install -r requirements.txt"
+    execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && pip3 install -r requirements.txt"
     execute "cp #{release_path}/config/.env #{release_path}/."
   end
 end
@@ -39,34 +38,28 @@ namespace :airflow do
   desc 'run docker-compose build for airflow'
   task :build do
     on roles(:app) do
-      execute "cd #{release_path} && docker-compose build"
+      execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker-compose build"
     end
   end
 
   desc 'stop and remove all running docker containers'
   task :stop do
     on roles(:app) do
-      execute "cd #{release_path}"
-      execute "docker stop $(docker ps -a -q)"
-      execute "docker rm $(docker ps -a -q)"
+      execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q)"
     end
   end
 
-  desc 'run docker-compose build and initialize for airflow'
+  desc 'run docker-compose init for airflow'
+  task :init do
+    on roles(:app) do
+      execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker-compose up airflow-init"
+    end
+  end
+
+  desc 'start airflow'
   task :start do
     on roles(:app) do
-      execute "cd #{release_path}"
-      execute "docker-compose build"
-      execute "docker compose up airflow-init"
-      execute "docker compose up -d"
-    end
-  end
-
-  desc 'restart airflow'
-  task :restart do
-    on roles(:app) do
-      stop
-      start
+      execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker-compose up -d"
     end
   end
 end

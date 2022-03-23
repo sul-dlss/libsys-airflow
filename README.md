@@ -22,6 +22,18 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Access Airflow locally at http://localhost:8080
 1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker-1 /bin/bash` to view the raw work files.
 
+## Deploying
+### Prerequisites
+1. Install `pip3` with `apt install python3-pip`
+1. Install python virtual enviroments: `apt install python3.8-venv`
+1. Create the virtual envirnment in the home directory: `python3 -m venv virtual-env`
+1. Install docker-compose in the virtual environment: `source virtual-env/bin/activate && pip3 install docker-compose`
+### Tasks
+1. List all the airflow tasks using `cap -AT airflow`
+1. `cap {stage} airflow:build`
+1. `cap {stage} airflow:init`
+1. `cap {stage} airflow:start`
+
 ### For FOLIO migration loads
 1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
 1. In the Airflow UI under Admin > Variables, import the `folio-dev-variables.json` file from [shared_configs](https://github.com/sul-dlss/shared_configs).
