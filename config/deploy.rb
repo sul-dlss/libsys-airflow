@@ -62,6 +62,7 @@ namespace :airflow do
     end
   end
 
+  desc 'restart airflow'
   task :restart do
     on roles(:app) do
       stop
