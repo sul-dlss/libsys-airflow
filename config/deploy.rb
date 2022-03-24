@@ -63,6 +63,13 @@ namespace :airflow do
     end
   end
 
+  desc 'restart webserver'
+  task :webserver do
+    on roles(:app) do
+      execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker-compose restart airflow-webserver"
+    end
+  end
+
   desc 'restart airflow'
   task :restart do
     on roles(:app) do
