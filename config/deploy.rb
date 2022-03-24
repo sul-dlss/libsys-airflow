@@ -62,4 +62,12 @@ namespace :airflow do
       execute "cd #{release_path} && source /home/libsys/virtual-env/bin/activate && docker-compose up -d"
     end
   end
+
+  desc 'restart airflow'
+  task :restart do
+    on roles(:app) do
+      invoke 'airflow:stop'
+      invoke 'airflow:start'
+    end
+  end
 end
