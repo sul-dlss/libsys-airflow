@@ -1,5 +1,7 @@
 apache-airflow
 argparse_prompt
+coverage
+coveralls
 flake8
 folioclient
 folio-uuid

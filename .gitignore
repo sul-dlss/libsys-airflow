@@ -1,3 +1,6 @@
 log*
 .env
 __pycache__/
+.coveralls.yml
+.coverage
+coverage.lcov
