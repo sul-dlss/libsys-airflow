@@ -16,7 +16,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Build the docker image with `Docker build .`
 1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values.
 1. Run `docker-compose build` to build the customized airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-1. Run `docker compose up airflow-init` to initialize the Airflow
+1. Run `docker compose up airflow-init` to initialize the Airflow the first time you deploy Airflow
 1. Bring up airflow, `docker compose up` to run the containers in the
    foreground, use `docker compose up -d` to run as a daemon.
 1. Access Airflow locally at http://localhost:8080
@@ -28,11 +28,26 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Install python virtual enviroments: `apt install python3.8-venv`
 1. Create the virtual envirnment in the home directory: `python3 -m venv virtual-env`
 1. Install docker-compose in the virtual environment: `source virtual-env/bin/activate && pip3 install docker-compose`
+
 ### Tasks
 1. List all the airflow tasks using `cap -AT airflow`
+```
+cap airflow:build      # run docker-compose build for airflow
+cap airflow:init       # run docker-compose init for airflow
+cap airflow:ps         # show running docker processes
+cap airflow:restart    # restart airflow
+cap airflow:start      # start airflow
+cap airflow:stop       # stop and remove all running docker containers
+cap airflow:webserver  # restart webserver
+```
+
+### Do the first time you bring up Libsys-Airflow:
+1. `cap {stage} airflow:deploy`
+1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
 1. `cap {stage} airflow:build`
 1. `cap {stage} airflow:init`
 1. `cap {stage} airflow:start`
+1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps.
 
 ### For FOLIO migration loads
 1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
@@ -44,8 +59,8 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ## FOLIO Plugin
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
-by running `docker-compose restart airflow-webserver` to see changes in
-the running Airflow environment.
+by running `cap {stage} airflow:webserver` or ssh into the server and run `docker-compose restart airflow-webserver`
+to see changes in the running Airflow environment.
 
 ## Testing
 To run the test suite, use [pytest](https://docs.pytest.org/) passing in
