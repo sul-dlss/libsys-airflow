@@ -46,7 +46,7 @@ namespace :airflow do
   desc 'stop and remove all running docker containers'
   task :stop do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker stop $(docker ps -a -q) && docker rm $(docker ps -a -q)"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose stop"
     end
   end
 
