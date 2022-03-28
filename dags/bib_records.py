@@ -40,6 +40,11 @@ from plugins.folio.items import (
     post_folio_items_records
 )
 
+from plugins.folio.marc import (
+    post_marc_to_srs,
+    replace_srs_record_type
+)
+
 logger = logging.getLogger(__name__)
 
 sul_config = LibraryConfiguration(
@@ -242,6 +247,11 @@ with DAG(
             },
         )
 
+        update_record_type_srs = PythonOperator(
+            task_id="update-record-type-srs",
+            python_callable=replace_srs_record_type,
+        )
+
         finish_conversion = DummyOperator(
             task_id="finished-conversion",
             trigger_rule="none_failed_or_skipped",
@@ -253,6 +263,7 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
+        convert_marc_to_folio_instances >> update_record_type_srs >> finish_conversion  # noqa
         marc_only_convert_check >> [convert_tsv_to_folio_holdings, finish_conversion]  # noqa
         (
             convert_tsv_to_folio_holdings
@@ -284,6 +295,16 @@ with DAG(
             )
 
             login >> post_instances >> finish_instances
+
+        marc_to_srs = PythonOperator(
+            task_id="marc-to-srs",
+            python_callable=post_marc_to_srs,
+            op_kwargs={
+                "library_config": sul_config,
+            }
+        )
+
+        finish_instances >> marc_to_srs >> finished_all_posts
 
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
