@@ -29,9 +29,9 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 --ignore=E501,W503
-    # - name: Install support repos
-    #   run: |
-    #     git clone https://github.com/FOLIO-FSE/folio_migration_tools.git /Users/Shared/folio_migration_tools --depth=2
+    - name: Install support repos
+      run: |
+        git clone https://github.com/FOLIO-FSE/folio_migration_tools.git /Users/Shared/folio_migration_tools --depth=2
     - name: Test with pytest
       run: |
         coverage run -m pytest
