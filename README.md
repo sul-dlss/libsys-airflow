@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/sul-dlss/libsys-airflow/badge.svg?branch=main)](https://coveralls.io/github/sul-dlss/libsys-airflow?branch=main)
+
 # libsys-airflow
 Airflow DAGS for libsys processes and migrating ILS data into FOLIO
 
@@ -68,6 +70,9 @@ the location of where you have local clone repository of the
 [folio_migration_tools/](https://github.com/foLIO-FSE/folio_migration_tools/)with the **PYTHONPATH** i.e.
 
 `PYTHONPATH='{path-to-folio_migration_tools}' pytest`
+
+To run with code coverage:
+`PYTHONPATH=../folio_migration_tools/ coverage run -m pytest`
 
 ## Symphony Mount
 MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
