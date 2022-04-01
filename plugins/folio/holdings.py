@@ -1,7 +1,7 @@
 import json
 import logging
 
-from migration_tools.migration_tasks.holdings_csv_transformer import (
+from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
 
@@ -62,6 +62,7 @@ def run_holdings_tranformer(*args, **kwargs):
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
+        holdings_type_uuid_for_boundwiths="",
     )
 
     holdings_transformer = HoldingsCsvTransformer(

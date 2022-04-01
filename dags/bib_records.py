@@ -14,7 +14,7 @@ from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
-from migration_tools.library_configuration import LibraryConfiguration
+from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
     archive_artifacts,

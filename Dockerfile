@@ -3,15 +3,10 @@ FROM apache/airflow:2.2.4-python3.9
 USER root
 RUN usermod -u 214 airflow
 
-
-RUN apt-get -y update && apt-get -y install git
-
-ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/folio_migration_tools"
+ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/"
 
 USER airflow
 
-RUN git clone https://github.com/FOLIO-FSE/folio_migration_tools.git --depth=2
-
 COPY requirements.txt .
 
-RUN pip install -r requirements.txt
+RUN pip install --no-deps -r requirements.txt
