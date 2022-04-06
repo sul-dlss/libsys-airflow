@@ -113,7 +113,7 @@ def test_archive_artifacts(mock_dag_run, mock_file_system):
     instance_file = results_dir / instance_filename
     instance_file.write_text("""{ "id":"abcded2345"}""")
 
-    tmp_filename = f"temp_file.json"
+    tmp_filename = "temp_file.json"
     tmp_file = tmp_dir / tmp_filename
     tmp_file.write_text("""{ "key":"vaaluue"}""")
 

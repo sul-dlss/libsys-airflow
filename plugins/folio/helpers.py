@@ -30,8 +30,7 @@ def archive_artifacts(*args, **kwargs):
         try:
             tmp_file.unlink()
         except OSError as err:
-            logger.info("Cannot remove {tmp_file}: {err}")
-
+            logger.info(f"Cannot remove {tmp_file}: {err}")
 
     for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
 
