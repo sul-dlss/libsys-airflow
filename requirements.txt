@@ -1,10 +1,7 @@
-apache-airflow
 argparse_prompt
 coverage
 coveralls
 flake8
-folioclient
-folio-uuid
 numpy
 objectpath
 pandas
@@ -12,3 +9,4 @@ pydantic
 pymarc
 pytest
 pytest_mock
+apache-airflow >= 2.2.4

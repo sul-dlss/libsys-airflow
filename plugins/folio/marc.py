@@ -2,7 +2,7 @@ import json
 import logging
 import pathlib
 
-from migration_tools.migration_tasks.batch_poster import BatchPoster
+from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
 
 def post_marc_to_srs(*args, **kwargs):

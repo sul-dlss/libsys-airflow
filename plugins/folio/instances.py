@@ -1,7 +1,7 @@
 import json
 import logging
 
-from migration_tools.migration_tasks.bibs_transformer import BibsTransformer
+from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 

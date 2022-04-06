@@ -10,9 +10,7 @@ on:
     branches: [ main ]
 
 env:
-  PYTHONPATH: /Users/Shared/folio_migration_tools
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 jobs:
   build:
     runs-on: macos-11
@@ -24,14 +22,13 @@ jobs:
         python-version: "3.9"
     - name: Install airflow dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
+    - name: Install FOLIO-FSE tools
+      run: |
+        pip install folioclient folio-migration-tools folio-uuid
     - name: Lint with flake8
       run: |
         flake8 --ignore=E501,W503
-    - name: Install support repos
-      run: |
-        git clone https://github.com/FOLIO-FSE/folio_migration_tools.git /Users/Shared/folio_migration_tools --depth=2
     - name: Test with pytest
       run: |
         coverage run -m pytest
