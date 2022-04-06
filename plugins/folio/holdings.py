@@ -63,7 +63,6 @@ def run_holdings_tranformer(*args, **kwargs):
         holdings_type_uuid_for_boundwiths="",
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
-        holdings_type_uuid_for_boundwiths="",
     )
 
     holdings_transformer = HoldingsCsvTransformer(

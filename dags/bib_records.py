@@ -343,15 +343,14 @@ with DAG(
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
     archive_instances_holdings_items = PythonOperator(
-        task_id="archive_converted_files", python_callable=archive_artifacts
+        task_id="archive_converted_files",
+        python_callable=archive_artifacts
     )
 
     remediate_errors = TriggerDagRunOperator(
         task_id="remediate-errors",
         trigger_dag_id="fix_failed_record_loads",
-        ops_kwargs={
-            "source_dag_id": ""
-        }
+        trigger_run_id="{{ dag_run.run_id }}"
     )
 
     finish_loading = DummyOperator(

@@ -1,14 +1,23 @@
 """Remediation of Failed Migration Loads into FOLIO"""
 from datetime import datetime, timedelta
-import logging
 
 from airflow import DAG
 
 from airflow.operators.dummy import DummyOperator
-
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from textwrap import dedent
+
+from folioclient import FolioClient
+from plugins.folio.remediate import handle_record_errors
+
+folio_client = FolioClient(
+    Variable.get("OKAPI_URL"),
+    "sul",
+    Variable.get("FOLIO_USER"),
+    Variable.get("FOLIO_PASSWORD"),
+)
 
 default_args = {
     "owner": "folio",
@@ -28,12 +37,37 @@ with DAG(
 ) as dag:
     dag.doc = dedent("""# Remediation DAG""")
 
-    instances_notification = DummyOperator(task_id="instances-notification")
+    instances_errors = PythonOperator(
+        task_id="instances-handler",
+        python_callable=handle_record_errors,
+        op_kwargs={
+            "base": "instance-storage",
+            "endpoint": "/inventory/instances",
+            "folio_client": folio_client,
+        }
+    )
 
-    holdings_notification = DummyOperator(task_id="holdings-notification")
+    holdings_errors = PythonOperator(
+        task_id="holdings-handler",
+        python_callable=handle_record_errors,
+        op_kwargs={
+            "base": "holdings-storage",
+            "endpoint": "/holdings-storage/holdings",
+            "folio_client": folio_client,
+        },
+    )
 
-    items_notification = DummyOperator(task_id="items-notification")
+    items_errors = PythonOperator(
+        task_id="items-handler",
+        python_callable=handle_record_errors,
+        op_kwargs={
+            "base": "items-storage",
+            "endpoint": "/items-storage/items",
+            "folio_client": folio_client,
+        },
+    )
 
-    instances_notification >> holdings_notification
-    holdings_notification >> items_notification
+    finished = DummyOperator(task_id="finished-errors-handling")
 
+    instances_errors >> holdings_errors
+    holdings_errors >> items_errors >> finished
