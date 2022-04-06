@@ -106,18 +106,23 @@ def test_archive_artifacts(mock_dag_run, mock_file_system):
     airflow_path = mock_file_system[0]
     results_dir = mock_file_system[3]
     archive_dir = mock_file_system[4]
+    tmp_dir = mock_file_system[5]
 
     # Create mock Instance JSON file
     instance_filename = f"folio_instances_{dag.run_id}_bibs-transformer.json"
     instance_file = results_dir / instance_filename
-
     instance_file.write_text("""{ "id":"abcded2345"}""")
+
+    tmp_filename = "temp_file.json"
+    tmp_file = tmp_dir / tmp_filename
+    tmp_file.write_text("""{ "key":"vaaluue"}""")
 
     target_file = archive_dir / instance_filename
 
-    archive_artifacts(dag_run=dag, airflow=airflow_path)
+    archive_artifacts(dag_run=dag, airflow=airflow_path, tmp_dir=tmp_dir)
 
     assert not instance_file.exists()
+    assert not tmp_file.exists()
     assert target_file.exists()
 
 

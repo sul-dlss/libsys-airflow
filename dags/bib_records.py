@@ -342,7 +342,7 @@ with DAG(
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
     archive_instances_holdings_items = PythonOperator(
-        task_id="archive_coverted_files", python_callable=archive_artifacts
+        task_id="archive_converted_files", python_callable=archive_artifacts
     )
 
     finish_loading = DummyOperator(
