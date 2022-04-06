@@ -71,6 +71,9 @@ the location of where you have local clone repository of the
 
 `PYTHONPATH='{path-to-folio_migration_tools}' pytest`
 
+To see stdout or stderr add the `-rP` flag:
+`PYTHONPATH='{path-to-folio_migration_tools}' pytest -rP`
+
 To run with code coverage:
 `PYTHONPATH=../folio_migration_tools/ coverage run -m pytest`
 

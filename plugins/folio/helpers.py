@@ -18,10 +18,20 @@ def archive_artifacts(*args, **kwargs):
     dag = kwargs["dag_run"]
 
     airflow = kwargs.get("airflow", "/opt/airflow")
+    tmp = kwargs.get("tmp_dir", "/tmp")
+
     airflow_path = pathlib.Path(airflow)
+    tmp_path = pathlib.Path(tmp)
 
     airflow_results = airflow_path / "migration/results"
     archive_directory = airflow_path / "migration/archive"
+
+    for tmp_file in tmp_path.glob('*.json'):
+        try:
+            tmp_file.unlink()
+        except OSError as err:
+            logger.info("Cannot remove {tmp_file}: {err}")
+
 
     for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
 
