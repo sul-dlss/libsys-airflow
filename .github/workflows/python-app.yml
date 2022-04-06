@@ -31,6 +31,6 @@ jobs:
         flake8 --ignore=E501,W503
     - name: Test with pytest
       run: |
-        PYTHONPATH=${{env.PYTHONPATH}} coverage run -m pytest
+        coverage run -m pytest
         coverage lcov
         coveralls --service=github
