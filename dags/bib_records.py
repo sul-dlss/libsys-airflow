@@ -23,27 +23,15 @@ from plugins.folio.helpers import (
     process_records,
     transform_csv_to_tsv,
 )
-from plugins.folio.holdings import (
-    run_holdings_tranformer,
-    post_folio_holding_records
-)
+from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
 
 from plugins.folio.login import folio_login
 
-from plugins.folio.instances import (
-    post_folio_instance_records,
-    run_bibs_transformer
-)
+from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
 
-from plugins.folio.items import (
-    run_items_transformer,
-    post_folio_items_records
-)
+from plugins.folio.items import run_items_transformer, post_folio_items_records
 
-from plugins.folio.marc import (
-    post_marc_to_srs,
-    replace_srs_record_type
-)
+from plugins.folio.marc import post_marc_to_srs, replace_srs_record_type
 
 logger = logging.getLogger(__name__)
 
@@ -169,8 +157,7 @@ with DAG(
         )
 
         finished_move_transform = DummyOperator(
-            task_id="finished-move-transform",
-            trigger_rule="none_failed_or_skipped"
+            task_id="finished-move-transform", trigger_rule="none_failed_or_skipped"
         )
 
         move_marc_to_instances >> process_marc_files >> marc_only_transform
@@ -185,7 +172,7 @@ with DAG(
             execution_timeout=timedelta(minutes=10),
             op_kwargs={
                 "library_config": sul_config,
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",   # noqa
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
             },
         )
 
@@ -263,8 +250,15 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        convert_marc_to_folio_instances >> update_record_type_srs >> finish_conversion  # noqa
-        marc_only_convert_check >> [convert_tsv_to_folio_holdings, finish_conversion]  # noqa
+        (
+            convert_marc_to_folio_instances
+            >> update_record_type_srs
+            >> finish_conversion
+        )  # noqa
+        marc_only_convert_check >> [
+            convert_tsv_to_folio_holdings,
+            finish_conversion,
+        ]  # noqa
         (
             convert_tsv_to_folio_holdings
             >> convert_holdings_valid_json
@@ -279,7 +273,9 @@ with DAG(
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
-        login = PythonOperator(task_id="folio_login", python_callable=folio_login)  # noqa
+        login = PythonOperator(
+            task_id="folio_login", python_callable=folio_login
+        )  # noqa
 
         finish_instances = DummyOperator(task_id="finish-posting-instances")
 
@@ -301,7 +297,7 @@ with DAG(
             python_callable=post_marc_to_srs,
             op_kwargs={
                 "library_config": sul_config,
-            }
+            },
         )
 
         finish_instances >> marc_to_srs >> finished_all_posts
@@ -317,7 +313,11 @@ with DAG(
 
         start_holdings = DummyOperator(task_id="start-holdings-posting")
 
-        finish_instances >> marc_only_post_check >> [start_holdings, finished_all_posts]  # noqa
+        (
+            finish_instances
+            >> marc_only_post_check
+            >> [start_holdings, finished_all_posts]
+        )  # noqa
 
         finish_holdings = DummyOperator(task_id="finish-posting-holdings")
 

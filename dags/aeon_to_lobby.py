@@ -33,12 +33,15 @@ def transform_data(*args, **kwargs):
             "BlockedReason": None,
             "ReusableBadgeBarcode": None,
         }
-        user["FirstName"] = aeon_user['firstName']
+        user["FirstName"] = aeon_user["firstName"]
         user["LastName"] = aeon_user["lastName"]
         user["Email"] = aeon_user["eMailAddress"]
         user["Phone"] = aeon_user["phone"]
         user["CustomFields"].append(
-            {"Name": "Address (Street)", "Value": f"{aeon_user['address']}, {aeon_user['address2']}"}
+            {
+                "Name": "Address (Street)",
+                "Value": f"{aeon_user['address']}, {aeon_user['address2']}",
+            }
         )
         user["CustomFields"].append({"Name": "City", "Value": aeon_user["city"]})
         user["CustomFields"].append(
@@ -47,10 +50,7 @@ def transform_data(*args, **kwargs):
         user["CustomFields"].append({"Name": "Zip code", "Value": aeon_user["zip"]})
         user["CustomFields"].append({"Name": "Country", "Value": aeon_user["country"]})
         user["CustomFields"].append(
-            {
-                "Name": "Desired Library or Collection",
-                "Value": "Special Collections"
-            }
+            {"Name": "Desired Library or Collection", "Value": "Special Collections"}
         )
 
         lobby_users.append(user)
