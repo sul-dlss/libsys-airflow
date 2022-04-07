@@ -5,10 +5,10 @@ from pathlib import Path
 from dags.delete_archived_data import delete_archived_data
 from plugins.folio.helpers import archive_artifacts
 
-from plugins.tests.test_helpers import mock_dag_run, mock_file_system
+from plugins.tests.test_helpers import mock_dag_run, mock_file_system # noqa
 
 
-def test_delete_archived_data(mock_dag_run, mock_file_system):
+def test_delete_archived_data(mock_dag_run, mock_file_system): # noqa
     dag = mock_dag_run
     airflow_path = mock_file_system[0]
     results_dir = mock_file_system[3]
