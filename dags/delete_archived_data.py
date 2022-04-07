@@ -32,7 +32,7 @@ def delete_archived_data(*args, **kwargs):
             try:
                 artifact.unlink()
             except OSError as err:
-                logger.info(f"Cannot remove {artifact}: {err}")
+                logger.error(f"Cannot remove {artifact}: {err}")
 
 
 with DAG(
