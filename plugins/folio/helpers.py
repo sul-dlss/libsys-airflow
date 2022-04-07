@@ -123,8 +123,10 @@ def _save_error_record_ids(**kwargs):
         / f"errors-{record_base}-{error_code}-{dag.run_id}.json"
     )
 
-    record_ids = [r["id"] for r in records]
-    error_filepath.write_text(json.dumps(record_ids))
+    with error_filepath.open('a') as error_file:
+        for rec in records:
+            error_file.write(json.dumps(rec))
+            error_file.write("\n")
 
 
 def post_to_okapi(**kwargs) -> bool:

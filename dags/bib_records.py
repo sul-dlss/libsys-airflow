@@ -10,6 +10,7 @@ from airflow import DAG
 
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
@@ -342,7 +343,14 @@ with DAG(
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
     archive_instances_holdings_items = PythonOperator(
-        task_id="archive_converted_files", python_callable=archive_artifacts
+        task_id="archive_converted_files",
+        python_callable=archive_artifacts
+    )
+
+    remediate_errors = TriggerDagRunOperator(
+        task_id="remediate-errors",
+        trigger_dag_id="fix_failed_record_loads",
+        trigger_run_id="{{ dag_run.run_id }}"
     )
 
     finish_loading = DummyOperator(
@@ -352,3 +360,4 @@ with DAG(
     monitor_file_mount >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio
     post_to_folio >> archive_instances_holdings_items >> finish_loading
+    finish_loading >> remediate_errors
