@@ -65,17 +65,16 @@ by running `cap {stage} airflow:webserver` or ssh into the server and run `docke
 to see changes in the running Airflow environment.
 
 ## Testing
-To run the test suite, use [pytest](https://docs.pytest.org/) passing in
-the location of where you have local clone repository of the
-[folio_migration_tools/](https://github.com/foLIO-FSE/folio_migration_tools/)with the **PYTHONPATH** i.e.
+First install the FOLIO-FSE toolsm run: `pip install folioclient folio-migration-tools folio-uuid`
 
-`PYTHONPATH='{path-to-folio_migration_tools}' pytest`
+Then, to run the test suite, use [pytest](https://docs.pytest.org/).
+`pytest`
 
 To see stdout or stderr add the `-rP` flag:
-`PYTHONPATH='{path-to-folio_migration_tools}' pytest -rP`
+`pytest -rP`
 
 To run with code coverage:
-`PYTHONPATH=../folio_migration_tools/ coverage run -m pytest`
+`coverage run -m pytest`
 
 ## Symphony Mount
 MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
