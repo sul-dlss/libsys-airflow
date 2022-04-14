@@ -22,7 +22,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Bring up airflow, `docker compose up` to run the containers in the
    foreground, use `docker compose up -d` to run as a daemon.
 1. Access Airflow locally at http://localhost:8080
-1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker-1 /bin/bash` to view the raw work files.
+1. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
 ## Deploying
 ### Prerequisites
