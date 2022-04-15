@@ -8,6 +8,28 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _add_hrid(holdings_path: str, items_transformer: ItemsTransformer):
+    """Adds an HRID based on Holdings formerIds"""
+
+    # Initializes Holdings lookup and counter
+    holdings_keys = {}
+
+    with open(holdings_path) as fo:
+        for line in fo.readlines():
+            holdings_record = json.loads(line)
+            holdings_keys[holdings_record['id']] = {
+                "formerId": holdings_record['formerIds'][0],
+                "counter": 0
+            }
+
+    for item in items_transformer.items.values():
+        holding = holdings_keys[item['holdingsRecordId']]
+        former_id = holding['formerId']
+        holding['counter'] = holding['counter'] + 1
+        hrid_prefix = former_id[:1] + "i" + former_id[1:]
+        item['hrid'] = f"{hrid_prefix}_{holding['counter']}"
+
+
 def post_folio_items_records(**kwargs):
     """Creates/overlays Items records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -34,7 +56,9 @@ def post_folio_items_records(**kwargs):
 
 def run_items_transformer(*args, **kwargs) -> bool:
     """Runs item tranformer"""
+    airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
+
     library_config = kwargs["library_config"]
     library_config.iteration_identifier = dag.run_id
 
@@ -43,7 +67,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
     item_config = ItemsTransformer.TaskConfiguration(
         name="bibs-transformer",
         migration_task_type="ItemsTransformer",
-        hrid_handling="default",
+        hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
         items_mapping_file_name="item_mapping.json",
         location_map_file_name="locations.tsv",
@@ -67,8 +91,6 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     items_transformer.wrap_up()
 
-    # Manually set item HRID setting
-    items_transformer.mapper.hrid_settings["items"]["startNumber"] += (
-        items_transformer.total_records + 1
-    )
-    items_transformer.mapper.store_hrid_settings()
+    _add_hrid(
+        f"{airflow}/migration/results/folio_holdings_{dag.run_id}_holdings-transformer.json",
+        items_transformer)

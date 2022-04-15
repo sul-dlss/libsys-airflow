@@ -45,9 +45,9 @@ def run_bibs_transformer(*args, **kwargs):
         name="bibs-transformer",
         migration_task_type="BibsTransformer",
         library_config=library_config,
-        hrid_handling="default",
+        hrid_handling="preserve001",
         files=[{"file_name": f"{marc_stem}.mrc", "suppress": False}],
-        ils_flavour="voyager",  # Voyager uses 001 field, using tag001 works
+        ils_flavour="tag001",
     )
 
     bibs_transformer = BibsTransformer(
