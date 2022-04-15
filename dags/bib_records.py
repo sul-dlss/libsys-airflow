@@ -19,10 +19,10 @@ from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
     archive_artifacts,
-    move_marc_files_check_csv,
+    move_marc_files_check_tsv,
     process_marc,
     process_records,
-    transform_csv_to_tsv,
+    transform_move_tsvs,
 )
 from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
 
@@ -111,7 +111,7 @@ with DAG(
 
         move_marc_to_instances = PythonOperator(
             task_id="move-marc-files",
-            python_callable=move_marc_files_check_csv,
+            python_callable=move_marc_files_check_tsv,
             op_kwargs={"source": "symphony"},
         )
 
@@ -120,31 +120,21 @@ with DAG(
             python_callable=marc_only,
             op_kwargs={
                 "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
-                "default_task": "move-transform.symphony-csv-to-tsv",
+                "default_task": "move-transform.symphony-tsv-processing",
                 "marc_only_task": "move-transform.finished-move-transform",
             },
         )
 
-        symphony_csv_to_tsv = PythonOperator(
-            task_id="symphony-csv-to-tsv",
-            python_callable=transform_csv_to_tsv,
+        symphony_tsv_processing = PythonOperator(
+            task_id="symphony-tsv-processing",
+            python_callable=transform_move_tsvs,
             op_kwargs={
-                "column_names": [
-                    "CATKEY",
-                    "CALL_NUMBER_TYPE",
-                    "BASE_CALL_NUMBER",
-                    "VOLUME_INFO",
-                    "BARCODE",
-                    "LIBRARY",
-                    "HOMELOCATION",
-                    "CURRENTLOCATION",
-                    "ITEM_TYPE",
-                ],
                 "column_transforms": [
                     # Adds a prefix to match bib 001
-                    ("CATKEY", lambda x: f"a{x}")
+                    ("CATKEY", lambda x: f"a{x}"),
+                    # Strips out spaces from barcode
+                    ("BARCODE", lambda x: x.strip()),
                 ],
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
                 "source": "symphony",
             },
         )
@@ -162,7 +152,7 @@ with DAG(
         )
 
         move_marc_to_instances >> process_marc_files >> marc_only_transform
-        marc_only_transform >> symphony_csv_to_tsv >> finished_move_transform
+        marc_only_transform >> symphony_tsv_processing >> finished_move_transform
         marc_only_transform >> finished_move_transform
 
     with TaskGroup(group_id="marc21-and-tsv-to-folio") as marc_to_folio:

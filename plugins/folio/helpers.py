@@ -40,7 +40,7 @@ def archive_artifacts(*args, **kwargs):
         logger.info("Moved {artifact} to {target}")
 
 
-def move_marc_files_check_csv(*args, **kwargs) -> str:
+def move_marc_files_check_tsv(*args, **kwargs) -> str:
     """Moves MARC files to migration/data/instances, sets XCOM
     if csv is present"""
     task_instance = kwargs["task_instance"]
@@ -54,9 +54,9 @@ def move_marc_files_check_csv(*args, **kwargs) -> str:
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
-    # Checks for CSV file and sets XCOM marc_only if not present
+    # Checks for TSV file and sets XCOM marc_only if not present
     csv_path = pathlib.Path(
-        f"{airflow}/{source_directory}/{marc_path.stem}.csv"
+        f"{airflow}/{source_directory}/{marc_path.stem}.tsv"
     )
     marc_only = True
     if csv_path.exists():
@@ -219,30 +219,40 @@ def setup_data_logging(transformer):
     logging.getLogger().addHandler(data_issue_file_handler)
 
 
-def transform_csv_to_tsv(*args, **kwargs):
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    marc_stem = kwargs["marc_stem"]
-    column_names = kwargs["column_names"]
-    column_transforms = kwargs.get("column_transforms", [])
-    source_directory = kwargs["source"]
-
-    csv_path = pathlib.Path(
-        f"{airflow}/{source_directory}/{marc_stem}.csv"
-    )
-
-    if not csv_path.exists():
-        raise ValueError(
-            f"CSV Path {csv_path} does not exist for {marc_stem}.mrc"
-        )
-    df = pd.read_csv(csv_path, names=column_names)
-
+def _apply_processing_tsv(tsv_path, airflow, column_transforms):
+    df = pd.read_csv(tsv_path, sep="\t")
     # Performs any transformations to values
     for transform in column_transforms:
         column = transform[0]
-        function = transform[1]
-        df[column] = df[column].apply(function)
-    tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{marc_stem}.tsv")
-    df.to_csv(tsv_path, sep="\t", index=False)
+        if column in df:
+            function = transform[1]
+            df[column] = df[column].apply(function)
+    new_tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{tsv_path.name}")
+    df.to_csv(new_tsv_path, sep="\t", index=False)
+    tsv_path.unlink()
 
-    csv_path.unlink()
-    return tsv_path.name
+
+def _get_tsv(**kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    source_directory = kwargs["source"]
+
+    return [path for path in pathlib.Path(f"{airflow}/{source_directory}/").glob("*.tsv")]
+
+
+def transform_move_tsvs(*args, **kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    column_transforms = kwargs.get("column_transforms", [])
+
+    csv_paths = _get_tsv(**kwargs)
+
+    path_names = [f"{path.name}.tsv" for path in csv_paths]
+
+    if len(csv_paths) < 1:
+        raise ValueError(
+            "No csv files exist for workflow"
+        )
+
+    for path in csv_paths:
+        _apply_processing_tsv(path, airflow, column_transforms)
+
+    return path_names
