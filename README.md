@@ -24,6 +24,10 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Access Airflow locally at http://localhost
 1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker-1 /bin/bash` to view the raw work files.
 
+### For FOLIO migration loads
+1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
+1. In the Airflow UI under Admin > Variables, import the `folio-dev-variables.json` file from [shared_configs](https://github.com/sul-dlss/shared_configs).
+
 ## Deploying
 ### Prerequisites
 1. Install `pip3` with `apt install python3-pip`
@@ -50,10 +54,6 @@ cap airflow:webserver  # restart webserver
 1. `cap {stage} airflow:init`
 1. `cap {stage} airflow:start`
 1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps.
-
-### For FOLIO migration loads
-1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
-1. In the Airflow UI under Admin > Variables, import the `folio-dev-variables.json` file from [shared_configs](https://github.com/sul-dlss/shared_configs).
 
 ### For Aeon and Lobbytrack API calls
 1. In the Airflow UI under Admin > Variables, import the `aeon-variables.json` and the `lobbytrack-variables.json` files from [shared_configs](https://github.com/sul-dlss/shared_configs).
