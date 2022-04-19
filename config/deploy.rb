@@ -25,8 +25,13 @@ task :deploy do
   on roles(:app) do
     execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt"
     execute "cp #{release_path}/config/.env #{release_path}/."
+    # execute "cd #{release_path} && git submodule init && git submodule update"
+    # execute "cd #{release_path}/migration && chmod +x create_folder_structure.sh && ./create_folder_structure.sh"
+    execute "ls -l #{repo_path}"
   end
 end
+
+
 
 namespace :airflow do
   desc 'show running docker processes'
