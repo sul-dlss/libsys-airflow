@@ -8,7 +8,7 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
-def _add_hrid(holdings_path: str, items_transformer: ItemsTransformer):
+def _add_hrid(holdings_path: str, items_path: str):
     """Adds an HRID based on Holdings formerIds"""
 
     # Initializes Holdings lookup and counter
@@ -17,17 +17,25 @@ def _add_hrid(holdings_path: str, items_transformer: ItemsTransformer):
     with open(holdings_path) as fo:
         for line in fo.readlines():
             holdings_record = json.loads(line)
-            holdings_keys[holdings_record['id']] = {
-                "formerId": holdings_record['formerIds'][0],
-                "counter": 0
+            holdings_keys[holdings_record["id"]] = {
+                "formerId": holdings_record["formerIds"][0],
+                "counter": 0,
             }
 
-    for item in items_transformer.items.values():
-        holding = holdings_keys[item['holdingsRecordId']]
-        former_id = holding['formerId']
-        holding['counter'] = holding['counter'] + 1
-        hrid_prefix = former_id[:1] + "i" + former_id[1:]
-        item['hrid'] = f"{hrid_prefix}_{holding['counter']}"
+    items = []
+    with open(items_path) as fo:
+        for line in fo.readlines():
+            item = json.loads(line)
+            holding = holdings_keys[item["holdingsRecordId"]]
+            former_id = holding["formerId"]
+            holding["counter"] = holding["counter"] + 1
+            hrid_prefix = former_id[:1] + "i" + former_id[1:]
+            item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
+            items.append(item)
+
+    with open(items_path, "w+") as write_output:
+        for item in items:
+            write_output.write(f"{json.dumps(item)}\n")
 
 
 def post_folio_items_records(**kwargs):
@@ -65,7 +73,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
     items_stem = kwargs["items_stem"]
 
     item_config = ItemsTransformer.TaskConfiguration(
-        name="bibs-transformer",
+        name="items-transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
@@ -79,11 +87,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         call_number_type_map_file_name="call_number_type_mapping.tsv",
     )
 
-    items_transformer = ItemsTransformer(
-        item_config,
-        library_config,
-        use_logging=False
-    )
+    items_transformer = ItemsTransformer(item_config, library_config, use_logging=False)
 
     setup_data_logging(items_transformer)
 
@@ -93,4 +97,5 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     _add_hrid(
         f"{airflow}/migration/results/folio_holdings_{dag.run_id}_holdings-transformer.json",
-        items_transformer)
+        f"{airflow}/migration/results/folio_items_{dag.run_id}_items-transformer.json",
+    )

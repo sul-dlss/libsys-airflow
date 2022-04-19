@@ -220,7 +220,7 @@ def setup_data_logging(transformer):
 
 
 def _apply_processing_tsv(tsv_path, airflow, column_transforms):
-    df = pd.read_csv(tsv_path, sep="\t")
+    df = pd.read_csv(tsv_path, sep="\t", dtype=object)
     # Performs any transformations to values
     for transform in column_transforms:
         column = transform[0]

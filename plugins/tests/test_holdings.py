@@ -67,9 +67,9 @@ def test_run_holdings_tranformer():
     assert run_holdings_tranformer
 
 
-holdings = [{"id": "abcdedf123345", 
-             "instanceId": "xyzabc-def-ha", 
-             "formerIds": ["a123345"]}]
+holdings = [
+    {"id": "abcdedf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]}
+]
 
 
 class MockHoldings(pydantic.BaseModel):
