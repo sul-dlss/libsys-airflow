@@ -68,7 +68,8 @@ def test_run_holdings_tranformer():
 
 
 holdings = [
-    {"id": "abcdedf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]}
+    {"id": "abcdedf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]},
+    {"id": "exyqdf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]}
 ]
 
 
@@ -91,3 +92,4 @@ def test_add_hrid():
     _add_hrid(transformer)
 
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
+    assert transformer.holdings.values()[1]["hrid"] == "ah123345_2"
