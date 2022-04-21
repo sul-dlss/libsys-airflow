@@ -42,7 +42,7 @@ def archive_artifacts(*args, **kwargs):
 
 def move_marc_files_check_tsv(*args, **kwargs) -> str:
     """Moves MARC files to migration/data/instances, sets XCOM
-    if csv is present"""
+    if tsv is present"""
     task_instance = kwargs["task_instance"]
 
     airflow = kwargs.get("airflow", "/opt/airflow")
@@ -55,11 +55,11 @@ def move_marc_files_check_tsv(*args, **kwargs) -> str:
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
     # Checks for TSV file and sets XCOM marc_only if not present
-    csv_path = pathlib.Path(
+    tsv_path = pathlib.Path(
         f"{airflow}/{source_directory}/{marc_path.stem}.tsv"
     )
     marc_only = True
-    if csv_path.exists():
+    if tsv_path.exists():
         marc_only = False
     task_instance.xcom_push(key="marc_only", value=marc_only)
 
@@ -243,16 +243,16 @@ def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     column_transforms = kwargs.get("column_transforms", [])
 
-    csv_paths = _get_tsv(**kwargs)
+    tsv_paths = _get_tsv(**kwargs)
 
-    path_names = [f"{path.name}.tsv" for path in csv_paths]
+    path_names = [f"{path.name}.tsv" for path in tsv_paths]
 
-    if len(csv_paths) < 1:
+    if len(tsv_paths) < 1:
         raise ValueError(
             "No csv files exist for workflow"
         )
 
-    for path in csv_paths:
+    for path in tsv_paths:
         _apply_processing_tsv(path, airflow, column_transforms)
 
     return path_names
