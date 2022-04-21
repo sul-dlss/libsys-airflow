@@ -9,6 +9,7 @@ from airflow.models import Variable
 from pytest_mock import MockerFixture
 
 from plugins.folio.helpers import (
+    _apply_processing_tsv,
     archive_artifacts,
     move_marc_files_check_tsv,
     post_to_okapi,
@@ -322,3 +323,19 @@ def test_setup_data_logging(mock_logger_file_handler):
     # Removes handler otherwise fails subsequent tests
     file_handler = logging.getLogger().handlers[-1]
     logging.getLogger().removeHandler(file_handler)
+
+
+@pytest.mark.xfail()
+def test_transform_move_tsvs_techstaff(mock_file_system):
+    airflow_path = mock_file_system[0]
+
+    techstaff_tsv = airflow_path / "symphony/green-test.tsv"
+
+    techstaff_tsv.write_text("""BARCODE	TECHSTAFF
+36105010267412  	RECON/i:sv; atf:SAL 05/00 batch; i:reclass hbd20161025
+36105045003279  	"{""TECHSTAFF"":[{""A"":3,""D"":""&#124;z added, i:nr 10/13/2020"",""I"":\"""	"a"",""X"":0}]}"
+36105038776741  	RECON/i:sv
+36105005709295  	RECON/i:sv/i:rmr; tf: sal 1/95, rmr
+36105005719088  	RECON/i:sv/i:rmr; tf: sal 1/95, rmr; MIDSPINE.suppl.""")
+
+    _apply_processing_tsv(techstaff_tsv, airflow_path)
