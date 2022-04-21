@@ -10,11 +10,11 @@ from pytest_mock import MockerFixture
 
 from plugins.folio.helpers import (
     archive_artifacts,
-    move_marc_files_check_csv,
+    move_marc_files_check_tsv,
     post_to_okapi,
     process_marc,
     _move_001_to_035,
-    transform_csv_to_tsv,
+    transform_move_tsvs,
     process_records,
     setup_data_logging,
 )
@@ -74,21 +74,21 @@ def test_move_marc_files(mock_file_system):
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    move_marc_files_check_csv(
+    move_marc_files_check_tsv(
         task_instance=task_instance, airflow=airflow_path, source="symphony"
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
     assert messages["marc_only"]
 
 
-def test_move_csv_files(mock_file_system):
+def test_move_tsv_files(mock_file_system):
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
-    sample_csv = source_dir / "sample.csv"
+    sample_csv = source_dir / "sample.tsv"
     sample_csv.write_text("sample")
 
-    move_marc_files_check_csv(
+    move_marc_files_check_tsv(
         task_instance=task_instance, airflow=airflow_path, source="symphony"
     )  # noqa
     assert messages["marc_only"] is False
@@ -241,29 +241,27 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
-def test_transform_csv_to_tsv(mock_file_system):
+def test_transform_move_tsvs(mock_file_system):
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
     # mock sample csv and tsv
-    sample_csv = source_dir / "sample.csv"
-    sample_csv.write_text("CATKEY, CALL_NUMBER_TYPE")
+    symphony_tsv = source_dir / "sample.tsv"
+    symphony_tsv.write_text(
+        "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  ")
     tsv_directory = airflow_path / "migration/data/items"
     tsv_directory.mkdir(parents=True)
     sample_tsv = tsv_directory / "sample.tsv"
 
-    column_names = ["CATKEY", "CALL_NUMBER_TYPE"]
     column_transforms = [("CATKEY", lambda x: f"a{x}")]
 
-    transform_csv_to_tsv(
+    transform_move_tsvs(
         airflow=airflow_path,
-        marc_stem="sample",
-        column_names=column_names,
         column_transforms=column_transforms,
         source="symphony",
     )
     f = open(sample_tsv, "r")
-    assert f.readlines()[1] == "aCATKEY\t CALL_NUMBER_TYPE\n"
+    assert f.readlines()[1] == "a123456\tLC 12345\t45677\n"
     f.close()
 
 
