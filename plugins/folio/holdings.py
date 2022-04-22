@@ -5,16 +5,27 @@ from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
 
+from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
+
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
 
-def _add_hrid(holdings_transformer: HoldingsCsvTransformer):
+def _add_identifiers(holdings_transformer: HoldingsCsvTransformer):
     # Instance CATKEY
     instance_keys = {}
 
     for record in holdings_transformer.holdings.values():
+        # Adds Determinstic UUID
+        record["id"] = str(
+            FolioUUID(
+                holdings_transformer.mapper.folio_client.okapi_url,
+                FOLIONamespaces.holdings,
+                f"{record['formerIds'][0]}{record['callNumber']}",
+            )
+        )
+
         instance_uuid = record["instanceId"]
         former_id = record["formerIds"][0]
         # Adds an "h" for holdings prefix
@@ -57,6 +68,7 @@ def post_folio_holding_records(**kwargs):
 def run_holdings_tranformer(*args, **kwargs):
     dag = kwargs["dag_run"]
     library_config = kwargs["library_config"]
+
     library_config.iteration_identifier = dag.run_id
 
     holdings_stem = kwargs["holdings_stem"]
@@ -81,8 +93,10 @@ def run_holdings_tranformer(*args, **kwargs):
 
     setup_data_logging(holdings_transformer)
 
+    holdings_transformer.mapper.ignore_legacy_identifier = True
+
     holdings_transformer.do_work()
 
-    _add_hrid(holdings_transformer)
+    _add_identifiers(holdings_transformer)
 
     holdings_transformer.wrap_up()
