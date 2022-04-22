@@ -10,12 +10,22 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
-def _add_hrid(holdings_transformer):
-    mapper = holdings_transformer.mapper
+def _add_hrid(holdings_transformer: HoldingsCsvTransformer):
+    # Instance CATKEY
+    instance_keys = {}
+
     for record in holdings_transformer.holdings.values():
-        num_part = str(mapper.holdings_hrid_counter).zfill(11)
-        record["hrid"] = f"{mapper.holdings_hrid_prefix}{num_part}"
-        mapper.holdings_hrid_counter += 1
+        instance_uuid = record["instanceId"]
+        former_id = record["formerIds"][0]
+        # Adds an "h" for holdings prefix
+        if former_id.startswith("a"):
+            former_id = former_id[:1] + "h" + former_id[1:]
+        if instance_uuid in instance_keys:
+            new_count = instance_keys[instance_uuid] + 1
+        else:
+            new_count = 1
+        instance_keys[instance_uuid] = new_count
+        record["hrid"] = f"{former_id}_{new_count}"
 
 
 def post_folio_holding_records(**kwargs):
@@ -54,7 +64,7 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
         migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="default",
+        hrid_handling="preserve001",
         files=[{"file_name": f"{holdings_stem}.tsv", "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
@@ -76,6 +86,3 @@ def run_holdings_tranformer(*args, **kwargs):
     _add_hrid(holdings_transformer)
 
     holdings_transformer.wrap_up()
-
-    # Manually increment HRID holdings and save
-    holdings_transformer.mapper.store_hrid_settings()

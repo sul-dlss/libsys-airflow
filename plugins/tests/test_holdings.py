@@ -67,7 +67,10 @@ def test_run_holdings_tranformer():
     assert run_holdings_tranformer
 
 
-holdings = [{"id": "abcdedf123345"}]
+holdings = [
+    {"id": "abcdedf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]},
+    {"id": "exyqdf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]}
+]
 
 
 class MockHoldings(pydantic.BaseModel):
@@ -88,4 +91,5 @@ def test_add_hrid():
     transformer = MockHoldingsTransformer()
     _add_hrid(transformer)
 
-    assert transformer.holdings.values()[0]["hrid"] == "hold00000000001"
+    assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
+    assert transformer.holdings.values()[1]["hrid"] == "ah123345_2"

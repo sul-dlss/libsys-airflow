@@ -8,6 +8,36 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _add_hrid(holdings_path: str, items_path: str):
+    """Adds an HRID based on Holdings formerIds"""
+
+    # Initializes Holdings lookup and counter
+    holdings_keys = {}
+
+    with open(holdings_path) as fo:
+        for line in fo.readlines():
+            holdings_record = json.loads(line)
+            holdings_keys[holdings_record["id"]] = {
+                "formerId": holdings_record["formerIds"][0],
+                "counter": 0,
+            }
+
+    items = []
+    with open(items_path) as fo:
+        for line in fo.readlines():
+            item = json.loads(line)
+            holding = holdings_keys[item["holdingsRecordId"]]
+            former_id = holding["formerId"]
+            holding["counter"] = holding["counter"] + 1
+            hrid_prefix = former_id[:1] + "i" + former_id[1:]
+            item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
+            items.append(item)
+
+    with open(items_path, "w+") as write_output:
+        for item in items:
+            write_output.write(f"{json.dumps(item)}\n")
+
+
 def post_folio_items_records(**kwargs):
     """Creates/overlays Items records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -34,16 +64,18 @@ def post_folio_items_records(**kwargs):
 
 def run_items_transformer(*args, **kwargs) -> bool:
     """Runs item tranformer"""
+    airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
+
     library_config = kwargs["library_config"]
     library_config.iteration_identifier = dag.run_id
 
     items_stem = kwargs["items_stem"]
 
     item_config = ItemsTransformer.TaskConfiguration(
-        name="bibs-transformer",
+        name="items-transformer",
         migration_task_type="ItemsTransformer",
-        hrid_handling="default",
+        hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
         items_mapping_file_name="item_mapping.json",
         location_map_file_name="locations.tsv",
@@ -55,11 +87,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         call_number_type_map_file_name="call_number_type_mapping.tsv",
     )
 
-    items_transformer = ItemsTransformer(
-        item_config,
-        library_config,
-        use_logging=False
-    )
+    items_transformer = ItemsTransformer(item_config, library_config, use_logging=False)
 
     setup_data_logging(items_transformer)
 
@@ -67,8 +95,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     items_transformer.wrap_up()
 
-    # Manually set item HRID setting
-    items_transformer.mapper.hrid_settings["items"]["startNumber"] += (
-        items_transformer.total_records + 1
+    _add_hrid(
+        f"{airflow}/migration/results/folio_holdings_{dag.run_id}_holdings-transformer.json",
+        f"{airflow}/migration/results/folio_items_{dag.run_id}_items-transformer.json",
     )
-    items_transformer.mapper.store_hrid_settings()

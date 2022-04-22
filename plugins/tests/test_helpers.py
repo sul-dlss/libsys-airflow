@@ -253,7 +253,8 @@ def test_transform_move_tsvs(mock_file_system):
     tsv_directory.mkdir(parents=True)
     sample_tsv = tsv_directory / "sample.tsv"
 
-    column_transforms = [("CATKEY", lambda x: f"a{x}")]
+    column_transforms = [("CATKEY", lambda x: f"a{x}"),
+                         ("BARCODE", lambda x: x.strip())]
 
     transform_move_tsvs(
         airflow=airflow_path,
