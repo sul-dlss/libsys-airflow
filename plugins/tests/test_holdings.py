@@ -8,7 +8,7 @@ from airflow.models import Variable
 from plugins.folio.holdings import (
     post_folio_holding_records,
     run_holdings_tranformer,
-    _add_hrid,
+    _add_identifiers,
 )
 
 
@@ -68,8 +68,18 @@ def test_run_holdings_tranformer():
 
 
 holdings = [
-    {"id": "abcdedf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]},
-    {"id": "exyqdf123345", "instanceId": "xyzabc-def-ha", "formerIds": ["a123345"]}
+    {
+        "id": "abcdedf123345",
+        "instanceId": "xyzabc-def-ha",
+        "formerIds": ["a123345"],
+        "callNumber": "A1234",
+    },
+    {
+        "id": "exyqdf123345",
+        "instanceId": "xyzabc-def-ha",
+        "formerIds": ["a123345"],
+        "callNumber": "B1234",
+    }
 ]
 
 
@@ -77,9 +87,14 @@ class MockHoldings(pydantic.BaseModel):
     values = lambda *args, **kwargs: holdings  # noqa
 
 
+class MockFOLIOClient(pydantic.BaseModel):
+    okapi_url: str = "https://okapi.edu/"
+
+
 class MockMapper(pydantic.BaseModel):
-    holdings_hrid_counter: int = 1
-    holdings_hrid_prefix: str = "hold"
+    # holdings_hrid_counter: int = 1
+    # holdings_hrid_prefix: str = "hold"
+    folio_client: MockFOLIOClient = MockFOLIOClient()
 
 
 class MockHoldingsTransformer(pydantic.BaseModel):
@@ -87,9 +102,14 @@ class MockHoldingsTransformer(pydantic.BaseModel):
     mapper: MockMapper = MockMapper()
 
 
-def test_add_hrid():
+def test_add_identifiers():
     transformer = MockHoldingsTransformer()
-    _add_hrid(transformer)
+    _add_identifiers(transformer)
 
+    # Test UUIDS
+    assert transformer.holdings.values()[0]["id"] == "9c2f7fbb-0948-59c6-8c93-0f5997aee99e"
+    assert transformer.holdings.values()[1]["id"] == "5a8d406d-ce0e-577d-955a-295fd33ed38e"
+
+    # Test HRIDs
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
     assert transformer.holdings.values()[1]["hrid"] == "ah123345_2"

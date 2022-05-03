@@ -241,6 +241,13 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
+def test_missing_001_to_034(mock_marc_record):
+    record = mock_marc_record
+    record.remove_fields('001')
+    _move_001_to_035(record)
+    assert record.get_fields("035") == []
+
+
 def test_transform_move_tsvs(mock_file_system):
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
