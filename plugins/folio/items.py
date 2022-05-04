@@ -76,7 +76,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         name="items-transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
-        files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
+        files=[{"file_name": f"{items_stem}.notes.tsv", "suppress": False}],
         items_mapping_file_name="item_mapping.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",

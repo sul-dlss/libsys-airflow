@@ -3,6 +3,7 @@ import logging
 import pathlib
 import shutil
 
+import numpy as np
 import pandas as pd
 import pymarc
 import requests
@@ -219,40 +220,79 @@ def setup_data_logging(transformer):
     logging.getLogger().addHandler(data_issue_file_handler)
 
 
-def _apply_processing_tsv(tsv_path, airflow, column_transforms):
-    df = pd.read_csv(tsv_path, sep="\t", dtype=object)
-    # Performs any transformations to values
+def _apply_transforms(df, column_transforms):
     for transform in column_transforms:
         column = transform[0]
         if column in df:
             function = transform[1]
             df[column] = df[column].apply(function)
-    new_tsv_path = pathlib.Path(f"{airflow}/migration/data/items/{tsv_path.name}")
-    df.to_csv(new_tsv_path, sep="\t", index=False)
-    tsv_path.unlink()
 
 
-def _get_tsv(**kwargs):
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    source_directory = kwargs["source"]
+def _merge_notes_into_base(base_df, note_df):
+    def _populate_column(barcode):
+        matched_series = note_df.loc[note_df["BARCODE"] == barcode]
+        if len(matched_series) > 0:
+            return matched_series[note_type].values[0]
+        else:
+            return np.nan
 
-    return [path for path in pathlib.Path(f"{airflow}/{source_directory}/").glob("*.tsv")]
+    # Extract name of non-barcode column
+    note_columns = list(note_df.columns)
+    note_columns.pop(note_columns.index("BARCODE"))
+    note_type = note_columns[0]
+    base_df[note_type] = base_df["BARCODE"].apply(_populate_column)
+    return base_df
+
+
+def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
+    items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
+
+    tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
+    _apply_transforms(tsv_base_df, column_transforms)
+    new_tsv_base_path = items_dir / tsv_base.name
+
+    tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
+    tsv_base.unlink()
+
+    # Iterate on tsv notes and merge into the tsv base DF based on barcode
+    for tsv_notes_path in tsv_notes:
+        note_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
+        _apply_transforms(note_df, column_transforms)
+        tsv_base_df = _merge_notes_into_base(tsv_base_df, note_df)
+        logging.info(f"Merged {len(note_df)} notes into items tsv")
+        tsv_notes_path.unlink()
+
+    tsv_notes_name_parts = tsv_base.name.split(".")
+    tsv_notes_name_parts.insert(-1, "notes")
+
+    tsv_notes_name = ".".join(tsv_notes_name_parts)
+
+    new_tsv_notes_path = pathlib.Path(f"{airflow}/migration/data/items/{tsv_notes_name}")
+    tsv_base_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
+
+    return new_tsv_notes_path.name
+
+
+def _get_tsv_notes(tsv_stem, airflow, source_directory):
+
+    return [path for path in pathlib.Path(f"{airflow}/{source_directory}/").glob(f"{tsv_stem}.*.tsv")]
 
 
 def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     column_transforms = kwargs.get("column_transforms", [])
+    tsv_stem = kwargs["tsv_stem"]
+    source_directory = kwargs["source"]
 
-    tsv_paths = _get_tsv(**kwargs)
+    tsv_base = pathlib.Path(f"{airflow}/{source_directory}/{tsv_stem}.tsv")
 
-    path_names = [f"{path.name}.tsv" for path in tsv_paths]
-
-    if len(tsv_paths) < 1:
+    if not tsv_base.exists():
         raise ValueError(
-            "No csv files exist for workflow"
+            f"{tsv_base} does not exist for workflow"
         )
 
-    for path in tsv_paths:
-        _apply_processing_tsv(path, airflow, column_transforms)
+    tsv_notes = _get_tsv_notes(tsv_stem, airflow, source_directory)
 
-    return path_names
+    notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms)
+
+    return [tsv_base.name, notes_path_name]

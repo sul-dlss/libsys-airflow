@@ -135,6 +135,7 @@ with DAG(
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip()),
                 ],
+                "tsv_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
                 "source": "symphony",
             },
         )
