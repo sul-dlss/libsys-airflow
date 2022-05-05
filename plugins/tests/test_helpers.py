@@ -1,5 +1,7 @@
 import logging
 
+import numpy as np
+import pandas as pd
 import pytest
 import pydantic
 import requests
@@ -13,6 +15,7 @@ from plugins.folio.helpers import (
     move_marc_files_check_tsv,
     post_to_okapi,
     process_marc,
+    _merge_notes_into_base,
     _move_001_to_035,
     transform_move_tsvs,
     process_records,
@@ -252,13 +255,20 @@ def test_transform_move_tsvs(mock_file_system):
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    # mock sample csv and tsv
+    # mock sample tsv
     symphony_tsv = source_dir / "sample.tsv"
     symphony_tsv.write_text(
         "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  ")
     tsv_directory = airflow_path / "migration/data/items"
     tsv_directory.mkdir(parents=True)
     sample_tsv = tsv_directory / "sample.tsv"
+    sample_notes_tsv = tsv_directory / "sample.notes.tsv"
+
+    # mock sample CIRCNOTE tsv
+    symphony_circnotes_tsv = source_dir / "sample.circnote.tsv"
+    symphony_circnotes_tsv.write_text(
+        "BARCODE\tCIRCNOTE\n45677 \tpencil marks 7/28/18cc"
+    )
 
     column_transforms = [("CATKEY", lambda x: f"a{x}"),
                          ("BARCODE", lambda x: x.strip())]
@@ -267,10 +277,46 @@ def test_transform_move_tsvs(mock_file_system):
         airflow=airflow_path,
         column_transforms=column_transforms,
         source="symphony",
+        tsv_stem="sample"
     )
+
     f = open(sample_tsv, "r")
     assert f.readlines()[1] == "a123456\tLC 12345\t45677\n"
     f.close()
+
+    f_notes = open(sample_notes_tsv, "r")
+    assert f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tpencil marks 7/28/18cc\n"
+    f_notes.close()
+
+
+def test_transform_move_tsvs_doesnt_exit(mock_file_system):
+    airflow_path = mock_file_system[0]
+
+    with pytest.raises(ValueError, match="sample.tsv does not exist for workflow"):
+        transform_move_tsvs(
+            airflow=airflow_path,
+            source="symphony",
+            tsv_stem="sample"
+        )
+
+
+def test_merge_notes_into_base():
+    base_df = pd.DataFrame([{"CATKEY": "a1442278",
+                             "BARCODE": "36105033974929",
+                             "BASE_CALL_NUMBER": "PQ6407 .A1 1980B"},
+                            {"CATKEY": "a13776856",
+                             "BARCODE": "36105231406765",
+                             "BASE_CALL_NUMBER": "KGF3055 .M67 2019"}])
+    notes_df = pd.DataFrame([{"BARCODE": "36105033974929",
+                              "CIRCNOTE": "pen marks 6/5/19cc"}])
+    base_df = _merge_notes_into_base(base_df, notes_df)
+    assert "CIRCNOTE" in base_df.columns
+
+    note_row = base_df.loc[base_df["BARCODE"] == "36105033974929"]
+    assert note_row["CIRCNOTE"].item() == "pen marks 6/5/19cc"
+
+    no_note_row = base_df.loc[base_df["BARCODE"] == "36105231406765"]
+    assert no_note_row["CIRCNOTE"].item() is np.nan
 
 
 def test_process_records(mock_dag_run, mock_file_system):

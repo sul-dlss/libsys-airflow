@@ -226,9 +226,10 @@ def _apply_transforms(df, column_transforms):
         if column in df:
             function = transform[1]
             df[column] = df[column].apply(function)
+    return df
 
 
-def _merge_notes_into_base(base_df, note_df):
+def _merge_notes_into_base(base_df: pd.DataFrame, note_df: pd.DataFrame):
     def _populate_column(barcode):
         matched_series = note_df.loc[note_df["BARCODE"] == barcode]
         if len(matched_series) > 0:
@@ -248,7 +249,7 @@ def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
     items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
-    _apply_transforms(tsv_base_df, column_transforms)
+    tsv_base_df = _apply_transforms(tsv_base_df, column_transforms)
     new_tsv_base_path = items_dir / tsv_base.name
 
     tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
@@ -257,7 +258,7 @@ def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
     # Iterate on tsv notes and merge into the tsv base DF based on barcode
     for tsv_notes_path in tsv_notes:
         note_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
-        _apply_transforms(note_df, column_transforms)
+        note_df = _apply_transforms(note_df, column_transforms)
         tsv_base_df = _merge_notes_into_base(tsv_base_df, note_df)
         logging.info(f"Merged {len(note_df)} notes into items tsv")
         tsv_notes_path.unlink()
