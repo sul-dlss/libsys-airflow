@@ -12,9 +12,9 @@ def post_marc_to_srs(*args, **kwargs):
         name="marc-to-srs-batch-poster",
         migration_task_type="BatchPoster",
         object_type="SRS",
-        file={
+        files=[{
             "file_name": f"folio_srs_instances_{dag.run_id}_bibs-transformer.json"  # noqa
-        },
+        }],
         batch_size=kwargs.get("MAX_ENTITIES", 1000),
     )
 
