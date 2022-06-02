@@ -44,7 +44,7 @@ sul_config = LibraryConfiguration(
     library_name="Stanford University Libraries",
     base_folder="/opt/airflow/migration",
     log_level_debug=True,
-    folio_release="juniper",
+    folio_release="lotus",
     iteration_identifier="",
 )
 
@@ -135,6 +135,7 @@ with DAG(
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip()),
                 ],
+                "tsv_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
                 "source": "symphony",
             },
         )

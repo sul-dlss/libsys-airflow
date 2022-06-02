@@ -2,13 +2,14 @@ import json
 import logging
 
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
+from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
 
-def _add_hrid(holdings_path: str, items_path: str):
+def _add_hrid(okapi_url: str, holdings_path: str, items_path: str):
     """Adds an HRID based on Holdings formerIds"""
 
     # Initializes Holdings lookup and counter
@@ -31,6 +32,17 @@ def _add_hrid(holdings_path: str, items_path: str):
             holding["counter"] = holding["counter"] + 1
             hrid_prefix = former_id[:1] + "i" + former_id[1:]
             item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
+            if "barcode" in item:
+                id_seed = item["barcode"]
+            else:
+                id_seed = item["hrid"]
+            item["id"] = str(
+                FolioUUID(
+                    okapi_url,
+                    FOLIONamespaces.items,
+                    id_seed,
+                )
+            )
             items.append(item)
 
     with open(items_path, "w+") as write_output:
@@ -76,7 +88,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         name="items-transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
-        files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
+        files=[{"file_name": f"{items_stem}.notes.tsv", "suppress": False}],
         items_mapping_file_name="item_mapping.json",
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
@@ -96,6 +108,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
     items_transformer.wrap_up()
 
     _add_hrid(
+        items_transformer.folio_client.okapi_url,
         f"{airflow}/migration/results/folio_holdings_{dag.run_id}_holdings-transformer.json",
         f"{airflow}/migration/results/folio_items_{dag.run_id}_items-transformer.json",
     )

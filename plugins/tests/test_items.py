@@ -35,9 +35,12 @@ def test_add_hrid(tmp_path):  # noqa
 
     items_path.write_text(f"{json.dumps(items_rec)}\n")
 
-    _add_hrid(str(holdings_path), str(items_path))
+    _add_hrid("https://okapi-endpoint.edu",
+              str(holdings_path),
+              str(items_path))
 
     with items_path.open() as items_fo:
         new_items_rec = json.loads(items_fo.readline())
 
     assert(new_items_rec['hrid']) == "ai23456_1"
+    assert(new_items_rec['id']) == "f40ad979-32e8-5f54-bb3d-698c0f611a54"
