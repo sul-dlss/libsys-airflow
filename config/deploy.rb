@@ -66,9 +66,9 @@ namespace :airflow do
   end
 
   desc 'send docker command'
-  task :cmd, :command do |task, args|
+  task :docker, :command do |task, args|
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && #{args[:command]}"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker #{args[:command]}"
     end
   end
 
