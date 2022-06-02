@@ -20,7 +20,7 @@ set :deploy_to, "/home/libsys/#{fetch(:application)}"
 set :linked_dirs, %w[config]
 
 # Default value for keep_releases is 5
-set :keep_releases, 3
+set :keep_releases, 2
 
 before 'deploy:cleanup', 'fix_permissions'
 
@@ -33,19 +33,39 @@ task :fix_permissions do
   end
 end
 
-task :deploy do
-  on roles(:app) do
-    invoke 'airflow:stop'
-    execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt"
-    execute "cp #{release_path}/config/.env #{release_path}/."
-    execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
-    execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
-    execute "cd #{release_path}/migration && ./create_folder_structure.sh"
-    invoke 'airflow:start'
+namespace :deploy do
+  desc 'deploy airflow when an instance is not currently running'
+  task :start do
+    on roles(:app) do
+      invoke 'airflow:install'
+      invoke 'airflow:build'
+      invoke 'airflow:init'
+      invoke 'airflow:start'
+    end
+  end
+
+  desc 'deploy airflow when an instance is currently running'
+  task :restart do
+    on roles(:app) do
+      invoke 'airflow:stop_release'
+      invoke 'airflow:install'
+      invoke 'airflow:start'
+    end
   end
 end
 
 namespace :airflow do
+  desc 'install airflow dependencies'
+  task :install do
+    on roles(:app) do
+      execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt"
+      execute "cp #{release_path}/config/.env #{release_path}/."
+      execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
+      execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
+      execute "cd #{release_path}/migration && ./create_folder_structure.sh"
+    end
+  end
+
   desc 'show running docker processes'
   task :ps do
     on roles(:app) do
@@ -93,6 +113,15 @@ namespace :airflow do
     on roles(:app) do
       invoke 'airflow:stop'
       invoke 'airflow:start'
+    end
+  end
+
+  desc 'stop old release and remove all old running docker containers'
+  task :stop_release do
+    on roles(:app) do
+      execute "docker image prune -f"
+      execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker-compose stop"
+      execute "docker rm $(docker ps --filter status=exited -q)"
     end
   end
 end
