@@ -10,6 +10,7 @@ USER airflow
 
 COPY requirements.txt .
 
+RUN ln -s /sirsi_prod symphony
 RUN pip install -r requirements.txt
 # Needed to fix an import error see https://stackoverflow.com/questions/47884709/python-importerror-no-module-named-pluggy
 RUN pip install -U pytest-metadata

@@ -35,11 +35,9 @@ end
 
 namespace :deploy do
   desc 'deploy airflow when an instance is not currently running'
-  task :start do
+  task :install do
     on roles(:app) do
       invoke 'airflow:install'
-      invoke 'airflow:build'
-      invoke 'airflow:init'
       invoke 'airflow:start'
     end
   end
@@ -76,7 +74,7 @@ namespace :airflow do
   desc 'run docker-compose build for airflow'
   task :build do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose build"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose build --no-cache"
     end
   end
 
@@ -97,6 +95,8 @@ namespace :airflow do
   desc 'start airflow'
   task :start do
     on roles(:app) do
+      invoke 'airflow:build'
+      invoke 'airflow:init'
       execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose up -d"
     end
   end
