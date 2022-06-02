@@ -39,22 +39,25 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ### Tasks
 1. List all the airflow tasks using `cap -AT airflow`
 ```
-cap airflow:build      # run docker-compose build for airflow
-cap airflow:init       # run docker-compose init for airflow
-cap airflow:ps         # show running docker processes
-cap airflow:restart    # restart airflow
-cap airflow:start      # start airflow
-cap airflow:stop       # stop and remove all running docker containers
-cap airflow:webserver  # restart webserver
+cap airflow:build          # run docker-compose build for airflow
+cap airflow:init           # run docker-compose init for airflow
+cap airflow:ps             # show running docker processes
+cap airflow:restart        # restart airflow
+cap airflow:start          # start airflow
+cap airflow:stop           # stop and remove all running docker containers
+cap airflow:stop_release   # stop old release and remove all old running docker containers
+cap airflow:webserver      # restart webserver
 ```
 
 ### Do the first time you bring up Libsys-Airflow:
-1. `cap {stage} airflow:deploy`
+1. `cap ${stage} deploy deploy:start`
 1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
-1. `cap {stage} airflow:build`
-1. `cap {stage} airflow:init`
-1. `cap {stage} airflow:start`
 1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps.
+
+## For subsequent deploys
+`cap ${stage} deploy deploy:restart`
+
+This will stop and remove the docker images for the previous release and start up a new one.
 
 ### For Aeon and Lobbytrack API calls
 1. In the Airflow UI under Admin > Variables, import the `aeon-variables.json` and the `lobbytrack-variables.json` files from [shared_configs](https://github.com/sul-dlss/shared_configs).
