@@ -35,11 +35,9 @@ end
 
 namespace :deploy do
   desc 'deploy airflow when an instance is not currently running'
-  task :start do
+  task :install do
     on roles(:app) do
       invoke 'airflow:install'
-      invoke 'airflow:build'
-      invoke 'airflow:init'
       invoke 'airflow:start'
     end
   end
@@ -63,6 +61,14 @@ namespace :airflow do
       execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
       execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
       execute "cd #{release_path}/migration && ./create_folder_structure.sh"
+      execute "cd #{release_path} && sudo ln -s /sirsi_prod symphony"
+    end
+  end
+
+  desc 'send docker command'
+  task :docker, :command do |task, args|
+    on roles(:app) do
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker #{args[:command]}"
     end
   end
 
@@ -97,6 +103,8 @@ namespace :airflow do
   desc 'start airflow'
   task :start do
     on roles(:app) do
+      invoke 'airflow:build'
+      invoke 'airflow:init'
       execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose up -d"
     end
   end
