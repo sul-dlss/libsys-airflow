@@ -1,6 +1,4 @@
-import json
 import logging
-import pathlib
 
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
@@ -32,26 +30,3 @@ def post_marc_to_srs(*args, **kwargs):
     srs_batch_poster.wrap_up()
 
     logging.info("Finished posting MARC json to SRS")
-
-
-def replace_srs_record_type(*args, **kwargs):
-    dag = kwargs["dag_run"]
-
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    airflow_path = pathlib.Path(airflow)
-
-    srs_file = (
-        airflow_path
-        / f"migration/results/folio_srs_instances_{dag.run_id}_bibs-transformer.json"  # noqa
-    )
-
-    marc_recs = []
-    with open(srs_file) as fo:
-        for row in fo.readlines():
-            srs_marc = json.loads(row)
-            srs_marc["recordType"] = "MARC"
-            marc_recs.append(srs_marc)
-
-    with open(srs_file, "w+") as fo:
-        for row in marc_recs:
-            fo.write(f"{json.dumps(row)}\n")

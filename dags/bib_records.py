@@ -32,7 +32,7 @@ from plugins.folio.instances import post_folio_instance_records, run_bibs_transf
 
 from plugins.folio.items import run_items_transformer, post_folio_items_records
 
-from plugins.folio.marc import post_marc_to_srs, replace_srs_record_type
+from plugins.folio.marc import post_marc_to_srs
 
 logger = logging.getLogger(__name__)
 
@@ -226,11 +226,6 @@ with DAG(
             },
         )
 
-        update_record_type_srs = PythonOperator(
-            task_id="update-record-type-srs",
-            python_callable=replace_srs_record_type,
-        )
-
         finish_conversion = DummyOperator(
             task_id="finished-conversion",
             trigger_rule="none_failed_or_skipped",
@@ -244,7 +239,6 @@ with DAG(
         )
         (
             convert_marc_to_folio_instances
-            >> update_record_type_srs
             >> finish_conversion
         )  # noqa
         marc_only_convert_check >> [
