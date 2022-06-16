@@ -23,8 +23,7 @@ from plugins.folio.helpers import (
     process_records,
     transform_move_tsvs,
 )
-
-from plugins.folio.holdings import run_holdings_tranformer, post_folio_holding_records
+from plugins.folio.holdings import electronic_holdings, run_holdings_tranformer, post_folio_holding_records
 
 from plugins.folio.login import folio_login
 
@@ -185,6 +184,16 @@ with DAG(
             },
         )
 
+        generate_electronic_holdings = PythonOperator(
+            task_id="generate-electronic-holdings",
+            python_callable=electronic_holdings,
+            op_kwargs={
+                "library_config": sul_config,
+                "electronic_holdings_id": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
+                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
+            },
+        )
+
         convert_tsv_to_folio_items = PythonOperator(
             task_id="convert_tsv_to_folio_items",
             python_callable=run_items_transformer,
@@ -242,6 +251,7 @@ with DAG(
         ]  # noqa
         (
             convert_tsv_to_folio_holdings
+            >> generate_electronic_holdings
             >> convert_holdings_valid_json
             >> finish_conversion
         )
