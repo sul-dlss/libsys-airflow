@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import re
 import shutil
 
 import numpy as np
@@ -69,32 +70,86 @@ def move_marc_files_check_tsv(*args, **kwargs) -> str:
     return marc_path.stem
 
 
-def _move_001_to_035(record: pymarc.Record):
+def _move_001_to_035(record: pymarc.Record) -> str:
     all001 = record.get_fields("001")
-    if len(all001) < 2:
-        return
-    for field001 in all001[1:]:
-        field035 = pymarc.Field(
-            tag="035", indicators=["", ""], subfields=["a", field001.data]
-        )
-        record.add_field(field035)
-        record.remove_field(field001)
+    catkey = all001[0].data
 
+    if len(all001) > 1:
+        for field001 in all001[1:]:
+            field035 = pymarc.Field(
+                tag="035", indicators=["", ""], subfields=["a", field001.data]
+            )
+            record.add_field(field035)
+            record.remove_field(field001)
+
+    return catkey
+
+def _electronic_access_relationship(indicator2: str):
+    label = "No information provided"
+    if indicator2.startswith("0"):
+        label = "Resource"
+    if indicator2.startswith("1"):
+        label = "Version of resource"
+    if indicator2.startswith("2"):
+        label = "Related resource"
+    if indicator2.startswith("8"):
+        label = "No display constant generated"
+    return label
+
+vendor_id_re = re.compile(r"\w{2,2}4")
+
+def _extract_856s(catkey: str, fields: list) -> list:
+    properties_names = ["CATKEY", "LOCATION", "LINK_TEXT", "MAT_SPEC", "PUBLIC_NOTE", "RELATIONSHIP", "URI", "VENDOR_CODE", "NOTE"]
+    output = []
+    for field856 in fields:
+        logger.info(f"{field856}")
+        row = {}
+        for field in properties_names:
+            row[field] = None
+        row["CATKEY"] = catkey
+        row["URI"] = "".join(field856.get_subfields('u'))
+        material_type = field856.get_subfields('3')
+        if len(material_type) > 0:
+            row["MAT_SPEC"] = " ".join(material_type)
+        if (link_text := field856.get_subfields("y")):
+            row["LINK_TEXT"] = " ".join(link_text)
+        if (public_note := field856.get_subfields('z')):
+            row["PUBLIC_NOTE"] = " ".join(public_note)
+        if (all_x_subfields := field856.get_subfields("x")):
+            # Checks second to last x for vendor code
+            if len(all_x_subfields) >= 2 and vendor_id_re.search(all_x_subfields[-2]):
+                row["VENDOR_CODE"] = all_x_subfields.pop(-2)
+            # Adds remaining x subfield values to note
+            row["NOTE"] = "|".join(all_x_subfields)
+        row["RELATIONSHIP"] = _electronic_access_relationship(field856.indicator2)
+        output.append(row)
+    return output
 
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
 
-    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
+    marc_path = pathlib.Path(
+        f"{airflow}/migration/data/instances/{marc_stem}.mrc"
+    )
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
     marc_records = []
-
+    electronic_holdings = []
     for record in marc_reader:
-        _move_001_to_035(record)
+        catkey = _move_001_to_035(record)
+        electronic_holdings.extend(_extract_856s(catkey, record.get_fields('856')))
         marc_records.append(record)
         count = len(marc_records)
-        if not count % 10000:
+        if not count % 10_000:
             logger.info(f"Processed {count} MARC records")
+
+    electronic_holdings_df = pd.DataFrame(electronic_holdings)
+    electronic_holdings_df.to_csv(
+        f"{airflow}/migration/data/items/{marc_stem}.electronic.tsv",
+        sep="\t",
+        index=False
+    )
 
     with open(marc_path.absolute(), "wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
