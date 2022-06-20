@@ -131,7 +131,7 @@ with DAG(
             op_kwargs={
                 "column_transforms": [
                     # Adds a prefix to match bib 001
-                    ("CATKEY", lambda x: f"a{x}"),
+                    ("CATKEY", lambda x: x if x.startswith("a") else f"a{x}"),
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip()),
                 ],
