@@ -17,14 +17,6 @@ def _add_identifiers(holdings_transformer: HoldingsCsvTransformer):
     instance_keys = {}
 
     for record in holdings_transformer.holdings.values():
-        # Adds Determinstic UUID
-        record["id"] = str(
-            FolioUUID(
-                holdings_transformer.mapper.folio_client.okapi_url,
-                FOLIONamespaces.holdings,
-                f"{record['formerIds'][0]}{record['callNumber']}",
-            )
-        )
 
         instance_uuid = record["instanceId"]
         former_id = record["formerIds"][0]
@@ -37,6 +29,15 @@ def _add_identifiers(holdings_transformer: HoldingsCsvTransformer):
             new_count = 1
         instance_keys[instance_uuid] = new_count
         record["hrid"] = f"{former_id}_{new_count}"
+
+        # Adds Determinstic UUID based on CATKEY and HRID
+        record["id"] = str(
+            FolioUUID(
+                holdings_transformer.mapper.folio_client.okapi_url,
+                FOLIONamespaces.holdings,
+                f"{record['formerIds'][0]}{record['hrid']}",
+            )
+        )
 
 
 def post_folio_holding_records(**kwargs):
