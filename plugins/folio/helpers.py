@@ -27,7 +27,7 @@ def archive_artifacts(*args, **kwargs):
     airflow_results = airflow_path / "migration/results"
     archive_directory = airflow_path / "migration/archive"
 
-    for tmp_file in tmp_path.glob('*.json'):
+    for tmp_file in tmp_path.glob("*.json"):
         try:
             tmp_file.unlink()
         except OSError as err:
@@ -49,24 +49,18 @@ def move_marc_files_check_tsv(*args, **kwargs) -> str:
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
 
-    marc_path = next(
-        pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc")
-    )
+    marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
     # Checks for TSV file and sets XCOM marc_only if not present
-    tsv_path = pathlib.Path(
-        f"{airflow}/{source_directory}/{marc_path.stem}.tsv"
-    )
+    tsv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.tsv")
     marc_only = True
     if tsv_path.exists():
         marc_only = False
     task_instance.xcom_push(key="marc_only", value=marc_only)
 
-    marc_target = pathlib.Path(
-        f"{airflow}/migration/data/instances/{marc_path.name}"
-    )
+    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
 
     return marc_path.stem
@@ -87,9 +81,7 @@ def _move_001_to_035(record: pymarc.Record):
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
 
-    marc_path = pathlib.Path(
-        f"/opt/airflow/migration/data/instances/{marc_stem}.mrc"
-    )
+    marc_path = pathlib.Path(f"/opt/airflow/migration/data/instances/{marc_stem}.mrc")
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
     marc_records = []
@@ -124,7 +116,7 @@ def _save_error_record_ids(**kwargs):
         / f"errors-{record_base}-{error_code}-{dag.run_id}.json"
     )
 
-    with error_filepath.open('a') as error_file:
+    with error_filepath.open("a") as error_file:
         for rec in records:
             error_file.write(json.dumps(rec))
             error_file.write("\n")
@@ -163,10 +155,7 @@ def post_to_okapi(**kwargs) -> bool:
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
-        _save_error_record_ids(
-            error_code=new_record_result.status_code,
-            **kwargs
-        )
+        _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
 
 def process_records(*args, **kwargs) -> list:
@@ -193,9 +182,10 @@ def process_records(*args, **kwargs) -> list:
         start = i * shard_size
         end = int(start + shard_size)
         if end >= len(records):
-            end = None
-        logger.error(f"Start {start} End {end}")
-        with open(f"{tmp}/{out_filename}-{i}.json", "w+") as fo:
+            end = len(records)
+        tmp_out_path = f"{tmp}/{out_filename}-{i}.json"
+        logger.info(f"Start {start} End {end} for {tmp_out_path}")
+        with open(tmp_out_path, "w+") as fo:
             json.dump(records[start:end], fo)
 
     return len(records)
@@ -268,7 +258,9 @@ def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
 
     tsv_notes_name = ".".join(tsv_notes_name_parts)
 
-    new_tsv_notes_path = pathlib.Path(f"{airflow}/migration/data/items/{tsv_notes_name}")
+    new_tsv_notes_path = pathlib.Path(
+        f"{airflow}/migration/data/items/{tsv_notes_name}"
+    )
     tsv_base_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
 
     return new_tsv_notes_path.name
@@ -276,7 +268,12 @@ def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
 
 def _get_tsv_notes(tsv_stem, airflow, source_directory):
 
-    return [path for path in pathlib.Path(f"{airflow}/{source_directory}/").glob(f"{tsv_stem}.*.tsv")]
+    return [
+        path
+        for path in pathlib.Path(f"{airflow}/{source_directory}/").glob(
+            f"{tsv_stem}.*.tsv"
+        )
+    ]
 
 
 def transform_move_tsvs(*args, **kwargs):
@@ -288,9 +285,7 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_base = pathlib.Path(f"{airflow}/{source_directory}/{tsv_stem}.tsv")
 
     if not tsv_base.exists():
-        raise ValueError(
-            f"{tsv_base} does not exist for workflow"
-        )
+        raise ValueError(f"{tsv_base} does not exist for workflow")
 
     tsv_notes = _get_tsv_notes(tsv_stem, airflow, source_directory)
 
