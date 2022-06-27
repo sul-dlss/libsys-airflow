@@ -107,8 +107,8 @@ def test_add_identifiers():
     _add_identifiers(transformer)
 
     # Test UUIDS
-    assert transformer.holdings.values()[0]["id"] == "9c2f7fbb-0948-59c6-8c93-0f5997aee99e"
-    assert transformer.holdings.values()[1]["id"] == "5a8d406d-ce0e-577d-955a-295fd33ed38e"
+    assert transformer.holdings.values()[0]["id"] == "4a50409a-65de-5581-bfa1-153bc56f57ca"
+    assert transformer.holdings.values()[1]["id"] == "0ed484c4-5c2d-5a73-b46d-02b85a56cc3d"
 
     # Test HRIDs
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
