@@ -22,6 +22,7 @@ from plugins.folio.helpers import (
     setup_data_logging,
 )
 
+from plugins.tests.mocks import mock_file_system  # noqa
 
 # Mock xcom messages dict
 messages = {}
@@ -38,41 +39,7 @@ class MockTaskInstance(pydantic.BaseModel):
     xcom_push = mock_xcom_push
 
 
-@pytest.fixture
-def mock_file_system(tmp_path):
-    airflow_path = tmp_path / "opt/airflow/"
-
-    # Mock source and target dirs
-    source_dir = airflow_path / "symphony"
-    source_dir.mkdir(parents=True)
-
-    sample_marc = source_dir / "sample.mrc"
-    sample_marc.write_text("sample")
-
-    target_dir = airflow_path / "migration/data/instances/"
-    target_dir.mkdir(parents=True)
-
-    # Mock Results and Archive Directories
-    results_dir = airflow_path / "migration/results"
-    results_dir.mkdir(parents=True)
-    archive_dir = airflow_path / "migration/archive"
-    archive_dir.mkdir(parents=True)
-
-    # mock tmp dir
-    tmp = tmp_path / "tmp/"
-    tmp.mkdir(parents=True)
-
-    return [
-        airflow_path,
-        source_dir,
-        target_dir,
-        results_dir,
-        archive_dir,
-        tmp
-    ]
-
-
-def test_move_marc_files(mock_file_system):
+def test_move_marc_files(mock_file_system):  # noqa
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
@@ -84,7 +51,7 @@ def test_move_marc_files(mock_file_system):
     assert messages["marc_only"]
 
 
-def test_move_tsv_files(mock_file_system):
+def test_move_tsv_files(mock_file_system):  # noqa
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
@@ -104,7 +71,7 @@ def mock_dag_run(mocker: MockerFixture):
     return dag_run
 
 
-def test_archive_artifacts(mock_dag_run, mock_file_system):
+def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
     dag = mock_dag_run
     airflow_path = mock_file_system[0]
     results_dir = mock_file_system[3]
@@ -192,7 +159,7 @@ def test_post_to_okapi_failures(
     mock_okapi_variable,
     mock_dag_run,
     mock_records,
-    mock_file_system,
+    mock_file_system,  # noqa
 ):
     airflow_path = mock_file_system[0]
     migration_results = mock_file_system[3]
@@ -251,7 +218,7 @@ def test_missing_001_to_034(mock_marc_record):
     assert record.get_fields("035") == []
 
 
-def test_transform_move_tsvs(mock_file_system):
+def test_transform_move_tsvs(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
@@ -260,7 +227,6 @@ def test_transform_move_tsvs(mock_file_system):
     symphony_tsv.write_text(
         "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  ")
     tsv_directory = airflow_path / "migration/data/items"
-    tsv_directory.mkdir(parents=True)
     sample_tsv = tsv_directory / "sample.tsv"
     sample_notes_tsv = tsv_directory / "sample.notes.tsv"
 
@@ -289,7 +255,7 @@ def test_transform_move_tsvs(mock_file_system):
     f_notes.close()
 
 
-def test_transform_move_tsvs_doesnt_exit(mock_file_system):
+def test_transform_move_tsvs_doesnt_exit(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
 
     with pytest.raises(ValueError, match="sample.tsv does not exist for workflow"):
@@ -319,7 +285,7 @@ def test_merge_notes_into_base():
     assert no_note_row["CIRCNOTE"].item() is np.nan
 
 
-def test_process_records(mock_dag_run, mock_file_system):
+def test_process_records(mock_dag_run, mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
     tmp = mock_file_system[5]
     results_dir = mock_file_system[3]

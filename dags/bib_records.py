@@ -46,7 +46,7 @@ sul_config = LibraryConfiguration(
     iteration_identifier="",
 )
 
-
+max_entities = Variable.get("MAX_ENTITIES", 500)
 parallel_posts = Variable.get("parallel_posts", 3)
 
 default_args = {
@@ -268,7 +268,7 @@ with DAG(
             post_instances = PythonOperator(
                 task_id=f"post_to_folio_instances_{i}",
                 python_callable=post_folio_instance_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             login >> post_instances >> finish_instances
@@ -296,7 +296,7 @@ with DAG(
             post_holdings = PythonOperator(
                 task_id=f"post_to_folio_holdings_{i}",
                 python_callable=post_folio_holding_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             start_holdings >> post_holdings >> finish_holdings
@@ -307,7 +307,7 @@ with DAG(
             post_items = PythonOperator(
                 task_id=f"post_to_folio_items_{i}",
                 python_callable=post_folio_items_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             finish_holdings >> post_items >> finish_items >> finished_all_posts

@@ -3,6 +3,8 @@ import pathlib
 
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
+logger = logging.getLogger(__name__)
+
 
 def post_marc_to_srs(*args, **kwargs):
     dag = kwargs.get("dag_run")
@@ -25,7 +27,7 @@ def post_marc_to_srs(*args, **kwargs):
 
     srs_batch_poster.wrap_up()
 
-    logging.info("Finished posting MARC json to SRS")
+    logger.info("Finished posting MARC json to SRS")
 
 
 def remove_srs_json(*args, **kwargs):
@@ -35,4 +37,4 @@ def remove_srs_json(*args, **kwargs):
     srs_filepath = pathlib.Path(airflow) / f"migration/results/{srs_filename}"
 
     srs_filepath.unlink()
-    logging.info(f"Removed {srs_filepath}")
+    logger.info(f"Removed {srs_filepath}")

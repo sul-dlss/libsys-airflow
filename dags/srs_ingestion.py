@@ -52,7 +52,7 @@ def add_marc_to_srs():
             dag_run=context.get("dag_run"),
             library_config=sul_config,
             srs_file=srs_filename,
-            MAX_ENTITIES=100,
+            MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
         )
 
     @task

@@ -1,9 +1,5 @@
-import pytest
+import pytest  # noqa
 import pydantic
-import requests
-
-from pytest_mock import MockerFixture
-from airflow.models import Variable
 
 from plugins.folio.holdings import (
     post_folio_holding_records,
@@ -11,7 +7,7 @@ from plugins.folio.holdings import (
     _add_identifiers,
 )
 
-from plugins.tests.mocks import (
+from plugins.tests.mocks import (  # noqa
     mock_okapi_success,
     mock_dag_run,
     mock_okapi_variable,
@@ -21,7 +17,7 @@ from plugins.tests.mocks import (
 
 
 def test_post_folio_holding_records(
-    mock_okapi_success, mock_dag_run, mock_okapi_variable, tmp_path, caplog
+    mock_okapi_success, mock_dag_run, mock_okapi_variable, tmp_path, caplog  # noqa
 ):
 
     dag = mock_dag_run
@@ -65,8 +61,6 @@ class MockHoldings(pydantic.BaseModel):
     values = lambda *args, **kwargs: holdings  # noqa
 
 
-
-
 class MockMapper(pydantic.BaseModel):
     # holdings_hrid_counter: int = 1
     # holdings_hrid_prefix: str = "hold"
@@ -83,8 +77,8 @@ def test_add_identifiers():
     _add_identifiers(transformer)
 
     # Test UUIDS
-    assert transformer.holdings.values()[0]["id"] == "4a50409a-65de-5581-bfa1-153bc56f57ca"
-    assert transformer.holdings.values()[1]["id"] == "0ed484c4-5c2d-5a73-b46d-02b85a56cc3d"
+    assert transformer.holdings.values()[0]["id"] == "3000ae83-e7ee-5e3c-ab0c-7a931a23a393"
+    assert transformer.holdings.values()[1]["id"] == "67360f4a-fb55-5c78-ad11-585e1a6c6aa4"
 
     # Test HRIDs
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
