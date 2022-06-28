@@ -11,35 +11,13 @@ from plugins.folio.holdings import (
     _add_identifiers,
 )
 
-
-@pytest.fixture
-def mock_okapi_success(monkeypatch, mocker: MockerFixture):
-    def mock_post(*args, **kwargs):
-        post_response = mocker.stub(name="post_result")
-        post_response.status_code = 201
-
-        return post_response
-
-    monkeypatch.setattr(requests, "post", mock_post)
-
-
-@pytest.fixture
-def mock_dag_run(mocker: MockerFixture):
-    dag_run = mocker.stub(name="dag_run")
-    dag_run.run_id = "manual_2022-03-05"
-    return dag_run
-
-
-@pytest.fixture
-def mock_okapi_variable(monkeypatch):
-    def mock_get(key):
-        return "https://okapi-folio.dev.edu"
-
-    monkeypatch.setattr(Variable, "get", mock_get)
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = lambda *args, **kwargs: "a0token"  # noqa
+from plugins.tests.mocks import (
+    mock_okapi_success,
+    mock_dag_run,
+    mock_okapi_variable,
+    MockFOLIOClient,
+    MockTaskInstance
+)
 
 
 def test_post_folio_holding_records(
@@ -87,8 +65,6 @@ class MockHoldings(pydantic.BaseModel):
     values = lambda *args, **kwargs: holdings  # noqa
 
 
-class MockFOLIOClient(pydantic.BaseModel):
-    okapi_url: str = "https://okapi.edu/"
 
 
 class MockMapper(pydantic.BaseModel):
