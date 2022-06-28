@@ -32,8 +32,6 @@ from plugins.folio.instances import post_folio_instance_records, run_bibs_transf
 
 from plugins.folio.items import run_items_transformer, post_folio_items_records
 
-from plugins.folio.marc import post_marc_to_srs
-
 logger = logging.getLogger(__name__)
 
 sul_config = LibraryConfiguration(
@@ -48,7 +46,7 @@ sul_config = LibraryConfiguration(
     iteration_identifier="",
 )
 
-
+max_entities = Variable.get("MAX_ENTITIES", 500)
 parallel_posts = Variable.get("parallel_posts", 3)
 
 default_args = {
@@ -237,10 +235,7 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        (
-            convert_marc_to_folio_instances
-            >> finish_conversion
-        )  # noqa
+        (convert_marc_to_folio_instances >> finish_conversion)  # noqa
         marc_only_convert_check >> [
             convert_tsv_to_folio_holdings,
             finish_conversion,
@@ -273,20 +268,10 @@ with DAG(
             post_instances = PythonOperator(
                 task_id=f"post_to_folio_instances_{i}",
                 python_callable=post_folio_instance_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             login >> post_instances >> finish_instances
-
-        marc_to_srs = PythonOperator(
-            task_id="marc-to-srs",
-            python_callable=post_marc_to_srs,
-            op_kwargs={
-                "library_config": sul_config,
-            },
-        )
-
-        finish_instances >> marc_to_srs >> finished_all_posts
 
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
@@ -311,7 +296,7 @@ with DAG(
             post_holdings = PythonOperator(
                 task_id=f"post_to_folio_holdings_{i}",
                 python_callable=post_folio_holding_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             start_holdings >> post_holdings >> finish_holdings
@@ -322,20 +307,27 @@ with DAG(
             post_items = PythonOperator(
                 task_id=f"post_to_folio_items_{i}",
                 python_callable=post_folio_items_records,
-                op_kwargs={"job": i, "MAX_ENTITIES": 25},
+                op_kwargs={"job": i, "MAX_ENTITIES": max_entities},
             )
 
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
     archive_instances_holdings_items = PythonOperator(
-        task_id="archive_converted_files",
-        python_callable=archive_artifacts
+        task_id="archive_converted_files", python_callable=archive_artifacts
+    )
+
+    ingest_srs_records = TriggerDagRunOperator(
+        task_id="ingest-srs-records",
+        trigger_dag_id="add_marc_to_srs",
+        conf={
+            "srs_filename": "folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json"
+        },
     )
 
     remediate_errors = TriggerDagRunOperator(
         task_id="remediate-errors",
         trigger_dag_id="fix_failed_record_loads",
-        trigger_run_id="{{ dag_run.run_id }}"
+        trigger_run_id="{{ dag_run.run_id }}",
     )
 
     finish_loading = DummyOperator(
@@ -345,4 +337,5 @@ with DAG(
     monitor_file_mount >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio
     post_to_folio >> archive_instances_holdings_items >> finish_loading
+    finish_loading >> ingest_srs_records
     finish_loading >> remediate_errors

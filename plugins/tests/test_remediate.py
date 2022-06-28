@@ -6,7 +6,8 @@ import requests
 
 from pytest_mock import MockerFixture
 
-from plugins.tests.test_helpers import mock_file_system  # noqa
+from plugins.tests.mocks import mock_file_system  # noqa
+
 from plugins.folio.remediate import (
     handle_record_errors,
     _post_or_put_record,

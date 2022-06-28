@@ -5,7 +5,7 @@ from pathlib import Path
 from dags.delete_archived_data import delete_archived_data
 from plugins.folio.helpers import archive_artifacts
 
-from plugins.tests.test_helpers import mock_dag_run, mock_file_system # noqa
+from plugins.tests.mocks import mock_dag_run, mock_file_system # noqa
 
 
 def test_delete_archived_data(mock_dag_run, mock_file_system): # noqa
