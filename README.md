@@ -16,12 +16,11 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 2. Run `git submodule init` and then `git submodule update` to populated submodule.
 4. If it's commented out, uncomment the line `- ./dags:/opt/airflow/dags` in docker-compose.yaml (under `volumes`, under `x-airflow-common`).
 5. Start up docker locally.
-6. Build the docker image with `Docker build .`
 7. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values.
 8. Run `docker-compose build` to build the customized airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-9. Run `docker compose up airflow-init` to initialize the Airflow the first time you deploy Airflow
-10. Bring up airflow, `docker compose up` to run the containers in the
-   foreground, use `docker compose up -d` to run as a daemon.
+9. Run `docker-compose up airflow-init` to initialize the Airflow the first time you deploy Airflow
+10. Bring up airflow, `docker-compose up` to run the containers in the
+   foreground, use `docker-compose up -d` to run as a daemon.
 1. Access Airflow locally at http://localhost
 1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker-1 /bin/bash` to view the raw work files.
 
