@@ -35,7 +35,7 @@ def remove_srs_json(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     srs_filename = kwargs["srs_filename"]
 
-    srs_filedir = Path(airflow) / f"migration/results/"
+    srs_filedir = Path(airflow) / 'migration/results/'
     for p in Path(srs_filedir).glob(f"{srs_filename}*"):
         p.unlink()
         logger.info(f"Removed {p}")
