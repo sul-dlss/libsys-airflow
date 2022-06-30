@@ -57,17 +57,14 @@ def add_marc_to_srs():
         """
         split.bylinecount(Variable.get("NUMBER_OF_SRS_FILES", 10000))
 
-        for srs_file in srs_dir:
-            if srs_file.endswith('.ext'):
-                logger.info(f"Starting ingestion of {srs_file}")
-                post_marc_to_srs(
-                    dag_run=context.get("dag_run"),
-                    library_config=sul_config,
-                    srs_file=srs_file,
-                    MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
-                )
-            else:
-                continue
+        for srs_file in Path(srs_dir).glob("*.ext"):
+            logger.info(f"Starting ingestion of {srs_file}")
+            post_marc_to_srs(
+                dag_run=context.get("dag_run"),
+                library_config=sul_config,
+                srs_file=str(srs_file),
+                MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
+            )
 
     @task
     def cleanup():
