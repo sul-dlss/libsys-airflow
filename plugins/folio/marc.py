@@ -1,5 +1,6 @@
 import logging
-import pathlib
+
+from pathlib import Path
 
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
@@ -34,7 +35,7 @@ def remove_srs_json(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     srs_filename = kwargs["srs_filename"]
 
-    srs_filepath = pathlib.Path(airflow) / f"migration/results/{srs_filename}"
-
-    srs_filepath.unlink()
-    logger.info(f"Removed {srs_filepath}")
+    srs_filedir = Path(airflow) / 'migration/results/'
+    for p in Path(srs_filedir).glob(f"{srs_filename}*"):
+        p.unlink()
+        logger.info(f"Removed {p}")
