@@ -12,7 +12,7 @@ def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
     dag = kwargs["dag_run"]
 
-    batch_size = kwargs.get("MAX_ENTITIES", 1000)
+    batch_size = int(kwargs.get("MAX_ENTITIES", 1000))
     job_number = kwargs.get("job")
 
     with open(f"/tmp/instances-{dag.run_id}-{job_number}.json") as fo:

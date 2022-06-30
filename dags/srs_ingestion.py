@@ -1,4 +1,3 @@
-import filesplit
 import os
 import logging
 

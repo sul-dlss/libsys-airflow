@@ -46,7 +46,7 @@ def post_folio_holding_records(**kwargs):
 
     tmp_location = kwargs.get("tmp_dir", "/tmp")
 
-    batch_size = kwargs.get("MAX_ENTITIES", 1000)
+    batch_size = int(kwargs.get("MAX_ENTITIES", 1000))
     job_number = kwargs.get("job")
 
     with open(f"{tmp_location}/holdings-{dag.run_id}-{job_number}.json") as fo:
