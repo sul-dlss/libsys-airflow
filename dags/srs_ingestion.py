@@ -54,11 +54,11 @@ def add_marc_to_srs():
         split = Split(srs_filename, srs_dir)
         """
         Splits files are generated in this fashion:
-            [original_filename]_1.ext, [original_filename]_2.ext, .., [original_filename]_n.ext
+            [original_filename]_1.json, [original_filename]_2.json, .., [original_filename]_n.json
         """
         split.bylinecount(Variable.get("NUMBER_OF_SRS_FILES", 10000))
 
-        for srs_file in Path(srs_dir).glob("*.ext"):
+        for srs_file in Path(srs_dir).glob("*_[0-9].json"):
             logger.info(f"Starting ingestion of {srs_file}")
             post_marc_to_srs(
                 dag_run=context.get("dag_run"),

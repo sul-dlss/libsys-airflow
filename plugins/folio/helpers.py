@@ -27,6 +27,9 @@ def archive_artifacts(*args, **kwargs):
     airflow_results = airflow_path / "migration/results"
     archive_directory = airflow_path / "migration/archive"
 
+    if not archive_directory.exists():
+        archive_directory.mkdir()
+
     for tmp_file in tmp_path.glob("*.json"):
         try:
             tmp_file.unlink()
