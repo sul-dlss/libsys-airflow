@@ -42,6 +42,7 @@ def add_marc_to_srs():
     folio_srs_instances_{dag-run}_bibs-transformer.json file and attempts to
     batch POSTS to the Okapi endpoint
     """
+    post_tasks = []
 
     @task
     def ingestion_marc():
@@ -58,14 +59,20 @@ def add_marc_to_srs():
         """
         split.bylinecount(Variable.get("NUMBER_OF_SRS_FILES", 10000))
 
-        for srs_file in Path(srs_dir).glob("*_[0-9].json"):
+        for i, srs_file in enumerate(Path(srs_dir).glob("*_[0-9].json")):
             logger.info(f"Starting ingestion of {srs_file}")
-            post_marc_to_srs(
-                dag_run=context.get("dag_run"),
-                library_config=sul_config,
-                srs_file=str(srs_file),
-                MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
-            )
+
+            @task(task_id=f"post_srs_{i}")
+            def marc_to_srs(srs_file):
+                post_marc_to_srs(
+                    dag_run=context.get("dag_run"),
+                    library_config=sul_config,
+                    srs_file=str(srs_file),
+                    MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
+                )
+
+            post_tasks.append(marc_to_srs(srs_file))
+
 
     @task
     def cleanup():
@@ -80,7 +87,7 @@ def add_marc_to_srs():
         srs_filename = context.get("params").get("srs_filename")
         logger.info(f"Finished migration {srs_filename}")
 
-    ingestion_marc() >> cleanup() >> finish()
+    ingestion_marc() >> post_tasks >> cleanup() >> finish()
 
 
 ingest_marc_to_srs = add_marc_to_srs()
