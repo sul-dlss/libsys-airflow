@@ -80,7 +80,6 @@ def mock_file_system(tmp_path):
     (airflow_path / "migration/reports").mkdir(parents=True)
     (airflow_path / "migration/mapping_files").mkdir(parents=True)
     archive_dir = airflow_path / "migration/archive"
-    archive_dir.mkdir(parents=True)
 
     # Mock .gitignore
     gitignore = airflow_path / "migration/.gitignore"
