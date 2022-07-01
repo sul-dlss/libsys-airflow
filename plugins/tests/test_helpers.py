@@ -89,6 +89,8 @@ def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
 
     target_file = archive_dir / instance_filename
 
+    assert not archive_dir.exists()
+
     archive_artifacts(dag_run=dag, airflow=airflow_path, tmp_dir=tmp_dir)
 
     assert not instance_file.exists()
@@ -213,7 +215,7 @@ def test_move_001_to_035(mock_marc_record):
 
 def test_missing_001_to_034(mock_marc_record):
     record = mock_marc_record
-    record.remove_fields('001')
+    record.remove_fields("001")
     _move_001_to_035(record)
     assert record.get_fields("035") == []
 
@@ -225,7 +227,8 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     # mock sample tsv
     symphony_tsv = source_dir / "sample.tsv"
     symphony_tsv.write_text(
-        "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  ")
+        "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  "
+    )
     tsv_directory = airflow_path / "migration/data/items"
     sample_tsv = tsv_directory / "sample.tsv"
     sample_notes_tsv = tsv_directory / "sample.notes.tsv"
@@ -236,14 +239,16 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
         "BARCODE\tCIRCNOTE\n45677 \tpencil marks 7/28/18cc"
     )
 
-    column_transforms = [("CATKEY", lambda x: f"a{x}"),
-                         ("BARCODE", lambda x: x.strip())]
+    column_transforms = [
+        ("CATKEY", lambda x: f"a{x}"),
+        ("BARCODE", lambda x: x.strip()),
+    ]
 
     transform_move_tsvs(
         airflow=airflow_path,
         column_transforms=column_transforms,
         source="symphony",
-        tsv_stem="sample"
+        tsv_stem="sample",
     )
 
     f = open(sample_tsv, "r")
@@ -251,7 +256,9 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     f.close()
 
     f_notes = open(sample_notes_tsv, "r")
-    assert f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tpencil marks 7/28/18cc\n"
+    assert (
+        f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tpencil marks 7/28/18cc\n"
+    )
     f_notes.close()
 
 
@@ -259,22 +266,27 @@ def test_transform_move_tsvs_doesnt_exit(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
 
     with pytest.raises(ValueError, match="sample.tsv does not exist for workflow"):
-        transform_move_tsvs(
-            airflow=airflow_path,
-            source="symphony",
-            tsv_stem="sample"
-        )
+        transform_move_tsvs(airflow=airflow_path, source="symphony", tsv_stem="sample")
 
 
 def test_merge_notes_into_base():
-    base_df = pd.DataFrame([{"CATKEY": "a1442278",
-                             "BARCODE": "36105033974929",
-                             "BASE_CALL_NUMBER": "PQ6407 .A1 1980B"},
-                            {"CATKEY": "a13776856",
-                             "BARCODE": "36105231406765",
-                             "BASE_CALL_NUMBER": "KGF3055 .M67 2019"}])
-    notes_df = pd.DataFrame([{"BARCODE": "36105033974929",
-                              "CIRCNOTE": "pen marks 6/5/19cc"}])
+    base_df = pd.DataFrame(
+        [
+            {
+                "CATKEY": "a1442278",
+                "BARCODE": "36105033974929",
+                "BASE_CALL_NUMBER": "PQ6407 .A1 1980B",
+            },
+            {
+                "CATKEY": "a13776856",
+                "BARCODE": "36105231406765",
+                "BASE_CALL_NUMBER": "KGF3055 .M67 2019",
+            },
+        ]
+    )
+    notes_df = pd.DataFrame(
+        [{"BARCODE": "36105033974929", "CIRCNOTE": "pen marks 6/5/19cc"}]
+    )
     base_df = _merge_notes_into_base(base_df, notes_df)
     assert "CIRCNOTE" in base_df.columns
 

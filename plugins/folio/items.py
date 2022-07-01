@@ -54,7 +54,7 @@ def post_folio_items_records(**kwargs):
     """Creates/overlays Items records in FOLIO"""
     dag = kwargs["dag_run"]
 
-    batch_size = kwargs.get("MAX_ENTITIES", 1000)
+    batch_size = int(kwargs.get("MAX_ENTITIES", 1000))
     job_number = kwargs.get("job")
 
     with open(f"/tmp/items-{dag.run_id}-{job_number}.json") as fo:
