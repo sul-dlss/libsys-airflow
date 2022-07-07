@@ -18,13 +18,11 @@ vendor_code_re = re.compile(r"[a-z]+\d+")
 
 def electronic_holdings(*args, **kwargs) -> str:
     """Generates FOLIO Holdings records from Symphony 856 fields"""
-    dag = kwargs["dag_run"]
-    task_instance = kwargs["task_instance"]
     holdings_stem = kwargs["holdings_stem"]
     library_config = kwargs["library_config"]
     holdings_type_id = kwargs["electronic_holdings_id"]
     airflow = kwargs.get("airflow", "/opt/airflow")
-  
+
     filename = f"{holdings_stem}.electronic.tsv"
     full_path = pathlib.Path(f"{airflow}/migration/data/items/{filename}")
 
@@ -60,8 +58,10 @@ def electronic_holdings(*args, **kwargs) -> str:
 
 def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer):
     # Instance CATKEY
-    instance_keys = task_instance.xcom_pull(key="hrid_count", 
-                                            task_ids="marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings")
+    instance_keys = task_instance.xcom_pull(
+        key="hrid_count",
+        task_ids="marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",
+    )
 
     if instance_keys is None:
         instance_keys = {}
@@ -104,7 +104,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i + batch_size]
+        holdings_batch = holding_records[i: i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
