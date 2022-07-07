@@ -320,7 +320,7 @@ with DAG(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
         conf={
-            "srs_filename": "folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json"
+            "srs_filename": "/opt/airflow/migration/archive/folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json",
         },
     )
 

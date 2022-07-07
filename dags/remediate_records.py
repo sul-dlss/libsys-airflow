@@ -44,7 +44,7 @@ with DAG(
             "base": "instance-storage",
             "endpoint": "/inventory/instances",
             "folio_client": folio_client,
-        }
+        },
     )
 
     holdings_errors = PythonOperator(

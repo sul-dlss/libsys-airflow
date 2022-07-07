@@ -36,6 +36,7 @@ sul_config = LibraryConfiguration(
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "bib_import"],
+    max_active_runs=1,
 )
 def add_marc_to_srs():
     """
@@ -65,7 +66,7 @@ def add_marc_to_srs():
             name = row[0]
             if name.endswith("pkey"):
                 continue
-            sql = f"{sql}DROP INDEX sul_mod_inventory_storage.{name}"
+            sql = f"{sql}DROP INDEX sul_mod_inventory_storage.{name};"
         return PostgresOperator(
             task_id="remove-srs-indices",
             sql=sql,
