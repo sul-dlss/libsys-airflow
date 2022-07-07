@@ -11,8 +11,7 @@ from plugins.tests.mocks import (  # noqa
     mock_okapi_success,
     mock_dag_run,
     mock_okapi_variable,
-    MockFOLIOClient,
-    MockTaskInstance
+    MockFOLIOClient
 )
 
 
@@ -71,10 +70,15 @@ class MockHoldingsTransformer(pydantic.BaseModel):
     holdings: MockHoldings = MockHoldings()
     mapper: MockMapper = MockMapper()
 
+class MockTaskInstance(pydantic.BaseModel):
+    xcom_pull = lambda *args, **kwargs: {}  # noqa
+    xcom_push = lambda *args, **kwargs: None  # noqa
 
 def test_add_identifiers():
+    task_instance = MockTaskInstance()
     transformer = MockHoldingsTransformer()
-    _add_identifiers(transformer)
+
+    _add_identifiers(task_instance, transformer)
 
     # Test UUIDS
     assert transformer.holdings.values()[0]["id"] == "3000ae83-e7ee-5e3c-ab0c-7a931a23a393"
