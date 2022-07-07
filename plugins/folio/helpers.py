@@ -41,7 +41,7 @@ def archive_artifacts(*args, **kwargs):
         target = archive_directory / artifact.name
 
         shutil.move(artifact, target)
-        logger.info("Moved {artifact} to {target}")
+        logger.info(f"Moved {artifact} to {target}")
 
 
 def move_marc_files_check_tsv(*args, **kwargs) -> str:

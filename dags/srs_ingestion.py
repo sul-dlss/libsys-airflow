@@ -15,6 +15,7 @@ from filesplit.split import Split
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.marc import post_marc_to_srs, remove_srs_json
+from plugins.folio.db import drop_inventory_indices, query_inventory_indices
 
 logger = logging.getLogger(__name__)
 
@@ -46,45 +47,33 @@ def add_marc_to_srs():
     batch POSTS to the Okapi endpoint
     """
 
-    get_inventory_indices = PostgresOperator(
-        task_id="get-inventory-indices",
-        sql="""
-        SELECT indexname, indexdef FROM pg_indexes
-        WHERE schemaname = 'sul_mod_inventory_storage' AND
-        (tablename = 'instance' OR tablename = 'holdings_records'
-        OR tablename = 'item')
-        """,
-        postgres_conn_id="postgres_folio",
-        database="okapi",
-    )
+    @task
+    def get_inventory_indices():
+        return query_inventory_indices()
 
     @task
-    def drop_indexes():
-        index_result = get_inventory_indices.output["return_value"]
-        sql = ""
-        for row in index_result:
-            name = row[0]
-            if name.endswith("pkey"):
-                continue
-            sql = f"{sql}DROP INDEX sul_mod_inventory_storage.{name};"
-        return PostgresOperator(
-            task_id="remove-srs-indices",
-            sql=sql,
-            postgres_conn_id="postgres_folio",
-        )
+    def drop_indexes(index_result: list):
+        """
+        ### Drops mod_inventory_storage indexes
+        """
+        drop_inventory_indices(index_result)
+
 
     @task
-    def save_inventory_storage_sql():
+    def save_inventory_storage_sql(index_result: list):
         """
         ### Saves mod-inventory-storage indices to file
         """
-        index_result = get_inventory_indices.output["return_value"]
-        with open("sql/sul_mod_inventory_storage_indexes.sql", "w+") as fo:
+        context = get_current_context()
+        airflow = context.get("params").get("airflow", "/opt/airflow/")
+        sql_file = f"{airflow}/dags/sql/sul_mod_inventory_storage_indexes.sql"
+        with open(sql_file, "w+") as fo:
             for index in index_result:
-                fo.write(f"{index[1]}\n")
+                fo.write(f"{index[1]};\n")
             fo.write("VACUUM ANALYZE sul_mod_inventory_storage.instance;\n")
             fo.write("VACUUM ANALYZE sul_mod_inventory_storage.holdings_record;\n")
             fo.write("VACUUM ANALYZE sul_mod_inventory_storage.item;\n")
+        logger.info(f"Finished saving SQL script to {sql_file}")
 
     @task
     def ingestion_marc():
@@ -130,9 +119,10 @@ def add_marc_to_srs():
         logger.info(f"Finished migration {srs_filename}")
 
     ingestion_marc_task = ingestion_marc()
-    (
-        get_inventory_indices
-        >> [save_inventory_storage_sql(), drop_indexes()]
+    inventory_indices = get_inventory_indices()
+
+    (    
+        [save_inventory_storage_sql(inventory_indices), drop_indexes(inventory_indices)]
         >> ingestion_marc_task
         >> restore_indices
         >> cleanup()
