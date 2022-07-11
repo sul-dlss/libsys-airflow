@@ -46,7 +46,7 @@ def add_marc_to_srs():
     @task
     def split_srs_file():
         """
-        ### Splits 
+        ### Splits
         """
         context = get_current_context()
         srs_filename = context.get("params").get("srs_filename")
@@ -61,7 +61,7 @@ def add_marc_to_srs():
         srs_files = [ srs_file for srs_file in Path(srs_dir).glob("*_[0-9].json") ]
         return srs_files
 
- 
+
 
     @task
     def marc_to_srs(srs_file):
@@ -85,6 +85,7 @@ def add_marc_to_srs():
         context = get_current_context()
         srs_filename = context.get("params").get("srs_filename")
         logger.info(f"Finished migration {srs_filename}")
+
 
     srs_files = split_srs_file()
 
