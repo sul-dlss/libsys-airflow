@@ -312,7 +312,6 @@ with DAG(
 
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
-
     ingest_srs_records = TriggerDagRunOperator(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
