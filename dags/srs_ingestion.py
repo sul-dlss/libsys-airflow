@@ -1,9 +1,6 @@
-import os
 import logging
 
-
 from datetime import datetime
-from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context

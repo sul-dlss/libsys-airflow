@@ -18,7 +18,6 @@ from airflow.models import Variable
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
-    archive_artifacts,
     move_marc_files_check_tsv,
     process_marc,
     process_records,
