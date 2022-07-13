@@ -1,7 +1,8 @@
-FROM apache/airflow:2.2.4-python3.9
+FROM apache/airflow:2.3.3-python3.10
 
 USER root
 RUN usermod -u 214 airflow
+RUN apt-get update && apt-get install -y gcc
 
 ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/"
 ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
