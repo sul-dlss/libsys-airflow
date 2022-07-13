@@ -9,7 +9,6 @@ from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 from airflow.models import Variable
 
-from filesplit.split import Split
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.marc import post_marc_to_srs, remove_srs_json

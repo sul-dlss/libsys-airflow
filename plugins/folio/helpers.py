@@ -20,7 +20,6 @@ def archive_artifacts(*args, **kwargs):
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     tmp = kwargs.get("tmp_dir", "/tmp")
-    ignore_str = kwargs.get("ignore_str")
 
     airflow_path = pathlib.Path(airflow)
     tmp_path = pathlib.Path(tmp)
@@ -37,7 +36,7 @@ def archive_artifacts(*args, **kwargs):
         except OSError as err:
             logger.info(f"Cannot remove {tmp_file}: {err}")
 
-    for artifact in airflow_results.glob(f"(?!{ignore_str})*{dag.run_id}*.json"):
+    for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
 
         target = archive_directory / artifact.name
 
