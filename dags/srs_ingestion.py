@@ -12,17 +12,7 @@ from plugins.folio.marc import post_marc_to_srs, remove_srs_json
 
 logger = logging.getLogger(__name__)
 
-sul_config = LibraryConfiguration(
-    okapi_url=Variable.get("OKAPI_URL"),
-    tenant_id="sul",
-    okapi_username=Variable.get("FOLIO_USER"),
-    okapi_password=Variable.get("FOLIO_PASSWORD"),
-    library_name="Stanford University Libraries",
-    base_folder="/opt/airflow/migration",
-    log_level_debug=True,
-    folio_release="lotus",
-    iteration_identifier="",
-)
+
 
 
 @dag(
@@ -45,8 +35,28 @@ def add_marc_to_srs():
         ### Ingests
         """
         context = get_current_context()
-        srs_filename = context.get("params").get("srs_filename")
+        params = context.get("params")
+        srs_filename = params.get("srs_filename")
         logger.info(f"Starting ingestion of {srs_filename}")
+
+        okapi_username = params.get("okapi_username", 
+                                    Variable.get("FOLIO_USER"))
+
+        okapi_password = context.get("okapi_password", 
+                                     Variable.get("FOLIO_PASSWORD"))
+
+        sul_config = LibraryConfiguration(
+            okapi_url=Variable.get("OKAPI_URL"),
+            tenant_id="sul",
+            okapi_username=okapi_username,
+            okapi_password=okapi_password,
+            library_name="Stanford University Libraries",
+            base_folder="/opt/airflow/migration",
+            log_level_debug=True,
+            folio_release="lotus",
+            iteration_identifier="",
+        )
+
 
         post_marc_to_srs(
             dag_run=context.get("dag_run"),
