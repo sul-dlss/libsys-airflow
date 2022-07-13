@@ -1,15 +1,11 @@
-import os
 import logging
 
-
 from datetime import datetime
-from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 from airflow.models import Variable
 
-from filesplit.split import Split
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.marc import post_marc_to_srs, remove_srs_json
@@ -50,22 +46,14 @@ def add_marc_to_srs():
         """
         context = get_current_context()
         srs_filename = context.get("params").get("srs_filename")
-        srs_dir = os.path.dirname(srs_filename)
-        split = Split(srs_filename, srs_dir)
-        """
-        Splits files are generated in this fashion:
-            [original_filename]_1.json, [original_filename]_2.json, .., [original_filename]_n.json
-        """
-        split.bylinecount(Variable.get("NUMBER_OF_SRS_FILES", 10000))
+        logger.info(f"Starting ingestion of {srs_filename}")
 
-        for srs_file in Path(srs_dir).glob("*_[0-9].json"):
-            logger.info(f"Starting ingestion of {srs_file}")
-            post_marc_to_srs(
-                dag_run=context.get("dag_run"),
-                library_config=sul_config,
-                srs_file=str(srs_file),
-                MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
-            )
+        post_marc_to_srs(
+            dag_run=context.get("dag_run"),
+            library_config=sul_config,
+            srs_file=srs_filename,
+            MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
+        )
 
     @task
     def cleanup():

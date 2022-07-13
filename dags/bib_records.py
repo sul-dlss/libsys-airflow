@@ -18,7 +18,6 @@ from airflow.models import Variable
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
-    archive_artifacts,
     move_marc_files_check_tsv,
     process_marc,
     process_records,
@@ -312,10 +311,6 @@ with DAG(
 
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
-    archive_instances_holdings_items = PythonOperator(
-        task_id="archive_converted_files", python_callable=archive_artifacts
-    )
-
     ingest_srs_records = TriggerDagRunOperator(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
@@ -335,7 +330,5 @@ with DAG(
     )
 
     monitor_file_mount >> move_transform_process >> marc_to_folio
-    marc_to_folio >> post_to_folio
-    post_to_folio >> archive_instances_holdings_items >> finish_loading
-    finish_loading >> ingest_srs_records
-    finish_loading >> remediate_errors
+    marc_to_folio >> post_to_folio >> finish_loading
+    finish_loading >> [ingest_srs_records, remediate_errors]

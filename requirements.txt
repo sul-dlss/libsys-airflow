@@ -2,7 +2,6 @@ argparse_prompt
 coverage
 coveralls
 flake8
-filesplit
 numpy
 objectpath
 pandas

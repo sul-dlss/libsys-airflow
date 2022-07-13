@@ -61,6 +61,7 @@ namespace :airflow do
       execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
       execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
       execute "cd #{release_path}/migration && ./create_folder_structure.sh"
+      execute "cd #{release_path}/migration && mkdir -p archive"
       execute "cd #{release_path} && sudo ln -s /sirsi_prod symphony"
     end
   end
