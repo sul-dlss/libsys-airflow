@@ -312,9 +312,6 @@ with DAG(
 
             finish_holdings >> post_items >> finish_items >> finished_all_posts
 
-    archive_instances_holdings_items = PythonOperator(
-        task_id="archive_converted_files", python_callable=archive_artifacts
-    )
 
     ingest_srs_records = TriggerDagRunOperator(
         task_id="ingest-srs-records",
@@ -335,7 +332,5 @@ with DAG(
     )
 
     monitor_file_mount >> move_transform_process >> marc_to_folio
-    marc_to_folio >> post_to_folio
-    post_to_folio >> archive_instances_holdings_items >> finish_loading
-    finish_loading >> ingest_srs_records
-    finish_loading >> remediate_errors
+    marc_to_folio >> post_to_folio >> finish_loading
+    finish_loading >> [ingest_srs_records, remediate_errors]
