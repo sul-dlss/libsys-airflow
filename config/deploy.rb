@@ -133,4 +133,11 @@ namespace :airflow do
       execute "docker rm $(docker ps --filter status=exited -q)"
     end
   end
+
+  desc 'list the contents of the symphony folder'
+  task :symphony do
+    on roles(:app) do
+      execute "ls -ltr #{release_path}/symphony/"
+    end
+  end
 end
