@@ -13,8 +13,6 @@ from plugins.folio.marc import post_marc_to_srs, remove_srs_json
 logger = logging.getLogger(__name__)
 
 
-
-
 @dag(
     schedule_interval=None,
     start_date=datetime(2022, 6, 23),
@@ -42,14 +40,16 @@ def add_marc_to_srs():
         FOLIO needs to have a number of sul_admin_{N} superusers equal or greater than
         the maximum number of possible 'add_marc_to_srs' dags that can run.
         """
-        running_dags = DagRun.active_runs_of_dags(only_running=True).get('add_marc_to_srs')
+        running_dags = DagRun.active_runs_of_dags(only_running=True).get(
+            "add_marc_to_srs"
+        )
         okapi_admin = 0 if running_dags is None else f"sul_admin_{running_dags}"
 
-        okapi_username = okapi_admin or params.get("okapi_username",
-                                    Variable.get("FOLIO_USER"))
+        okapi_username = okapi_admin or params.get(
+            "okapi_username", Variable.get("FOLIO_USER")
+        )
 
-        okapi_password = context.get("okapi_password",
-                                     Variable.get("FOLIO_PASSWORD"))
+        okapi_password = context.get("okapi_password", Variable.get("FOLIO_PASSWORD"))
 
         logger.info(f"Starting ingestion of {srs_filename}")
         logger.info(f"Okapi username: {okapi_username}")
@@ -65,7 +65,6 @@ def add_marc_to_srs():
             folio_release="lotus",
             iteration_identifier="",
         )
-
 
         post_marc_to_srs(
             dag_run=context.get("dag_run"),
