@@ -4,7 +4,7 @@ from datetime import datetime
 
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
-from airflow.models import Variable
+from airflow.models import Variable, DagRun
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
@@ -37,13 +37,22 @@ def add_marc_to_srs():
         context = get_current_context()
         params = context.get("params")
         srs_filename = params.get("srs_filename")
-        logger.info(f"Starting ingestion of {srs_filename}")
 
-        okapi_username = params.get("okapi_username", 
+        """
+        FOLIO needs to have a number of sul_admin_{N} superusers equal or greater than
+        the maximum number of possible 'add_marc_to_srs' dags that can run.
+        """
+        running_dags = DagRun.active_runs_of_dags(only_running=True).get('add_marc_to_srs')
+        okapi_admin = 0 if running_dags is None else f"sul_admin_{running_dags}"
+
+        okapi_username = okapi_admin or params.get("okapi_username",
                                     Variable.get("FOLIO_USER"))
 
-        okapi_password = context.get("okapi_password", 
+        okapi_password = context.get("okapi_password",
                                      Variable.get("FOLIO_PASSWORD"))
+
+        logger.info(f"Starting ingestion of {srs_filename}")
+        logger.info(f"Okapi username: {okapi_username}")
 
         sul_config = LibraryConfiguration(
             okapi_url=Variable.get("OKAPI_URL"),
@@ -69,7 +78,7 @@ def add_marc_to_srs():
     def cleanup():
         context = get_current_context()
         srs_filename = context.get("params").get("srs_filename")
-        logger.info(f"Removing SRS JSON {srs_filename} and split files")
+        logger.info(f"Removing SRS JSON {srs_filename}")
         remove_srs_json(srs_filename=srs_filename)
 
     @task
