@@ -29,13 +29,6 @@ def add_marc_to_srs():
     """
 
     @task
-    def remove_srs_triggers():
-        """
-        ### Removes SRS triggers
-        """
-        drop_srs_triggers()
-
-    @task
     def ingestion_marc():
         """
         ### Ingests
