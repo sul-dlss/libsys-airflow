@@ -9,7 +9,6 @@ from airflow.models import Variable, DagRun
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.marc import post_marc_to_srs, remove_srs_json
-from plugins.folio.db import add_srs_triggers, drop_srs_triggers
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +74,6 @@ def add_marc_to_srs():
         )
 
     @task
-    def create_srs_triggers():
-        """
-        Adds SRS Triggers back to Postgres
-        """
-        add_srs_triggers()
-
-    @task
     def cleanup():
         context = get_current_context()
         srs_filename = context.get("params").get("srs_filename")
@@ -94,9 +86,7 @@ def add_marc_to_srs():
         srs_filename = context.get("params").get("srs_filename")
         logger.info(f"Finished migration {srs_filename}")
 
-    create_srs_trigger_task = create_srs_triggers()
-    remove_srs_triggers() >> ingestion_marc() >> create_srs_trigger_task
-    create_srs_trigger_task >> cleanup() >> finish()
+    ingestion_marc() >> cleanup() >> finish()
 
 
 ingest_marc_to_srs = add_marc_to_srs()
