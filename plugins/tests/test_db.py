@@ -7,13 +7,7 @@ from airflow.models import Connection
 
 from plugins.folio.db import (
     add_inventory_triggers,
-    add_srs_triggers,
-    drop_inventory_indices,
-    drop_inventory_triggers,
-    drop_srs_indices,
-    drop_srs_triggers,
-    query_inventory_indices,
-    query_srs_indices,
+    drop_inventory_triggers
 )
 
 
@@ -68,44 +62,6 @@ def test_add_inventory_triggers(mock_airflow_connection, mock_psycopg2, caplog):
     assert "Finished creating mod_inventory_storage triggers" in caplog.text
 
 
-def test_add_srs_triggers(mock_airflow_connection, mock_psycopg2, caplog):
-    add_srs_triggers(connect="folio_postgres", database="okapi")
-    assert "Finished creating mod_source_record_storage triggers" in caplog.text
-
-
-def test_drop_inventory_indices(mock_airflow_connection, mock_psycopg2, caplog):
-    drop_inventory_indices(
-        connect="folio_postgres",
-        database="okapi",
-        index_result=["pkey", "other_column"],
-    )
-    assert "Finished dropping mod_inventory_storage indices" in caplog.text
-
-
 def test_drop_inventory_triggers(mock_airflow_connection, mock_psycopg2, caplog):
     drop_inventory_triggers(connect="folio_postgres", database="okapi")
     assert "Finished dropping mod_inventory_storage triggers" in caplog.text
-
-
-def test_drop_srs_indices(mock_airflow_connection, mock_psycopg2, caplog):
-    drop_srs_indices(
-        connect="folio_postgres",
-        database="okapi",
-        index_result=["001_index", "245_index"],
-    )
-    assert "Finished dropping mod_source_record_storage indices" in caplog.text
-
-
-def test_drop_srs_triggers(mock_airflow_connection, mock_psycopg2, caplog):
-    drop_srs_triggers(connect="folio_postgres", database="okapi")
-    assert "Finished dropping mod_source_record_storage triggers" in caplog.text
-
-
-def test_query_inventory_indices(mock_airflow_connection, mock_psycopg2, caplog):
-    query_inventory_indices(connect="folio_postgres", database="okapi")
-    assert "Finished query for inventory indexes, total 2" in caplog.text
-
-
-def test_query_srs_indices(mock_airflow_connection, mock_psycopg2, caplog):
-    assert query_srs_indices(connect="folio_postgres", database="okapi")
-    assert "Finished query for source record storage indexes, total 1" in caplog.text
