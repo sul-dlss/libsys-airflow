@@ -44,3 +44,4 @@ def test_add_hrid(tmp_path):  # noqa
 
     assert(new_items_rec['hrid']) == "ai23456_1"
     assert(new_items_rec['id']) == "f40ad979-32e8-5f54-bb3d-698c0f611a54"
+    assert(new_items_rec['_version']) == 1
