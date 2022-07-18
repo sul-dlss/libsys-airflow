@@ -8,6 +8,12 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _add_version(bibs_transformer: BibsTransformer):
+    # Handles Optimistic locking
+    for record in bibs_transformer.instances.values():
+        record["_version"] = 1
+
+
 def post_folio_instance_records(**kwargs):
     """Creates new records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -19,7 +25,7 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i:i + batch_size]
+        instance_batch = instance_records[i: i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -59,5 +65,7 @@ def run_bibs_transformer(*args, **kwargs):
     logger.info(f"Starting bibs_tranfers work for {marc_stem}.mrc")
 
     bibs_transformer.do_work()
+
+    _add_version(bibs_transformer)
 
     bibs_transformer.wrap_up()

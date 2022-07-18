@@ -43,6 +43,8 @@ def _add_hrid(okapi_url: str, holdings_path: str, items_path: str):
                     id_seed,
                 )
             )
+            # To handle optimistic locking
+            item["_version"] = 1
             items.append(item)
 
     with open(items_path, "w+") as write_output:
@@ -61,7 +63,7 @@ def post_folio_items_records(**kwargs):
         items_records = json.load(fo)
 
     for i in range(0, len(items_records), batch_size):
-        items_batch = items_records[i:i + batch_size]
+        items_batch = items_records[i: i + batch_size]
         logger.info(f"Posting {len(items_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
