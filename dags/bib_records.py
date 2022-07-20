@@ -17,8 +17,6 @@ from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.db import add_inventory_triggers, drop_inventory_triggers
-
 from plugins.folio.helpers import (
     move_marc_files_check_tsv,
     process_marc,
@@ -105,11 +103,6 @@ with DAG(
         """\
         ####  Monitor File Mount
         Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
-    )
-
-    drop_triggers = PythonOperator(
-        task_id="drop-inventory-triggers",
-        python_callable=drop_inventory_triggers
     )
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
@@ -337,11 +330,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    create_triggers = PythonOperator(
-        task_id='create-inventory-triggers',
-        python_callable=add_inventory_triggers
-    )
-
-    monitor_file_mount >> [move_transform_process, drop_triggers] >> marc_to_folio
+    monitor_file_mount >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio >> finish_loading
-    finish_loading >> [ingest_srs_records, remediate_errors, create_triggers]
+    finish_loading >> [ingest_srs_records, remediate_errors]

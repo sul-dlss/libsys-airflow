@@ -26,7 +26,7 @@ def add_inventory_triggers(**kwargs):
           FOR EACH ROW EXECUTE FUNCTION sul_mod_inventory_storage.holdings_record_set_ol_version();
           CREATE TRIGGER set_item_ol_version_trigger
           AFTER INSERT OR UPDATE ON sul_mod_inventory_storage.item
-          FOR EACH ROW sul_mod_inventory_storage.item_set_ol_version();
+          FOR EACH ROW EXECUTE FUNCTION sul_mod_inventory_storage.item_set_ol_version();
     """
     logger.info("Creating mod_inventory_storage triggers")
     connection = pg_hook.get_conn()
@@ -38,7 +38,7 @@ def add_inventory_triggers(**kwargs):
 
 def drop_inventory_triggers(**kwargs):
     """
-    Drops Inventory triggers used for optimistic Locking
+    Drops Inventory triggers used for optimistic locking
     """
     pg_hook = _db_connection(**kwargs)
     sql = """
