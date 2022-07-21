@@ -83,3 +83,6 @@ def test_add_identifiers():
     # Test HRIDs
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"
     assert transformer.holdings.values()[1]["hrid"] == "ah123345_2"
+
+    # Test _version
+    assert transformer.holdings.values()[0]["_version"] == 1

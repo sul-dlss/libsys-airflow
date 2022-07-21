@@ -39,6 +39,9 @@ def _add_identifiers(holdings_transformer: HoldingsCsvTransformer):
             )
         )
 
+        # To handle optimistic locking
+        record["_version"] = 1
+
 
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
@@ -53,7 +56,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i + batch_size]
+        holdings_batch = holding_records[i: i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
