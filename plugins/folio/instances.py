@@ -9,9 +9,18 @@ logger = logging.getLogger(__name__)
 
 
 def _add_version(bibs_transformer: BibsTransformer):
-    # Handles Optimistic locking
-    for record in bibs_transformer.instances.values():
-        record["_version"] = 1
+    """
+    Handles Optimistic locking by assigning an initial version
+    """
+    records = []
+    with open(bibs_transformer.processor.results_file.name) as fo:
+        for row in fo.readlines():
+            record = json.loads(row)
+            record["_version"] = 1
+            records.append(record)
+    with open(bibs_transformer.processor.results_file.name, "w+") as fo:
+        for record in records:
+            fo.write(f"{json.dumps(record)}\n")
 
 
 def post_folio_instance_records(**kwargs):
