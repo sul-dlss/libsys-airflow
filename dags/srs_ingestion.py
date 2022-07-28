@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "bib_import"],
+    max_active_runs=1,
 )
 def add_marc_to_srs():
     """
@@ -70,7 +71,7 @@ def add_marc_to_srs():
             dag_run=context.get("dag_run"),
             library_config=sul_config,
             srs_file=srs_filename,
-            MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 500),
+            MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 250),
         )
 
     @task
