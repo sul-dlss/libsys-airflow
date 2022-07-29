@@ -5,8 +5,8 @@ import requests
 
 from airflow.models import Variable
 
-AEON_URL = Variable.get("AEON_URL")
-AEON_KEY = Variable.get("AEON_KEY")
+AEON_URL=Variable.get("AEON_URL")
+AEON_KEY=Variable.get("AEON_KEY")
 
 aeon_headers = {"X-AEON-API-KEY": AEON_KEY, "Accept": "application/json"}
 
