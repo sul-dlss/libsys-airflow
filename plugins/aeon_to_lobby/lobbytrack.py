@@ -3,8 +3,8 @@ import requests
 
 from airflow.models import Variable
 
-lobby_url = Variable.get("LOBBY_URL")
-lobby_key = Variable.get("LOBBY_KEY")
+lobby_url=Variable.get("LOBBY_URL")
+lobby_key=Variable.get("LOBBY_KEY")
 
 lobby_headers = {
     "Authorization": lobby_key,
