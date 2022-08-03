@@ -11,7 +11,10 @@ from airflow.models import Variable
 from pytest_mock import MockerFixture
 
 from plugins.folio.helpers import (
+    _add_electronic_holdings,
     archive_artifacts,
+    _electronic_access_relationship,
+    _extract_856s,
     move_marc_files_check_tsv,
     post_to_okapi,
     process_marc,
@@ -354,3 +357,90 @@ def test_setup_data_logging(mock_logger_file_handler):
     # Removes handler otherwise fails subsequent tests
     file_handler = logging.getLogger().handlers[-1]
     logging.getLogger().removeHandler(file_handler)
+
+
+def test_add_electronic_holdings_skip():
+    skip_856_field = Field(
+        tag="856",
+        indicators=["0", "1"],
+        subfields=["z", "table of contents", "u", "http://example.com/"],
+    )
+    assert _add_electronic_holdings(skip_856_field) is False
+
+
+def test_add_electronic_holdings():
+    field_856 = Field(
+        tag="856", indicators=["0", "0"], subfields=["u", "http://example.com/"]
+    )
+    assert _add_electronic_holdings(field_856) is True
+
+
+def test_electronic_access_relationship():
+    assert _electronic_access_relationship("0").startswith("Resource")
+    assert _electronic_access_relationship("1").startswith("Version of resource")
+    assert _electronic_access_relationship("2").startswith("Related resource")
+    assert _electronic_access_relationship("8").startswith(
+        "No display constant generated"
+    )
+    assert _electronic_access_relationship("3").startswith("No information provided")
+
+
+def test_extract_856s():
+    catkey = "34456"
+    all856_fields = [
+        Field(
+            tag="856",
+            indicators=["0", "1"],
+            subfields=[
+                "3",
+                "Finding Aid",
+                "u",
+                "https://purl.stanford.edu/123345",
+                "x",
+                "purchased",
+                "x",
+                "cz4",
+                "x",
+                "Provider: Cambridge University Press",
+                "y",
+                "Access on Campus Only",
+                "z",
+                "Stanford Use Only",
+                "z",
+                "Restricted",
+            ],
+        ),
+        Field(
+            tag="856",
+            indicators=["0", "8"],
+            subfields=[
+                "u",
+                "http://doi.org/34456",
+                "y",
+                "Public Document All Access",
+                "z",
+                "World Available",
+            ],
+        ),
+        Field(
+            tag="856",
+            indicators=["0", "1"],
+            subfields=["u", "https://example.doi.org/4566", "3", "sample text"],
+        ),
+    ]
+    output = _extract_856s(catkey, all856_fields)
+    assert len(output) == 2
+    assert output[0] == {
+        "CATKEY": "34456",
+        "HOMELOCATION": "SUL-SDR",
+        "LIBRARY": "SUL-SDR",
+        "LINK_TEXT": "Access on Campus Only",
+        "MAT_SPEC": "Finding Aid",
+        "PUBLIC_NOTE": "Stanford Use Only Restricted",
+        "RELATIONSHIP": "Version of resource",
+        "URI": "https://purl.stanford.edu/123345",
+        "VENDOR_CODE": "cz4",
+        "NOTE": "purchased|Provider: Cambridge University Press",
+    }
+    assert output[1]["LIBRARY"].startswith("SUL")
+    assert output[1]["HOMELOCATION"].startswith("INTERNET")

@@ -2,6 +2,7 @@ import pytest  # noqa
 import pydantic
 
 from plugins.folio.holdings import (
+    electronic_holdings,
     post_folio_holding_records,
     run_holdings_tranformer,
     _add_identifiers,
@@ -13,6 +14,37 @@ from plugins.tests.mocks import (  # noqa
     mock_okapi_variable,
     MockFOLIOClient,
 )
+
+
+class MockHoldings(pydantic.BaseModel):
+    values = lambda *args, **kwargs: holdings  # noqa
+
+
+class MockMapper(pydantic.BaseModel):
+    # holdings_hrid_counter: int = 1
+    # holdings_hrid_prefix: str = "hold"
+    folio_client: MockFOLIOClient = MockFOLIOClient()
+
+
+class MockHoldingsTransformer(pydantic.BaseModel):
+    holdings: MockHoldings = MockHoldings()
+    mapper: MockMapper = MockMapper()
+
+
+class MockTaskInstance(pydantic.BaseModel):
+    xcom_pull = lambda *args, **kwargs: {}  # noqa
+    xcom_push = lambda *args, **kwargs: None  # noqa
+
+def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
+    electronic_holdings(
+        dag_run=mock_dag_run,
+        task_instance=MockTaskInstance(),
+        library_config={},
+        holdings_stem="holdings-transformers",
+        holdings_type_id="1asdfasdfasfd",
+        electronic_holdings_id="asdfadsfadsf"
+    )
+    assert "Electronic Holdings /opt/airflow/migration/data/items/holdings-transformers.electronic.tsv does not exist" in caplog.text
 
 
 def test_post_folio_holding_records(
@@ -35,8 +67,6 @@ def test_post_folio_holding_records(
 
 
 def test_run_holdings_tranformer():
-    # Waiting until https://github.com/FOLIO-FSE/folio_migration_tools can be
-    # installed with pip to test.
     assert run_holdings_tranformer
 
 
@@ -54,26 +84,6 @@ holdings = [
         "callNumber": "B1234",
     },
 ]
-
-
-class MockHoldings(pydantic.BaseModel):
-    values = lambda *args, **kwargs: holdings  # noqa
-
-
-class MockMapper(pydantic.BaseModel):
-    # holdings_hrid_counter: int = 1
-    # holdings_hrid_prefix: str = "hold"
-    folio_client: MockFOLIOClient = MockFOLIOClient()
-
-
-class MockHoldingsTransformer(pydantic.BaseModel):
-    holdings: MockHoldings = MockHoldings()
-    mapper: MockMapper = MockMapper()
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = lambda *args, **kwargs: {}  # noqa
-    xcom_push = lambda *args, **kwargs: None  # noqa
 
 
 def test_add_identifiers():
