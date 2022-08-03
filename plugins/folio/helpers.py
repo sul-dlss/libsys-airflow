@@ -89,9 +89,21 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
+full_text_check = re.compile(r"(table of contents|abstract|description|sample text)", re.IGNORECASE)
+
+
+def _add_electronic_holdings(field856: pymarc.Field) -> bool:
+    if field856.indicator2.startswith("1"):
+        subfield_z = field856.get_subfields("z")
+        subfield_3 = field856.get_subfields("3")
+        subfield_all = " ".join(subfield_z + subfield_3)
+        if full_text_check.match(subfield_all):
+            return False
+    return True
+
+
 def _electronic_access_relationship(indicator2: str):
     label = "No information provided"
-    #! Use pattern matching
     if indicator2.startswith("0"):
         label = "Resource"
     if indicator2.startswith("1"):
@@ -109,7 +121,8 @@ vendor_id_re = re.compile(r"\w{2,2}4")
 def _extract_856s(catkey: str, fields: list) -> list:
     properties_names = [
         "CATKEY",
-        "LOCATION",
+        "HOMELOCATION",
+        "LIBRARY",
         "LINK_TEXT",
         "MAT_SPEC",
         "PUBLIC_NOTE",
@@ -120,12 +133,19 @@ def _extract_856s(catkey: str, fields: list) -> list:
     ]
     output = []
     for field856 in fields:
-        logger.info(f"{field856}")
+        if not _add_electronic_holdings(field856):
+            continue
         row = {}
         for field in properties_names:
             row[field] = None
         row["CATKEY"] = catkey
         row["URI"] = "".join(field856.get_subfields("u"))
+        if row["URI"].startswith("https://purl.stanford"):
+            row["HOMELOCATION"] = "SUL-SDR"
+            row["LIBRARY"] = "SUL-SDR"
+        else:
+            row["HOMELOCATION"] = "INTERNET"
+            row["LIBRARY"] = "SUL"
         material_type = field856.get_subfields("3")
         if len(material_type) > 0:
             row["MAT_SPEC"] = " ".join(material_type)
@@ -253,10 +273,11 @@ def process_records(*args, **kwargs) -> list:
             records.extend([json.loads(i) for i in fo.readlines()])
 
     shard_size = int(len(records) / total_jobs)
+
     for i in range(total_jobs):
         start = i * shard_size
-        end = int(start + shard_size)
-        if end >= len(records):
+        end = shard_size * (i + 1)
+        if i == total_jobs - 1:
             end = len(records)
         tmp_out_path = f"{tmp}/{out_filename}-{i}.json"
         logger.info(f"Start {start} End {end} for {tmp_out_path}")

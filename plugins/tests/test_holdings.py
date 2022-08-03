@@ -11,7 +11,7 @@ from plugins.tests.mocks import (  # noqa
     mock_okapi_success,
     mock_dag_run,
     mock_okapi_variable,
-    MockFOLIOClient
+    MockFOLIOClient,
 )
 
 
@@ -52,7 +52,7 @@ holdings = [
         "instanceId": "xyzabc-def-ha",
         "formerIds": ["a123345"],
         "callNumber": "B1234",
-    }
+    },
 ]
 
 
@@ -70,9 +70,11 @@ class MockHoldingsTransformer(pydantic.BaseModel):
     holdings: MockHoldings = MockHoldings()
     mapper: MockMapper = MockMapper()
 
+
 class MockTaskInstance(pydantic.BaseModel):
     xcom_pull = lambda *args, **kwargs: {}  # noqa
     xcom_push = lambda *args, **kwargs: None  # noqa
+
 
 def test_add_identifiers():
     task_instance = MockTaskInstance()
@@ -81,8 +83,12 @@ def test_add_identifiers():
     _add_identifiers(task_instance, transformer)
 
     # Test UUIDS
-    assert transformer.holdings.values()[0]["id"] == "3000ae83-e7ee-5e3c-ab0c-7a931a23a393"
-    assert transformer.holdings.values()[1]["id"] == "67360f4a-fb55-5c78-ad11-585e1a6c6aa4"
+    assert (
+        transformer.holdings.values()[0]["id"] == "3000ae83-e7ee-5e3c-ab0c-7a931a23a393"
+    )
+    assert (
+        transformer.holdings.values()[1]["id"] == "67360f4a-fb55-5c78-ad11-585e1a6c6aa4"
+    )
 
     # Test HRIDs
     assert transformer.holdings.values()[0]["hrid"] == "ah123345_1"

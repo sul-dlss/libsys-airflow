@@ -18,6 +18,8 @@ vendor_code_re = re.compile(r"[a-z]+\d+")
 
 def electronic_holdings(*args, **kwargs) -> str:
     """Generates FOLIO Holdings records from Symphony 856 fields"""
+    dag = kwargs["dag_run"]
+    task_instance = kwargs["task_instance"]
     holdings_stem = kwargs["holdings_stem"]
     library_config = kwargs["library_config"]
     holdings_type_id = kwargs["electronic_holdings_id"]
@@ -29,6 +31,8 @@ def electronic_holdings(*args, **kwargs) -> str:
     if not full_path.exists():
         logging.info(f"Electronic Holdings {full_path} does not exist")
         return
+
+    library_config.iteration_identifier = dag.run_id
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-electronic-transformer",
@@ -55,6 +59,10 @@ def electronic_holdings(*args, **kwargs) -> str:
 
     holdings_transformer.do_work()
 
+    _add_identifiers(task_instance, holdings_transformer)
+
+    holdings_transformer.wrap_up()
+
 
 def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer):
     # Instance CATKEY
@@ -62,7 +70,6 @@ def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer
         key="hrid_count",
         task_ids="marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",
     )
-
 
     if instance_keys is None:
         instance_keys = {}
@@ -93,7 +100,7 @@ def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer
         # To handle optimistic locking
         record["_version"] = 1
 
-    task_instance.xcom_push(key="hrid_count", value=instance_keys)        
+    task_instance.xcom_push(key="hrid_count", value=instance_keys)
 
 
 def post_folio_holding_records(**kwargs):
