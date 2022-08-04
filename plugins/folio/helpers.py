@@ -9,7 +9,9 @@ import pandas as pd
 import pymarc
 import requests
 
+
 from airflow.models import Variable
+from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.migration_task_base import LevelFilter
 
 logger = logging.getLogger(__name__)
@@ -102,23 +104,34 @@ def _add_electronic_holdings(field856: pymarc.Field) -> bool:
     return True
 
 
-def _electronic_access_relationship(indicator2: str):
-    label = "No information provided"
-    if indicator2.startswith("0"):
-        label = "Resource"
-    if indicator2.startswith("1"):
-        label = "Version of resource"
-    if indicator2.startswith("2"):
-        label = "Related resource"
-    if indicator2.startswith("8"):
-        label = "No display constant generated"
-    return label
+def _query_for_relationships(folio_client=None) -> dict:
+    if folio_client is None:
+        folio_client = FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD")
+        )
+
+    relationships = {}
+    for row in folio_client.electronic_access_relationships:
+        if row['name'] == "Resource":
+            relationships["0"] = row["id"]
+        if row["name"] == "Version of resource":
+            relationships["1"] = row["id"]
+        if row["name"] == "Related resource":
+            relationships["2"] = row["id"]
+        if row["name"] == "No display constant generated":
+            relationships["8"] = row["id"]
+        if row["name"] == "No information provided":
+            relationships["_"] = row["id"]
+    return relationships
 
 
 vendor_id_re = re.compile(r"\w{2,2}4")
 
 
-def _extract_856s(catkey: str, fields: list) -> list:
+def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
     properties_names = [
         "CATKEY",
         "HOMELOCATION",
@@ -159,7 +172,10 @@ def _extract_856s(catkey: str, fields: list) -> list:
                 row["VENDOR_CODE"] = all_x_subfields.pop(-2)
             # Adds remaining x subfield values to note
             row["NOTE"] = "|".join(all_x_subfields)
-        row["RELATIONSHIP"] = _electronic_access_relationship(field856.indicator2)
+        if field856.indicator2 in relationships:
+            row["RELATIONSHIP"] = relationships[field856.indicator2]
+        else:
+            row["RELATIONSHIP"] = relationships["_"]
         output.append(row)
     return output
 
@@ -171,11 +187,17 @@ def process_marc(*args, **kwargs):
     marc_path = pathlib.Path(f"{airflow}/migration/data/instances/{marc_stem}.mrc")
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
+    relationship_ids = _query_for_relationships(folio_client=kwargs.get("folio_client"))
+
     marc_records = []
     electronic_holdings = []
     for record in marc_reader:
         catkey = _move_001_to_035(record)
-        electronic_holdings.extend(_extract_856s(catkey, record.get_fields("856")))
+        electronic_holdings.extend(
+            _extract_856s(
+                catkey,
+                record.get_fields("856"),
+                relationship_ids))
         marc_records.append(record)
         count = len(marc_records)
         if not count % 10_000:
