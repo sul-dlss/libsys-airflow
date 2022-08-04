@@ -43,7 +43,7 @@ def drop_inventory_triggers(**kwargs):
     pg_hook = _db_connection(**kwargs)
     sql = """
           DROP TRIGGER set_instance_ol_version_trigger ON sul_mod_inventory_storage.instance;
-          DROP TRIGGER set_holdings_record_ol_version_trigger ON sul_mod_inventory_storage.holdings_records;
+          DROP TRIGGER set_holdings_record_ol_version_trigger ON sul_mod_inventory_storage.holdings_record;
           DROP TRIGGER set_item_ol_version_trigger ON sul_mod_inventory_storage.item;
           """
     connection = pg_hook.get_conn()
