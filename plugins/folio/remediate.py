@@ -41,12 +41,12 @@ def _post_or_put_record(record: dict, endpoint: str, folio_client: FolioClient):
     post_url = f"{folio_client.okapi_url}{endpoint}"
 
     # Tries a PUT request for existing record
-    put_result = requests.put(put_url, headers=folio_client.headers, json=record)
+    put_result = requests.put(put_url, headers=folio_client.okapi_headers, json=record)
     if put_result.status_code < 300:
         logging.info(f"Updated {record['id']} to {folio_client.okapi_url}")
     elif put_result.status_code == 404:
         # Record not found in FOLIO, try creating with POST
-        post_result = requests.post(post_url, headers=folio_client.headers, json=record)
+        post_result = requests.post(post_url, headers=folio_client.okapi_headers, json=record)
         if post_result.status_code < 300:
             logging.info(f"Added {record['id']} to {folio_client.okapi_url}")
         else:
