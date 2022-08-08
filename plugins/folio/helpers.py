@@ -59,13 +59,6 @@ def move_marc_files_check_tsv(*args, **kwargs) -> str:
     if not marc_path.exists():
         raise ValueError(f"MARC Path {marc_path} does not exist")
 
-    # Checks for TSV file and sets XCOM marc_only if not present
-    tsv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.tsv")
-    marc_only = True
-    if tsv_path.exists():
-        marc_only = False
-    task_instance.xcom_push(key="marc_only", value=marc_only)
-
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
 
@@ -103,6 +96,19 @@ def _add_electronic_holdings(field856: pymarc.Field) -> bool:
             return False
     return True
 
+def _get_library(fields596: list) -> str:
+    # Default is SUL library
+    library = "SUL"
+    # Use first 596 field
+    subfield_a = fields596[0]['a']
+    if "24" in subfield_a:
+        library = "LAW"
+    if "25" in subfield_a or "27" in subfield_a:
+        library = "HOOVER"
+    if "28" in subfield_a:
+        library = "BUSINESS"
+    return library
+
 
 def _query_for_relationships(folio_client=None) -> dict:
     if folio_client is None:
@@ -131,7 +137,11 @@ def _query_for_relationships(folio_client=None) -> dict:
 vendor_id_re = re.compile(r"\w{2,2}4")
 
 
-def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
+def _extract_856s(**kwargs) -> list:
+    catkey = kwargs['catkey']
+    fields = kwargs['fields']
+    library = kwargs['library']
+    relationships = kwargs['relationships']
     properties_names = [
         "CATKEY",
         "HOMELOCATION",
@@ -153,12 +163,12 @@ def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
             row[field] = None
         row["CATKEY"] = catkey
         row["URI"] = "".join(field856.get_subfields("u"))
+        row["HOMELOCATION"] = "INTERNET"
         if row["URI"].startswith("https://purl.stanford"):
-            row["HOMELOCATION"] = "SUL-SDR"
             row["LIBRARY"] = "SUL-SDR"
+            row["HOMELOCATION"] = "SUL-SDR"
         else:
-            row["HOMELOCATION"] = "INTERNET"
-            row["LIBRARY"] = "SUL"
+            row["LIBRARY"] = library
         material_type = field856.get_subfields("3")
         if len(material_type) > 0:
             row["MAT_SPEC"] = " ".join(material_type)
@@ -182,6 +192,8 @@ def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
 
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
+    task_instance = kwargs["task_instance"]
+    source_directory = kwargs["source"]
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     marc_path = pathlib.Path(f"{airflow}/migration/data/instances/{marc_stem}.mrc")
@@ -195,20 +207,35 @@ def process_marc(*args, **kwargs):
         catkey = _move_001_to_035(record)
         electronic_holdings.extend(
             _extract_856s(
-                catkey,
-                record.get_fields("856"),
-                relationship_ids))
+                catkey=catkey,
+                fields=record.get_fields("856"),
+                relationships=relationship_ids,
+                library=_get_library(record.get_fields("596"))))
         marc_records.append(record)
         count = len(marc_records)
         if not count % 10_000:
             logger.info(f"Processed {count} MARC records")
 
-    electronic_holdings_df = pd.DataFrame(electronic_holdings)
-    electronic_holdings_df.to_csv(
-        f"{airflow}/migration/data/items/{marc_stem}.electronic.tsv",
-        sep="\t",
-        index=False,
-    )
+    marc_only = True
+
+    # Checks for TSV file and sets XCOM marc_only if not present
+    tsv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.tsv")
+
+    if tsv_path.exists():
+        marc_only = False
+
+    if len(electronic_holdings) > 0:
+        electronic_holdings_df = pd.DataFrame(electronic_holdings)
+        electronic_holdings_df.to_csv(
+            f"{airflow}/migration/data/items/{marc_stem}.electronic.tsv",
+            sep="\t",
+            index=False,
+        )
+        marc_only = False
+        logger.info(f"Creating {len(electronic_holdings):,} Electronic Holdings")
+
+ 
+    task_instance.xcom_push(key="marc_only", value=marc_only)
 
     with open(marc_path.absolute(), "wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -403,7 +430,8 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_base = pathlib.Path(f"{airflow}/{source_directory}/{tsv_stem}.tsv")
 
     if not tsv_base.exists():
-        raise ValueError(f"{tsv_base} does not exist for workflow")
+        logging.info(f"{tsv_base} does not exist for workflow")
+        return
 
     tsv_notes = _get_tsv_notes(tsv_stem, airflow, source_directory)
 
