@@ -18,7 +18,7 @@ from airflow.models import Variable
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
-    move_marc_files_check_tsv,
+    move_marc_files,
     process_marc,
     process_records,
     transform_move_tsvs,
@@ -66,7 +66,7 @@ def marc_only(*args, **kwargs):
     marc_only_task_id = kwargs.get("marc_only_task")
 
     marc_only_workflow = task_instance.xcom_pull(
-        key="marc_only", task_ids="move-transform.move-marc-files"
+        key="marc_only", task_ids="move-transform.preprocess_marc"
     )
 
     if marc_only_workflow:
@@ -108,7 +108,7 @@ with DAG(
 
         move_marc_to_instances = PythonOperator(
             task_id="move-marc-files",
-            python_callable=move_marc_files_check_tsv,
+            python_callable=move_marc_files,
             op_kwargs={"source": "symphony"},
         )
 
@@ -141,7 +141,8 @@ with DAG(
             task_id="preprocess_marc",
             python_callable=process_marc,
             op_kwargs={
-                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""  # noqa
+                "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
+                "source": "symphony"
             },
         )
 

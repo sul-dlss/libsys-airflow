@@ -1,5 +1,6 @@
 import json
 import logging
+import pathlib
 
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
@@ -85,6 +86,12 @@ def run_items_transformer(*args, **kwargs) -> bool:
     library_config.iteration_identifier = dag.run_id
 
     items_stem = kwargs["items_stem"]
+
+    items_filepath = pathlib.Path(f"{airflow}/migration/data/items/{items_stem}.notes.tsv")
+
+    if not items_filepath.exists():
+        logging.error(f"{items_filepath} does not exist")
+        return
 
     item_config = ItemsTransformer.TaskConfiguration(
         name="items-transformer",

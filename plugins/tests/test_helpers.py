@@ -377,26 +377,11 @@ def test_add_electronic_holdings():
 
 class MockFolioClient(pydantic.BaseModel):
     electronic_access_relationships = [
-        {
-            "name": "Resource",
-            "id": "db9092dbc9dd"
-        },
-        {
-            "name": "Version of resource",
-            "id": "9cd0"
-        },
-        {
-            "name": "Related resource",
-            "id": "4add"
-        },
-        {
-            "name": "No display constant generated",
-            "id": "bae0"
-        },
-        {
-            "name": "No information provided",
-            "id": "f50c90c9"
-        }
+        {"name": "Resource", "id": "db9092dbc9dd"},
+        {"name": "Version of resource", "id": "9cd0"},
+        {"name": "Related resource", "id": "4add"},
+        {"name": "No display constant generated", "id": "bae0"},
+        {"name": "No information provided", "id": "f50c90c9"},
     ]
 
 
@@ -454,12 +439,14 @@ def test_extract_856s():
     ]
     url_relationships = {
         "1": "3b430592-2e09-4b48-9a0c-0636d66b9fb3",
-        "_": "f50c90c9-bae0-4add-9cd0-db9092dbc9dd"
+        "_": "f50c90c9-bae0-4add-9cd0-db9092dbc9dd",
     }
-    output = _extract_856s(catkey=catkey, 
-                           fields=all856_fields,
-                           relationships=url_relationships,
-                           library_location=("SUL", "SUL-INTERNET"))
+    output = _extract_856s(
+        catkey=catkey,
+        fields=all856_fields,
+        relationships=url_relationships,
+        library_location=("SUL", "SUL-INTERNET"),
+    )
     assert len(output) == 2
     assert output[0] == {
         "CATKEY": "34456",

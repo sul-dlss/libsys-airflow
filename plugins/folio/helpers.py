@@ -47,20 +47,19 @@ def archive_artifacts(*args, **kwargs):
         logger.info("Moved {artifact} to {target}")
 
 
-def move_marc_files_check_tsv(*args, **kwargs) -> str:
-    """Moves MARC files to migration/data/instances, sets XCOM
-    if tsv is present"""
-    task_instance = kwargs["task_instance"]
-
+def move_marc_files(*args, **kwargs) -> str:
+    """Moves MARC files to migration/data/instances"""
     airflow = kwargs.get("airflow", "/opt/airflow")
     source_directory = kwargs["source"]
 
-    marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
-    if not marc_path.exists():
-        raise ValueError(f"MARC Path {marc_path} does not exist")
+    try:
+        marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
+    except StopIteration:
+        raise ValueError(f"MARC record does not exist in {source_directory} directory")
 
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
     shutil.move(marc_path, marc_target)
+    logger.info(f"{marc_path} moved to {marc_target}")
 
     return marc_path.stem
 
@@ -96,16 +95,19 @@ def _add_electronic_holdings(field856: pymarc.Field) -> bool:
             return False
     return True
 
+
 def _get_library(fields596: list) -> str:
     # Default is SUL library
     library = "SUL"
+    if len(fields596) < 1:
+        return library
     # Use first 596 field
-    subfield_a = fields596[0]['a']
+    subfield_a = "".join(fields596[0].get_subfields('a'))
     if "24" in subfield_a:
         library = "LAW"
-    if "25" in subfield_a or "27" in subfield_a:
+    elif "25" in subfield_a or "27" in subfield_a:
         library = "HOOVER"
-    if "28" in subfield_a:
+    elif "28" in subfield_a:
         library = "BUSINESS"
     return library
 
@@ -166,7 +168,6 @@ def _extract_856s(**kwargs) -> list:
         row["HOMELOCATION"] = "INTERNET"
         if row["URI"].startswith("https://purl.stanford"):
             row["LIBRARY"] = "SUL-SDR"
-            row["HOMELOCATION"] = "SUL-SDR"
         else:
             row["LIBRARY"] = library
         material_type = field856.get_subfields("3")
@@ -234,7 +235,6 @@ def process_marc(*args, **kwargs):
         marc_only = False
         logger.info(f"Creating {len(electronic_holdings):,} Electronic Holdings")
 
- 
     task_instance.xcom_push(key="marc_only", value=marc_only)
 
     with open(marc_path.absolute(), "wb+") as fo:

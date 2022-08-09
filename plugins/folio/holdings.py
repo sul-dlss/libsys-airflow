@@ -133,10 +133,15 @@ def run_holdings_tranformer(*args, **kwargs):
     dag = kwargs["dag_run"]
     task_instance = kwargs["task_instance"]
     library_config = kwargs["library_config"]
-
+    airflow = kwargs.get("airflow", "/opt/airflow")
     library_config.iteration_identifier = dag.run_id
 
     holdings_stem = kwargs["holdings_stem"]
+
+    holdings_filepath = pathlib.Path(f"{airflow}/migration/data/items/{holdings_stem}.tsv")
+    if not holdings_filepath.exists():
+        logging.error(f"{holdings_filepath} does not exist.")
+        return
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="holdings-transformer",
