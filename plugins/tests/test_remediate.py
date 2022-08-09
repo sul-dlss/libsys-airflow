@@ -27,7 +27,7 @@ class MockFolioClient(pydantic.BaseModel):
     password = "abdccde"
     username = "folio_admin"
     folio_get = mock_folio_get
-    headers = {}
+    okapi_headers = {}
 
 
 @pytest.fixture
