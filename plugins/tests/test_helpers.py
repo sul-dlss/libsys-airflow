@@ -14,11 +14,12 @@ from plugins.folio.helpers import (
     _add_electronic_holdings,
     archive_artifacts,
     _extract_856s,
-    move_marc_files_check_tsv,
-    post_to_okapi,
-    process_marc,
+    _get_library,
     _merge_notes_into_base,
     _move_001_to_035,
+    move_marc_files,
+    post_to_okapi,
+    process_marc,
     process_records,
     _query_for_relationships,
     setup_data_logging,
@@ -42,29 +43,31 @@ class MockTaskInstance(pydantic.BaseModel):
     xcom_push = mock_xcom_push
 
 
-def test_move_marc_files(mock_file_system):  # noqa
+def test_move_marc_files(mock_file_system, caplog):  # noqa
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    move_marc_files_check_tsv(
+    move_marc_files(
         task_instance=task_instance, airflow=airflow_path, source="symphony"
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
-    assert messages["marc_only"]
+    assert "sample.mrc moved to" in caplog.text
 
 
-def test_move_tsv_files(mock_file_system):  # noqa
+def test_move_marc_files_missing_marc(mock_file_system):  # noqa
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
-    sample_csv = source_dir / "sample.tsv"
-    sample_csv.write_text("sample")
 
-    move_marc_files_check_tsv(
-        task_instance=task_instance, airflow=airflow_path, source="symphony"
-    )  # noqa
-    assert messages["marc_only"] is False
+    (source_dir / "sample.mrc").unlink()
+
+    with pytest.raises(
+        ValueError, match="MARC record does not exist in symphony directory"
+    ):
+        move_marc_files(
+            task_instance=task_instance, airflow=airflow_path, source="symphony"
+        )
 
 
 @pytest.fixture
@@ -265,11 +268,11 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     f_notes.close()
 
 
-def test_transform_move_tsvs_doesnt_exit(mock_file_system):  # noqa
+def test_transform_move_tsvs_doesnt_exit(mock_file_system, caplog):  # noqa
     airflow_path = mock_file_system[0]
 
-    with pytest.raises(ValueError, match="sample.tsv does not exist for workflow"):
-        transform_move_tsvs(airflow=airflow_path, source="symphony", tsv_stem="sample")
+    transform_move_tsvs(airflow=airflow_path, source="symphony", tsv_stem="sample")
+    assert "sample.tsv does not exist for workflow" in caplog.text
 
 
 def test_merge_notes_into_base():
@@ -375,6 +378,35 @@ def test_add_electronic_holdings():
     assert _add_electronic_holdings(field_856) is True
 
 
+def test_get_library_default():
+    library = _get_library([])
+    assert library.startswith("SUL")
+
+
+def test_get_library_law():
+    fields = [Field(tag="596", subfields=["a", "24"])]
+    library = _get_library(fields)
+    assert library.startswith("LAW")
+
+
+def test_get_library_hoover():
+    fields_25 = [Field(tag="596", subfields=["a", "25 22"])]
+    library_hoover = _get_library(fields_25)
+    assert library_hoover.startswith("HOOVER")
+    fields_27 = [Field(tag="596", subfields=["a", "27 22"])]
+    library_hoover2 = _get_library(fields_27)
+    assert library_hoover2.startswith("HOOVER")
+
+
+def test_get_library_business():
+    fields = [
+        Field(tag="596", subfields=["a", "28"]),
+        Field(tag="596", subfields=["a", "28 22"]),
+    ]
+    library = _get_library(fields)
+    assert library.startswith("BUSINESS")
+
+
 class MockFolioClient(pydantic.BaseModel):
     electronic_access_relationships = [
         {"name": "Resource", "id": "db9092dbc9dd"},
@@ -445,12 +477,12 @@ def test_extract_856s():
         catkey=catkey,
         fields=all856_fields,
         relationships=url_relationships,
-        library_location=("SUL", "SUL-INTERNET"),
+        library="SUL",
     )
     assert len(output) == 2
     assert output[0] == {
         "CATKEY": "34456",
-        "HOMELOCATION": "SUL-SDR",
+        "HOMELOCATION": "INTERNET",
         "LIBRARY": "SUL-SDR",
         "LINK_TEXT": "Access on Campus Only",
         "MAT_SPEC": "Finding Aid",
@@ -461,4 +493,4 @@ def test_extract_856s():
         "NOTE": "purchased|Provider: Cambridge University Press",
     }
     assert output[1]["LIBRARY"].startswith("SUL")
-    assert output[1]["HOMELOCATION"].startswith("SUL")
+    assert output[1]["HOMELOCATION"].startswith("INTERNET")
