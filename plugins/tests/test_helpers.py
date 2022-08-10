@@ -6,7 +6,7 @@ import pytest
 import pydantic
 import requests
 
-from pymarc import Record, Field
+from pymarc import Field, MARCWriter, Record
 from airflow.models import Variable
 from pytest_mock import MockerFixture
 
@@ -187,8 +187,28 @@ def test_post_to_okapi_failures(
     assert error_file.exists()
 
 
-def test_process_marc():
-    assert process_marc
+def test_process_marc(mock_file_system, caplog):  # noqa
+    airflow_path = mock_file_system[0]
+    target_dir = mock_file_system[2]
+    test_record = Record()
+    test_record.add_field(
+        Field(tag="596", indicators=[" ", " "], subfields=["a", "22"])
+    )
+    test_marc_file = target_dir / "test.mrc"
+
+    with test_marc_file.open("wb+") as fo:
+        marc_writer = MARCWriter(fo)
+        marc_writer.write(test_record)
+
+    process_marc(
+        airflow=airflow_path,
+        marc_stem="test",
+        folio_client=MockFolioClient(),
+        task_instance=MockTaskInstance(),
+        source="symphony",
+    )
+
+    assert messages["marc_only"] is True
 
 
 @pytest.fixture
