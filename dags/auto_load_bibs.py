@@ -9,6 +9,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 logger = logging.getLogger(__name__)
 
+
 @dag(
     schedule_interval=None,
     start_date=datetime(2022, 8, 11),
@@ -26,8 +27,8 @@ def auto_bib_loads(**kwargs):
     @task()
     def create_bib_loads():
         """
-        ### Creates BIB Record Loads 
-        Iterates through a directory of MARC21 and TSV files 
+        ### Creates BIB Record Loads
+        Iterates through a directory of MARC21 and TSV files
         """
         context = get_current_context()
         params = context.get("params")
@@ -40,7 +41,7 @@ def auto_bib_loads(**kwargs):
 
         bib_record_groups = []
         for marc_file in files_path.glob("*.*rc"):
-            record_group = { "marc": str(marc_file), "tsv": [], "tsv-base": None }
+            record_group = {"marc": str(marc_file), "tsv": [], "tsv-base": None}
             for tsv_file in files_path.glob(f"{marc_file.stem}*.tsv"):
                 record_group["tsv"].append(str(tsv_file))
                 if tsv_file.name == f"{marc_file.stem}.tsv":
@@ -54,7 +55,7 @@ def auto_bib_loads(**kwargs):
     @task()
     def launch_ol_management(**kwargs):
         """
-        ### Launches inventory_ol_manage DAG 
+        ### Launches inventory_ol_manage DAG
         """
         record_loads = kwargs.get("bib_rec_groups", [])
         if len(record_loads) > 0:
@@ -70,13 +71,11 @@ def auto_bib_loads(**kwargs):
         ### Launches multiples DAG runs of symphony_marc_import
         """
         bib_record_groups = kwargs.get("bib_rec_groups", [])
-        for i,group in enumerate(bib_record_groups):
+        for i, group in enumerate(bib_record_groups):
             TriggerDagRunOperator(
                 task_id=f"symphony-marc-import-{i}",
                 trigger_dag_id="symphony_marc_import",
-                conf={
-                    "record_group": group
-                }
+                conf={"record_group": group},
             ).execute(kwargs)
 
     record_groups = create_bib_loads()
