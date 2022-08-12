@@ -6,7 +6,7 @@ import pytest
 import pydantic
 import requests
 
-from pymarc import Record, Field
+from pymarc import Record, Field, MARCWriter
 from airflow.models import Variable
 from pytest_mock import MockerFixture
 
@@ -14,7 +14,7 @@ from plugins.folio.helpers import (
     _add_electronic_holdings,
     archive_artifacts,
     _extract_856s,
-    move_marc_files_check_tsv,
+    move_marc_files,
     post_to_okapi,
     process_marc,
     _merge_notes_into_base,
@@ -31,14 +31,24 @@ from plugins.tests.mocks import mock_file_system  # noqa
 messages = {}
 
 
-# Mock xcom
+# Mock xcoms
 def mock_xcom_push(*args, **kwargs):
     key = kwargs["key"]
     value = kwargs["value"]
     messages[key] = value
 
 
+def mock_xcom_pull(*args, **kwargs):
+    task_id = kwargs["task_ids"]
+    key = kwargs["key"]
+    if task_id in messages:
+        if key in messages[task_id]:
+            return messages[task_id][key]
+    return "unknown"
+
+
 class MockTaskInstance(pydantic.BaseModel):
+    xcom_pull = mock_xcom_pull
     xcom_push = mock_xcom_push
 
 
@@ -47,24 +57,24 @@ def test_move_marc_files(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    move_marc_files_check_tsv(
+    sample_mrc = source_dir / "sample.mrc"
+    with sample_mrc.open("wb+") as fo:
+        marc_record = Record()
+        marc_record.add_field(
+            Field(tag="245", indicators=[" ", " "], subfields=["a", "A Test Title"])
+        )
+        writer = MARCWriter(fo)
+        writer.write(marc_record)
+
+    global messages
+    messages["bib-files-group"] = {"marc-file": str(sample_mrc)}
+
+    move_marc_files(
         task_instance=task_instance, airflow=airflow_path, source="symphony"
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
-    assert messages["marc_only"]
-
-
-def test_move_tsv_files(mock_file_system):  # noqa
-    task_instance = MockTaskInstance()
-    airflow_path = mock_file_system[0]
-    source_dir = mock_file_system[1]
-    sample_csv = source_dir / "sample.tsv"
-    sample_csv.write_text("sample")
-
-    move_marc_files_check_tsv(
-        task_instance=task_instance, airflow=airflow_path, source="symphony"
-    )  # noqa
-    assert messages["marc_only"] is False
+    assert (airflow_path / "migration/data/instances/sample.mrc").exists()
+    messages = {}
 
 
 @pytest.fixture
@@ -232,9 +242,11 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     symphony_tsv.write_text(
         "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  "
     )
-    tsv_directory = airflow_path / "migration/data/items"
-    sample_tsv = tsv_directory / "sample.tsv"
-    sample_notes_tsv = tsv_directory / "sample.notes.tsv"
+
+    symphony_notes_tsv = source_dir / "sample.public.tsv"
+    symphony_notes_tsv.write_text(
+        "BARCODE\tPUBLIC\n45677 \tAvailable for checkout"
+    )
 
     # mock sample CIRCNOTE tsv
     symphony_circnotes_tsv = source_dir / "sample.circnote.tsv"
@@ -247,29 +259,49 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
         ("BARCODE", lambda x: x.strip()),
     ]
 
+    # Mocks successful upstream task
+    global messages
+    messages["bib-files-group"] = {
+        "tsv-files": [
+            str(symphony_notes_tsv),
+            str(symphony_circnotes_tsv),
+        ],
+        "tsv-base": str(symphony_tsv),
+    }
+
     transform_move_tsvs(
         airflow=airflow_path,
         column_transforms=column_transforms,
+        task_instance=MockTaskInstance(),
         source="symphony",
         tsv_stem="sample",
     )
+    tsv_directory = airflow_path / "migration/data/items"
+    sample_tsv = tsv_directory / "sample.tsv"
 
     f = open(sample_tsv, "r")
     assert f.readlines()[1] == "a123456\tLC 12345\t45677\n"
     f.close()
 
+    sample_notes_tsv = tsv_directory / "sample.notes.tsv"
     f_notes = open(sample_notes_tsv, "r")
     assert (
-        f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tpencil marks 7/28/18cc\n"
+        f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tAvailable for checkout\tpencil marks 7/28/18cc\n"
     )
     f_notes.close()
+    messages = {}
 
 
-def test_transform_move_tsvs_doesnt_exit(mock_file_system):  # noqa
+def test_transform_move_tsvs_doesnt_exist(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
 
-    with pytest.raises(ValueError, match="sample.tsv does not exist for workflow"):
-        transform_move_tsvs(airflow=airflow_path, source="symphony", tsv_stem="sample")
+    with pytest.raises(FileNotFoundError, match="No such file or directory"):
+        transform_move_tsvs(
+            airflow=airflow_path,
+            source="symphony",
+            task_instance=MockTaskInstance(),
+            tsv_stem="sample",
+        )
 
 
 def test_merge_notes_into_base():
@@ -377,26 +409,11 @@ def test_add_electronic_holdings():
 
 class MockFolioClient(pydantic.BaseModel):
     electronic_access_relationships = [
-        {
-            "name": "Resource",
-            "id": "db9092dbc9dd"
-        },
-        {
-            "name": "Version of resource",
-            "id": "9cd0"
-        },
-        {
-            "name": "Related resource",
-            "id": "4add"
-        },
-        {
-            "name": "No display constant generated",
-            "id": "bae0"
-        },
-        {
-            "name": "No information provided",
-            "id": "f50c90c9"
-        }
+        {"name": "Resource", "id": "db9092dbc9dd"},
+        {"name": "Version of resource", "id": "9cd0"},
+        {"name": "Related resource", "id": "4add"},
+        {"name": "No display constant generated", "id": "bae0"},
+        {"name": "No information provided", "id": "f50c90c9"},
     ]
 
 
@@ -452,8 +469,14 @@ def test_extract_856s():
             subfields=["u", "https://example.doi.org/4566", "3", "sample text"],
         ),
     ]
-    output = _extract_856s(catkey, all856_fields, {"1": "3b430592-2e09-4b48-9a0c-0636d66b9fb3",
-                                                   "_": "f50c90c9-bae0-4add-9cd0-db9092dbc9dd"})
+    output = _extract_856s(
+        catkey,
+        all856_fields,
+        {
+            "1": "3b430592-2e09-4b48-9a0c-0636d66b9fb3",
+            "_": "f50c90c9-bae0-4add-9cd0-db9092dbc9dd",
+        },
+    )
     assert len(output) == 2
     assert output[0] == {
         "CATKEY": "34456",
