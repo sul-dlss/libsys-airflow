@@ -65,6 +65,7 @@ default_args = {
 with DAG(
     "symphony_marc_import",
     default_args=default_args,
+    schedule_interval=None,
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],

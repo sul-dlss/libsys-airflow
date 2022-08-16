@@ -43,9 +43,10 @@ def auto_bib_loads(**kwargs):
         for marc_file in files_path.glob("*.*rc"):
             record_group = {"marc": str(marc_file), "tsv": [], "tsv-base": None}
             for tsv_file in files_path.glob(f"{marc_file.stem}*.tsv"):
-                record_group["tsv"].append(str(tsv_file))
                 if tsv_file.name == f"{marc_file.stem}.tsv":
                     record_group["tsv-base"] = tsv_file.name
+                else:
+                    record_group["tsv"].append(str(tsv_file))
             bib_record_groups.append(record_group)
             logger.info(f"{marc_file.name} with {len(record_group['tsv']):,} tsv files")
 
