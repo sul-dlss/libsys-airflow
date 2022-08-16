@@ -41,7 +41,19 @@ def auto_bib_loads(**kwargs):
 
         bib_record_groups = []
         for marc_file in files_path.glob("*.*rc"):
-            record_group = {"marc": str(marc_file), "tsv": [], "tsv-base": None, "tsv-dates": None}
+            if "-mhlds" in marc_file.name:
+                # MARC holdings marc file are handled later in function
+                continue
+            record_group = {
+                "marc": str(marc_file),
+                "tsv": [],
+                "tsv-base": None, "tsv-dates": None
+            }
+            marc_file_parts = marc_file.stem.split(".")
+            mfld_file = files_path / f"{marc_file_parts[0]}-mhlds.{'.'.join(marc_file_parts[1:])}.mrc"
+            logger.info(f"MFLD file path is {mfld_file} exists {mfld_file.exists()}")
+            if mfld_file.exists():
+                record_group["mfld"] = str(mfld_file)
             for tsv_file in files_path.glob(f"{marc_file.stem}*.tsv"):
                 if tsv_file.name == f"{marc_file.stem}.tsv":
                     record_group["tsv-base"] = str(tsv_file)
