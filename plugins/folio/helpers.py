@@ -53,8 +53,11 @@ def archive_artifacts(*args, **kwargs):
 # Determines marc_only workflow
 def get_bib_files(**kwargs):
     task_instance = kwargs["task_instance"]
-    context = get_current_context()
+    context = kwargs.get("context")
+    if context is None:
+        context = get_current_context()
     params = context.get("params")
+
     bib_file_load = params.get("record_group")
     if bib_file_load is None:
         raise ValueError("Missing bib record load")

@@ -14,6 +14,7 @@ from plugins.folio.helpers import (
     _add_electronic_holdings,
     archive_artifacts,
     _extract_856s,
+    get_bib_files,
     move_marc_files,
     post_to_okapi,
     process_marc,
@@ -233,6 +234,33 @@ def test_missing_001_to_034(mock_marc_record):
     assert record.get_fields("035") == []
 
 
+def test_get_bib_files():
+    context = {
+        "params": {
+            "record_group": {
+                "marc": "sample.mrc",
+                "tsv": ["sample.public.tsv", "sample.circ.tsv"],
+                "tsv-base": "sample.tsv",
+            },
+        }
+    }
+
+    global messages
+    assert len(messages) == 0
+
+    get_bib_files(task_instance=MockTaskInstance(), context=context)
+
+    assert messages["marc-file"].startswith("sample.mrc")
+    assert len(messages["tsv-files"]) == 2
+    assert messages["tsv-base"].startswith("sample.tsv")
+    messages
+
+
+def test_get_bib_files_no_load():
+    with pytest.raises(ValueError, match="Missing bib record load"):
+        get_bib_files(task_instance=MockTaskInstance(), context={"params": {}})
+
+
 def test_transform_move_tsvs(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
@@ -244,9 +272,7 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     )
 
     symphony_notes_tsv = source_dir / "sample.public.tsv"
-    symphony_notes_tsv.write_text(
-        "BARCODE\tPUBLIC\n45677 \tAvailable for checkout"
-    )
+    symphony_notes_tsv.write_text("BARCODE\tPUBLIC\n45677 \tAvailable for checkout")
 
     # mock sample CIRCNOTE tsv
     symphony_circnotes_tsv = source_dir / "sample.circnote.tsv"
@@ -286,7 +312,8 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     sample_notes_tsv = tsv_directory / "sample.notes.tsv"
     f_notes = open(sample_notes_tsv, "r")
     assert (
-        f_notes.readlines()[1] == "a123456\tLC 12345\t45677\tAvailable for checkout\tpencil marks 7/28/18cc\n"
+        f_notes.readlines()[1]
+        == "a123456\tLC 12345\t45677\tAvailable for checkout\tpencil marks 7/28/18cc\n"
     )
     f_notes.close()
     messages = {}
