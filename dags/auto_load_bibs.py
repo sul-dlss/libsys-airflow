@@ -44,7 +44,7 @@ def auto_bib_loads(**kwargs):
             record_group = {"marc": str(marc_file), "tsv": [], "tsv-base": None}
             for tsv_file in files_path.glob(f"{marc_file.stem}*.tsv"):
                 if tsv_file.name == f"{marc_file.stem}.tsv":
-                    record_group["tsv-base"] = tsv_file.name
+                    record_group["tsv-base"] = str(tsv_file)
                 else:
                     record_group["tsv"].append(str(tsv_file))
             bib_record_groups.append(record_group)
