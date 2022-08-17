@@ -69,7 +69,7 @@ with DAG(
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
-    max_active_runs=3,
+    max_active_runs=Variable.get("IMPORT_MAX_RUNS", 3),
 ) as dag:
 
     dag.doc_md = dedent(
