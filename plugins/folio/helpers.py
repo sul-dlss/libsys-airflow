@@ -11,8 +11,11 @@ import requests
 
 
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
+
 from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.migration_task_base import LevelFilter
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,27 +50,36 @@ def archive_artifacts(*args, **kwargs):
         logger.info("Moved {artifact} to {target}")
 
 
-def move_marc_files_check_tsv(*args, **kwargs) -> str:
-    """Moves MARC files to migration/data/instances, sets XCOM
-    if tsv is present"""
+# Determines marc_only workflow
+def get_bib_files(**kwargs):
+    task_instance = kwargs["task_instance"]
+    context = kwargs.get("context")
+    if context is None:
+        context = get_current_context()
+    params = context.get("params")
+
+    bib_file_load = params.get("record_group")
+    if bib_file_load is None:
+        raise ValueError("Missing bib record load")
+    logger.info(f"Retrieved MARC record {bib_file_load['marc']}")
+    logger.info(f"Total number of associated tsv files {len(bib_file_load['tsv'])}")
+    task_instance.xcom_push(key="marc-file", value=bib_file_load["marc"])
+    task_instance.xcom_push(key="tsv-files", value=bib_file_load["tsv"])
+    task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
+
+
+def move_marc_files(*args, **kwargs) -> str:
+    """Moves MARC files to migration/data/instances"""
+    airflow = kwargs.get("airflow", "/opt/airflow")
     task_instance = kwargs["task_instance"]
 
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    source_directory = kwargs["source"]
+    marc_filepath = task_instance.xcom_pull(task_ids="bib-files-group", key="marc-file")
 
-    marc_path = next(pathlib.Path(f"{airflow}/{source_directory}/").glob("*.*rc"))
-    if not marc_path.exists():
-        raise ValueError(f"MARC Path {marc_path} does not exist")
-
-    # Checks for TSV file and sets XCOM marc_only if not present
-    tsv_path = pathlib.Path(f"{airflow}/{source_directory}/{marc_path.stem}.tsv")
-    marc_only = True
-    if tsv_path.exists():
-        marc_only = False
-    task_instance.xcom_push(key="marc_only", value=marc_only)
-
+    marc_path = pathlib.Path(marc_filepath)
     marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
+
     shutil.move(marc_path, marc_target)
+    logger.info(f"{marc_path} moved to {marc_target}")
 
     return marc_path.stem
 
@@ -91,7 +103,9 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
-full_text_check = re.compile(r"(table of contents|abstract|description|sample text)", re.IGNORECASE)
+full_text_check = re.compile(
+    r"(table of contents|abstract|description|sample text)", re.IGNORECASE
+)
 
 
 def _add_electronic_holdings(field856: pymarc.Field) -> bool:
@@ -110,12 +124,12 @@ def _query_for_relationships(folio_client=None) -> dict:
             Variable.get("OKAPI_URL"),
             "sul",
             Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD")
+            Variable.get("FOLIO_PASSWORD"),
         )
 
     relationships = {}
     for row in folio_client.electronic_access_relationships:
-        if row['name'] == "Resource":
+        if row["name"] == "Resource":
             relationships["0"] = row["id"]
         if row["name"] == "Version of resource":
             relationships["1"] = row["id"]
@@ -194,10 +208,8 @@ def process_marc(*args, **kwargs):
     for record in marc_reader:
         catkey = _move_001_to_035(record)
         electronic_holdings.extend(
-            _extract_856s(
-                catkey,
-                record.get_fields("856"),
-                relationship_ids))
+            _extract_856s(catkey, record.get_fields("856"), relationship_ids)
+        )
         marc_records.append(record)
         count = len(marc_records)
         if not count % 10_000:
@@ -353,7 +365,7 @@ def _merge_notes_into_base(base_df: pd.DataFrame, note_df: pd.DataFrame):
     return base_df
 
 
-def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
+def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms):
     items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
@@ -384,28 +396,18 @@ def _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms):
     return new_tsv_notes_path.name
 
 
-def _get_tsv_notes(tsv_stem, airflow, source_directory):
-
-    return [
-        path
-        for path in pathlib.Path(f"{airflow}/{source_directory}/").glob(
-            f"{tsv_stem}.*.tsv"
-        )
-    ]
-
-
 def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     column_transforms = kwargs.get("column_transforms", [])
-    tsv_stem = kwargs["tsv_stem"]
-    source_directory = kwargs["source"]
+    task_instance = kwargs["task_instance"]
 
-    tsv_base = pathlib.Path(f"{airflow}/{source_directory}/{tsv_stem}.tsv")
+    tsv_notes_files = task_instance.xcom_pull(
+        task_ids="bib-files-group", key="tsv-files"
+    )
+    tsv_base_file = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-base")
 
-    if not tsv_base.exists():
-        raise ValueError(f"{tsv_base} does not exist for workflow")
-
-    tsv_notes = _get_tsv_notes(tsv_stem, airflow, source_directory)
+    tsv_notes = [pathlib.Path(filename) for filename in tsv_notes_files]
+    tsv_base = pathlib.Path(tsv_base_file)
 
     notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms)
 

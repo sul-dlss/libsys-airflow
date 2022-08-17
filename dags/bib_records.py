@@ -11,19 +11,23 @@ from airflow import DAG
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.sensors.filesystem import FileSensor
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
-    move_marc_files_check_tsv,
+    get_bib_files,
+    move_marc_files,
     process_marc,
     process_records,
     transform_move_tsvs,
 )
-from plugins.folio.holdings import electronic_holdings, run_holdings_tranformer, post_folio_holding_records
+from plugins.folio.holdings import (
+    electronic_holdings,
+    run_holdings_tranformer,
+    post_folio_holding_records,
+)
 
 from plugins.folio.login import folio_login
 
@@ -58,67 +62,36 @@ default_args = {
 }
 
 
-# Determines marc_only workflow
-def marc_only(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
-
-    all_next_task_id = kwargs.get("default_task")
-    marc_only_task_id = kwargs.get("marc_only_task")
-
-    marc_only_workflow = task_instance.xcom_pull(
-        key="marc_only", task_ids="move-transform.move-marc-files"
-    )
-
-    if marc_only_workflow:
-        return marc_only_task_id
-    return all_next_task_id
-
-
 with DAG(
     "symphony_marc_import",
     default_args=default_args,
-    schedule_interval=timedelta(minutes=15),
+    schedule_interval=None,
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
+    max_active_runs=Variable.get("IMPORT_MAX_RUNS", 3),
 ) as dag:
 
     dag.doc_md = dedent(
         """
     # Import Symphony MARC Records to FOLIO
-    Workflow for monitoring a file mount of exported MARC21 records from
-    Symphony ILS into [FOLIO](https://www.folio.org/) LSM.
+    Workflow takes exported MARC21 records along with TSV files from
+    Symphony ILS and generates Instances, Holdings, and Items records that
+    imported into [FOLIO](https://www.folio.org/) LSP.
     """
     )
 
-    monitor_file_mount = FileSensor(
-        task_id="marc21_monitor",
-        fs_conn_id="bib_path",
-        filepath="/opt/airflow/symphony/*.*rc",
-        timeout=270,  # 4 1/2 minutes
-    )
-
-    monitor_file_mount.doc_md = dedent(
-        """\
-        ####  Monitor File Mount
-        Monitor's `/s/SUL/Dataload/Folio` for new MARC21 export files"""
+    bib_files_group = PythonOperator(
+        task_id="bib-files-group", python_callable=get_bib_files
     )
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
 
         move_marc_to_instances = PythonOperator(
             task_id="move-marc-files",
-            python_callable=move_marc_files_check_tsv,
-            op_kwargs={"source": "symphony"},
-        )
-
-        marc_only_transform = BranchPythonOperator(
-            task_id="marc-only-transform-check",
-            python_callable=marc_only,
+            python_callable=move_marc_files,
             op_kwargs={
-                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
-                "default_task": "move-transform.symphony-tsv-processing",
-                "marc_only_task": "move-transform.finished-move-transform",
+                "marc_filepath": "{{ ti.xcom_pull('bib-file-groups', key='marc-file') }}"
             },
         )
 
@@ -132,8 +105,7 @@ with DAG(
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip()),
                 ],
-                "tsv_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
-                "source": "symphony",
+                "tsv_files": "{{ ti.xcom_pull('bib-file-groups', key='tsv-files') }}",  # noqa
             },
         )
 
@@ -149,9 +121,8 @@ with DAG(
             task_id="finished-move-transform", trigger_rule="none_failed_or_skipped"
         )
 
-        move_marc_to_instances >> process_marc_files >> marc_only_transform
-        marc_only_transform >> symphony_tsv_processing >> finished_move_transform
-        marc_only_transform >> finished_move_transform
+        move_marc_to_instances >> process_marc_files >> symphony_tsv_processing
+        symphony_tsv_processing >> finished_move_transform
 
     with TaskGroup(group_id="marc21-and-tsv-to-folio") as marc_to_folio:
 
@@ -167,7 +138,7 @@ with DAG(
 
         marc_only_convert_check = BranchPythonOperator(
             task_id="marc-only-convert-check",
-            python_callable=marc_only,
+            python_callable=lambda x: False,
             op_kwargs={
                 "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
                 "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",  # noqa
@@ -190,7 +161,7 @@ with DAG(
             op_kwargs={
                 "library_config": sul_config,
                 "electronic_holdings_id": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
-                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}"""
+                "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",
             },
         )
 
@@ -238,7 +209,7 @@ with DAG(
             trigger_rule="none_failed_or_skipped",
         )
 
-        convert_marc_to_folio_instances >> marc_only_convert_check
+        # convert_marc_to_folio_instances >> marc_only_convert_check
         (
             convert_marc_to_folio_instances
             >> convert_instances_valid_json
@@ -285,7 +256,7 @@ with DAG(
 
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
-            python_callable=marc_only,
+            python_callable=lambda x: False,
             op_kwargs={
                 "default_task": "post-to-folio.start-holdings-posting",
                 "marc_only_task": "post-to-folio.finish-all-posts",
@@ -340,6 +311,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    monitor_file_mount >> move_transform_process >> marc_to_folio
+    bib_files_group >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]
