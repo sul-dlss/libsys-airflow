@@ -37,6 +37,19 @@ from plugins.folio.items import run_items_transformer, post_folio_items_records
 
 logger = logging.getLogger(__name__)
 
+
+def marc_only(*args, **kwargs):
+    task_instance = kwargs["task_instance"]
+    tsv_files = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-files")
+    tsv_base = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-base")
+    all_next_task_id = kwargs.get("default_task")
+    marc_only_task_id = kwargs.get("marc_only_task")
+
+    if len(tsv_files) < 1 and tsv_base is None:
+        return marc_only_task_id
+    return all_next_task_id
+
+
 sul_config = LibraryConfiguration(
     okapi_url=Variable.get("OKAPI_URL"),
     tenant_id="sul",
@@ -138,7 +151,7 @@ with DAG(
 
         marc_only_convert_check = BranchPythonOperator(
             task_id="marc-only-convert-check",
-            python_callable=lambda x: False,
+            python_callable=marc_only,
             op_kwargs={
                 "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
                 "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",  # noqa
@@ -256,7 +269,7 @@ with DAG(
 
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
-            python_callable=lambda x: False,
+            python_callable=marc_only,
             op_kwargs={
                 "default_task": "post-to-folio.start-holdings-posting",
                 "marc_only_task": "post-to-folio.finish-all-posts",
