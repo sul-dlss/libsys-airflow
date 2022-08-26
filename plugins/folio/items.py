@@ -1,5 +1,6 @@
 import json
 import logging
+import pathlib
 
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
@@ -9,47 +10,57 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
-def _add_hrid(okapi_url: str, holdings_path: str, items_path: str):
-    """Adds an HRID based on Holdings formerIds"""
-
-    # Initializes Holdings lookup and counter
+def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) -> dict:
+    """Initializes Holdings lookup and counter for hrid generation"""
     holdings_keys = {}
 
-    with open(holdings_path) as fo:
-        for line in fo.readlines():
-            holdings_record = json.loads(line)
-            holdings_keys[holdings_record["id"]] = {
-                "formerId": holdings_record["formerIds"][0],
-                "counter": 0,
-            }
+    for holdings_file in results_dir.glob(holdings_pattern):
+        with holdings_file.open() as fo:
+            for line in fo.readlines():
+                holdings_record = json.loads(line)
+                holdings_keys[holdings_record["id"]] = {
+                    "formerId": holdings_record["formerIds"][0],
+                    "counter": 0,
+                }
+
+    return holdings_keys
+
+
+def _add_hrid(okapi_url: str, airflow: str, holdings_pattern: str, items_pattern: str):
+    """Adds an HRID based on Holdings formerIds"""
+    results_dir = pathlib.Path(f"{airflow}/migration/results")
+
+    holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
     items = []
-    with open(items_path) as fo:
-        for line in fo.readlines():
-            item = json.loads(line)
-            holding = holdings_keys[item["holdingsRecordId"]]
-            former_id = holding["formerId"]
-            holding["counter"] = holding["counter"] + 1
-            hrid_prefix = former_id[:1] + "i" + former_id[1:]
-            item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
-            if "barcode" in item:
-                id_seed = item["barcode"]
-            else:
-                id_seed = item["hrid"]
-            item["id"] = str(
-                FolioUUID(
-                    okapi_url,
-                    FOLIONamespaces.items,
-                    id_seed,
-                )
-            )
-            # To handle optimistic locking
-            item["_version"] = 1
-            items.append(item)
+    for items_file in results_dir.glob(items_pattern):
 
-    with open(items_path, "w+") as write_output:
-        for item in items:
-            write_output.write(f"{json.dumps(item)}\n")
+        with items_file.open() as fo:
+            for line in fo.readlines():
+                item = json.loads(line)
+                holding = holdings_keys[item["holdingsRecordId"]]
+                former_id = holding["formerId"]
+                holding["counter"] = holding["counter"] + 1
+                hrid_prefix = former_id[:1] + "i" + former_id[1:]
+                item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
+                if "barcode" in item:
+                    id_seed = item["barcode"]
+                else:
+                    id_seed = item["hrid"]
+                item["id"] = str(
+                    FolioUUID(
+                        okapi_url,
+                        FOLIONamespaces.items,
+                        id_seed,
+                    )
+                )
+                # To handle optimistic locking
+                item["_version"] = 1
+                items.append(item)
+
+        with open(items_file, "w+") as write_output:
+            for item in items:
+                write_output.write(f"{json.dumps(item)}\n")
 
 
 def post_folio_items_records(**kwargs):
@@ -63,7 +74,7 @@ def post_folio_items_records(**kwargs):
         items_records = json.load(fo)
 
     for i in range(0, len(items_records), batch_size):
-        items_batch = items_records[i: i + batch_size]
+        items_batch = items_records[i:i + batch_size]
         logger.info(f"Posting {len(items_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -111,6 +122,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     _add_hrid(
         items_transformer.folio_client.okapi_url,
-        f"{airflow}/migration/results/folio_holdings_{dag.run_id}_holdings-transformer.json",
-        f"{airflow}/migration/results/folio_items_{dag.run_id}_items-transformer.json",
+        airflow,
+        f"folio_holdings_{dag.run_id}_holdings-*transformer.json",
+        f"folio_items_{dag.run_id}_items-*transformer.json",
     )
