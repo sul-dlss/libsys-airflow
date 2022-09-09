@@ -251,6 +251,41 @@ def _save_error_record_ids(**kwargs):
             error_file.write("\n")
 
 
+def put_to_okapi(**kwargs):
+    endpoint = kwargs.get("endpoint")
+    jwt = kwargs["token"]
+    records = kwargs["records"]
+    payload_key = kwargs["payload_key"]
+
+    tenant = "sul"
+    okapi_url = Variable.get("OKAPI_URL")
+
+    okapi_instance_url = f"{okapi_url}{endpoint}"
+
+    headers = {
+        "Content-type": "application/json",
+        "user-agent": "FolioAirflow",
+        "x-okapi-token": jwt,
+        "x-okapi-tenant": tenant,
+    }
+
+    if payload_key:
+        payload = {payload_key: records}
+        payload["totalRecords"] = len(records)
+    else:
+        payload = records
+
+    update_record_result = requests.put(
+        okapi_instance_url,
+        headers=headers,
+        json=payload,
+    )
+
+    logger.info(
+        f"PUT Result status code {update_record_result.status_code}"  # noqa
+    )
+
+
 def post_to_okapi(**kwargs) -> bool:
     endpoint = kwargs.get("endpoint")
     jwt = kwargs["token"]
@@ -270,7 +305,7 @@ def post_to_okapi(**kwargs) -> bool:
         "x-okapi-tenant": tenant,
     }
 
-    payload = {payload_key: records}
+    payload = {payload_key: records} if payload_key else records
 
     new_record_result = requests.post(
         okapi_instance_url,
@@ -285,6 +320,8 @@ def post_to_okapi(**kwargs) -> bool:
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
+
+    return new_record_result.json()
 
 
 def process_records(*args, **kwargs) -> list:
