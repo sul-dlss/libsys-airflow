@@ -10,10 +10,6 @@ ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
 
 USER airflow
 
-# Use folio_migration_tools branch tthat skips over batch posting retries until another solution can be found
-#  to address the SQL Unique constraint violation errors
-RUN git clone -b streamline-batch-reposting-tries https://github.com/jermnelson/folio_migration_tools.git --depth=2
-
 COPY requirements.txt .
 
 RUN pip install -r requirements.txt
@@ -21,4 +17,6 @@ RUN pip install -r requirements.txt
 RUN pip install -U pytest-metadata
 # Install FOLIO-FSE tools
 RUN pip install folioclient folio-uuid
+
+RUN git clone https://github.com/sul-dlss/folio_migration_tools.git --depth=2
 RUN pip install /opt/airflow/folio_migration_tools
