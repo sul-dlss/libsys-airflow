@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from airflow.decorators import dag, task
+from airflow import DAG
 from airflow.operators.python import get_current_context
 from airflow.operators.python import PythonOperator
 
@@ -13,29 +13,15 @@ from plugins.folio.helpers import post_to_okapi, put_to_okapi
 
 logger = logging.getLogger(__name__)
 
-@dag(
-    schedule_interval=None,
-    start_date=datetime(2022, 6, 23),
-    catchup=False,
-    tags=["folio", "preceding_succeeding_titles"],
-    max_active_runs=1,
-)
-def preceding_succeeding_titles():
-    """
+"""
     ## Posts the json created by folio migration tools create_preceding_succeeding_titles method.
     After a successful completion of the convert_instances_valid_json in
     the symphony_marc_import DAG run, takes the json created by folio migration tools
     and POSTS to the Okapi /preceeding-succeding-titles endpoint
-    """
-
-    login = PythonOperator(
-        task_id="folio_login", python_callable=folio_login
-    )  # noqa
-
-    @task
-    def post_to_folio(**kwargs):
+"""
+def post_to_folio(*args, **kwargs):
         pattern = "preceding_succeding_titles*.json"
-        results = "/opt/airflow/migration/results"
+        results = kwargs["results_dir"]
         task_instance = kwargs["task_instance"]
         jwt = task_instance.xcom_pull(task_ids="folio_login")
 
@@ -63,32 +49,35 @@ def preceding_succeeding_titles():
                             payload_key=None,
                         )
 
-
-    @task
-    def cleanup():
-        context = get_current_context()
-        _filename = context.get("params").get("filename_preceding_succeeding_titles")
-        logger.info(f"Removing JSON file {_filename}")
-        remove_json(_filename=_filename)
-
-    @task
-    def finish():
+def finish():
         context = get_current_context()
         _filename = context.get("params").get("filename_preceding_succeeding_titles")
         logger.info(f"Finished migration {_filename}")
 
 
-    login >> post_to_folio() >> cleanup() >> finish()
+with DAG(
+    "process_preceding_succeeding_titles",
+    schedule_interval=None,
+    start_date=datetime(2022, 6, 23),
+    catchup=False,
+    tags=["folio", "preceding_succeeding_titles"],
+    max_active_runs=1,
+) as dag:
+
+    login = PythonOperator(
+        task_id="folio_login", python_callable=folio_login
+    )  # noqa
+
+    preceding_succeeding_titles = PythonOperator(
+        task_id="load_preceding_succeeding_titles", python_callable=post_to_folio,
+        op_kwargs={
+                "results_dir": "/opt/airflow/migration/results"  # noqa
+            },
+    )
+
+    wrap_up = PythonOperator(
+        task_id="log_finished", python_callable=finish
+    )
 
 
-def remove_json(*args, **kwargs):
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    _filename = kwargs["filename_preceding_succeeding_titles"]
-
-    _filedir = Path(airflow) / 'migration/results/'
-    for p in Path(_filedir).glob(f"{_filename}*"):
-        p.unlink()
-        logger.info(f"Removed {p}")
-
-
-post_preceding_succesing_titles = preceding_succeeding_titles()
+login >> preceding_succeeding_titles >> wrap_up
