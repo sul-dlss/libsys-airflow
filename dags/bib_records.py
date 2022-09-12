@@ -228,8 +228,7 @@ with DAG(
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        (convert_marc_to_folio_instances >> finish_conversion)  # noqa
-        marc_only_convert_check >> [
+        convert_marc_to_folio_instances >> marc_only_convert_check >> [
             convert_tsv_to_folio_holdings,
             finish_conversion,
         ]  # noqa
