@@ -47,7 +47,8 @@ def auto_bib_loads(**kwargs):
             record_group = {
                 "marc": str(marc_file),
                 "tsv": [],
-                "tsv-base": None, "tsv-dates": None
+                "tsv-base": None,
+                "tsv-dates": None
             }
             marc_file_parts = marc_file.stem.split(".")
             mhld_file = files_path / f"{marc_file_parts[0]}-mhlds.{'.'.join(marc_file_parts[1:])}.mrc"

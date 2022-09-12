@@ -65,7 +65,11 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="marc-file", value=bib_file_load["marc"])
     task_instance.xcom_push(key="tsv-files", value=bib_file_load["tsv"])
     task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
+<<<<<<< HEAD
     task_instance.xcom_push(key="tsv-dates", value=bib_file_load["tsv-dates"])
+=======
+    task_instance.xcom_push(key="mhld-file", value=bib_file_load.get("mhld"))
+>>>>>>> a3d1b5a (Supports MHLD in bibs migration DAG)
 
 
 def move_marc_files(*args, **kwargs) -> str:
