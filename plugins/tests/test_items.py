@@ -1,6 +1,8 @@
 import json
 
 import pytest  # noqa
+from plugins.tests.mocks import mock_file_system  # noqa
+
 
 from plugins.folio.items import (
     post_folio_items_records,
@@ -17,17 +19,19 @@ def test_items_transformers():
     assert run_items_transformer
 
 
-def test_add_hrid(tmp_path):  # noqa
-    holdings_path = tmp_path / "holdings_transformer-test_dag.json"
+def test_add_hrid(mock_file_system):  # noqa
+    results_dir = mock_file_system[3]
+    holdings_path = results_dir / "holdings_transformer-test_dag.json"
 
     holdings_rec = {
         "id": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4",
-        "formerIds": ["a23456"]
+        "formerIds": ["a23456"],
+        "hrid": "ah23456_1"
     }
 
     holdings_path.write_text(f"{json.dumps(holdings_rec)}\n")
 
-    items_path = tmp_path / "items_transformer-test_dag.json"
+    items_path = results_dir / "items_transformer-test_dag.json"
 
     items_rec = {
         "holdingsRecordId": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4"
@@ -36,8 +40,9 @@ def test_add_hrid(tmp_path):  # noqa
     items_path.write_text(f"{json.dumps(items_rec)}\n")
 
     _add_hrid("https://okapi-endpoint.edu",
-              str(holdings_path),
-              str(items_path))
+              str(mock_file_system[0]),
+              "holdings_transformer-*.json",
+              "items_transformer-*.json")
 
     with items_path.open() as items_fo:
         new_items_rec = json.loads(items_fo.readline())

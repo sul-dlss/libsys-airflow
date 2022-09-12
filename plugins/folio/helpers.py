@@ -383,6 +383,11 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms):
         logging.info(f"Merged {len(note_df)} notes into items tsv")
         tsv_notes_path.unlink()
 
+    # Add note columns to tsv_base_df if notes do not exist
+    if len(tsv_notes) < 1:
+        for note in ['CIRCNOTE', 'CIRCNOTE', 'TECHSTAFF', 'PUBLIC']:
+            tsv_base_df[note] = np.NaN
+
     tsv_notes_name_parts = tsv_base.name.split(".")
     tsv_notes_name_parts.insert(-1, "notes")
 

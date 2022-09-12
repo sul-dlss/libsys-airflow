@@ -116,7 +116,7 @@ with DAG(
                     # Adds a prefix to match bib 001
                     ("CATKEY", lambda x: x if x.startswith("a") else f"a{x}"),
                     # Strips out spaces from barcode
-                    ("BARCODE", lambda x: x.strip()),
+                    ("BARCODE", lambda x: x.strip() if isinstance(x, str) else x),
                 ],
                 "tsv_files": "{{ ti.xcom_pull('bib-file-groups', key='tsv-files') }}",  # noqa
             },
