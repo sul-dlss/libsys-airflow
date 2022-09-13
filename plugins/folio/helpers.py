@@ -281,9 +281,7 @@ def put_to_okapi(**kwargs):
         json=payload,
     )
 
-    logger.info(
-        f"PUT Result status code {update_record_result.status_code}"  # noqa
-    )
+    logger.info(f"PUT Result status code {update_record_result.status_code}")  # noqa
 
 
 def post_to_okapi(**kwargs) -> bool:
@@ -422,7 +420,7 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms):
 
     # Add note columns to tsv_base_df if notes do not exist
     if len(tsv_notes) < 1:
-        for note in ['CIRCNOTE', 'CIRCNOTE', 'TECHSTAFF', 'PUBLIC']:
+        for note in ["CIRCNOTE", "CIRCNOTE", "TECHSTAFF", "PUBLIC"]:
             tsv_base_df[note] = np.NaN
 
     tsv_notes_name_parts = tsv_base.name.split(".")

@@ -167,9 +167,11 @@ def mock_okapi_failure(monkeypatch, mocker: MockerFixture):
             } ]
         }"""  # noqa
         post_response.json = lambda: {
-            "errors" : [ {
-                "message" : "value already exists in table holdings_record: hld100000000027"
-            } ]
+            "errors": [
+                {
+                    "message": "value already exists in table holdings_record: hld100000000027"
+                }
+            ]
         }
 
         return post_response
