@@ -133,6 +133,7 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
     def mock_post(*args, **kwargs):
         post_response = mocker.stub(name="post_result")
         post_response.status_code = 201
+        post_response.json = lambda: {}
 
         return post_response
 
@@ -165,6 +166,12 @@ def mock_okapi_failure(monkeypatch, mocker: MockerFixture):
                 "message" : "value already exists in table holdings_record: hld100000000027"
             } ]
         }"""  # noqa
+        post_response.json = lambda: {
+            "errors" : [ {
+                "message" : "value already exists in table holdings_record: hld100000000027"
+            } ]
+        }
+
         return post_response
 
     monkeypatch.setattr(requests, "post", mock_post)

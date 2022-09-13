@@ -16,9 +16,11 @@ def mock_okapi_post_error(monkeypatch, mocker: MockerFixture):
     def mock_post(*args, **kwargs):
         post_response = mocker.stub(name="post_result")
         post_response.status_code = 400
-        post_response.json = { "errors" : [ {"message": "somme error"} ]}
+        post_response.json = lambda: { "errors" : [ {"message": "somme error"} ]}
         post_response.text = "error"
         return post_response
+
+    monkeypatch.setattr(requests, "post", mock_post)
 
     def mock_put(*args, **kwargs):
         put_response = mocker.stub(name="put_result")
@@ -27,7 +29,6 @@ def mock_okapi_post_error(monkeypatch, mocker: MockerFixture):
         put_response.raise_for_status = lambda: None
         return put_response
 
-    monkeypatch.setattr(requests, "post", mock_post)
     monkeypatch.setattr(requests, "put", mock_put)
 
 
