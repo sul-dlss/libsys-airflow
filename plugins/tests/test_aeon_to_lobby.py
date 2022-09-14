@@ -74,9 +74,22 @@ def mock_queue_requests(monkeypatch, mocker: MockerFixture):
     monkeypatch.setattr(requests, "get", mock_get_queue_data)
 
 
+def test_user_data(mock_queue_requests, mock_aeon_variable):
+    from plugins.aeon_to_lobby.aeon import user_data
+    user_data = user_data(aeon_url="https://aeon.example.com", aeon_key="123")
+
+    assert lambda: user_data[0] == mock_aeon_queue_data[0]
+
+
+def test_aeon_request_params(caplog):
+    from plugins.aeon_to_lobby.aeon import aeon_user
+
+    assert "aeon rsponded with" not in caplog.text
+
+
 def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
     from plugins.aeon_to_lobby.aeon import user_requests_in_queue
-    user_list = user_requests_in_queue()
+    user_list = user_requests_in_queue(aeon_url="https://aeon.example.com", aeon_key="123")
 
     assert user_list == ['aeonuser1', 'aeonuser2']
 

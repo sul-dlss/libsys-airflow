@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from plugins.aeon_to_lobby.aeon import user_data
 from plugins.aeon_to_lobby.lobbytrack import lobby_post
@@ -68,7 +69,11 @@ with DAG(
 ) as dag:
 
     aeon_user_data = PythonOperator(
-        task_id="get_user_data_from_aeon", python_callable=user_data
+        task_id="get_user_data_from_aeon", python_callable=user_data,
+        op_kwargs={
+            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_key": Variable.get("AEON_KEY"),
+        }
     )
 
     transform_to_lobby_data = PythonOperator(

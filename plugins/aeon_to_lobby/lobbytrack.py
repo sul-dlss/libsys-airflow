@@ -3,17 +3,16 @@ import requests
 
 from airflow.models import Variable
 
-lobby_url=Variable.get("LOBBY_URL")
-lobby_key=Variable.get("LOBBY_KEY")
 
-lobby_headers = {
-    "Authorization": lobby_key,
-    "Content-type": "application/json",
-    "Accept": "application/json",
-}
+def lobby_post(**kwargs):
+    lobby_url=Variable.get("LOBBY_URL")
+    lobby_key=Variable.get("LOBBY_KEY")
 
-
-def lobby_post(*args, **kwargs):
+    lobby_headers = {
+        "Authorization": lobby_key,
+        "Content-type": "application/json",
+        "Accept": "application/json",
+    }
     task_instance = kwargs["task_instance"]
     lobby_users = task_instance.xcom_pull(
         key="return_value", task_ids="transform_aeon_data_to_lobby_json"

@@ -49,8 +49,14 @@ cap airflow:webserver      # restart webserver
 ```
 
 ### Do the first time you bring up Libsys-Airflow:
-1. `cap ${stage} deploy deploy:start`
+1. Log into the server, `ksu` and install `apt install python3.8-venv libpq-dev`
+1. Exit `ksu` and install the pyton virtual environment under the libsys home directory:
+   1. `cd && mkdir virtual-env`
+   1. `python3 -m venv /home/libsys/virtual-env/`
+1. In your local environment do `cap ${stage} deploy`
 1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
+1. On the server `source /home/libsys/virtual-env && pip install docker-compose==1.29.2`
+1. In your local environment do `cap ${stage} deploy:install`
 1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps.
 
 ## For subsequent deploys

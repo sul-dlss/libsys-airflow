@@ -3,17 +3,19 @@ import logging
 import objectpath
 import requests
 
-from airflow.models import Variable
 
-AEON_URL=Variable.get("AEON_URL")
-AEON_KEY=Variable.get("AEON_KEY")
+def user_data(**kwargs):
+    users = []
+    for username in user_requests_in_queue(**kwargs):
+        user = aeon_user(**kwargs, user=username)
+        users.append(user)
 
-aeon_headers = {"X-AEON-API-KEY": AEON_KEY, "Accept": "application/json"}
+    return users
 
 
-def user_requests_in_queue():
+def user_requests_in_queue(**kwargs):
     usernames = []
-    data = queue_requests(id=1)
+    data = queue_requests(**kwargs, id=1)
     today = datetime.today().strftime("%Y-%m-%d")
     tree = objectpath.Tree(data)
     result = tree.execute(f"$.*[@.creationDate >= '{today}'].username")
@@ -23,26 +25,23 @@ def user_requests_in_queue():
     return usernames
 
 
-def user_data(*args, **kwargs):
-    users = []
-    for username in user_requests_in_queue():
-        user = aeon_user(user=username)
-        users.append(user)
-
-    return users
-
-
 def aeon_user(**kwargs):
     aeon_user = kwargs["user"]
-    return aeon_request(url=f"{AEON_URL}/Users/{aeon_user}")
+    aeon_url = kwargs["aeon_url"]
+
+    return aeon_request(**kwargs, url=f"{aeon_url}/Users/{aeon_user}")
 
 
 def queue_requests(**kwargs):
     queue = kwargs["id"]
-    return aeon_request(url=f"{AEON_URL}/Queues/{queue}/requests")
+    aeon_url = kwargs["aeon_url"]
+
+    return aeon_request(**kwargs, url=f"{aeon_url}/Queues/{queue}/requests")
 
 
 def aeon_request(**kwargs):
+    aeon_key = kwargs["aeon_key"]
+    aeon_headers = {"X-AEON-API-KEY": aeon_key, "Accept": "application/json"}
     response = requests.get(kwargs["url"], headers=aeon_headers)
 
     if response.status_code != 200:
