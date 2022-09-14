@@ -6,6 +6,9 @@ import re
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
+from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
+    HoldingsMarcTransformer,
+)
 
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 
@@ -16,66 +19,40 @@ logger = logging.getLogger(__name__)
 vendor_code_re = re.compile(r"[a-z]+\d+")
 
 
-def electronic_holdings(*args, **kwargs) -> str:
-    """Generates FOLIO Holdings records from Symphony 856 fields"""
-    dag = kwargs["dag_run"]
-    task_instance = kwargs["task_instance"]
-    holdings_stem = kwargs["holdings_stem"]
-    library_config = kwargs["library_config"]
-    holdings_type_id = kwargs["electronic_holdings_id"]
-    airflow = kwargs.get("airflow", "/opt/airflow")
+def _run_transformer(transformer, airflow, dag_run_id):
+    setup_data_logging(transformer)
 
-    filename = f"{holdings_stem}.electronic.tsv"
-    full_path = pathlib.Path(f"{airflow}/migration/data/items/{filename}")
+    # if hasattr(transformer, 'mapper'):
+    #     transformer.mapper.ignore_legacy_identifier = True
 
-    if not full_path.exists():
-        logging.info(f"Electronic Holdings {full_path} does not exist")
-        return
+    transformer.do_work()
 
-    library_config.iteration_identifier = dag.run_id
+    transformer.wrap_up()
 
-    holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="holdings-electronic-transformer",
-        migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="preserve001",
-        files=[{"file_name": filename, "suppress": False}],
-        create_source_records=False,
-        call_number_type_map_file_name="call_number_type_mapping.tsv",
-        holdings_map_file_name="holdingsrecord_mapping_electronic.json",
-        location_map_file_name="locations.tsv",
-        holdings_type_uuid_for_boundwiths="",
-        holdings_merge_criteria=["instanceId", "permanentLocationId"],
-        default_call_number_type_name="Library of Congress classification",
-        fallback_holdings_type_id=holdings_type_id,
+    _add_identifiers(airflow, dag_run_id, transformer)
+
+
+def _add_identifiers(
+    airflow: str, dag_run_id: str, holdings_transformer: HoldingsCsvTransformer
+):
+    # Creates/opens file with Instance IDs
+    instance_holdings_path = pathlib.Path(
+        f"{airflow}/migration/results/holdings-hrids-{dag_run_id}.json"
     )
-
-    holdings_transformer = HoldingsCsvTransformer(
-        holdings_configuration, library_config, use_logging=False
-    )
-
-    setup_data_logging(holdings_transformer)
-
-    holdings_transformer.mapper.ignore_legacy_identifier = True
-
-    holdings_transformer.do_work()
-
-    _add_identifiers(task_instance, holdings_transformer)
-
-    holdings_transformer.wrap_up()
-
-
-def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer):
-    # Instance CATKEY
-    instance_keys = task_instance.xcom_pull(
-        key="hrid_count",
-        task_ids="marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",
-    )
-
-    if instance_keys is None:
+    if instance_holdings_path.exists():
+        with instance_holdings_path.open() as fo:
+            instance_keys = json.load(fo)
+    else:
         instance_keys = {}
 
-    for record in holdings_transformer.holdings.values():
+    holdings_path = pathlib.Path(
+        f"{airflow}/migration/results/folio_holdings_{dag_run_id}_{holdings_transformer.task_configuration.name}.json"
+    )
 
+    with holdings_path.open() as fo:
+        holdings_records = [json.loads(row) for row in fo.readlines()]
+
+    for record in holdings_records:
         instance_uuid = record["instanceId"]
         former_id = record["formerIds"][0]
         # Adds an "h" for holdings prefix
@@ -91,7 +68,7 @@ def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer
         # Adds Determinstic UUID based on CATKEY and HRID
         record["id"] = str(
             FolioUUID(
-                holdings_transformer.mapper.folio_client.okapi_url,
+                holdings_transformer.folio_client.okapi_url,
                 FOLIONamespaces.holdings,
                 f"{record['formerIds'][0]}{record['hrid']}",
             )
@@ -100,7 +77,20 @@ def _add_identifiers(task_instance, holdings_transformer: HoldingsCsvTransformer
         # To handle optimistic locking
         record["_version"] = 1
 
-    task_instance.xcom_push(key="hrid_count", value=instance_keys)
+    with instance_holdings_path.open("w+") as fo:
+        json.dump(instance_keys, fo)
+
+    with holdings_path.open("w+") as fo:
+        for holding in holdings_records:
+            fo.write(f"{json.dumps(holding)}\n")
+
+    # Saves holdings id maps to backup
+    with open(
+        f"{airflow}/migration/results/holdings_id_map_all_{dag_run_id}.json", "a+"
+    ) as all_id_map:
+        for holding in holdings_records:
+            lookup = {"legacy_id": holding["formerIds"][0], "folio_id": holding["id"]}
+            all_id_map.write(f"{json.dumps(lookup)}\n")
 
 
 def post_folio_holding_records(**kwargs):
@@ -116,7 +106,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i: i + batch_size]
+        holdings_batch = holding_records[i:i + batch_size]
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -131,8 +121,8 @@ def post_folio_holding_records(**kwargs):
 
 def run_holdings_tranformer(*args, **kwargs):
     dag = kwargs["dag_run"]
-    task_instance = kwargs["task_instance"]
     library_config = kwargs["library_config"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
 
     library_config.iteration_identifier = dag.run_id
 
@@ -156,12 +146,99 @@ def run_holdings_tranformer(*args, **kwargs):
         holdings_configuration, library_config, use_logging=False
     )
 
-    setup_data_logging(holdings_transformer)
+    _run_transformer(holdings_transformer, airflow, dag.run_id)
 
-    holdings_transformer.mapper.ignore_legacy_identifier = True
+    logger.info(f"Finished transforming {holdings_stem}.tsv to FOLIO holdings")
 
-    holdings_transformer.do_work()
 
-    _add_identifiers(task_instance, holdings_transformer)
+def run_mhld_holdings_transformer(*args, **kwargs):
+    dag = kwargs["dag_run"]
+    library_config = kwargs["library_config"]
+    task_instance = kwargs["task_instance"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
 
-    holdings_transformer.wrap_up()
+    mhld_file = task_instance.xcom_pull(task_ids="bib-files-group", key="mhld-file")
+
+    if not mhld_file or len(mhld_file) < 1:
+        logger.info("No MHLD files found, exiting task")
+        return
+
+    library_config.iteration_identifier = dag.run_id
+
+    filepath = pathlib.Path(mhld_file)
+
+    mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
+        name="holdings-mhld-transformer",
+        migration_task_type="HoldingsMarcTransformer",
+        legacy_id_marc_path="001",
+        use_tenant_mapping_rules=False,
+        hrid_handling="preserve001",
+        files=[{"file_name": filepath.name, "supressed": False}],
+        mfhd_mapping_file_name="mfhd_rules.json",
+        location_map_file_name="locations-mfld.tsv",
+        default_call_number_type_name="Library of Congress classification",
+        fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
+        create_source_records=True,
+    )
+
+    holdings_transformer = HoldingsMarcTransformer(
+        mhld_holdings_config, library_config, use_logging=False
+    )
+
+    _run_transformer(holdings_transformer, airflow, dag.run_id)
+
+    logger.info(f"Finished transforming MHLD {filepath.name} to FOLIO holdings")
+
+
+def electronic_holdings(*args, **kwargs) -> str:
+    """Generates FOLIO Holdings records from Symphony 856 fields"""
+    dag = kwargs["dag_run"]
+    holdings_stem = kwargs["holdings_stem"]
+    library_config = kwargs["library_config"]
+    holdings_type_id = kwargs["electronic_holdings_id"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
+
+    filename = f"{holdings_stem}.electronic.tsv"
+    full_path = pathlib.Path(f"{airflow}/migration/data/items/{filename}")
+
+    if not full_path.exists():
+        logger.info(f"Electronic Holdings {full_path} does not exist")
+        return
+
+    library_config.iteration_identifier = dag.run_id
+
+    holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
+        name="holdings-electronic-transformer",
+        migration_task_type="HoldingsCsvTransformer",
+        hrid_handling="preserve001",
+        files=[{"file_name": filename, "suppress": False}],
+        create_source_records=False,
+        call_number_type_map_file_name="call_number_type_mapping.tsv",
+        holdings_map_file_name="holdingsrecord_mapping_electronic.json",
+        location_map_file_name="locations.tsv",
+        holdings_type_uuid_for_boundwiths="",
+        holdings_merge_criteria=["instanceId", "permanentLocationId"],
+        default_call_number_type_name="Library of Congress classification",
+        fallback_holdings_type_id=holdings_type_id,
+    )
+
+    holdings_transformer = HoldingsCsvTransformer(
+        holdings_configuration, library_config, use_logging=False
+    )
+
+    _run_transformer(holdings_transformer, airflow, dag.run_id)
+
+    logger.info(f"Finished transforming electronic {filename} to FOLIO holdings")
+
+
+def consolidate_holdings_map(*args, **kwargs):
+    dag = kwargs["dag_run"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    last_id_map = pathlib.Path(
+        f"{airflow}/migration/results/holdings_id_map_{dag.run_id}.json"
+    )
+    all_id_map = pathlib.Path(
+        f"{airflow}/migration/results/holdings_id_map_all_{dag.run_id}.json"
+    )
+    all_id_map.rename(last_id_map)
+    logger.info(f"Finished moving {all_id_map} to {last_id_map}")
