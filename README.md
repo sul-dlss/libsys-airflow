@@ -68,7 +68,8 @@ by running `cap {stage} airflow:webserver` or ssh into the server and run `docke
 to see changes in the running Airflow environment.
 
 ## Testing
-First install the FOLIO-FSE toolsm run: `pip install folioclient folio-migration-tools folio-uuid`
+First install the FOLIO-FSE tools run: `pip install folioclient folio-uuid`
+Install sul-dlss fork of folio_migration_tools: `pip install ${local_directory}/folio_migration_tools`
 
 Then, to run the test suite, use [pytest](https://docs.pytest.org/).
 `pytest`
