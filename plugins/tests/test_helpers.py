@@ -133,7 +133,7 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
     def mock_post(*args, **kwargs):
         post_response = mocker.stub(name="post_result")
         post_response.status_code = 201
-        post_response.json = lambda: {}
+        post_response.text = ""
 
         return post_response
 

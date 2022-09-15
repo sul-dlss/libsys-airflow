@@ -27,7 +27,7 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
         post_response_elapsed = mocker.stub(name="post_elapsed")
         post_response_elapsed.total_seconds = lambda: 30
         post_response.elapsed = post_response_elapsed
-        post_response.json = lambda: {}
+        post_response.text = ""
         return post_response
 
     def mock_put(*args, **kwargs):
