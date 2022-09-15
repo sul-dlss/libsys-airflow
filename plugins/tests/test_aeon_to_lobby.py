@@ -82,7 +82,7 @@ def test_user_data(mock_queue_requests, mock_aeon_variable):
 
 
 def test_aeon_request_params(caplog):
-    from plugins.aeon_to_lobby.aeon import aeon_user
+    from plugins.aeon_to_lobby.aeon import aeon_user  # noqa
 
     assert "aeon rsponded with" not in caplog.text
 

@@ -319,6 +319,8 @@ def post_to_okapi(**kwargs) -> bool:
         logger.error(new_record_result.text)
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
+    if len(new_record_result.text) < 1:
+        return {}
     return new_record_result.json()
 
 
