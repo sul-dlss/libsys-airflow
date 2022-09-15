@@ -22,7 +22,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 10. Bring up airflow, `docker-compose up` to run the containers in the
    foreground, use `docker-compose up -d` to run as a daemon.
 1. Access Airflow locally at http://localhost
-1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker-1 /bin/bash` to view the raw work files.
+1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker_1 /bin/bash` to view the raw work files.
 
 ### For FOLIO migration loads
 1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
