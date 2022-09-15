@@ -250,6 +250,7 @@ def test_get_bib_files():
                 "marc": "sample.mrc",
                 "tsv": ["sample.public.tsv", "sample.circ.tsv"],
                 "tsv-base": "sample.tsv",
+                "tsv-dates": "sample.dates.tsv"
             },
         }
     }
@@ -262,6 +263,7 @@ def test_get_bib_files():
     assert messages["marc-file"].startswith("sample.mrc")
     assert len(messages["tsv-files"]) == 2
     assert messages["tsv-base"].startswith("sample.tsv")
+    assert messages["tsv-dates"].startswith("sample.dates.tsv")
     messages
 
 
