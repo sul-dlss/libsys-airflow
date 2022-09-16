@@ -22,9 +22,6 @@ vendor_code_re = re.compile(r"[a-z]+\d+")
 def _run_transformer(transformer, airflow, dag_run_id):
     setup_data_logging(transformer)
 
-    # if hasattr(transformer, 'mapper'):
-    #     transformer.mapper.ignore_legacy_identifier = True
-
     transformer.do_work()
 
     transformer.wrap_up()
@@ -39,6 +36,7 @@ def _add_identifiers(
     instance_holdings_path = pathlib.Path(
         f"{airflow}/migration/results/holdings-hrids-{dag_run_id}.json"
     )
+
     if instance_holdings_path.exists():
         with instance_holdings_path.open() as fo:
             instance_keys = json.load(fo)
@@ -51,6 +49,8 @@ def _add_identifiers(
 
     with holdings_path.open() as fo:
         holdings_records = [json.loads(row) for row in fo.readlines()]
+
+    logger.info("Adding HRIDs and re-generated UUIDs for holdings")
 
     for record in holdings_records:
         instance_uuid = record["instanceId"]
