@@ -1,5 +1,6 @@
 import json
 import logging
+import pandas as pd
 
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
@@ -8,15 +9,17 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
-def _add_version(bibs_transformer: BibsTransformer):
-    """
-    Handles Optimistic locking by assigning an initial version
-    """
+def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
+    dates_df = pd.read_csv(tsv_dates, sep="\t", dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str})
     records = []
     with open(bibs_transformer.processor.results_file.name) as fo:
         for row in fo.readlines():
             record = json.loads(row)
-            record["_version"] = 1
+            record["_version"] = 1  # for handling optimistic locking
+            ckey = record["hrid"].removeprefix("a")
+            matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
+            if matched_row["CATALOGED_DATE"].values[0] != "0":
+                record["catalogedDate"] = matched_row["CATALOGED_DATE"].values[0]
             records.append(record)
     with open(bibs_transformer.processor.results_file.name, "w+") as fo:
         for record in records:
@@ -54,6 +57,8 @@ def run_bibs_transformer(*args, **kwargs):
 
     marc_stem = kwargs["marc_stem"]
 
+    tsv_dates = kwargs["dates_tsv"]
+
     library_config.iteration_identifier = dag.run_id
 
     bibs_configuration = BibsTransformer.TaskConfiguration(
@@ -75,6 +80,6 @@ def run_bibs_transformer(*args, **kwargs):
 
     bibs_transformer.do_work()
 
-    _add_version(bibs_transformer)
+    _adjust_records(bibs_transformer, tsv_dates)
 
     bibs_transformer.wrap_up()

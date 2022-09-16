@@ -146,6 +146,7 @@ with DAG(
             op_kwargs={
                 "library_config": sul_config,
                 "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
+                "dates_tsv": "{{ ti.xcom_pull('bib-file-groups', key='tsv-dates') }}"
             },
         )
 
