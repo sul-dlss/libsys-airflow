@@ -104,7 +104,7 @@ with DAG(
             task_id="move-marc-files",
             python_callable=move_marc_files,
             op_kwargs={
-                "marc_filepath": "{{ ti.xcom_pull('bib-file-groups', key='marc-file') }}"
+                "marc_filepath": "{{ ti.xcom_pull('bib-files-group', key='marc-file') }}"
             },
         )
 
@@ -118,7 +118,7 @@ with DAG(
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip() if isinstance(x, str) else x),
                 ],
-                "tsv_files": "{{ ti.xcom_pull('bib-file-groups', key='tsv-files') }}",  # noqa
+                "tsv_files": "{{ ti.xcom_pull('bib-files-group', key='tsv-files') }}",  # noqa
             },
         )
 
@@ -146,7 +146,7 @@ with DAG(
             op_kwargs={
                 "library_config": sul_config,
                 "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
-                "dates_tsv": "{{ ti.xcom_pull('bib-file-groups', key='tsv-dates') }}"
+                "dates_tsv": "{{ ti.xcom_pull('bib-files-group', key='tsv-dates') }}"
             },
         )
 
