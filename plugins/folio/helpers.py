@@ -84,12 +84,13 @@ def move_marc_files(*args, **kwargs) -> str:
 
     # Moves MHLDs to Holdings
     mhld_filepath = task_instance.xcom_pull(task_ids="bib-files-group", key="mhld-file")
-    mhld_path = pathlib.Path(mhld_filepath)
-    if mhld_path.exists():
-        mhld_target = pathlib.Path(f"{airflow}/migration/data/holdings/{mhld_path.name}")
+    if mhld_filepath is not None:
+        mhld_path = pathlib.Path(mhld_filepath)
+        if mhld_path.exists():
+            mhld_target = pathlib.Path(f"{airflow}/migration/data/holdings/{mhld_path.name}")
 
-        shutil.move(mhld_path, mhld_target)
-        logger.info(f"{mhld_path} moved to {mhld_target}")
+            shutil.move(mhld_path, mhld_target)
+            logger.info(f"{mhld_path} moved to {mhld_target}")
 
     return marc_path.stem
 
