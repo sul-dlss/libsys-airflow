@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 from airflow import DAG
 
@@ -24,8 +25,8 @@ def transform_data(*args, **kwargs):
     task_instance = kwargs["task_instance"]
     aeon_users = task_instance.xcom_pull(
         key="return_value", task_ids="get_user_data_from_aeon"
-    )
-
+    ) # [['aeonuser2', 111], ['aeonuser2', 222]]
+    
     for aeon_user in aeon_users:
         # map keys and values for user
         user = {

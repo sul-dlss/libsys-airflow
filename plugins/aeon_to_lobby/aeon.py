@@ -6,13 +6,13 @@ import requests
 
 def user_data(**kwargs):
     users = []
-    queue_users = user_requests_in_queue(**kwargs, entry_key="username")
-    # Unique usernames inn queue:
-    for username in list(dict.fromkeys(queue_users)):
+    queue_users = user_requests_in_queue(**kwargs)
+    for user_transaction in queue_users:  # [['aeonuser2', 111], ['aeonuser2', 222]]
+        username = user_transaction[0]
         user = aeon_user(**kwargs, user=username)
         if "@stanford.edu" not in user[0]["username"]:
             logging.info(f"Adding {user}")
-            users.append(user)
+            users.append(user_transaction)
         else:
             logging.info(f"Skipping {user}")
 
@@ -20,15 +20,19 @@ def user_data(**kwargs):
 
 
 def route_aeon_post(**kwargs):
-    responses = []
-    for id in user_requests_in_queue(**kwargs, entry_key="transactionNumber"):
-        aeon_url = kwargs["aeon_url"]
-        queue = kwargs["final_queue"]
-        aeon_headers = {"X-AEON-API-KEY": kwargs["aeon_key"], "Accept": "application/json"}
+    task_instance = kwargs["task_instance"]
+    aeon_data = task_instance.xcom_pull(
+        key="return_value", task_ids="get_user_data_from_aeon"
+    ) # [['aeonuser2', 111], ['aeonuser2', 222]]
+    aeon_url = kwargs["aeon_url"]
+    queue = kwargs["final_queue"]
+    aeon_headers = {"X-AEON-API-KEY": kwargs["aeon_key"], "Accept": "application/json"}
 
+    responses = []
+    for user_transactions in aeon_data:
+        id = user_transactions[1]
         logging.info(f"Routing transactionNumber {id} : {aeon_url}/Requests/{id}/route")
         logging.info(f'{ "newStatus": {queue} }')
-        # return None
 
         response = requests.post(f"{aeon_url}/Requests/{id}/route", headers=aeon_headers, json={ "newStatus": queue })
 
@@ -43,17 +47,16 @@ def route_aeon_post(**kwargs):
 
 def user_requests_in_queue(**kwargs):
     result = []
-    entry_key = kwargs['entry_key']
     data = queue_requests(**kwargs, queue=kwargs['queue_id'])
     today = datetime.today().strftime("%Y-%m-%d")
     tree = objectpath.Tree(data)
-    generator = tree.execute(f"$.*[@.creationDate >= '{today}'].{entry_key}")
-    # generator = tree.execute(f"$.*[@.creationDate < '{today}'].{entry_key}")
+    generator = tree.execute(f"$.*[@.creationDate >= '{today}']")
+
     for entry in generator:
-        result.append(entry)
+        result.append([entry['username'], entry['transactionNumber']])
 
     if len(result) < 1:
-        logging.info(f"No {entry_key}s in queue_requests at this time: {today}")
+        logging.info(f"No entries in queue_requests at this time: {today}")
 
     return result
 

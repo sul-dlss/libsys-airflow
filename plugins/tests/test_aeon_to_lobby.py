@@ -29,17 +29,17 @@ def mock_aeon_queue_data():
         {
             "transactionNumber": 0,
             "creationDate": today,
-            "username": "aeonuser1",
+            "username": "aeonuser1@stanford.edu",
         },
         {
             "transactionNumber": 1,
             "creationDate": today,
-            "username": "aeonuser2",
+            "username": "aeonuser1@stanford.edu",
         },
         {
             "transactionNumber": 2,
             "creationDate": today,
-            "username": "aeonuser2",
+            "username": "aeonuser2@gmail.com",
         }
     ]
 
@@ -48,10 +48,10 @@ def mock_aeon_queue_data():
 def mock_xcom_pull_user_data(*args, **kwargs):
     return [
         {
-            "username": "aeonuser",
+            "username": "aeonuser2@gmail.com",
             "lastName": "User",
             "firstName": "Aeon",
-            "eMailAddress": "aeonu@mail.edu",
+            "eMailAddress": "aeonuser2@gmail.com",
             "phone": "999-999-9999",
             "address": "123 Charm St",
             "address2": "Apt A",
@@ -85,7 +85,8 @@ def test_user_data(mock_queue_requests, mock_aeon_variable):
         aeon_url="https://aeon.example.com", aeon_key="123", queue_id="1"
     )
 
-    assert lambda: user_data[0] == mock_aeon_queue_data[0]
+    # assert lambda: user_data[0] == mock_aeon_queue_data[0]
+    assert lambda: user_data[0] == ["aeonuser2@gmail.com", 2]
     assert len(user_data) < 3
 
 
@@ -101,7 +102,7 @@ def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
         aeon_url="https://aeon.example.com", aeon_key="123", entry_key="username", queue_id="1"
     )
 
-    assert user_list == ['aeonuser1', 'aeonuser2', 'aeonuser2']
+    assert user_list == [['aeonuser1@stanford.edu',0], ['aeonuser1@stanford.edu', 1], ['aeonuser2@gmail.com', 2]]
 
 
 def test_transform_data(mock_lobby_variable):
@@ -110,5 +111,6 @@ def test_transform_data(mock_lobby_variable):
     lobby_users = transform_data(task_instance=MockTaskInstance)
 
     assert lobby_users[0]['LastName'] == "User"
+    assert lobby_users[0]['Email'] == "aeonuser2@gmail.com"
     assert lobby_users[0]['CustomFields'][0]['Name'] == "Address (Street)"
     assert lobby_users[0]['CustomFields'][0]['Value'] == "123 Charm St, Apt A"
