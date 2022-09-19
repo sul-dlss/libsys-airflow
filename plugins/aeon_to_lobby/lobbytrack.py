@@ -18,13 +18,19 @@ def lobby_post(**kwargs):
         key="return_value", task_ids="transform_aeon_data_to_lobby_json"
     )
 
+    responses = []
+
     for user in lobby_users:
+        logging.info(user)
+        return None
         response = requests.post(lobby_url, headers=lobby_headers, json=user)
 
-    if response.status_code != 200:
-        logging.error(
-            "lobbytrack api rsponded with:" f"{response.status_code}, {response.text}"
-        )
-        response.raise_for_status()
+        if response.status_code != 200:
+            logging.error(
+                "lobbytrack api rsponded with:" f"{response.status_code}, {response.text}"
+            )
+            response.raise_for_status()
 
-    return response.json()
+        responses.append(response)
+
+    return responses

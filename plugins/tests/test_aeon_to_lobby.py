@@ -35,6 +35,11 @@ def mock_aeon_queue_data():
             "transactionNumber": 1,
             "creationDate": today,
             "username": "aeonuser2",
+        },
+        {
+            "transactionNumber": 2,
+            "creationDate": today,
+            "username": "aeonuser2",
         }
     ]
 
@@ -76,9 +81,12 @@ def mock_queue_requests(monkeypatch, mocker: MockerFixture):
 
 def test_user_data(mock_queue_requests, mock_aeon_variable):
     from plugins.aeon_to_lobby.aeon import user_data
-    user_data = user_data(aeon_url="https://aeon.example.com", aeon_key="123")
+    user_data = user_data(
+        aeon_url="https://aeon.example.com", aeon_key="123", queue_id="1"
+    )
 
     assert lambda: user_data[0] == mock_aeon_queue_data[0]
+    assert len(user_data) < 3
 
 
 def test_aeon_request_params(caplog):
@@ -89,9 +97,11 @@ def test_aeon_request_params(caplog):
 
 def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
     from plugins.aeon_to_lobby.aeon import user_requests_in_queue
-    user_list = user_requests_in_queue(aeon_url="https://aeon.example.com", aeon_key="123")
+    user_list = user_requests_in_queue(
+        aeon_url="https://aeon.example.com", aeon_key="123", entry_key="username", queue_id="1"
+    )
 
-    assert user_list == ['aeonuser1', 'aeonuser2']
+    assert user_list == ['aeonuser1', 'aeonuser2', 'aeonuser2']
 
 
 def test_transform_data(mock_lobby_variable):

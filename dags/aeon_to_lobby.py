@@ -5,7 +5,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
-from plugins.aeon_to_lobby.aeon import user_data
+from plugins.aeon_to_lobby.aeon import user_data, route_aeon_post
 from plugins.aeon_to_lobby.lobbytrack import lobby_post
 
 
@@ -73,6 +73,7 @@ with DAG(
         op_kwargs={
             "aeon_url": Variable.get("AEON_URL"),
             "aeon_key": Variable.get("AEON_KEY"),
+            "queue_id": Variable.get("SOURCE_QUEUE_ID")
         }
     )
 
@@ -84,5 +85,16 @@ with DAG(
         task_id="post_to_lobbytrack", python_callable=lobby_post
     )
 
+    route_aeon_post = PythonOperator(
+        task_id="route_aeon_post", python_callable=route_aeon_post,
+        op_kwargs={
+            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_key": Variable.get("AEON_KEY"),
+            "queue_id": Variable.get("SOURCE_QUEUE_ID"),
+            "final_queue": Variable.get("FINAL_QUEUE")
+        }
+    )
 
+
+aeon_user_data >> route_aeon_post
 aeon_user_data >> transform_to_lobby_data >> post_to_lobbytrack
