@@ -25,8 +25,8 @@ def transform_data(*args, **kwargs):
     lobby_users = []
     task_instance = kwargs["task_instance"]
     aeon_users = task_instance.xcom_pull(
-        key="return_value", task_ids="get_user_transaction_data_from_aeon"
-    )  # [['aeonuser2', 111], ['aeonuser2', 222]]
+        key="return_value", task_ids="filter_aeon_user_data"
+    )
 
     for aeon_user in aeon_users:
         # map keys and values for user
@@ -80,7 +80,11 @@ with DAG(
     )
 
     filtered_user_data = PythonOperator(
-        task_id="filter_aeon_user_data", python_callable=filtered_users
+        task_id="filter_aeon_user_data", python_callable=filtered_users,
+        op_kwargs={
+            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_key": Variable.get("AEON_KEY")
+        }
     )
 
     transform_to_lobby_data = PythonOperator(

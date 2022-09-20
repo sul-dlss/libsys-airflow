@@ -18,10 +18,7 @@ def lobby_post(**kwargs):
         key="return_value", task_ids="transform_aeon_data_to_lobby_json"
     )
 
-    responses = []
-
     for user in lobby_users:
-        logging.info(user)
         response = requests.post(lobby_url, headers=lobby_headers, json=user)
 
         if response.status_code != 200:
@@ -30,6 +27,4 @@ def lobby_post(**kwargs):
             )
             response.raise_for_status()
 
-        responses.append(response)
-
-    return responses
+        logging.info(f"{response.status_code}, {response.text}, {user}")

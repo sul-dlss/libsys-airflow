@@ -8,7 +8,7 @@ def user_transaction_data(**kwargs):
     users = []
     queue_users = user_requests_in_queue(**kwargs)
     for user_transaction in queue_users:  # [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ["aesonuser2@gmail.com", 2]]
-        users.append(user_transaction[0])
+        users.append(user_transaction)
 
     return users
 
@@ -18,14 +18,16 @@ def filtered_users(**kwargs):
     task_instance = kwargs["task_instance"]
     queue_users = task_instance.xcom_pull(
         key="return_value", task_ids="get_user_transaction_data_from_aeon"
-    )  # ['aeonuser1@stanford.edu', 'aeonuser1@stanford.edu', 'aesonuser2@gmail.com']
+    )  # [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ["aesonuser2@gmail.com", 2]]
+
     for user in queue_users:
-        if "@stanford.edu" not in user:
-            user = aeon_user(**kwargs, user=user)
-            logging.info(f"Adding {user}")
+        username = user[0]
+        if "@stanford.edu" not in username:
+            user = aeon_user(**kwargs, user=username)
+            logging.info(f"Adding {username}")
             users.append(user)
         else:
-            logging.info(f"Skipping {user}")
+            logging.info(f"Skipping {username}")
 
     return users
 
@@ -35,6 +37,7 @@ def route_aeon_post(**kwargs):
     aeon_data = task_instance.xcom_pull(
         key="return_value", task_ids="get_user_transaction_data_from_aeon"
     )  # [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ["aesonuser2@gmail.com", 2]]
+
     aeon_url = kwargs["aeon_url"]
     queue = kwargs["final_queue"]
     aeon_headers = {"X-AEON-API-KEY": kwargs["aeon_key"], "Accept": "application/json"}
