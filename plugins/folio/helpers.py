@@ -4,7 +4,6 @@ import pathlib
 import re
 import shutil
 
-import numpy as np
 import pandas as pd
 import pymarc
 import requests
@@ -414,11 +413,11 @@ def _merge_notes(note_path: pathlib.Path):
             notes_df["TYPE_NAME"] = "Tech Staff"
             column_name = "TECHSTAFF"
 
-    logger.info(f"Notes dataframe {note_path}", notes_df)
-    notes_df = notes_df.rename(columns={ column_name: "note"})
-    notes_df['BARCODE'] = notes_df["BARCODE"].apply(lambda x: x.strip() if isinstance(x, str) else x)
+    notes_df = notes_df.rename(columns={column_name: "note"})
+    notes_df["BARCODE"] = notes_df["BARCODE"].apply(
+        lambda x: x.strip() if isinstance(x, str) else x
+    )
 
-    logger.info(f"Notes df {len(notes_df)}", notes_df)
     return notes_df
 
 
@@ -439,8 +438,6 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, l
         all_notes.append(note_df)
         logging.info(f"Merged {len(note_df)} notes into items tsv")
         tsv_note_path.unlink()
-
-    logger.info(f"tsv_notes {all_notes}")
 
     tsv_notes_df = pd.concat(all_notes)
     tsv_notes_name_parts = tsv_base.name.split(".")
@@ -477,6 +474,5 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_base.unlink()
 
     task_instance.xcom_push(key="tsv-notes", value=str(notes_path))
-
 
     return tsv_base.name

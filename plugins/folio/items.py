@@ -28,45 +28,44 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
 
     return holdings_keys
 
-def _generate_item_notes(
-        barcode,
-        tsv_note_df: pd.DataFrame, 
-        item_note_ids: dict) -> list:
+
+def _generate_item_notes(barcode, tsv_note_df: pd.DataFrame) -> list:
     """Takes TSV notes dataframe and returns a list of generated Item notes"""
     if barcode is None:
-        logger.error(f"Item missing barcode, cannot generate notes")
+        logger.error("Item missing barcode, cannot generate notes")
         return []
-    item_notes = tsv_note_df.loc[tsv_note_df['BARCODE'] == barcode]
-    item_notes["itemNoteTypeId"] = item_notes["TYPE_NAME"].apply(lambda x: item_note_ids.get(x))
-    item_notes = item_notes.drop(columns=['BARCODE', 'TYPE_NAME'])
+    item_notes = tsv_note_df.loc[tsv_note_df["BARCODE"] == barcode]
+    item_notes = item_notes.drop(columns=["BARCODE"])
 
-    logger.info(f"Total item notes for {barcode} {len(item_notes)} {len(tsv_note_df)}")
-    return json.loads(item_notes.to_json(index=False, orient="table"))['data']
+    return json.loads(item_notes.to_json(index=False, orient="table"))["data"]
+
 
 def _retrieve_item_notes_ids(folio_client) -> dict:
     """Retrieves itemNoteTypes from Okapi"""
     note_types = dict()
-    note_types_response = requests.get(f"{folio_client.okapi_url}/item-note-types",
-                                       headers=folio_client.okapi_headers)
+    note_types_response = requests.get(
+        f"{folio_client.okapi_url}/item-note-types", headers=folio_client.okapi_headers
+    )
 
     if note_types_response.status_code > 399:
-        raise ValueError (f"Cannot retrieve item note types from {folio_client.okapi_url}\n{note_types_response.text}")
+        raise ValueError(
+            f"Cannot retrieve item note types from {folio_client.okapi_url}\n{note_types_response.text}"
+        )
 
-    for note_type in note_types_response.json()['itemNoteTypes']:
-        note_types[note_type['name']] = note_type['id']
+    for note_type in note_types_response.json()["itemNoteTypes"]:
+        note_types[note_type["name"]] = note_type["id"]
 
     return note_types
 
 
 def _add_additional_info(**kwargs):
-    """Adds an HRID based on Holdings formerIds and generates notes from 
+    """Adds an HRID based on Holdings formerIds and generates notes from
     tsv files"""
-    okapi_url: str = kwargs['okapi_url']
-    airflow: str = kwargs['airflow']
-    holdings_pattern: str = kwargs['holdings_pattern']
-    items_pattern: str = kwargs['items_pattern']
-    tsv_notes_path = kwargs['tsv_notes_path']
-    folio_client = kwargs['folio_client']
+    airflow: str = kwargs["airflow"]
+    holdings_pattern: str = kwargs["holdings_pattern"]
+    items_pattern: str = kwargs["items_pattern"]
+    tsv_notes_path = kwargs["tsv_notes_path"]
+    folio_client = kwargs["folio_client"]
 
     results_dir = pathlib.Path(f"{airflow}/migration/results")
     tsv_notes_path = pathlib.Path(tsv_notes_path)
@@ -76,6 +75,12 @@ def _add_additional_info(**kwargs):
     tsv_notes_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
 
     item_note_types = _retrieve_item_notes_ids(folio_client)
+
+    tsv_notes_df["itemNoteTypeId"] = tsv_notes_df["TYPE_NAME"].apply(
+        lambda x: item_note_types.get(x)
+    )
+
+    tsv_notes_df = tsv_notes_df.drop(columns=["TYPE_NAME"])
 
     items = []
     for items_file in results_dir.glob(items_pattern):
@@ -94,26 +99,21 @@ def _add_additional_info(**kwargs):
                     id_seed = item["hrid"]
                 item["id"] = str(
                     FolioUUID(
-                        okapi_url,
+                        folio_client.okapi_url,
                         FOLIONamespaces.items,
                         id_seed,
                     )
                 )
                 # To handle optimistic locking
                 item["_version"] = 1
-                item["notes"] = _generate_item_notes(
-                    item.get('barcode'), 
-                    tsv_notes_df, 
-                    item_note_types)
+                item["notes"] = _generate_item_notes(item.get("barcode"), tsv_notes_df)
                 items.append(item)
 
         with open(items_file, "w+") as write_output:
             for item in items:
                 write_output.write(f"{json.dumps(item)}\n")
 
-    # tsv_notes_path.unlink()
-
-        
+    tsv_notes_path.unlink()
 
 
 def post_folio_items_records(**kwargs):
@@ -179,6 +179,8 @@ def run_items_transformer(*args, **kwargs) -> bool:
         airflow=airflow,
         holdings_pattern=f"folio_holdings_{dag.run_id}_holdings-*transformer.json",
         items_pattern=f"folio_items_{dag.run_id}_items-*transformer.json",
-        tsv_notes_path=instance.xcom_pull(task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"),
-        folio_client=items_transformer.folio_client
+        tsv_notes_path=instance.xcom_pull(
+            task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
+        ),
+        folio_client=items_transformer.folio_client,
     )
