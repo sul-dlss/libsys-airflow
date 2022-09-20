@@ -393,20 +393,33 @@ def _modify_item_type(df, libraries):
     return df
 
 
-def _merge_notes_into_base(base_df: pd.DataFrame, note_df: pd.DataFrame):
-    def _populate_column(barcode):
-        matched_series = note_df.loc[note_df["BARCODE"] == barcode]
-        if len(matched_series) > 0:
-            return matched_series[note_type].values[0]
-        else:
-            return np.nan
+def _merge_notes(note_path: pathlib.Path):
+    notes_df = pd.read_csv(note_path, sep="\t", dtype=object)
 
-    # Extract name of non-barcode column
-    note_columns = list(note_df.columns)
-    note_columns.pop(note_columns.index("BARCODE"))
-    note_type = note_columns[0]
-    base_df[note_type] = base_df["BARCODE"].apply(_populate_column)
-    return base_df
+    match note_path.name.split(".")[-2]:
+        case "circnote":
+            notes_df["staffOnly"] = False
+            notes_df["TYPE_NAME"] = "Note"
+            column_name = "CIRCNOTE"
+        case "circstaff":
+            notes_df["staffOnly"] = True
+            notes_df["TYPE_NAME"] = "Note"
+            column_name = "CIRCNOTE"
+        case "public":
+            notes_df["staffOnly"] = False
+            notes_df["TYPE_NAME"] = "Public"
+            column_name = "PUBLIC"
+        case "techstaff":
+            notes_df["staffOnly"] = True
+            notes_df["TYPE_NAME"] = "Tech Staff"
+            column_name = "TECHSTAFF"
+
+    logger.info(f"Notes dataframe {note_path}", notes_df)
+    notes_df = notes_df.rename(columns={ column_name: "note"})
+    notes_df['BARCODE'] = notes_df["BARCODE"].apply(lambda x: x.strip() if isinstance(x, str) else x)
+
+    logger.info(f"Notes df {len(notes_df)}", notes_df)
+    return notes_df
 
 
 def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, libraries):
@@ -418,32 +431,30 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, l
     new_tsv_base_path = items_dir / tsv_base.name
 
     tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
-    tsv_base.unlink()
 
-    # Iterate on tsv notes and merge into the tsv base DF based on barcode
-    for tsv_notes_path in tsv_notes:
-        note_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
-        note_df = _apply_transforms(note_df, column_transforms)
-        tsv_base_df = _merge_notes_into_base(tsv_base_df, note_df)
+    all_notes = []
+    # Iterate on tsv notes and merge into the tsv_notes DF
+    for tsv_note_path in tsv_notes:
+        note_df = _merge_notes(tsv_note_path)
+        all_notes.append(note_df)
         logging.info(f"Merged {len(note_df)} notes into items tsv")
-        tsv_notes_path.unlink()
+        tsv_note_path.unlink()
 
-    # Add note columns to tsv_base_df if notes do not exist
-    if len(tsv_notes) < 1:
-        for note in ["CIRCNOTE", "CIRCNOTE", "TECHSTAFF", "PUBLIC"]:
-            tsv_base_df[note] = np.NaN
+    logger.info(f"tsv_notes {all_notes}")
 
+    tsv_notes_df = pd.concat(all_notes)
     tsv_notes_name_parts = tsv_base.name.split(".")
     tsv_notes_name_parts.insert(-1, "notes")
 
     tsv_notes_name = ".".join(tsv_notes_name_parts)
 
     new_tsv_notes_path = pathlib.Path(
-        f"{airflow}/migration/data/items/{tsv_notes_name}"
+        f"{airflow}/migration/data_preparation/{tsv_notes_name}"
     )
-    tsv_base_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
 
-    return new_tsv_notes_path.name
+    tsv_notes_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
+
+    return new_tsv_notes_path
 
 
 def transform_move_tsvs(*args, **kwargs):
@@ -462,4 +473,10 @@ def transform_move_tsvs(*args, **kwargs):
 
     notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms, libraries)
 
-    return [tsv_base.name, notes_path_name]
+    # Delete tsv base
+    tsv_base.unlink()
+
+    task_instance.xcom_push(key="tsv-notes", value=str(notes_path))
+
+
+    return tsv_base.name
