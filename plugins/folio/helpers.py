@@ -66,6 +66,7 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="marc-file", value=bib_file_load["marc"])
     task_instance.xcom_push(key="tsv-files", value=bib_file_load["tsv"])
     task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
+    task_instance.xcom_push(key="tsv-dates", value=bib_file_load["tsv-dates"])
 
 
 def move_marc_files(*args, **kwargs) -> str:
@@ -319,6 +320,8 @@ def post_to_okapi(**kwargs) -> bool:
         logger.error(new_record_result.text)
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
+    if len(new_record_result.text) < 1:
+        return {}
     return new_record_result.json()
 
 
