@@ -19,7 +19,8 @@ def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
             ckey = record["hrid"].removeprefix("a")
             matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
             if matched_row["CATALOGED_DATE"].values[0] != "0":
-                record["catalogedDate"] = matched_row["CATALOGED_DATE"].values[0]
+                date_cat = matched_row["CATALOGED_DATE"].values[0]
+                record["catalogedDate"] = date_cat[:4] + '-' + date_cat[4:6] + '-' + date_cat[-2:]
             records.append(record)
     with open(bibs_transformer.processor.results_file.name, "w+") as fo:
         for record in records:
