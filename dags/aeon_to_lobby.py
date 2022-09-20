@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
-import logging
 
 from airflow import DAG
 
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
-from plugins.aeon_to_lobby.aeon import user_data, route_aeon_post
+from plugins.aeon_to_lobby.aeon import (
+    user_transaction_data, route_aeon_post, filtered_users
+)
 from plugins.aeon_to_lobby.lobbytrack import lobby_post
 
 
@@ -24,9 +25,9 @@ def transform_data(*args, **kwargs):
     lobby_users = []
     task_instance = kwargs["task_instance"]
     aeon_users = task_instance.xcom_pull(
-        key="return_value", task_ids="get_user_data_from_aeon"
-    ) # [['aeonuser2', 111], ['aeonuser2', 222]]
-    
+        key="return_value", task_ids="get_user_transaction_data_from_aeon"
+    )  # [['aeonuser2', 111], ['aeonuser2', 222]]
+
     for aeon_user in aeon_users:
         # map keys and values for user
         user = {
@@ -70,12 +71,16 @@ with DAG(
 ) as dag:
 
     aeon_user_data = PythonOperator(
-        task_id="get_user_data_from_aeon", python_callable=user_data,
+        task_id="get_user_transaction_data_from_aeon", python_callable=user_transaction_data,
         op_kwargs={
             "aeon_url": Variable.get("AEON_URL"),
             "aeon_key": Variable.get("AEON_KEY"),
             "queue_id": Variable.get("SOURCE_QUEUE_ID")
         }
+    )
+
+    filtered_user_data = PythonOperator(
+        task_id="filter_aeon_user_data", python_callable=filtered_users
     )
 
     transform_to_lobby_data = PythonOperator(
@@ -98,4 +103,4 @@ with DAG(
 
 
 aeon_user_data >> route_aeon_post
-aeon_user_data >> transform_to_lobby_data >> post_to_lobbytrack
+aeon_user_data >> filtered_user_data >> transform_to_lobby_data >> post_to_lobbytrack

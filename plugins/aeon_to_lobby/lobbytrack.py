@@ -22,7 +22,6 @@ def lobby_post(**kwargs):
 
     for user in lobby_users:
         logging.info(user)
-        return None
         response = requests.post(lobby_url, headers=lobby_headers, json=user)
 
         if response.status_code != 200:
