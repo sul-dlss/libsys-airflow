@@ -353,22 +353,42 @@ def test_transform_move_tsvs_doesnt_exist(mock_file_system):  # noqa
         )
 
 
-def test_merge_notes(mock_file_system):  # noqa
+def test_merge_notes_circnotes(mock_file_system):  # noqa
 
     circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
 
-    notes_df = pd.DataFrame(
+    circ_notes_df = pd.DataFrame(
         [{"BARCODE": "36105033974929  ", "CIRCNOTE": "pen marks 6/5/19cc"}]
     )
 
-    notes_df.to_csv(circ_path, sep="\t", index=False)
+    circ_notes_df.to_csv(circ_path, sep="\t", index=False)
 
     notes_df = _merge_notes(circ_path)
 
     note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
     assert note_row["note"].item() == "pen marks 6/5/19cc"
-    assert note_row["TYPE_NAME"].item() == "Note"
-    assert note_row["staffOnly"].item() is False
+    assert note_row["NOTE_TYPE"].item() == "CIRCNOTE"
+
+
+def test_merge_notes_techstaff(mock_file_system):  # noqa
+    techstaff_path = mock_file_system[1] / "test.sample2.techstaff.tsv"
+
+    techstaff_df = pd.DataFrame(
+        [
+            {
+                "BARCODE": "36105031890341",
+                "TECHSTAFF": "rf:370.4 .J65 no.15 c.3, hbr 6/1/06",
+            }
+        ]
+    )
+
+    techstaff_df.to_csv(techstaff_path, sep="\t", index=False)
+
+    notes_df = _merge_notes(techstaff_path)
+
+    note_row = notes_df.loc[notes_df["BARCODE"] == "36105031890341"]
+    assert note_row["note"].item() == "rf:370.4 .J65 no.15 c.3, hbr 6/1/06"
+    assert note_row["NOTE_TYPE"].item() == "TECHSTAFF"
 
 
 def test_process_records(mock_dag_run, mock_file_system):  # noqa

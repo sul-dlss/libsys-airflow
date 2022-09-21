@@ -47,22 +47,39 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
     results_dir = mock_file_system[3]
     holdings_path = results_dir / "holdings_transformer-test_dag.json"
 
-    holdings_rec = {
-        "id": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4",
-        "formerIds": ["a23456"],
-        "hrid": "ah23456_1",
-    }
+    holdings_recs = [
+        {
+            "id": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4",
+            "formerIds": ["a23456"],
+            "hrid": "ah23456_1",
+        },
+        {
+            "hrid": "ah9704208_1",
+            "id": "b9cd36d8-a031-5793-b2e8-42042cc2dade",
+            "formerIds": ["a9704208"],
+        },
+    ]
 
-    holdings_path.write_text(f"{json.dumps(holdings_rec)}\n")
+    with holdings_path.open("w+") as fo:
+        for rec in holdings_recs:
+            fo.write(f"{json.dumps(rec)}\n")
 
     items_path = results_dir / "items_transformer-test_dag.json"
 
-    items_rec = {
-        "holdingsRecordId": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4",
-        "barcode": "55678446243",
-    }
+    items_recs = [
+        {
+            "holdingsRecordId": "8e6e9fb5-f914-4d38-87d2-ccb52f9a44a4",
+            "barcode": "55678446243",
+        },
+        {
+            "holdingsRecordId": "b9cd36d8-a031-5793-b2e8-42042cc2dade",
+            "barcode": "1233455",
+        },
+    ]
 
-    items_path.write_text(f"{json.dumps(items_rec)}\n")
+    with items_path.open("w+") as fo:
+        for rec in items_recs:
+            fo.write(f"{json.dumps(rec)}\n")
 
     data_prep = airflow_path / "migration/data_preparation/"
 
@@ -71,9 +88,11 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
     items_notes_path = data_prep / "test_dag.notes.tsv"
 
     items_notes = [
-        "BARCODE\tnote\tstaffOnly\tTYPE_NAME\n",
-        "1233455\ta note\tTrue\tTech Staff\n",
-        "55678446243\tavailable for checkout\tFalse\tPublic",
+        "BARCODE\tnote\tNOTE_TYPE\n",
+        "1233455\ta note\tCIRCSTAFF\n",
+        "1233455\ta note for the public\tCIRCNOTE\n",
+        "55678446243\tavailable for checkout\tPUBLIC\n",
+        "55678446243\ttf:green, hbr 9/20/2013\tTECHSTAFF",
     ]
 
     items_notes_path.write_text("".join(items_notes))
@@ -89,14 +108,19 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
     )
 
     with items_path.open() as items_fo:
-        new_items_rec = json.loads(items_fo.readline())
+        new_items_recs = [json.loads(row) for row in items_fo.readlines()]
 
-    assert new_items_rec["hrid"] == "ai23456_1"
-    assert new_items_rec["id"] == "f644a96e-8bb0-5d99-897a-6b10589fb4da"
-    assert new_items_rec["_version"] == 1
-    assert new_items_rec["notes"][0]["staffOnly"] == "False"
-    assert new_items_rec["notes"][0]["note"] == "available for checkout"
+    assert new_items_recs[0]["hrid"] == "ai23456_1"
+    assert new_items_recs[0]["id"] == "f644a96e-8bb0-5d99-897a-6b10589fb4da"
+    assert new_items_recs[0]["_version"] == 1
+    assert new_items_recs[0]["notes"][0]["staffOnly"] is False
+    assert new_items_recs[0]["notes"][0]["note"] == "available for checkout"
     assert (
-        new_items_rec["notes"][0]["itemNoteTypeId"]
+        new_items_recs[0]["notes"][0]["itemNoteTypeId"]
         == "62fd6fcc-5cde-4a74-849a-66e2d77a1f12"
     )
+    assert new_items_recs[0]["notes"][1]["staffOnly"]
+
+    assert new_items_recs[1]["hrid"] == "ai9704208_1"
+    assert new_items_recs[1]["circulationNotes"][0]["staffOnly"]
+    assert new_items_recs[1]["circulationNotes"][1]["staffOnly"] is False
