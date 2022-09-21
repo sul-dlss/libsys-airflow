@@ -29,15 +29,45 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
     return holdings_keys
 
 
-def _generate_item_notes(barcode, tsv_note_df: pd.DataFrame) -> list:
+def _generate_item_notes(
+    item, tsv_note_df: pd.DataFrame, item_note_types: dict
+) -> list:
     """Takes TSV notes dataframe and returns a list of generated Item notes"""
+    barcode = item.get("barcode")
     if barcode is None:
         logger.error("Item missing barcode, cannot generate notes")
         return []
     item_notes = tsv_note_df.loc[tsv_note_df["BARCODE"] == barcode]
-    item_notes = item_notes.drop(columns=["BARCODE"])
 
-    return json.loads(item_notes.to_json(index=False, orient="table"))["data"]
+    circ_notes, notes = [], []
+    for row in item_notes.iterrows():
+        note_info = row[1]
+        note = {"note": note_info["note"]}
+
+        match note_info["NOTE_TYPE"]:
+            case "CIRCNOTE":
+                note["staffOnly"] = False
+                circ_notes.append(note)
+
+            case "CIRCSTAFF":
+                note["staffOnly"] = True
+                circ_notes.append(note)
+
+            case "PUBLIC":
+                note["staffOnly"] = False
+                note["itemNoteTypeId"] = item_note_types.get("Public")
+                notes.append(note)
+
+            case "TECHSTAFF":
+                note["staffOnly"] = True
+                note["itemNoteTypeId"] = item_note_types.get("Tech Staff")
+                notes.append(note)
+
+    if len(circ_notes) > 0:
+        item["circulationNotes"] = circ_notes
+
+    if len(notes) > 0:
+        item["notes"] = notes
 
 
 def _retrieve_item_notes_ids(folio_client) -> dict:
@@ -76,12 +106,6 @@ def _add_additional_info(**kwargs):
 
     item_note_types = _retrieve_item_notes_ids(folio_client)
 
-    tsv_notes_df["itemNoteTypeId"] = tsv_notes_df["TYPE_NAME"].apply(
-        lambda x: item_note_types.get(x)
-    )
-
-    tsv_notes_df = tsv_notes_df.drop(columns=["TYPE_NAME"])
-
     items = []
     for items_file in results_dir.glob(items_pattern):
 
@@ -106,7 +130,7 @@ def _add_additional_info(**kwargs):
                 )
                 # To handle optimistic locking
                 item["_version"] = 1
-                item["notes"] = _generate_item_notes(item.get("barcode"), tsv_notes_df)
+                _generate_item_notes(item, tsv_notes_df, item_note_types)
                 items.append(item)
 
         with open(items_file, "w+") as write_output:
@@ -175,7 +199,6 @@ def run_items_transformer(*args, **kwargs) -> bool:
     items_transformer.wrap_up()
 
     _add_additional_info(
-        okapi_url=items_transformer.folio_client.okapi_url,
         airflow=airflow,
         holdings_pattern=f"folio_holdings_{dag.run_id}_holdings-*transformer.json",
         items_pattern=f"folio_items_{dag.run_id}_items-*transformer.json",

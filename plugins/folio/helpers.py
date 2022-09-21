@@ -397,21 +397,20 @@ def _merge_notes(note_path: pathlib.Path):
 
     match note_path.name.split(".")[-2]:
         case "circnote":
-            notes_df["staffOnly"] = False
-            notes_df["TYPE_NAME"] = "Note"
             column_name = "CIRCNOTE"
+            notes_df["NOTE_TYPE"] = column_name
+
         case "circstaff":
-            notes_df["staffOnly"] = True
-            notes_df["TYPE_NAME"] = "Note"
             column_name = "CIRCNOTE"
+            notes_df["NOTE_TYPE"] = "CIRCSTAFF"
+
         case "public":
-            notes_df["staffOnly"] = False
-            notes_df["TYPE_NAME"] = "Public"
             column_name = "PUBLIC"
+            notes_df["NOTE_TYPE"] = column_name
+
         case "techstaff":
-            notes_df["staffOnly"] = True
-            notes_df["TYPE_NAME"] = "Tech Staff"
             column_name = "TECHSTAFF"
+            notes_df["NOTE_TYPE"] = column_name
 
     notes_df = notes_df.rename(columns={column_name: "note"})
     notes_df["BARCODE"] = notes_df["BARCODE"].apply(
