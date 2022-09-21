@@ -1,6 +1,7 @@
 import json
 import logging
 import pandas as pd
+from datetime import datetime
 
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
@@ -19,8 +20,8 @@ def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
             ckey = record["hrid"].removeprefix("a")
             matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
             if matched_row["CATALOGED_DATE"].values[0] != "0":
-                date_cat = matched_row["CATALOGED_DATE"].values[0]
-                record["catalogedDate"] = date_cat[:4] + '-' + date_cat[4:6] + '-' + date_cat[-2:]
+                date_cat = datetime.strptime(matched_row["CATALOGED_DATE"].values[0], "%Y%m%d")
+                record["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
             records.append(record)
     with open(bibs_transformer.processor.results_file.name, "w+") as fo:
         for record in records:
