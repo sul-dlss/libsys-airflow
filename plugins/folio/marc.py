@@ -19,14 +19,14 @@ def _check_srs_existence(**kwargs) -> list:
     for srs_file in srs_files:
         srs_file_path = results_dir / srs_file
         if srs_file_path.exists():
-            existing_srs_files.append( { "file_name": srs_file })
+            existing_srs_files.append({"file_name": srs_file})
 
     return existing_srs_files
 
 
 def post_marc_to_srs(*args, **kwargs):
     dag = kwargs.get("dag_run")
-   
+
     srs_files = _check_srs_existence(**kwargs)
 
     task_config = BatchPoster.TaskConfiguration(
@@ -55,7 +55,7 @@ def remove_srs_json(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     srs_filenames = kwargs["srs_filenames"]
 
-    srs_filedir = Path(airflow) / 'migration/results/'
+    srs_filedir = Path(airflow) / "migration/results/"
 
     for srs_file in srs_filenames:
         srs_file_path = srs_filedir / srs_file

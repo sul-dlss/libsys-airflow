@@ -106,7 +106,7 @@ def post_folio_holding_records(**kwargs):
         holding_records = json.load(fo)
 
     for i in range(0, len(holding_records), batch_size):
-        holdings_batch = holding_records[i:i + batch_size]
+        holdings_batch = holding_records[i : i + batch_size]  # noqa
         logger.info(f"Posting {i} to {i+batch_size} holding records")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -174,8 +174,8 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         use_tenant_mapping_rules=False,
         hrid_handling="preserve001",
         files=[{"file_name": filepath.name, "supressed": False}],
-        mfhd_mapping_file_name="mfhd_rules.json",
-        location_map_file_name="locations-mfld.tsv",
+        mfhd_mapping_file_name="mhfd_rules.json",
+        location_map_file_name="locations-mhfd.tsv",
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
         create_source_records=True,
@@ -243,6 +243,7 @@ def consolidate_holdings_map(*args, **kwargs):
     all_id_map.rename(last_id_map)
     logger.info(f"Finished moving {all_id_map} to {last_id_map}")
 
+
 def update_mhlds_uuids(*args, **kwargs):
     """Updates Holdings UUID in MHLDs SRS file"""
     dag = kwargs["dag_run"]
@@ -264,23 +265,25 @@ def update_mhlds_uuids(*args, **kwargs):
     with holdings_id_map_path.open() as fo:
         for line in fo.readlines():
             holdings_rec = json.loads(line)
-            holdings_id_map[holdings_rec['legacy_id']] = holdings_rec['folio_id']
+            holdings_id_map[holdings_rec["legacy_id"]] = holdings_rec["folio_id"]
 
     updated_srs_records = []
     with mhld_srs_path.open() as fo:
         for line in fo.readlines():
             mhld_srs_record = json.loads(line)
-            hrid = mhld_srs_record['externalIdsHolder']['holdingsHrid']
+            hrid = mhld_srs_record["externalIdsHolder"]["holdingsHrid"]
             if hrid in holdings_id_map:
-                mhld_srs_record['externalIdsHolder']['holdingsId'] = holdings_id_map[hrid]
+                mhld_srs_record["externalIdsHolder"]["holdingsId"] = holdings_id_map[
+                    hrid
+                ]
                 updated_srs_records.append(mhld_srs_record)
             else:
                 logger.error(f"UUID for MHLD {hrid} not found in SRS record")
-            
-    
+
     with mhld_srs_path.open("w+") as fo:
         for record in updated_srs_records:
             fo.write(f"{json.dumps(record)}\n")
 
-    logger.info(f"Finished updated Holdings UUID for {len(updated_srs_records):,} MHLD SRS records")
-    
+    logger.info(
+        f"Finished updated Holdings UUID for {len(updated_srs_records):,} MHLD SRS records"
+    )

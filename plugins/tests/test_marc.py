@@ -51,7 +51,7 @@ def test_post_marc_to_srs(
     library_config = MockLibraryConfig(base_folder=str(base_folder))
 
     post_marc_to_srs(
-        dag_run=dag, library_config=library_config, srs_file="test-srs.json"
+        dag_run=dag, library_config=library_config, srs_files=["test-srs.json"]
     )
 
     assert library_config.iteration_identifier == dag.run_id
@@ -61,6 +61,6 @@ def test_post_marc_to_srs(
 def test_remove_srs_json(srs_file, mock_file_system):  # noqa
     assert srs_file.exists() is True
 
-    remove_srs_json(airflow=mock_file_system[0], srs_filename="test-srs.json")
+    remove_srs_json(airflow=mock_file_system[0], srs_filenames=["test-srs.json"])
 
     assert srs_file.exists() is False

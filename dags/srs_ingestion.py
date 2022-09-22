@@ -55,7 +55,6 @@ def add_marc_to_srs():
 
         for srs_filename in srs_filenames:
             logger.info(f"Starting ingestion of {srs_filename}")
-        
 
         sul_config = LibraryConfiguration(
             okapi_url=Variable.get("OKAPI_URL"),
@@ -85,7 +84,7 @@ def add_marc_to_srs():
 
     @task
     def finish():
-        logger.info(f"Finished migration")
+        logger.info("Finished migration")
 
     srs_files = ingestion_marc()
     cleanup(srs_files) >> finish()
