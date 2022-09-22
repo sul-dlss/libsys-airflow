@@ -29,6 +29,7 @@ from plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     post_folio_holding_records,
+    update_mhlds_uuids,
 )
 
 from plugins.folio.login import folio_login
@@ -212,6 +213,11 @@ with DAG(
             python_callable=consolidate_holdings_map,
         )
 
+        update_mhlds_srs = PythonOperator(
+            task_id="update-mhlds-srs-uuids",
+            python_callable=update_mhlds_uuids
+        )
+
         convert_instances_valid_json = PythonOperator(
             task_id="instances_to_valid_json",
             python_callable=process_records,
@@ -266,6 +272,7 @@ with DAG(
             >> convert_mhld_to_folio_holdings
             >> generate_electronic_holdings
             >> consolidate_holdings
+            >> update_mhlds_srs
             >> finished_holdings
             >> convert_holdings_valid_json
             >> finish_conversion

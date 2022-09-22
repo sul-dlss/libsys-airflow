@@ -242,3 +242,45 @@ def consolidate_holdings_map(*args, **kwargs):
     )
     all_id_map.rename(last_id_map)
     logger.info(f"Finished moving {all_id_map} to {last_id_map}")
+
+def update_mhlds_uuids(*args, **kwargs):
+    """Updates Holdings UUID in MHLDs SRS file"""
+    dag = kwargs["dag_run"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
+
+    mhld_srs_path = pathlib.Path(
+        f"{airflow}/migration/results/folio_srs_holdings_{dag.run_id}_holdings-mhld-transformer.json"
+    )
+
+    if not mhld_srs_path.exists():
+        logger.info("No MHLD SRS records")
+        return
+
+    holdings_id_map_path = pathlib.Path(
+        f"{airflow}/migration/results/holdings_id_map_{dag.run_id}.json"
+    )
+
+    holdings_id_map = {}
+    with holdings_id_map_path.open() as fo:
+        for line in fo.readlines():
+            holdings_rec = json.loads(line)
+            holdings_id_map[holdings_rec['legacy_id']] = holdings_rec['folio_id']
+
+    updated_srs_records = []
+    with mhld_srs_path.open() as fo:
+        for line in fo.readlines():
+            mhld_srs_record = json.loads(line)
+            hrid = mhld_srs_record['externalIdsHolder']['holdingsHrid']
+            if hrid in holdings_id_map:
+                mhld_srs_record['externalIdsHolder']['holdingsId'] = holdings_id_map[hrid]
+                updated_srs_records.append(mhld_srs_record)
+            else:
+                logger.error(f"UUID for MHLD {hrid} not found in SRS record")
+            
+    
+    with mhld_srs_path.open("w+") as fo:
+        for record in updated_srs_records:
+            fo.write(f"{json.dumps(record)}\n")
+
+    logger.info(f"Finished updated Holdings UUID for {len(updated_srs_records):,} MHLD SRS records")
+    
