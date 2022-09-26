@@ -279,7 +279,7 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     # mock sample tsv
     symphony_tsv = source_dir / "sample.tsv"
     symphony_tsv.write_text(
-        "CATKEY\tCALL_NUMBER_TYPE\tBARCODE\n123456\tLC 12345\t45677  "
+        "CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE\n123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC"
     )
 
     symphony_notes_tsv = source_dir / "sample.public.tsv"
@@ -296,6 +296,8 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
         ("BARCODE", lambda x: x.strip()),
     ]
 
+    libraries = ["HOOVER", "HV-ARCHIVE"]
+
     # Mocks successful upstream task
     global messages
     messages["bib-files-group"] = {
@@ -309,6 +311,7 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     transform_move_tsvs(
         airflow=airflow_path,
         column_transforms=column_transforms,
+        libraries=libraries,
         task_instance=MockTaskInstance(),
         source="symphony",
         tsv_stem="sample",
@@ -317,14 +320,14 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     sample_tsv = tsv_directory / "sample.tsv"
 
     f = open(sample_tsv, "r")
-    assert f.readlines()[1] == "a123456\tLC 12345\t45677\n"
+    assert f.readlines()[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
     f.close()
 
     sample_notes_tsv = tsv_directory / "sample.notes.tsv"
     f_notes = open(sample_notes_tsv, "r")
     assert (
         f_notes.readlines()[1]
-        == "a123456\tLC 12345\t45677\tAvailable for checkout\tpencil marks 7/28/18cc\n"
+        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\tAvailable for checkout\tpencil marks 7/28/18cc\n"
     )
     f_notes.close()
     messages = {}

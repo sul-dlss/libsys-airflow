@@ -387,6 +387,12 @@ def _apply_transforms(df, column_transforms):
     return df
 
 
+def _modify_item_type(df, libraries):
+    if df["LIBRARY"].isin(libraries).any():
+        df["ITEM_TYPE"] = df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"]
+    return df
+
+
 def _merge_notes_into_base(base_df: pd.DataFrame, note_df: pd.DataFrame):
     def _populate_column(barcode):
         matched_series = note_df.loc[note_df["BARCODE"] == barcode]
@@ -403,11 +409,12 @@ def _merge_notes_into_base(base_df: pd.DataFrame, note_df: pd.DataFrame):
     return base_df
 
 
-def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms):
+def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, libraries):
     items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
     tsv_base_df = _apply_transforms(tsv_base_df, column_transforms)
+    tsv_base_df = _modify_item_type(tsv_base_df, libraries)
     new_tsv_base_path = items_dir / tsv_base.name
 
     tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
@@ -442,6 +449,7 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms):
 def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     column_transforms = kwargs.get("column_transforms", [])
+    libraries = kwargs.get("libraries", [])
     task_instance = kwargs["task_instance"]
 
     tsv_notes_files = task_instance.xcom_pull(
@@ -452,6 +460,6 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_notes = [pathlib.Path(filename) for filename in tsv_notes_files]
     tsv_base = pathlib.Path(tsv_base_file)
 
-    notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms)
+    notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms, libraries)
 
     return [tsv_base.name, notes_path_name]
