@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def post_to_folio(*args, **kwargs):
-    pattern = "preceding_succeding_titles*.json"
+    pattern = "preceding_succeeding_titles-*.json"
     results = kwargs["results_dir"]
     task_instance = kwargs["task_instance"]
     jwt = task_instance.xcom_pull(task_ids="folio_login")

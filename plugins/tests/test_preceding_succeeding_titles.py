@@ -42,7 +42,7 @@ def test_preceding_succeeding_titles(
     helpers._save_error_record_ids = MagicMock(airflow=results_dir)
 
     # Create mock JSON file
-    titles_filename = "preceding_succeding_titles_x.json"
+    titles_filename = "preceding_succeeding_titles-x.json"
     titles_file = results_dir / titles_filename
     titles_file.write_text(
         """{ "id": "11111111-1111-1111-1111-111111111111", "title": "Preceding Title", "identifiers": [], "succeedingInstanceId": "22222222-2222-2222-2222-222222222222" }"""
