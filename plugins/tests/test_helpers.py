@@ -1,6 +1,5 @@
 import logging
 
-import numpy as np
 import pandas as pd
 import pytest
 import pydantic
@@ -18,7 +17,7 @@ from plugins.folio.helpers import (
     move_marc_files,
     post_to_okapi,
     process_marc,
-    _merge_notes_into_base,
+    _merge_notes,
     _move_001_to_035,
     process_records,
     _query_for_relationships,
@@ -250,7 +249,7 @@ def test_get_bib_files():
                 "marc": "sample.mrc",
                 "tsv": ["sample.public.tsv", "sample.circ.tsv"],
                 "tsv-base": "sample.tsv",
-                "tsv-dates": "sample.dates.tsv"
+                "tsv-dates": "sample.dates.tsv",
             },
         }
     }
@@ -298,6 +297,10 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
 
     libraries = ["HOOVER", "HV-ARCHIVE"]
 
+    data_prep = airflow_path / "migration/data_preparation/"
+
+    data_prep.mkdir(parents=True)
+
     # Mocks successful upstream task
     global messages
     messages["bib-files-group"] = {
@@ -320,21 +323,21 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     sample_tsv = tsv_directory / "sample.tsv"
 
     f = open(sample_tsv, "r")
-    assert f.readlines()[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+    assert (
+        f.readlines()[1]
+        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+    )
     f.close()
 
-    sample_notes_tsv = tsv_directory / "sample.notes.tsv"
-    f_notes = open(sample_notes_tsv, "r")
-    assert (
-        f_notes.readlines()[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\tAvailable for checkout\tpencil marks 7/28/18cc\n"
-    )
-    f_notes.close()
     messages = {}
 
 
 def test_transform_move_tsvs_doesnt_exist(mock_file_system):  # noqa
     airflow_path = mock_file_system[0]
+
+    data_prep = airflow_path / "migration/data_preparation/"
+
+    data_prep.mkdir(parents=True)
 
     with pytest.raises(FileNotFoundError, match="No such file or directory"):
         transform_move_tsvs(
@@ -345,32 +348,42 @@ def test_transform_move_tsvs_doesnt_exist(mock_file_system):  # noqa
         )
 
 
-def test_merge_notes_into_base():
-    base_df = pd.DataFrame(
+def test_merge_notes_circnotes(mock_file_system):  # noqa
+
+    circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
+
+    circ_notes_df = pd.DataFrame(
+        [{"BARCODE": "36105033974929  ", "CIRCNOTE": "pen marks 6/5/19cc"}]
+    )
+
+    circ_notes_df.to_csv(circ_path, sep="\t", index=False)
+
+    notes_df = _merge_notes(circ_path)
+
+    note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
+    assert note_row["note"].item() == "pen marks 6/5/19cc"
+    assert note_row["NOTE_TYPE"].item() == "CIRCNOTE"
+
+
+def test_merge_notes_techstaff(mock_file_system):  # noqa
+    techstaff_path = mock_file_system[1] / "test.sample2.techstaff.tsv"
+
+    techstaff_df = pd.DataFrame(
         [
             {
-                "CATKEY": "a1442278",
-                "BARCODE": "36105033974929",
-                "BASE_CALL_NUMBER": "PQ6407 .A1 1980B",
-            },
-            {
-                "CATKEY": "a13776856",
-                "BARCODE": "36105231406765",
-                "BASE_CALL_NUMBER": "KGF3055 .M67 2019",
-            },
+                "BARCODE": "36105031890341",
+                "TECHSTAFF": "rf:370.4 .J65 no.15 c.3, hbr 6/1/06",
+            }
         ]
     )
-    notes_df = pd.DataFrame(
-        [{"BARCODE": "36105033974929", "CIRCNOTE": "pen marks 6/5/19cc"}]
-    )
-    base_df = _merge_notes_into_base(base_df, notes_df)
-    assert "CIRCNOTE" in base_df.columns
 
-    note_row = base_df.loc[base_df["BARCODE"] == "36105033974929"]
-    assert note_row["CIRCNOTE"].item() == "pen marks 6/5/19cc"
+    techstaff_df.to_csv(techstaff_path, sep="\t", index=False)
 
-    no_note_row = base_df.loc[base_df["BARCODE"] == "36105231406765"]
-    assert no_note_row["CIRCNOTE"].item() is np.nan
+    notes_df = _merge_notes(techstaff_path)
+
+    note_row = notes_df.loc[notes_df["BARCODE"] == "36105031890341"]
+    assert note_row["note"].item() == "rf:370.4 .J65 no.15 c.3, hbr 6/1/06"
+    assert note_row["NOTE_TYPE"].item() == "TECHSTAFF"
 
 
 def test_process_records(mock_dag_run, mock_file_system):  # noqa
