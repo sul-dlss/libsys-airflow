@@ -83,5 +83,6 @@ def run_bibs_transformer(*args, **kwargs):
     bibs_transformer.do_work()
 
     _adjust_records(bibs_transformer, tsv_dates)
+    tsv_dates.unlink()
 
     bibs_transformer.wrap_up()
