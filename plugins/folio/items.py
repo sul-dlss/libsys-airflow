@@ -36,10 +36,13 @@ def _generate_item_notes(
     barcode = item.get("barcode")
     if barcode is None:
         logger.error("Item missing barcode, cannot generate notes")
-        return []
+        return
     item_notes = tsv_note_df.loc[tsv_note_df["BARCODE"] == barcode]
 
-    circ_notes, notes = [], []
+    # Drop any notes that do not have a value
+    item_notes = item_notes.dropna(subset=["note"])
+
+    notes = []
     for row in item_notes.iterrows():
         note_info = row[1]
         note = {"note": note_info["note"]}
@@ -47,11 +50,13 @@ def _generate_item_notes(
         match note_info["NOTE_TYPE"]:
             case "CIRCNOTE":
                 note["staffOnly"] = False
-                circ_notes.append(note)
+                note["itemNoteTypeId"] = item_note_types.get("Circ Staff")
+                notes.append(note)
 
             case "CIRCSTAFF":
                 note["staffOnly"] = True
-                circ_notes.append(note)
+                note["itemNoteTypeId"] = item_note_types.get("Circ Staff")
+                notes.append(note)
 
             case "PUBLIC":
                 note["staffOnly"] = False
@@ -62,9 +67,6 @@ def _generate_item_notes(
                 note["staffOnly"] = True
                 note["itemNoteTypeId"] = item_note_types.get("Tech Staff")
                 notes.append(note)
-
-    if len(circ_notes) > 0:
-        item["circulationNotes"] = circ_notes
 
     if len(notes) > 0:
         item["notes"] = notes

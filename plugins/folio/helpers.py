@@ -467,7 +467,7 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_notes = [pathlib.Path(filename) for filename in tsv_notes_files]
     tsv_base = pathlib.Path(tsv_base_file)
 
-    notes_path_name = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms, libraries)
+    notes_path = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms, libraries)
 
     # Delete tsv base
     tsv_base.unlink()

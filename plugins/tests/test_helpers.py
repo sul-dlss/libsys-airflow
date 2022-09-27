@@ -296,7 +296,7 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     ]
 
     libraries = ["HOOVER", "HV-ARCHIVE"]
-    
+
     data_prep = airflow_path / "migration/data_preparation/"
 
     data_prep.mkdir(parents=True)
@@ -323,16 +323,11 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     sample_tsv = tsv_directory / "sample.tsv"
 
     f = open(sample_tsv, "r")
-    assert f.readlines()[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
-    f.close()
-
-    sample_notes_tsv = tsv_directory / "sample.notes.tsv"
-    f_notes = open(sample_notes_tsv, "r")
     assert (
-        f_notes.readlines()[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\tAvailable for checkout\tpencil marks 7/28/18cc\n"
+        f.readlines()[1]
+        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
     )
-    f_notes.close()
+    f.close()
 
     messages = {}
 
