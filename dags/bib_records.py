@@ -349,7 +349,7 @@ with DAG(
         trigger_dag_id="add_marc_to_srs",
         conf={
             "srs_filenames": ["folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json",
-                              "folio_srs_holdings_{{ dag_run.run_id }_holdings-mhld-transformer.json"]
+                              "folio_srs_holdings_{{ dag_run.run_id }}_holdings-mhld-transformer.json"]
         },
     )
 
