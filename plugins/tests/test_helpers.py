@@ -278,8 +278,9 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     # mock sample tsv
     symphony_tsv = source_dir / "sample.tsv"
     symphony_tsv.write_text(
-        "CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE\n123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC"
-    )
+        """CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE
+123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC
+789012\tMARC\tLC 67890\t12345  \tGREEN\tSTKS-MONO""")
 
     symphony_notes_tsv = source_dir / "sample.public.tsv"
     symphony_notes_tsv.write_text("BARCODE\tPUBLIC\n45677 \tAvailable for checkout")
@@ -322,12 +323,11 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     tsv_directory = airflow_path / "migration/data/items"
     sample_tsv = tsv_directory / "sample.tsv"
 
-    f = open(sample_tsv, "r")
-    assert (
-        f.readlines()[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
-    )
-    f.close()
+    with open(sample_tsv, "r") as f:
+        sample_lines=f.readlines()
+
+    assert sample_lines[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+    assert sample_lines[2] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tSTKS-MONO\n"
 
     messages = {}
 
