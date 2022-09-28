@@ -387,8 +387,9 @@ def _apply_transforms(df, column_transforms):
 
 
 def _modify_item_type(df, libraries):
-    if df["LIBRARY"].isin(libraries).any():
-        df["ITEM_TYPE"] = df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"]
+    df["ITEM_TYPE"].mask(df["LIBRARY"].isin(libraries),
+                         other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
+                         axis=0, inplace=True)
     return df
 
 
