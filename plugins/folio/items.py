@@ -49,7 +49,7 @@ def _generate_item_notes(
 
         match note_info["NOTE_TYPE"]:
             case "CIRCNOTE":
-                note["staffOnly"] = False
+                note["staffOnly"] = True
                 note["itemNoteTypeId"] = item_note_types.get("Circ Staff")
                 notes.append(note)
 

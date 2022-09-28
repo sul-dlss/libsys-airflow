@@ -147,7 +147,7 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
         new_items_recs[1]["notes"][0]["itemNoteTypeId"]
         == "1d14675c-c163-4502-98f9-961cd3d17ab2"
     )
-    assert new_items_recs[1]["notes"][1]["staffOnly"] is False
+    assert new_items_recs[1]["notes"][1]["staffOnly"]
 
 
 def test_add_additional_info_missing_barcode(
