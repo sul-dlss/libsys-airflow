@@ -2,6 +2,7 @@ import json
 import logging
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 
@@ -26,6 +27,7 @@ def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
     with open(bibs_transformer.processor.results_file.name, "w+") as fo:
         for record in records:
             fo.write(f"{json.dumps(record)}\n")
+    Path(tsv_dates).unlink()
 
 
 def post_folio_instance_records(**kwargs):

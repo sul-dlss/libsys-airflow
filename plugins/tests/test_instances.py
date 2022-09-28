@@ -47,6 +47,7 @@ def test_adjust_records(mock_file_system):  # noqa
     assert instance_records[0]["_version"] == 1
     assert instance_records[0]["catalogedDate"] == "1995-07-10"
     assert "catalogedDate" not in instance_records[1]
+    assert not tsv_dates_file.exists()
 
 
 def test_post_folio_instance_records():
