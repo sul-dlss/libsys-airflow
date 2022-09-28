@@ -12,6 +12,7 @@ from plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     _run_transformer,
+    update_mhlds_uuids,
 )
 
 from plugins.tests.mocks import (  # noqa
@@ -201,3 +202,64 @@ def test_consolidate_holdings_map(mock_file_system, mock_dag_run, caplog):  # no
     consolidate_holdings_map(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
 
     assert f"Finished moving {holdings_id_map_all} to {holdings_id_map}" in caplog.text
+
+
+def test_update_mhlds_uuids_no_srs(mock_dag_run, caplog):  # noqa
+    update_mhlds_uuids(dag_run=mock_dag_run)
+
+    assert "No MHLD SRS records" in caplog.text
+
+
+def test_update_mhlds_uuids(mock_file_system, mock_dag_run, caplog):  # noqa
+    results_dir = mock_file_system[3]
+
+    mhld_srs_mock_file = (
+        results_dir
+        / f"folio_srs_holdings_{mock_dag_run.run_id}_holdings-mhld-transformer.json"
+    )
+
+    with mhld_srs_mock_file.open("w+") as fo:
+        for srs_rec in [
+            {
+                "externalIdsHolder": {
+                    "holdingsHrid": "ah1234566",
+                    "holdingsId": "7e31c879-af1d-53fb-ba7a-60ad247a8dc4",
+                }
+            },
+            {
+                "externalIdsHolder": {
+                    "holdingsHrid": "ah13430268",
+                    "holdingsId": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
+                }
+            },
+        ]:
+            fo.write(f"{json.dumps(srs_rec)}\n")
+
+    holdings_id_map_mock = results_dir / f"holdings_id_map_{mock_dag_run.run_id}.json"
+
+    with holdings_id_map_mock.open("w+") as fo:
+        for row in [
+            {
+                "legacy_id": "ah1234566",
+                "folio_id": "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f",
+            }
+        ]:
+            fo.write(f"{json.dumps(row)}\n")
+
+    update_mhlds_uuids(
+        dag_run=mock_dag_run,
+        airflow=mock_file_system[0],
+    )
+
+    with mhld_srs_mock_file.open() as fo:
+        srs_records = [json.loads(line) for line in fo.readlines()]
+
+    # Tests for output SRS records that have updated UUID
+    assert len(srs_records) == 1
+    assert (
+        srs_records[0]["externalIdsHolder"]["holdingsId"]
+        == "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f"
+    )
+
+    # Tests for HRID not present in the mapping file
+    assert "UUID for MHLD ah13430268 not found in SRS record" in caplog.text

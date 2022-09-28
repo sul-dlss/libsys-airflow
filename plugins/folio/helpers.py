@@ -459,8 +459,6 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, l
         f"{airflow}/migration/data_preparation/{tsv_notes_name}"
     )
 
-    tsv_base_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
-
     tsv_notes_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
 
     return new_tsv_notes_path
