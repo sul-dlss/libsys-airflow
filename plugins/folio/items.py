@@ -100,13 +100,14 @@ def _add_additional_info(**kwargs):
     folio_client = kwargs["folio_client"]
 
     results_dir = pathlib.Path(f"{airflow}/migration/results")
-    tsv_notes_path = pathlib.Path(tsv_notes_path)
 
     holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
-    tsv_notes_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
+    if tsv_notes_path is not None:
+        tsv_notes_path = pathlib.Path(tsv_notes_path)
+        tsv_notes_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
 
-    item_note_types = _retrieve_item_notes_ids(folio_client)
+        item_note_types = _retrieve_item_notes_ids(folio_client)
 
     items = []
     for items_file in results_dir.glob(items_pattern):
@@ -132,14 +133,16 @@ def _add_additional_info(**kwargs):
                 )
                 # To handle optimistic locking
                 item["_version"] = 1
-                _generate_item_notes(item, tsv_notes_df, item_note_types)
+                if tsv_notes_path is not None:
+                    _generate_item_notes(item, tsv_notes_df, item_note_types)
                 items.append(item)
 
         with open(items_file, "w+") as write_output:
             for item in items:
                 write_output.write(f"{json.dumps(item)}\n")
 
-    tsv_notes_path.unlink()
+    if tsv_notes_path is not None:
+        tsv_notes_path.unlink()
 
 
 def post_folio_items_records(**kwargs):
