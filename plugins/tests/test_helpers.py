@@ -47,16 +47,21 @@ def mock_xcom_pull(*args, **kwargs):
             return messages[task_id][key]
     return "unknown"
 
+class MockDagRun(pydantic.BaseModel):
+    run_id: str = "manual_2022-09-30T22:03:42"
 
 class MockTaskInstance(pydantic.BaseModel):
     xcom_pull = mock_xcom_pull
     xcom_push = mock_xcom_push
 
-
 def test_move_marc_files(mock_file_system):  # noqa
     task_instance = MockTaskInstance()
+    dag = MockDagRun()
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
+
+    # Calls setup to mock out expected iteration
+    setup_dag_run_folders(dag_run=dag, airflow=str(airflow_path))
 
     sample_mrc = source_dir / "sample.mrc"
     with sample_mrc.open("wb+") as fo:
@@ -88,12 +93,16 @@ def test_move_marc_files(mock_file_system):  # noqa
     }
 
     move_marc_files(
-        task_instance=task_instance, airflow=airflow_path, source="symphony"
+        task_instance=task_instance, 
+        airflow=airflow_path,
+        source="symphony",
+        dag_run=MockDagRun()
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
-    assert (airflow_path / "migration/data/instances/sample.mrc").exists()
     assert not (source_dir / "sample-mfld.mrc").exists()
-    assert (airflow_path / "migration/data/holdings/sample-mfld.mrc").exists()
+    assert (airflow_path / "migration/iterations/{dag.run_id}/source_data/holdings/sample-mfld.mrc").exists()
+    assert (airflow_path / f"migration/iterations/{dag.run_id}/source_data/instances/sample.mrc").exists()
+    
     messages = {}
 
 
@@ -429,8 +438,6 @@ def test_process_records(mock_dag_run, mock_file_system):  # noqa
 
     assert num_records == 2
 
-class MockDagRun(pydantic.BaseModel):
-    run_id: str = "manual_2022-09-30T22:03:42"
 
 def test_setup_dag_run_folders(tmp_path):  # noqa
     airflow = tmp_path / "opt/airflow/"

@@ -72,12 +72,14 @@ def get_bib_files(**kwargs):
 def move_marc_files(*args, **kwargs) -> str:
     """Moves MARC files to migration/data/instances"""
     airflow = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs["dag_run"]
+
     task_instance = kwargs["task_instance"]
 
     marc_filepath = task_instance.xcom_pull(task_ids="bib-files-group", key="marc-file")
 
     marc_path = pathlib.Path(marc_filepath)
-    marc_target = pathlib.Path(f"{airflow}/migration/data/instances/{marc_path.name}")
+    marc_target = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/instances/{marc_path.name}")
 
     shutil.move(marc_path, marc_target)
     logger.info(f"{marc_path} moved to {marc_target}")

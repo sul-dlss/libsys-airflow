@@ -58,7 +58,7 @@ def mock_okapi_variable(monkeypatch):
 
 
 @pytest.fixture
-def mock_file_system(tmp_path):
+def mock_file_system(tmp_path, mock_dag_run):
     airflow_path = tmp_path / "opt/airflow/"
 
     # Mock source and target dirs
@@ -68,17 +68,20 @@ def mock_file_system(tmp_path):
     sample_marc = source_dir / "sample.mrc"
     sample_marc.write_text("sample")
 
-    target_dir = airflow_path / "migration/data/instances/"
-    target_dir.mkdir(parents=True)
-    # Makes directories for different type of data
-    (airflow_path / "migration/data/holdings").mkdir(parents=True)
-    (airflow_path / "migration/data/items").mkdir(parents=True)
-    (airflow_path / "migration/data/users").mkdir(parents=True)
+    iteration_dir = airflow_path / f"migration/iterations/{mock_dag_run.run_id}"
+    iteration_dir.mkdir(parents=True)
+
+    # Makes directories for different type of data for mock_dag_run
+    source_data = iteration_dir / "source_data"
+    (source_data / "instances").mkdir(parents=True)
+    (source_data / "holdings").mkdir(parents=True)
+    (source_data / "items").mkdir(parents=True)
+    (source_data / "users").mkdir(parents=True)
 
     # Mock Results, Reports, Mapping Files, and Archive Directories
-    results_dir = airflow_path / "migration/results"
+    results_dir = iteration_dir / "results"
     results_dir.mkdir(parents=True)
-    (airflow_path / "migration/reports").mkdir(parents=True)
+    (iteration_dir / "reports").mkdir(parents=True)
     (airflow_path / "migration/mapping_files").mkdir(parents=True)
     archive_dir = airflow_path / "migration/archive"
 
@@ -90,7 +93,7 @@ def mock_file_system(tmp_path):
     tmp = tmp_path / "tmp/"
     tmp.mkdir(parents=True)
 
-    return [airflow_path, source_dir, target_dir, results_dir, archive_dir, tmp]
+    return [airflow_path, source_dir, iteration_dir, results_dir, archive_dir, tmp]
 
 
 class MockFOLIOClient(pydantic.BaseModel):
