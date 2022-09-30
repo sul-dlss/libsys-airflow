@@ -439,19 +439,20 @@ def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, l
         logging.info(f"Merged {len(note_df)} notes into items tsv")
         tsv_note_path.unlink()
 
-    tsv_notes_df = pd.concat(all_notes)
-    tsv_notes_name_parts = tsv_base.name.split(".")
-    tsv_notes_name_parts.insert(-1, "notes")
+    if len(all_notes) > 0:
+        tsv_notes_df = pd.concat(all_notes)
+        tsv_notes_name_parts = tsv_base.name.split(".")
+        tsv_notes_name_parts.insert(-1, "notes")
 
-    tsv_notes_name = ".".join(tsv_notes_name_parts)
+        tsv_notes_name = ".".join(tsv_notes_name_parts)
 
-    new_tsv_notes_path = pathlib.Path(
-        f"{airflow}/migration/data_preparation/{tsv_notes_name}"
-    )
+        new_tsv_notes_path = pathlib.Path(
+            f"{airflow}/migration/data_preparation/{tsv_notes_name}"
+        )
 
-    tsv_notes_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
+        tsv_notes_df.to_csv(new_tsv_notes_path, sep="\t", index=False)
 
-    return new_tsv_notes_path
+        return new_tsv_notes_path
 
 
 def transform_move_tsvs(*args, **kwargs):
@@ -473,6 +474,7 @@ def transform_move_tsvs(*args, **kwargs):
     # Delete tsv base
     tsv_base.unlink()
 
-    task_instance.xcom_push(key="tsv-notes", value=str(notes_path))
+    if notes_path is not None:
+        task_instance.xcom_push(key="tsv-notes", value=str(notes_path))
 
     return tsv_base.name
