@@ -388,6 +388,29 @@ def setup_data_logging(transformer):
     logging.getLogger().addHandler(data_issue_file_handler)
 
 
+def setup_dag_run_folders(*args, **kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs["dag_run"]
+
+    migration_dir = pathlib.Path(f"{airflow}/migration")
+    iteration_dir = migration_dir / "iterations" / str(dag.run_id)
+
+    logger.info("New iteration directory {iteration_dir}")
+
+    iteration_dir.mkdir(parents=True)
+    source_data = iteration_dir / "source_data"
+
+    for folder in ["results", "reports"]:
+        folder_path = iteration_dir / folder
+        folder_path.mkdir(parents=True)
+
+    for record_type in ["instances", "holdings", "items"]:
+        record_path = source_data / record_type
+        record_path.mkdir(parents=True)
+
+    return str(iteration_dir)
+
+
 def _apply_transforms(df, column_transforms):
     for transform in column_transforms:
         column = transform[0]
@@ -398,9 +421,12 @@ def _apply_transforms(df, column_transforms):
 
 
 def _modify_item_type(df, libraries):
-    df["ITEM_TYPE"].mask(df["LIBRARY"].isin(libraries),
-                         other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
-                         axis=0, inplace=True)
+    df["ITEM_TYPE"].mask(
+        df["LIBRARY"].isin(libraries),
+        other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
+        axis=0,
+        inplace=True,
+    )
     return df
 
 
@@ -432,7 +458,9 @@ def _merge_notes(note_path: pathlib.Path):
     return notes_df
 
 
-def _processes_tsv(tsv_base: str, tsv_notes: list, airflow, column_transforms, libraries):
+def _processes_tsv(
+    tsv_base: str, tsv_notes: list, airflow, column_transforms, libraries
+):
     items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
@@ -480,7 +508,9 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_notes = [pathlib.Path(filename) for filename in tsv_notes_files]
     tsv_base = pathlib.Path(tsv_base_file)
 
-    notes_path = _processes_tsv(tsv_base, tsv_notes, airflow, column_transforms, libraries)
+    notes_path = _processes_tsv(
+        tsv_base, tsv_notes, airflow, column_transforms, libraries
+    )
 
     # Delete tsv base
     tsv_base.unlink()

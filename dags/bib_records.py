@@ -21,6 +21,7 @@ from plugins.folio.helpers import (
     move_marc_files,
     process_marc,
     process_records,
+    setup_dag_run_folders,
     transform_move_tsvs,
 )
 from plugins.folio.holdings import (
@@ -99,6 +100,11 @@ with DAG(
 
     bib_files_group = PythonOperator(
         task_id="bib-files-group", python_callable=get_bib_files
+    )
+
+    setup_migration_folders = PythonOperator(
+        task_id="setup-migration-folders",
+        python_callable=setup_dag_run_folders
     )
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
@@ -363,6 +369,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    bib_files_group >> move_transform_process >> marc_to_folio
+    bib_files_group >> setup_migration_folders >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]

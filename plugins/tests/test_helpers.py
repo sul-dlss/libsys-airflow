@@ -21,6 +21,7 @@ from plugins.folio.helpers import (
     _move_001_to_035,
     process_records,
     _query_for_relationships,
+    setup_dag_run_folders,
     setup_data_logging,
     transform_move_tsvs,
 )
@@ -428,6 +429,25 @@ def test_process_records(mock_dag_run, mock_file_system):  # noqa
 
     assert num_records == 2
 
+class MockDagRun(pydantic.BaseModel):
+    run_id: str = "manual_2022-09-30T22:03:42"
+
+def test_setup_dag_run_folders(tmp_path):  # noqa
+    airflow = tmp_path / "opt/airflow/"
+
+    dag = MockDagRun()
+
+    iteration_directory = setup_dag_run_folders(
+        airflow=airflow, 
+        dag_run=dag
+    )
+
+    assert iteration_directory == f"{airflow}/migration/iterations/{dag.run_id}"
+
+
+
+
+
 
 @pytest.fixture
 def mock_logger_file_handler(monkeypatch, mocker: MockerFixture):
@@ -462,6 +482,7 @@ def test_setup_data_logging(mock_logger_file_handler):
     # Removes handler otherwise fails subsequent tests
     file_handler = logging.getLogger().handlers[-1]
     logging.getLogger().removeHandler(file_handler)
+
 
 
 def test_add_electronic_holdings_skip():
