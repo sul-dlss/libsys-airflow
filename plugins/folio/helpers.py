@@ -210,8 +210,11 @@ def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
 def process_marc(*args, **kwargs):
     marc_stem = kwargs["marc_stem"]
     airflow = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs["dag_run"]
 
-    marc_path = pathlib.Path(f"{airflow}/migration/data/instances/{marc_stem}.mrc")
+    marc_path = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag.run_id}/source_data/instances/{marc_stem}.mrc"
+    )
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
     relationship_ids = _query_for_relationships(folio_client=kwargs.get("folio_client"))
@@ -230,7 +233,7 @@ def process_marc(*args, **kwargs):
 
     electronic_holdings_df = pd.DataFrame(electronic_holdings)
     electronic_holdings_df.to_csv(
-        f"{airflow}/migration/data/items/{marc_stem}.electronic.tsv",
+        f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{marc_stem}.electronic.tsv",
         sep="\t",
         index=False,
     )
@@ -460,10 +463,17 @@ def _merge_notes(note_path: pathlib.Path):
     return notes_df
 
 
-def _processes_tsv(
-    tsv_base: str, tsv_notes: list, airflow, column_transforms, libraries
-):
-    items_dir = pathlib.Path(f"{airflow}/migration/data/items/")
+def _processes_tsv(**kwargs):
+    tsv_base = kwargs['tsv_base']
+    tsv_notes = kwargs['tsv_notes']
+    airflow = kwargs['airflow']
+    column_transforms = kwargs['column_transforms']
+    libraries = kwargs['libraries']
+    dag_run_id = kwargs['dag_run_id']
+
+    items_dir = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag_run_id}/source_data/items/"
+    )
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
     tsv_base_df = _apply_transforms(tsv_base_df, column_transforms)
@@ -498,6 +508,7 @@ def _processes_tsv(
 
 def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs['dag_run']
     column_transforms = kwargs.get("column_transforms", [])
     libraries = kwargs.get("libraries", [])
     task_instance = kwargs["task_instance"]
@@ -511,7 +522,12 @@ def transform_move_tsvs(*args, **kwargs):
     tsv_base = pathlib.Path(tsv_base_file)
 
     notes_path = _processes_tsv(
-        tsv_base, tsv_notes, airflow, column_transforms, libraries
+        tsv_base=tsv_base,
+        tsv_notes=tsv_notes,
+        airflow=airflow,
+        column_transforms=column_transforms,
+        libraries=libraries,
+        dag_run_id=dag.run_id
     )
 
     # Delete tsv base

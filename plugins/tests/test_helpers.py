@@ -47,12 +47,15 @@ def mock_xcom_pull(*args, **kwargs):
             return messages[task_id][key]
     return "unknown"
 
+
 class MockDagRun(pydantic.BaseModel):
     run_id: str = "manual_2022-09-30T22:03:42"
+
 
 class MockTaskInstance(pydantic.BaseModel):
     xcom_pull = mock_xcom_pull
     xcom_push = mock_xcom_push
+
 
 def test_move_marc_files(mock_file_system):  # noqa
     task_instance = MockTaskInstance()
@@ -93,15 +96,19 @@ def test_move_marc_files(mock_file_system):  # noqa
     }
 
     move_marc_files(
-        task_instance=task_instance, 
+        task_instance=task_instance,
         airflow=airflow_path,
         source="symphony",
-        dag_run=MockDagRun()
+        dag_run=MockDagRun(),
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
     assert not (source_dir / "sample-mfld.mrc").exists()
     assert (airflow_path / "migration/iterations/{dag.run_id}/source_data/holdings/sample-mfld.mrc").exists()
-    assert (airflow_path / f"migration/iterations/{dag.run_id}/source_data/instances/sample.mrc").exists()
+    
+    assert (
+        airflow_path
+        / f"migration/iterations/{dag.run_id}/source_data/instances/sample.mrc"
+    ).exists()
     
     messages = {}
 
@@ -309,7 +316,8 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
     symphony_tsv.write_text(
         """CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE
 123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC
-789012\tMARC\tLC 67890\t12345  \tGREEN\tSTKS-MONO""")
+789012\tMARC\tLC 67890\t12345  \tGREEN\tSTKS-MONO"""
+    )
 
     symphony_notes_tsv = source_dir / "sample.public.tsv"
     symphony_notes_tsv.write_text("BARCODE\tPUBLIC\n45677 \tAvailable for checkout")
@@ -341,6 +349,8 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
         "tsv-base": str(symphony_tsv),
     }
 
+    dag_run = MockDagRun()
+
     transform_move_tsvs(
         airflow=airflow_path,
         column_transforms=column_transforms,
@@ -348,14 +358,18 @@ def test_transform_move_tsvs(mock_file_system):  # noqa
         task_instance=MockTaskInstance(),
         source="symphony",
         tsv_stem="sample",
+        dag_run=dag_run,
     )
     tsv_directory = airflow_path / "migration/data/items"
     sample_tsv = tsv_directory / "sample.tsv"
 
     with open(sample_tsv, "r") as f:
-        sample_lines=f.readlines()
+        sample_lines = f.readlines()
 
-    assert sample_lines[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+    assert (
+        sample_lines[1]
+        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+    )
     assert sample_lines[2] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tSTKS-MONO\n"
 
     messages = {}
@@ -444,16 +458,9 @@ def test_setup_dag_run_folders(tmp_path):  # noqa
 
     dag = MockDagRun()
 
-    iteration_directory = setup_dag_run_folders(
-        airflow=airflow, 
-        dag_run=dag
-    )
+    iteration_directory = setup_dag_run_folders(airflow=airflow, dag_run=dag)
 
     assert iteration_directory == f"{airflow}/migration/iterations/{dag.run_id}"
-
-
-
-
 
 
 @pytest.fixture
@@ -489,7 +496,6 @@ def test_setup_data_logging(mock_logger_file_handler):
     # Removes handler otherwise fails subsequent tests
     file_handler = logging.getLogger().handlers[-1]
     logging.getLogger().removeHandler(file_handler)
-
 
 
 def test_add_electronic_holdings_skip():
