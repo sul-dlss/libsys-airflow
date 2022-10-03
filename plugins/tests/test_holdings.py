@@ -104,9 +104,9 @@ holdings = [
 ]
 
 
-def _mock_setup_holdings_json(results_dir: pathlib.Path, dag_run_id: str):
+def _mock_setup_holdings_json(iteration_dir: pathlib.Path):
     holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
+        iteration_dir / "results/folio_holdings_holdings-transformer.json"
     )
 
     with holdings_result_file.open("w+") as holdings_fo:
@@ -118,17 +118,18 @@ def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
 
 
-def test_add_identifiers_missing_hrid_file(mock_file_system):  # noqa
+def test_add_identifiers_missing_hrid_file(mock_file_system, mock_dag_run):  # noqa
     transformer = MockHoldingsTransformer()
-    dag_run_id = "manual_02022-09-16"
+
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
-    _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer)
+    _add_identifiers(str(mock_file_system[0]), mock_dag_run.run_id, transformer)
 
     holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
+        results_dir / f"folio_holdings_holdings-transformer.json"
     )
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
@@ -145,15 +146,16 @@ def test_add_identifiers_missing_hrid_file(mock_file_system):  # noqa
     assert holdings_records[0]["_version"] == 1
 
 
-def test_add_identifiers_existing_hrid(mock_file_system):  # noqa
+def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
     transformer = MockHoldingsTransformer()
-    dag_run_id = "manual_02022-09-16T22:49:19"
+    dag_run_id = mock_dag_run.run_id
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
     # Mocks holdings_hrid file
-    holdings_hrid_file = results_dir / f"holdings-hrids-{dag_run_id}.json"
+    holdings_hrid_file = iteration_dir / f"results/holdings-hrids.json"
 
     with holdings_hrid_file.open("w+") as fo:
         fo.write(json.dumps({"xyzabc-def-ha": 2}))
@@ -161,7 +163,7 @@ def test_add_identifiers_existing_hrid(mock_file_system):  # noqa
     _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer)
 
     holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
+        results_dir / f"folio_holdings_holdings-transformer.json"
     )
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
@@ -170,13 +172,17 @@ def test_add_identifiers_existing_hrid(mock_file_system):  # noqa
     assert holdings_records[0]["hrid"] == "ah123345_3"
 
 
-def test_run_transformer(mock_file_system, caplog):  # noqa
-    dag_run_id = "manual_02022-09-17T00:49:19"
+def test_run_transformer(mock_file_system, mock_dag_run, caplog):  # noqa
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
-    _run_transformer(MockHoldingsTransformer(), str(mock_file_system[0]), dag_run_id)
+    _run_transformer(
+        MockHoldingsTransformer(),
+        str(mock_file_system[0]),
+        mock_dag_run.run_id
+    )
 
     assert "Adding HRIDs and re-generated UUIDs for holdings" in caplog.text
 
@@ -215,7 +221,7 @@ def test_update_mhlds_uuids(mock_file_system, mock_dag_run, caplog):  # noqa
 
     mhld_srs_mock_file = (
         results_dir
-        / f"folio_srs_holdings_{mock_dag_run.run_id}_holdings-mhld-transformer.json"
+        / f"folio_srs_holdings_holdings-mhld-transformer.json"
     )
 
     with mhld_srs_mock_file.open("w+") as fo:

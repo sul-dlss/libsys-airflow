@@ -34,7 +34,7 @@ def _add_identifiers(
 ):
     # Creates/opens file with Instance IDs
     instance_holdings_path = pathlib.Path(
-        f"{airflow}/migration/results/holdings-hrids-{dag_run_id}.json"
+        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings-hrids.json"
     )
 
     if instance_holdings_path.exists():
@@ -44,7 +44,7 @@ def _add_identifiers(
         instance_keys = {}
 
     holdings_path = pathlib.Path(
-        f"{airflow}/migration/results/folio_holdings_{dag_run_id}_{holdings_transformer.task_configuration.name}.json"
+        f"{airflow}/migration/iterations/{dag_run_id}/results/folio_holdings_{holdings_transformer.task_configuration.name}.json"
     )
 
     with holdings_path.open() as fo:
@@ -86,7 +86,7 @@ def _add_identifiers(
 
     # Saves holdings id maps to backup
     with open(
-        f"{airflow}/migration/results/holdings_id_map_all_{dag_run_id}.json", "a+"
+        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings_id_map_all.json", "a+"
     ) as all_id_map:
         for holding in holdings_records:
             lookup = {"legacy_id": holding["formerIds"][0], "folio_id": holding["id"]}
@@ -235,10 +235,10 @@ def consolidate_holdings_map(*args, **kwargs):
     dag = kwargs["dag_run"]
     airflow = kwargs.get("airflow", "/opt/airflow")
     last_id_map = pathlib.Path(
-        f"{airflow}/migration/results/holdings_id_map_{dag.run_id}.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_{dag.run_id}.json"
     )
     all_id_map = pathlib.Path(
-        f"{airflow}/migration/results/holdings_id_map_all_{dag.run_id}.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all_{dag.run_id}.json"
     )
     all_id_map.rename(last_id_map)
     logger.info(f"Finished moving {all_id_map} to {last_id_map}")
@@ -250,7 +250,7 @@ def update_mhlds_uuids(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     mhld_srs_path = pathlib.Path(
-        f"{airflow}/migration/results/folio_srs_holdings_{dag.run_id}_holdings-mhld-transformer.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/folio_srs_holdings_holdings-mhld-transformer.json"
     )
 
     if not mhld_srs_path.exists():
@@ -258,7 +258,7 @@ def update_mhlds_uuids(*args, **kwargs):
         return
 
     holdings_id_map_path = pathlib.Path(
-        f"{airflow}/migration/results/holdings_id_map_{dag.run_id}.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_{dag.run_id}.json"
     )
 
     holdings_id_map = {}
