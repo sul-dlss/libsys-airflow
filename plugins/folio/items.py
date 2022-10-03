@@ -99,8 +99,9 @@ def _add_additional_info(**kwargs):
     items_pattern: str = kwargs["items_pattern"]
     tsv_notes_path = kwargs["tsv_notes_path"]
     folio_client = kwargs["folio_client"]
+    dag_run_id: str = kwargs["dag_run_id"]
 
-    results_dir = pathlib.Path(f"{airflow}/migration/results")
+    results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
 
     holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
@@ -206,8 +207,9 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     _add_additional_info(
         airflow=airflow,
-        holdings_pattern=f"folio_holdings_{dag.run_id}_holdings-*transformer.json",
-        items_pattern=f"folio_items_{dag.run_id}_items-*transformer.json",
+        dag_run_id=dag.run_id,
+        holdings_pattern=f"folio_holdings_holdings-*transformer.json",
+        items_pattern=f"folio_items_items-*transformer.json",
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),

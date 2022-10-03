@@ -5,7 +5,7 @@ import pytest  # noqa
 import requests
 
 from pytest_mock import MockerFixture
-from plugins.tests.mocks import mock_file_system, MockFOLIOClient  # noqa
+from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
 
 from plugins.folio.items import (
@@ -79,8 +79,8 @@ items_recs = [
 
 
 def setup_items_holdings(
-    airflow_path,
     results_dir,
+    iteration_dir,
     items_recs=items_recs,
     items_notes=items_notes,
     holdings_recs=holdings_recs,
@@ -97,7 +97,7 @@ def setup_items_holdings(
         for rec in items_recs:
             fo.write(f"{json.dumps(rec)}\n")
 
-    data_prep = airflow_path / "migration/data_preparation/"
+    data_prep = iteration_dir / "data_preparation/"
 
     data_prep.mkdir(parents=True)
 
@@ -108,16 +108,18 @@ def setup_items_holdings(
     return items_path, items_notes_path
 
 
-def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
+def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type):  # noqa
     airflow_path = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    items_path, items_notes_path = setup_items_holdings(airflow_path, results_dir)
+    items_path, items_notes_path = setup_items_holdings(results_dir, iteration_dir)
 
     folio_client = MockFOLIOClient()
 
     _add_additional_info(
         airflow=str(airflow_path),
+        dag_run_id=mock_dag_run.run_id,
         holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
@@ -151,21 +153,22 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
 
 
 def test_add_additional_info_missing_barcode(
-    mock_file_system, mock_item_note_type  # noqa
+    mock_file_system, mock_dag_run, mock_item_note_type  # noqa
 ):
-    airflow_path = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
     items_recs[0].pop("barcode")
 
     items_path, items_notes_path = setup_items_holdings(
-        airflow_path, results_dir, items_recs
+        results_dir, iteration_dir, items_recs
     )
 
     folio_client = MockFOLIOClient()
 
     _add_additional_info(
         airflow=str(mock_file_system[0]),
+        dag_run_id=mock_dag_run.run_id,
         holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,

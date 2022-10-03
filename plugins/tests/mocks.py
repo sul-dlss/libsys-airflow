@@ -83,7 +83,7 @@ def mock_file_system(tmp_path, mock_dag_run):
     results_dir.mkdir(parents=True)
     (iteration_dir / "reports").mkdir(parents=True)
     (airflow_path / "migration/mapping_files").mkdir(parents=True)
-    archive_dir = airflow_path / "migration/archive"
+    archive_dir = iteration_dir / "archive"
 
     # Mock .gitignore
     gitignore = airflow_path / "migration/.gitignore"
