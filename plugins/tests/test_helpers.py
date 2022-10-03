@@ -17,13 +17,11 @@ from plugins.folio.helpers import (
     move_marc_files,
     post_to_okapi,
     process_marc,
-    _merge_notes,
     _move_001_to_035,
     process_records,
     _query_for_relationships,
     setup_dag_run_folders,
     setup_data_logging,
-    transform_move_tsvs,
 )
 
 from plugins.tests.mocks import mock_file_system  # noqa
@@ -307,126 +305,6 @@ def test_get_bib_files_no_load():
         get_bib_files(task_instance=MockTaskInstance(), context={"params": {}})
 
 
-def test_transform_move_tsvs(mock_file_system):  # noqa
-    airflow_path = mock_file_system[0]
-    source_dir = mock_file_system[1]
-
-    # mock sample tsv
-    symphony_tsv = source_dir / "sample.tsv"
-    symphony_tsv.write_text(
-        """CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE
-123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC
-789012\tMARC\tLC 67890\t12345  \tGREEN\tSTKS-MONO"""
-    )
-
-    symphony_notes_tsv = source_dir / "sample.public.tsv"
-    symphony_notes_tsv.write_text("BARCODE\tPUBLIC\n45677 \tAvailable for checkout")
-
-    # mock sample CIRCNOTE tsv
-    symphony_circnotes_tsv = source_dir / "sample.circnote.tsv"
-    symphony_circnotes_tsv.write_text(
-        "BARCODE\tCIRCNOTE\n45677 \tpencil marks 7/28/18cc"
-    )
-
-    column_transforms = [
-        ("CATKEY", lambda x: f"a{x}"),
-        ("BARCODE", lambda x: x.strip()),
-    ]
-
-    libraries = ["HOOVER", "HV-ARCHIVE"]
-
-    data_prep = airflow_path / "migration/data_preparation/"
-
-    data_prep.mkdir(parents=True)
-
-    # Mocks successful upstream task
-    global messages
-    messages["bib-files-group"] = {
-        "tsv-files": [
-            str(symphony_notes_tsv),
-            str(symphony_circnotes_tsv),
-        ],
-        "tsv-base": str(symphony_tsv),
-    }
-
-    dag_run = MockDagRun()
-
-    transform_move_tsvs(
-        airflow=airflow_path,
-        column_transforms=column_transforms,
-        libraries=libraries,
-        task_instance=MockTaskInstance(),
-        source="symphony",
-        tsv_stem="sample",
-        dag_run=dag_run,
-    )
-    tsv_directory = airflow_path / "migration/data/items"
-    sample_tsv = tsv_directory / "sample.tsv"
-
-    with open(sample_tsv, "r") as f:
-        sample_lines = f.readlines()
-
-    assert (
-        sample_lines[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
-    )
-    assert sample_lines[2] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tSTKS-MONO\n"
-
-    messages = {}
-
-
-def test_transform_move_tsvs_doesnt_exist(mock_file_system):  # noqa
-    airflow_path = mock_file_system[0]
-
-    data_prep = airflow_path / "migration/data_preparation/"
-
-    data_prep.mkdir(parents=True)
-
-    with pytest.raises(FileNotFoundError, match="No such file or directory"):
-        transform_move_tsvs(
-            airflow=airflow_path,
-            source="symphony",
-            task_instance=MockTaskInstance(),
-            tsv_stem="sample",
-        )
-
-
-def test_merge_notes_circnotes(mock_file_system):  # noqa
-
-    circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
-
-    circ_notes_df = pd.DataFrame(
-        [{"BARCODE": "36105033974929  ", "CIRCNOTE": "pen marks 6/5/19cc"}]
-    )
-
-    circ_notes_df.to_csv(circ_path, sep="\t", index=False)
-
-    notes_df = _merge_notes(circ_path)
-
-    note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
-    assert note_row["note"].item() == "pen marks 6/5/19cc"
-    assert note_row["NOTE_TYPE"].item() == "CIRCNOTE"
-
-
-def test_merge_notes_techstaff(mock_file_system):  # noqa
-    techstaff_path = mock_file_system[1] / "test.sample2.techstaff.tsv"
-
-    techstaff_df = pd.DataFrame(
-        [
-            {
-                "BARCODE": "36105031890341",
-                "TECHSTAFF": "rf:370.4 .J65 no.15 c.3, hbr 6/1/06",
-            }
-        ]
-    )
-
-    techstaff_df.to_csv(techstaff_path, sep="\t", index=False)
-
-    notes_df = _merge_notes(techstaff_path)
-
-    note_row = notes_df.loc[notes_df["BARCODE"] == "36105031890341"]
-    assert note_row["note"].item() == "rf:370.4 .J65 no.15 c.3, hbr 6/1/06"
-    assert note_row["NOTE_TYPE"].item() == "TECHSTAFF"
 
 
 def test_process_records(mock_dag_run, mock_file_system):  # noqa

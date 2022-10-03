@@ -21,9 +21,11 @@ from plugins.folio.helpers import (
     move_marc_files,
     process_marc,
     process_records,
-    setup_dag_run_folders,
-    transform_move_tsvs,
+    setup_dag_run_folders
 )
+
+from plugins.folio.helpers.tsv import  transform_move_tsvs
+
 from plugins.folio.holdings import (
     consolidate_holdings_map,
     electronic_holdings,
