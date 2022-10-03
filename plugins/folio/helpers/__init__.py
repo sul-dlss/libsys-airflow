@@ -23,8 +23,9 @@ def _save_error_record_ids(**kwargs):
 
     error_filepath = (
         airflow
-        / "migration/results"
-        / f"errors-{record_base}-{error_code}-{dag.run_id}.json"
+        / "migration/iterations"
+        / f"{dag.run_id}/results"
+        / f"errors-{record_base}-{error_code}.json"
     )
 
     with error_filepath.open("a") as error_file:
@@ -43,8 +44,10 @@ def archive_artifacts(*args, **kwargs):
     airflow_path = pathlib.Path(airflow)
     tmp_path = pathlib.Path(tmp)
 
-    airflow_results = airflow_path / "migration/results"
-    archive_directory = airflow_path / "migration/archive"
+    iteration_dir = airflow_path / f"migration/iterations/{dag.run_id}"
+
+    airflow_results = iteration_dir / "results"
+    archive_directory = iteration_dir / "archive"
 
     if not archive_directory.exists():
         archive_directory.mkdir()
@@ -55,7 +58,7 @@ def archive_artifacts(*args, **kwargs):
         except OSError as err:
             logger.info(f"Cannot remove {tmp_file}: {err}")
 
-    for artifact in airflow_results.glob(f"*{dag.run_id}*.json"):
+    for artifact in airflow_results.glob("*.json"):
 
         target = archive_directory / artifact.name
 

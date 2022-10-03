@@ -10,21 +10,14 @@ from airflow.models import Variable
 from pytest_mock import MockerFixture
 
 from plugins.folio.helpers import (
-    _add_electronic_holdings,
     archive_artifacts,
-    _extract_856s,
     get_bib_files,
-    move_marc_files,
     post_to_okapi,
-    process_marc,
-    _move_001_to_035,
-    process_records,
-    _query_for_relationships,
     setup_dag_run_folders,
     setup_data_logging,
 )
 
-from plugins.tests.mocks import mock_file_system  # noqa
+from plugins.tests.mocks import mock_dag_run, mock_file_system  # noqa
 
 # Mock xcom messages dict
 messages = {}
@@ -55,68 +48,6 @@ class MockTaskInstance(pydantic.BaseModel):
     xcom_push = mock_xcom_push
 
 
-def test_move_marc_files(mock_file_system):  # noqa
-    task_instance = MockTaskInstance()
-    dag = MockDagRun()
-    airflow_path = mock_file_system[0]
-    source_dir = mock_file_system[1]
-
-    # Calls setup to mock out expected iteration
-    setup_dag_run_folders(dag_run=dag, airflow=str(airflow_path))
-
-    sample_mrc = source_dir / "sample.mrc"
-    with sample_mrc.open("wb+") as fo:
-        marc_record = Record()
-        marc_record.add_field(
-            Field(tag="245", indicators=[" ", " "], subfields=["a", "A Test Title"])
-        )
-        writer = MARCWriter(fo)
-        writer.write(marc_record)
-
-    sample_mhld_mrc = source_dir / "sample-mfld.mrc"
-    with sample_mhld_mrc.open("wb+") as mhld_fo:
-        marc_record = Record()
-        marc_record.add_field(Field(tag="001", data="a123456"))
-        marc_record.add_field(
-            Field(
-                tag="852",
-                indicators=[" ", " "],
-                subfields=["a", "CSt", "b", "GREEN", "c", "STACKS"],
-            )
-        )
-        writer = MARCWriter(mhld_fo)
-        writer.write(marc_record)
-
-    global messages
-    messages["bib-files-group"] = {
-        "marc-file": str(sample_mrc),
-        "mhld-file": str(sample_mhld_mrc),
-    }
-
-    move_marc_files(
-        task_instance=task_instance,
-        airflow=airflow_path,
-        source="symphony",
-        dag_run=MockDagRun(),
-    )  # noqa
-    assert not (source_dir / "sample.mrc").exists()
-    assert not (source_dir / "sample-mfld.mrc").exists()
-    assert (airflow_path / "migration/iterations/{dag.run_id}/source_data/holdings/sample-mfld.mrc").exists()
-    
-    assert (
-        airflow_path
-        / f"migration/iterations/{dag.run_id}/source_data/instances/sample.mrc"
-    ).exists()
-    
-    messages = {}
-
-
-@pytest.fixture
-def mock_dag_run(mocker: MockerFixture):
-    dag_run = mocker.stub(name="dag_run")
-    dag_run.run_id = "manual_2022-02-24"
-    return dag_run
-
 
 def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
     dag = mock_dag_run
@@ -126,7 +57,7 @@ def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
     tmp_dir = mock_file_system[5]
 
     # Create mock Instance JSON file
-    instance_filename = f"folio_instances_{dag.run_id}_bibs-transformer.json"
+    instance_filename = f"folio_instances_bibs-transformer.json"
     instance_file = results_dir / instance_filename
     instance_file.write_text("""{ "id":"abcded2345"}""")
 
@@ -232,48 +163,9 @@ def test_post_to_okapi_failures(
     )
 
     error_file = (
-        migration_results / "errors-instance-storage-422-manual_2022-02-24.json"  # noqa
+        migration_results / "errors-instance-storage-422.json"  # noqa
     )
     assert error_file.exists()
-
-
-def test_process_marc():
-    assert process_marc
-
-
-@pytest.fixture
-def mock_marc_record():
-    record = Record()
-    field_245 = Field(
-        tag="245",
-        indicators=["0", "1"],
-        subfields=[
-            "a",
-            "The pragmatic programmer : ",
-            "b",
-            "from journeyman to master /",
-            "c",
-            "Andrew Hunt, David Thomas.",
-        ],
-    )
-    field_001_1 = Field(tag="001", data="a123456789")
-    field_001_2 = Field(tag="001", data="gls_0987654321")
-
-    record.add_field(field_001_1, field_001_2, field_245)
-    return record
-
-
-def test_move_001_to_035(mock_marc_record):
-    record = mock_marc_record
-    _move_001_to_035(record)
-    assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
-
-
-def test_missing_001_to_034(mock_marc_record):
-    record = mock_marc_record
-    record.remove_fields("001")
-    _move_001_to_035(record)
-    assert record.get_fields("035") == []
 
 
 def test_get_bib_files():
