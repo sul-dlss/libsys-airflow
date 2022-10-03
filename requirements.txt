@@ -9,5 +9,5 @@ pydantic
 pymarc
 pytest
 pytest_mock
-apache-airflow == 2.3.4
+apache-airflow == 2.4.1
 apache-airflow-providers-postgres
