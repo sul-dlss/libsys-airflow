@@ -7,7 +7,7 @@ from plugins.folio.instances import (
     run_bibs_transformer,
 )
 
-from plugins.tests.mocks import mock_file_system  # noqa
+from plugins.tests.mocks import mock_dag_run, mock_file_system  # noqa
 
 instances = [{}, {}]
 
@@ -24,7 +24,7 @@ class MockBibsTransformer(pydantic.BaseModel):
     processor = MockBibsProcessor()
 
 
-def test_adjust_records(mock_file_system):  # noqa
+def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
     bib_transformer = MockBibsTransformer()
     instances_file = mock_file_system[3] / "folio_srs_instances.json"
     instances_file.write_text(
