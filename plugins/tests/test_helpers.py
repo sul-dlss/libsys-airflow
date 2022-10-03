@@ -66,14 +66,33 @@ def test_move_marc_files(mock_file_system):  # noqa
         writer = MARCWriter(fo)
         writer.write(marc_record)
 
+    sample_mhld_mrc = source_dir / "sample-mfld.mrc"
+    with sample_mhld_mrc.open("wb+") as mhld_fo:
+        marc_record = Record()
+        marc_record.add_field(Field(tag="001", data="a123456"))
+        marc_record.add_field(
+            Field(
+                tag="852",
+                indicators=[" ", " "],
+                subfields=["a", "CSt", "b", "GREEN", "c", "STACKS"],
+            )
+        )
+        writer = MARCWriter(mhld_fo)
+        writer.write(marc_record)
+
     global messages
-    messages["bib-files-group"] = {"marc-file": str(sample_mrc)}
+    messages["bib-files-group"] = {
+        "marc-file": str(sample_mrc),
+        "mhld-file": str(sample_mhld_mrc),
+    }
 
     move_marc_files(
         task_instance=task_instance, airflow=airflow_path, source="symphony"
     )  # noqa
     assert not (source_dir / "sample.mrc").exists()
     assert (airflow_path / "migration/data/instances/sample.mrc").exists()
+    assert not (source_dir / "sample-mfld.mrc").exists()
+    assert (airflow_path / "migration/data/holdings/sample-mfld.mrc").exists()
     messages = {}
 
 

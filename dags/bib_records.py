@@ -24,9 +24,12 @@ from plugins.folio.helpers import (
     transform_move_tsvs,
 )
 from plugins.folio.holdings import (
+    consolidate_holdings_map,
     electronic_holdings,
     run_holdings_tranformer,
+    run_mhld_holdings_transformer,
     post_folio_holding_records,
+    update_mhlds_uuids,
 )
 
 from plugins.folio.login import folio_login
@@ -171,6 +174,16 @@ with DAG(
             },
         )
 
+        convert_mhld_to_folio_holdings = PythonOperator(
+            task_id="convert-mhdl-to-folio-holdings",
+            python_callable=run_mhld_holdings_transformer,
+            op_kwargs={
+                "library_config": sul_config,
+                "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_items",
+                "mhld_convert_task": "marc21-and-tsv-to-folio.mhdl_to_folio_holdings",
+            },
+        )
+
         generate_electronic_holdings = PythonOperator(
             task_id="generate-electronic-holdings",
             python_callable=electronic_holdings,
@@ -181,6 +194,11 @@ with DAG(
             },
         )
 
+        finished_holdings = DummyOperator(
+            task_id="finished-holdings-conversion",
+            trigger_rule="none_failed_or_skipped",
+        )
+
         convert_tsv_to_folio_items = PythonOperator(
             task_id="convert_tsv_to_folio_items",
             python_callable=run_items_transformer,
@@ -188,6 +206,16 @@ with DAG(
                 "library_config": sul_config,
                 "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
             },
+        )
+
+        consolidate_holdings = PythonOperator(
+            task_id="consolidate-holdings-maps",
+            python_callable=consolidate_holdings_map,
+        )
+
+        update_mhlds_srs = PythonOperator(
+            task_id="update-mhlds-srs-uuids",
+            python_callable=update_mhlds_uuids
         )
 
         convert_instances_valid_json = PythonOperator(
@@ -225,24 +253,32 @@ with DAG(
             trigger_rule="none_failed_or_skipped",
         )
 
-        # convert_marc_to_folio_instances >> marc_only_convert_check
+        convert_marc_to_folio_instances >> marc_only_convert_check
         (
             convert_marc_to_folio_instances
             >> convert_instances_valid_json
             >> finish_conversion
         )
-        convert_marc_to_folio_instances >> marc_only_convert_check >> [
-            convert_tsv_to_folio_holdings,
-            finish_conversion,
-        ]  # noqa
+        (
+            convert_marc_to_folio_instances
+            >> marc_only_convert_check
+            >> [
+                convert_tsv_to_folio_holdings,
+                finish_conversion,
+            ]
+        )  # noqa
         (
             convert_tsv_to_folio_holdings
+            >> convert_mhld_to_folio_holdings
             >> generate_electronic_holdings
+            >> consolidate_holdings
+            >> update_mhlds_srs
+            >> finished_holdings
             >> convert_holdings_valid_json
             >> finish_conversion
         )
         (
-            convert_tsv_to_folio_holdings
+            finished_holdings
             >> convert_tsv_to_folio_items
             >> convert_items_valid_json
             >> finish_conversion
@@ -312,7 +348,8 @@ with DAG(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
         conf={
-            "srs_filename": "folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json"
+            "srs_filenames": ["folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json",
+                              "folio_srs_holdings_{{ dag_run.run_id }}_holdings-mhld-transformer.json"]
         },
     )
 

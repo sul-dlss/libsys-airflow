@@ -66,6 +66,7 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="tsv-files", value=bib_file_load["tsv"])
     task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
     task_instance.xcom_push(key="tsv-dates", value=bib_file_load["tsv-dates"])
+    task_instance.xcom_push(key="mhld-file", value=bib_file_load.get("mhld"))
 
 
 def move_marc_files(*args, **kwargs) -> str:
@@ -80,6 +81,16 @@ def move_marc_files(*args, **kwargs) -> str:
 
     shutil.move(marc_path, marc_target)
     logger.info(f"{marc_path} moved to {marc_target}")
+
+    # Moves MHLDs to Holdings
+    mhld_filepath = task_instance.xcom_pull(task_ids="bib-files-group", key="mhld-file")
+    if mhld_filepath is not None:
+        mhld_path = pathlib.Path(mhld_filepath)
+        if mhld_path.exists():
+            mhld_target = pathlib.Path(f"{airflow}/migration/data/holdings/{mhld_path.name}")
+
+            shutil.move(mhld_path, mhld_target)
+            logger.info(f"{mhld_path} moved to {mhld_target}")
 
     return marc_path.stem
 

@@ -35,7 +35,7 @@ def add_marc_to_srs():
         """
         context = get_current_context()
         params = context.get("params")
-        srs_filename = params.get("srs_filename")
+        srs_filenames = params.get("srs_filenames")
 
         """
         FOLIO needs to have a number of sul_admin_{N} superusers equal or greater than
@@ -51,9 +51,10 @@ def add_marc_to_srs():
         )
 
         okapi_password = context.get("okapi_password", Variable.get("FOLIO_PASSWORD"))
-
-        logger.info(f"Starting ingestion of {srs_filename}")
         logger.info(f"Okapi username: {okapi_username}")
+
+        for srs_filename in srs_filenames:
+            logger.info(f"Starting ingestion of {srs_filename}")
 
         sul_config = LibraryConfiguration(
             okapi_url=Variable.get("OKAPI_URL"),
@@ -67,27 +68,26 @@ def add_marc_to_srs():
             iteration_identifier="",
         )
 
-        post_marc_to_srs(
+        posted_srs_files = post_marc_to_srs(
             dag_run=context.get("dag_run"),
             library_config=sul_config,
-            srs_file=srs_filename,
+            srs_files=srs_filenames,
             MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 250),
         )
 
+        return posted_srs_files
+
     @task
-    def cleanup():
-        context = get_current_context()
-        srs_filename = context.get("params").get("srs_filename")
-        logger.info(f"Removing SRS JSON {srs_filename}")
-        remove_srs_json(srs_filename=srs_filename)
+    def cleanup(srs_filenames):
+        logger.info(f"Removing SRS JSON {srs_filenames}")
+        remove_srs_json(srs_filenames=srs_filenames)
 
     @task
     def finish():
-        context = get_current_context()
-        srs_filename = context.get("params").get("srs_filename")
-        logger.info(f"Finished migration {srs_filename}")
+        logger.info("Finished migration")
 
-    ingestion_marc() >> cleanup() >> finish()
+    srs_files = ingestion_marc()
+    cleanup(srs_files) >> finish()
 
 
 ingest_marc_to_srs = add_marc_to_srs()

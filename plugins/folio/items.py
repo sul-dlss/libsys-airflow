@@ -18,6 +18,7 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
     holdings_keys = {}
 
     for holdings_file in results_dir.glob(holdings_pattern):
+        logger.info(f"Loading holdings file {holdings_file.name}")
         with holdings_file.open() as fo:
             for line in fo.readlines():
                 holdings_record = json.loads(line)
