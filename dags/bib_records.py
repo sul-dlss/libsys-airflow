@@ -18,10 +18,14 @@ from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
     get_bib_files,
-    move_marc_files,
-    process_marc,
-    process_records,
     setup_dag_run_folders
+)
+
+from plugins.folio.helpers.marc import process as process_marc
+from plugins.folio.helpers.marc import (
+    marc_only,
+    move_marc_files,
+    process_records, 
 )
 
 from plugins.folio.helpers.tsv import  transform_move_tsvs
@@ -42,18 +46,6 @@ from plugins.folio.instances import post_folio_instance_records, run_bibs_transf
 from plugins.folio.items import run_items_transformer, post_folio_items_records
 
 logger = logging.getLogger(__name__)
-
-
-def marc_only(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
-    tsv_files = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-files")
-    tsv_base = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-base")
-    all_next_task_id = kwargs.get("default_task")
-    marc_only_task_id = kwargs.get("marc_only_task")
-
-    if len(tsv_files) < 1 and tsv_base is None:
-        return marc_only_task_id
-    return all_next_task_id
 
 
 sul_config = LibraryConfiguration(
