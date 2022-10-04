@@ -15,7 +15,7 @@ def test_delete_archived_data(mock_dag_run, mock_file_system): # noqa
     archive_dir = mock_file_system[4]
 
     # Create mock Instance JSON file
-    instance_filename = f"folio_instances_{dag.run_id}_bibs-transformer.json"
+    instance_filename = f"folio_instances_bibs-transformer.json"
     instance_file = results_dir / instance_filename
     instance_file.write_text("""{ "id":"abcded2345"}""")
 
@@ -24,7 +24,7 @@ def test_delete_archived_data(mock_dag_run, mock_file_system): # noqa
 
     archive_artifacts(dag_run=dag, airflow=airflow_path)
 
-    delete_archived_data(airflow=airflow_path)
+    delete_archived_data(airflow=airflow_path, dag_run=dag)
 
     files = Path(archive_dir).glob("**/*")
     assert not (any(files))
