@@ -173,7 +173,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         migration_task_type="HoldingsMarcTransformer",
         legacy_id_marc_path="001",
         use_tenant_mapping_rules=False,
-        hrid_handling="preserve001",
+        hrid_handling="default",
         files=[{"file_name": filepath.name, "supressed": False}],
         mfhd_mapping_file_name="mhld_rules.json",
         location_map_file_name="locations-mhld.json",
@@ -200,7 +200,9 @@ def electronic_holdings(*args, **kwargs) -> str:
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     filename = f"{holdings_stem}.electronic.tsv"
-    full_path = pathlib.Path(f"{airflow}/migration/data/items/{filename}")
+    full_path = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{filename}"
+    )
 
     if not full_path.exists():
         logger.info(f"Electronic Holdings {full_path} does not exist")
@@ -239,7 +241,7 @@ def consolidate_holdings_map(*args, **kwargs):
         f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_{dag.run_id}.json"
     )
     all_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all_{dag.run_id}.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all.json"
     )
     all_id_map.rename(last_id_map)
     logger.info(f"Finished moving {all_id_map} to {last_id_map}")

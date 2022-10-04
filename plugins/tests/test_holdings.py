@@ -60,7 +60,7 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
         electronic_holdings_id="asdfadsfadsf",
     )
     assert (
-        "Electronic Holdings /opt/airflow/migration/data/items/holdings-transformers.electronic.tsv does not exist"
+        f"Electronic Holdings /opt/airflow/migration/iterations/{mock_dag_run.run_id}/source_data/items/holdings-transformers.electronic.tsv does not exist"
         in caplog.text
     )
 
@@ -198,7 +198,7 @@ def test_consolidate_holdings_map(mock_file_system, mock_dag_run, caplog):  # no
     holdings_id_map.touch()
 
     holdings_id_map_all = (
-        results_dir / f"holdings_id_map_all_{mock_dag_run.run_id}.json"
+        results_dir / f"holdings_id_map_all.json"
     )
     holdings_id_map_all.write_text(
         json.dumps({"legacy_code": "abcded", "folio_id": "efcageh"})
