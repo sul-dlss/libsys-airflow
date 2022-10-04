@@ -86,7 +86,8 @@ def _add_identifiers(
 
     # Saves holdings id maps to backup
     with open(
-        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings_id_map_all.json", "a+"
+        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings_id_map_all.json",
+        "a+",
     ) as all_id_map:
         for holding in holdings_records:
             lookup = {"legacy_id": holding["formerIds"][0], "folio_id": holding["id"]}

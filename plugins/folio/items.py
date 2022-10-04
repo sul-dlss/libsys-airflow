@@ -208,8 +208,8 @@ def run_items_transformer(*args, **kwargs) -> bool:
     _add_additional_info(
         airflow=airflow,
         dag_run_id=dag.run_id,
-        holdings_pattern=f"folio_holdings_holdings-*transformer.json",
-        items_pattern=f"folio_items_items-*transformer.json",
+        holdings_pattern="folio_holdings_holdings-*transformer.json",
+        items_pattern="folio_items_items-*transformer.json",
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),

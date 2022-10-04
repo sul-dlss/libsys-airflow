@@ -5,8 +5,6 @@ import folio_migration_tools.migration_tasks.batch_poster as batch_poster
 
 from pymarc import Field, MARCWriter, Record
 
-from plugins.folio.helpers import setup_dag_run_folders
-
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     _extract_856s,
@@ -32,6 +30,7 @@ from plugins.tests.mocks import (  # noqa
 # Mock xcom messages dict
 messages = {}
 
+
 # Mock xcoms
 def mock_xcom_push(*args, **kwargs):
     key = kwargs["key"]
@@ -46,6 +45,7 @@ def mock_xcom_pull(*args, **kwargs):
         if key in messages[task_id]:
             return messages[task_id][key]
     return "unknown"
+
 
 @pytest.fixture
 def mock_marc_record():
@@ -251,12 +251,12 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
         airflow_path
         / f"migration/iterations/{mock_dag_run.run_id}/source_data/holdings/sample-mhld.mrc"
     ).exists()
-    
+
     assert (
         airflow_path
         / f"migration/iterations/{mock_dag_run.run_id}/source_data/instances/sample.mrc"
     ).exists()
-    
+
     messages = {}
 
 def test_process_records(mock_dag_run, mock_file_system):  # noqa

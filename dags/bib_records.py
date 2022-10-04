@@ -25,10 +25,10 @@ from plugins.folio.helpers.marc import process as process_marc
 from plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
-    process_records, 
+    process_records,
 )
 
-from plugins.folio.helpers.tsv import  transform_move_tsvs
+from plugins.folio.helpers.tsv import transform_move_tsvs
 
 from plugins.folio.holdings import (
     consolidate_holdings_map,

@@ -1,11 +1,9 @@
 import logging
 
-import pandas as pd
 import pytest
 import pydantic
 import requests
 
-from pymarc import Record, Field, MARCWriter
 from airflow.models import Variable
 from pytest_mock import MockerFixture
 
@@ -57,7 +55,7 @@ def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
     tmp_dir = mock_file_system[5]
 
     # Create mock Instance JSON file
-    instance_filename = f"folio_instances_bibs-transformer.json"
+    instance_filename = "folio_instances_bibs-transformer.json"
     instance_file = results_dir / instance_filename
     instance_file.write_text("""{ "id":"abcded2345"}""")
 
@@ -106,7 +104,7 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
 
 @pytest.mark.output_capturing
 def test_post_to_okapi(
-    mock_okapi_success, mock_okapi_variable, mock_dag_run, mock_records, caplog
+    mock_okapi_success, mock_okapi_variable, mock_dag_run, mock_records, caplog  # noqa
 ):
 
     post_to_okapi(
@@ -146,7 +144,7 @@ def mock_okapi_failure(monkeypatch, mocker: MockerFixture):
 def test_post_to_okapi_failures(
     mock_okapi_failure,
     mock_okapi_variable,
-    mock_dag_run,
+    mock_dag_run,  # noqa
     mock_records,
     mock_file_system,  # noqa
 ):
@@ -240,4 +238,3 @@ def test_setup_data_logging(mock_logger_file_handler):
     # Removes handler otherwise fails subsequent tests
     file_handler = logging.getLogger().handlers[-1]
     logging.getLogger().removeHandler(file_handler)
-

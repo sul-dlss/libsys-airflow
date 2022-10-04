@@ -161,7 +161,8 @@ def move_marc_files(*args, **kwargs) -> str:
         mhld_path = pathlib.Path(mhld_filepath)
         if mhld_path.exists():
             mhld_target = pathlib.Path(
-                f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{mhld_path.name}")
+                f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{mhld_path.name}"
+            )
 
             shutil.move(mhld_path, mhld_target)
             logger.info(f"{mhld_path} moved to {mhld_target}")

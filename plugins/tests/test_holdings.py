@@ -129,7 +129,7 @@ def test_add_identifiers_missing_hrid_file(mock_file_system, mock_dag_run):  # n
     _add_identifiers(str(mock_file_system[0]), mock_dag_run.run_id, transformer)
 
     holdings_result_file = (
-        results_dir / f"folio_holdings_holdings-transformer.json"
+        results_dir / "folio_holdings_holdings-transformer.json"
     )
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
@@ -155,7 +155,7 @@ def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
     _mock_setup_holdings_json(iteration_dir)
 
     # Mocks holdings_hrid file
-    holdings_hrid_file = iteration_dir / f"results/holdings-hrids.json"
+    holdings_hrid_file = iteration_dir / "results/holdings-hrids.json"
 
     with holdings_hrid_file.open("w+") as fo:
         fo.write(json.dumps({"xyzabc-def-ha": 2}))
@@ -163,7 +163,7 @@ def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
     _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer)
 
     holdings_result_file = (
-        results_dir / f"folio_holdings_holdings-transformer.json"
+        results_dir / "folio_holdings_holdings-transformer.json"
     )
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
@@ -174,7 +174,6 @@ def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
 
 def test_run_transformer(mock_file_system, mock_dag_run, caplog):  # noqa
     iteration_dir = mock_file_system[2]
-    results_dir = mock_file_system[3]
 
     _mock_setup_holdings_json(iteration_dir)
 
@@ -221,7 +220,7 @@ def test_update_mhlds_uuids(mock_file_system, mock_dag_run, caplog):  # noqa
 
     mhld_srs_mock_file = (
         results_dir
-        / f"folio_srs_holdings_holdings-mhld-transformer.json"
+        / "folio_srs_holdings_holdings-mhld-transformer.json"
     )
 
     with mhld_srs_mock_file.open("w+") as fo:

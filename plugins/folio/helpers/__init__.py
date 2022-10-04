@@ -12,6 +12,7 @@ from folio_migration_tools.migration_tasks.migration_task_base import LevelFilte
 
 logger = logging.getLogger(__name__)
 
+
 def _save_error_record_ids(**kwargs):
     dag = kwargs["dag_run"]
     records = kwargs["records"]
