@@ -66,9 +66,9 @@ def handle_record_errors(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     airflow_path = pathlib.Path(airflow)
 
-    results_dir = airflow_path / "migration/results/"
+    results_dir = airflow_path / f"migration/iterations/{dag.run_id}/results"
 
-    pattern = f"errors-{base}-*-{dag.run_id}.json"
+    pattern = f"errors-{base}*.json"
 
     for error_file in results_dir.glob(pattern):
         logging.info(f"Processing error file {error_file} ")
