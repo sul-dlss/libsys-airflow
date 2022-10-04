@@ -84,6 +84,7 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="tsv-files", value=bib_file_load["tsv"])
     task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
     task_instance.xcom_push(key="tsv-dates", value=bib_file_load["tsv-dates"])
+    task_instance.xcom_push(key="mhld-file", value=bib_file_load.get("mhld"))
 
 
 def post_to_okapi(**kwargs) -> bool:
@@ -158,6 +159,42 @@ def put_to_okapi(**kwargs):
 
     logger.info(f"PUT Result status code {update_record_result.status_code}")  # noqa
 
+
+def process_records(*args, **kwargs) -> list:
+    """Function creates valid json from file of FOLIO objects"""
+    prefix = kwargs.get("prefix")
+    dag = kwargs["dag_run"]
+
+    pattern = f"{prefix}*.json"
+
+    out_filename = f"{kwargs.get('out_filename')}-{dag.run_id}"
+
+    total_jobs = int(kwargs.get("jobs"))
+
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    tmp = kwargs.get("tmp", "/tmp")
+
+    records = []
+    results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/results")
+
+    for file in results_dir.glob(pattern):
+        logger.info(f"Loading {file}")
+        with open(file) as fo:
+            records.extend([json.loads(i) for i in fo.readlines()])
+
+    shard_size = int(len(records) / total_jobs)
+
+    for i in range(total_jobs):
+        start = i * shard_size
+        end = shard_size * (i + 1)
+        if i == total_jobs - 1:
+            end = len(records)
+        tmp_out_path = f"{tmp}/{out_filename}-{i}.json"
+        logger.info(f"Start {start} End {end} for {tmp_out_path}")
+        with open(tmp_out_path, "w+") as fo:
+            json.dump(records[start:end], fo)
+
+    return len(records)
 
 def setup_dag_run_folders(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")

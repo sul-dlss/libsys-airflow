@@ -11,6 +11,7 @@ from plugins.folio.helpers import (
     archive_artifacts,
     get_bib_files,
     post_to_okapi,
+    process_records,
     setup_dag_run_folders,
     setup_data_logging,
 )
@@ -215,6 +216,29 @@ def mock_logger_file_handler(monkeypatch, mocker: MockerFixture):
         return file_handler
 
     monkeypatch.setattr(logging, "FileHandler", mock_file_handler)
+
+def test_process_records(mock_dag_run, mock_file_system):  # noqa
+    airflow_path = mock_file_system[0]
+    tmp = mock_file_system[5]
+    results_dir = mock_file_system[3]
+
+    # mock results file
+    results_file = results_dir / "folio_instances_bibs-transformer.json"
+    results_file.write_text(
+        """{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
+    {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}"""
+    )
+
+    num_records = process_records(
+        prefix="folio_instances",
+        out_filename="instances",
+        jobs=1,
+        dag_run=mock_dag_run,
+        airflow=str(airflow_path),
+        tmp=str(tmp),
+    )
+
+    assert num_records == 2
 
 
 class MockFolderStructure(pydantic.BaseModel):

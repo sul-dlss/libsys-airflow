@@ -11,7 +11,6 @@ from plugins.folio.helpers.marc import (
     move_marc_files,
     _move_001_to_035,
     post_marc_to_srs,
-    process_records,
     _query_for_relationships,
     remove_srs_json,
 )
@@ -258,29 +257,6 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     ).exists()
 
     messages = {}
-
-def test_process_records(mock_dag_run, mock_file_system):  # noqa
-    airflow_path = mock_file_system[0]
-    tmp = mock_file_system[5]
-    results_dir = mock_file_system[3]
-
-    # mock results file
-    results_file = results_dir / "folio_instances_bibs-transformer.json"
-    results_file.write_text(
-        """{"id": "de09e01a-6d75-4007-b700-c83a475999b1"}
-    {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90"}"""
-    )
-
-    num_records = process_records(
-        prefix="folio_instances",
-        out_filename="instances",
-        jobs=1,
-        dag_run=mock_dag_run,
-        airflow=str(airflow_path),
-        tmp=str(tmp),
-    )
-
-    assert num_records == 2
 
 
 def test_post_marc_to_srs(
