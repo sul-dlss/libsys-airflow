@@ -59,6 +59,11 @@ def _generate_item_notes(
                 note["itemNoteTypeId"] = item_note_types.get("Circ Staff")
                 notes.append(note)
 
+            case "HVSHELFLOC":
+                note["staffOnly"] = True
+                note["itemNoteTypeId"] = item_note_types.get("HVSHELFLOC")
+                notes.append(note)
+
             case "PUBLIC":
                 note["staffOnly"] = False
                 note["itemNoteTypeId"] = item_note_types.get("Public")
@@ -139,6 +144,9 @@ def _add_additional_info(**kwargs):
                     _generate_item_notes(item, tsv_notes_df, item_note_types)
                 items.append(item)
 
+                if not len(items) % 1000:
+                    logger.info(f"Updated {len(items):,} item records")
+
         with open(items_file, "w+") as write_output:
             for item in items:
                 write_output.write(f"{json.dumps(item)}\n")
@@ -183,7 +191,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
     items_stem = kwargs["items_stem"]
 
     item_config = ItemsTransformer.TaskConfiguration(
-        name="items-transformer",
+        name="transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
@@ -208,8 +216,8 @@ def run_items_transformer(*args, **kwargs) -> bool:
     _add_additional_info(
         airflow=airflow,
         dag_run_id=dag.run_id,
-        holdings_pattern="folio_holdings_holdings-*transformer.json",
-        items_pattern="folio_items_items-*transformer.json",
+        holdings_pattern="folio_holdings_*transformer.json",
+        items_pattern="folio_items_*transformer.json",
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),

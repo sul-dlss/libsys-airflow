@@ -28,6 +28,10 @@ def _modify_item_type(df, libraries):
 def _merge_notes(note_path: pathlib.Path):
     notes_df = pd.read_csv(note_path, sep="\t", dtype=object)
 
+    if len(notes_df) < 1:
+        logging.info(f"{notes_df} is empty")
+        return
+
     match note_path.name.split(".")[-2]:
         case "circnote":
             column_name = "CIRCNOTE"
@@ -36,6 +40,10 @@ def _merge_notes(note_path: pathlib.Path):
         case "circstaff":
             column_name = "CIRCNOTE"
             notes_df["NOTE_TYPE"] = "CIRCSTAFF"
+
+        case "hvshelfloc":
+            column_name = "HVSHELFLOC"
+            notes_df["NOTE_TYPE"] = column_name
 
         case "public":
             column_name = "PUBLIC"
@@ -46,6 +54,7 @@ def _merge_notes(note_path: pathlib.Path):
             notes_df["NOTE_TYPE"] = column_name
 
     notes_df = notes_df.rename(columns={column_name: "note"})
+    
     notes_df["BARCODE"] = notes_df["BARCODE"].apply(
         lambda x: x.strip() if isinstance(x, str) else x
     )
@@ -75,9 +84,11 @@ def _processes_tsv(**kwargs):
     all_notes = []
     # Iterate on tsv notes and merge into the tsv_notes DF
     for tsv_note_path in tsv_notes:
+        logging.error(f"Starting merge of {tsv_note_path}")
         note_df = _merge_notes(tsv_note_path)
-        all_notes.append(note_df)
-        logging.info(f"Merged {len(note_df)} notes into items tsv")
+        if note_df is not None:
+            all_notes.append(note_df)
+            logging.info(f"Merged {len(note_df)} notes into items tsv")
         tsv_note_path.unlink()
 
     if len(all_notes) > 0:
