@@ -171,19 +171,19 @@ def move_marc_files(*args, **kwargs) -> str:
 
 
 def post_marc_to_srs(*args, **kwargs):
-    dag = kwargs.get("dag_run")
-    srs_filepath = kwargs.get("srs_file")
+    srs_filenames = kwargs.get("srs_filenames")
+
+    srs_files = [{"file_name": name for name in srs_filenames}]
 
     task_config = BatchPoster.TaskConfiguration(
         name="marc-to-srs-batch-poster",
         migration_task_type="BatchPoster",
         object_type="SRS",
-        files=[{"file_name": srs_filepath}],
+        files=srs_files,
         batch_size=kwargs.get("MAX_ENTITIES", 1000),
     )
 
     library_config = kwargs["library_config"]
-    library_config.iteration_identifier = dag.run_id
 
     srs_batch_poster = BatchPoster(task_config, library_config, use_logging=False)
 
@@ -192,6 +192,8 @@ def post_marc_to_srs(*args, **kwargs):
     srs_batch_poster.wrap_up()
 
     logger.info("Finished posting MARC json to SRS")
+
+    return srs_filenames
 
 
 def process(*args, **kwargs):
@@ -233,14 +235,12 @@ def process(*args, **kwargs):
                 logger.info(f"Writing record {i}")
 
 
-
-
 def remove_srs_json(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     srs_filename = kwargs["srs_filename"]
-    dag = kwargs["dag_run"]
+    iteration_id = kwargs["iteration_id"]
 
-    srs_filedir = Path(airflow) / f"migration/iterations/{dag.run_id}/results/"
+    srs_filedir = Path(airflow) / f"migration/iterations/{iteration_id}/results/"
 
     for p in Path(srs_filedir).glob(f"{srs_filename}*"):
         p.unlink()

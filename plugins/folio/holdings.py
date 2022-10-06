@@ -3,6 +3,8 @@ import logging
 import pathlib
 import re
 
+from airflow.models import Variable
+
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
@@ -94,6 +96,44 @@ def _add_identifiers(
             all_id_map.write(f"{json.dumps(lookup)}\n")
 
 
+def _extract_catkey(mhld_record: list) -> str:
+    for field in mhld_record["parsedRecord"]["content"]["fields"]:
+        if "004" in field.keys():
+            return field["004"]
+
+
+def _update_mhld_ids(mhld_record: dict, existing_ids: dict) -> dict:
+    okapi_url = Variable.get("OKAPI_URL")
+    existing_hrid = existing_ids["hrid"]
+    existing_holdings_uuid = existing_ids["id"]
+    new_mhld_record_id = str(
+        FolioUUID(
+            okapi_url,
+            FOLIONamespaces.srs_records_holdingsrecord,
+            existing_hrid,
+        )
+    )
+    mhld_record["id"] = new_mhld_record_id
+    mhld_record["matchedId"] = new_mhld_record_id
+    mhld_record["externalIdsHolder"]["holdingsId"] = existing_holdings_uuid
+    mhld_record["externalIdsHolder"]["holdingsHrid"] = existing_hrid
+    mhld_record["parsedRecord"]["id"] = new_mhld_record_id
+    for field in mhld_record["parsedRecord"]["content"]["fields"]:
+        if "001" in field.keys():
+            field["001"] = existing_hrid
+        if "999" in field.keys():
+            for subfield in field["999"]["subfields"]:
+                if "i" in subfield.keys():
+                    subfield["i"] = existing_holdings_uuid
+                if "s" in subfield.keys():
+                    subfield["s"] = new_mhld_record_id
+    mhld_record["rawRecord"]["id"] = new_mhld_record_id
+    mhld_record["rawRecord"]["content"] = json.dumps(
+        mhld_record["parsedRecord"]["content"]
+    )
+    return mhld_record
+
+
 def post_folio_holding_records(**kwargs):
     """Creates/overlays Holdings records in FOLIO"""
     dag = kwargs["dag_run"]
@@ -130,7 +170,7 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_stem = kwargs["holdings_stem"]
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="holdings-transformer",
+        name="csv-transformer",
         migration_task_type="HoldingsCsvTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": f"{holdings_stem}.tsv", "suppress": False}],
@@ -169,17 +209,18 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     filepath = pathlib.Path(mhld_file)
 
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
-        name="holdings-mhld-transformer",
+        name="mhld-transformer",
         migration_task_type="HoldingsMarcTransformer",
         legacy_id_marc_path="001",
         use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=[{"file_name": filepath.name, "supressed": False}],
         mfhd_mapping_file_name="mhld_rules.json",
-        location_map_file_name="locations-mhld.json",
+        location_map_file_name="locations-mhld.tsv",
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
         create_source_records=True,
+        never_update_hrid_settings=True,
     )
 
     holdings_transformer = HoldingsMarcTransformer(
@@ -211,7 +252,7 @@ def electronic_holdings(*args, **kwargs) -> str:
     library_config.iteration_identifier = dag.run_id
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="holdings-electronic-transformer",
+        name="electronic-transformer",
         migration_task_type="HoldingsCsvTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": filename, "suppress": False}],
@@ -238,7 +279,7 @@ def consolidate_holdings_map(*args, **kwargs):
     dag = kwargs["dag_run"]
     airflow = kwargs.get("airflow", "/opt/airflow")
     last_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_{dag.run_id}.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map.json"
     )
     all_id_map = pathlib.Path(
         f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all.json"
@@ -253,35 +294,51 @@ def update_mhlds_uuids(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     mhld_srs_path = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/folio_srs_holdings_holdings-mhld-transformer.json"
+        f"{airflow}/migration/iterations/{dag.run_id}/results/folio_srs_holdings_mhld-transformer.json"
     )
 
     if not mhld_srs_path.exists():
         logger.info("No MHLD SRS records")
         return
 
-    holdings_id_map_path = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_{dag.run_id}.json"
+    holdings_records_path = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag.run_id}/results/folio_holdings_mhld-transformer.json"
     )
 
-    holdings_id_map = {}
-    with holdings_id_map_path.open() as fo:
+    holdings_map = {}
+    with holdings_records_path.open() as fo:
         for line in fo.readlines():
             holdings_rec = json.loads(line)
-            holdings_id_map[holdings_rec["legacy_id"]] = holdings_rec["folio_id"]
+            catkey = holdings_rec["formerIds"][0]
+            body = {"id": holdings_rec["id"], "hrid": holdings_rec["hrid"]}
+            if catkey in holdings_map:
+                holdings_map[catkey].append(body)
+            else:
+                holdings_map[catkey] = [
+                    body,
+                ]
 
     updated_srs_records = []
+    catkey_count = {}
     with mhld_srs_path.open() as fo:
         for line in fo.readlines():
             mhld_srs_record = json.loads(line)
-            hrid = mhld_srs_record["externalIdsHolder"]["holdingsHrid"]
-            if hrid in holdings_id_map:
-                mhld_srs_record["externalIdsHolder"]["holdingsId"] = holdings_id_map[
-                    hrid
-                ]
+            catkey = _extract_catkey(mhld_srs_record)
+            if catkey in catkey_count:
+                count = catkey_count[catkey] + 1
+            else:
+                count = 0
+            catkey_count[catkey] = count
+            if catkey is None:
+                logger.error(f"No catkey from 004 field found in SRS record {mhld_srs_record['id']}")
+                continue
+            if catkey in holdings_map:
+                mhld_srs_record = _update_mhld_ids(
+                    mhld_srs_record, holdings_map[catkey][count]
+                )
                 updated_srs_records.append(mhld_srs_record)
             else:
-                logger.error(f"UUID for MHLD {hrid} not found in SRS record")
+                logger.error(f"UUID for MHLD {catkey} not found in SRS record")
 
     with mhld_srs_path.open("w+") as fo:
         for record in updated_srs_records:
