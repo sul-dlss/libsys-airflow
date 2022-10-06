@@ -171,15 +171,13 @@ def move_marc_files(*args, **kwargs) -> str:
 
 
 def post_marc_to_srs(*args, **kwargs):
-    srs_filenames = kwargs.get("srs_filenames")
-
-    srs_files = [{"file_name": name for name in srs_filenames}]
+    srs_filename = kwargs.get("srs_filename")
 
     task_config = BatchPoster.TaskConfiguration(
         name="marc-to-srs-batch-poster",
         migration_task_type="BatchPoster",
         object_type="SRS",
-        files=srs_files,
+        files=[{"file_name": srs_filename}],
         batch_size=kwargs.get("MAX_ENTITIES", 1000),
     )
 
@@ -193,7 +191,7 @@ def post_marc_to_srs(*args, **kwargs):
 
     logger.info("Finished posting MARC json to SRS")
 
-    return srs_filenames
+    return srs_filename
 
 
 def process(*args, **kwargs):
@@ -237,11 +235,12 @@ def process(*args, **kwargs):
 
 def remove_srs_json(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
-    srs_filename = kwargs["srs_filename"]
+    srs_filenames = kwargs["srs_filenames"]
     iteration_id = kwargs["iteration_id"]
 
     srs_filedir = Path(airflow) / f"migration/iterations/{iteration_id}/results/"
 
-    for p in Path(srs_filedir).glob(f"{srs_filename}*"):
-        p.unlink()
-        logger.info(f"Removed {p}")
+    for srs_file in srs_filenames:
+        srs_filepath = srs_filedir / srs_file
+        srs_filepath.unlink()
+        logger.info(f"Removed {srs_filepath}")
