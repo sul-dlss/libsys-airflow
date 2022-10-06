@@ -27,6 +27,7 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
                     "counter": 0,
                 }
 
+    logging.info(f"{len(holdings_keys):,} total holdings keys")
     return holdings_keys
 
 
@@ -118,7 +119,7 @@ def _add_additional_info(**kwargs):
 
     items = []
     for items_file in results_dir.glob(items_pattern):
-
+        logger.info(f"Processing {items_file}")
         with items_file.open() as fo:
             for line in fo.readlines():
                 item = json.loads(line)

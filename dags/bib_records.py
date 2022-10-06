@@ -18,6 +18,7 @@ from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
     get_bib_files,
+    process_records,
     setup_dag_run_folders
 )
 
@@ -25,7 +26,6 @@ from plugins.folio.helpers.marc import process as process_marc
 from plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
-    process_records,
 )
 
 from plugins.folio.helpers.tsv import transform_move_tsvs
@@ -348,8 +348,9 @@ with DAG(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
         conf={
-            "srs_filenames": ["folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json",
-                              "folio_srs_holdings_{{ dag_run.run_id }}_holdings-mhld-transformer.json"]
+            "srs_filenames": ["folio_srs_instances_bibs-transformer.json",
+                              "folio_srs_holdings_mhld-transformer.json"],
+            "iteration_id": "{{ dag_run.run_id }}"
         },
     )
 
