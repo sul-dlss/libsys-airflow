@@ -28,7 +28,7 @@ jobs:
         pip install folioclient folio-migration-tools folio-uuid
     - name: Install Airflow
       run: |
-        pip install # apache-airflow apache-airflow-providers-postgres
+        pip install apache-airflow apache-airflow-providers-postgres
     - name: Lint with flake8
       run: |
         flake8 --ignore=E225,E501,F401,F811,W503
