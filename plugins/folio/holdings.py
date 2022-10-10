@@ -92,7 +92,7 @@ def _add_identifiers(
         "a+",
     ) as all_id_map:
         for holding in holdings_records:
-            lookup = {"legacy_id": holding["formerIds"][0], "folio_id": holding["id"]}
+            lookup = {"legacy_id": holding["hrid"], "folio_id": holding["id"]}
             all_id_map.write(f"{json.dumps(lookup)}\n")
 
 
