@@ -1,4 +1,4 @@
-FROM apache/airflow:2.3.3-python3.10
+FROM apache/airflow:2.4.1-python3.10
 
 USER root
 RUN usermod -u 214 airflow
@@ -14,9 +14,11 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 # Needed to fix an import error see https://stackoverflow.com/questions/47884709/python-importerror-no-module-named-pluggy
-RUN pip install -U pytest-metadata
+# RUN pip install -U pytest-metadata
 # Install FOLIO-FSE tools
-RUN pip install folioclient folio-uuid
+# RUN pip install folioclient folio-uuid
 
 RUN git clone https://github.com/sul-dlss/folio_migration_tools.git --depth=2
 RUN pip install /opt/airflow/folio_migration_tools
+RUN pip install apache-airflow
+RUN pip install apache-airflow-providers-postgres
