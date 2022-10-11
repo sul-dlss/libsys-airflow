@@ -23,7 +23,7 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
             for line in fo.readlines():
                 holdings_record = json.loads(line)
                 holdings_keys[holdings_record["id"]] = {
-                    "formerId": holdings_record["formerIds"][0],
+                    "formerId": holdings_record["hrid"],
                     "counter": 0,
                 }
 
@@ -126,7 +126,7 @@ def _add_additional_info(**kwargs):
                 holding = holdings_keys[item["holdingsRecordId"]]
                 former_id = holding["formerId"]
                 holding["counter"] = holding["counter"] + 1
-                hrid_prefix = former_id[:1] + "i" + former_id[1:]
+                hrid_prefix = former_id[:1] + "i" + former_id[2:]
                 item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
                 if "barcode" in item:
                     id_seed = item["barcode"]
