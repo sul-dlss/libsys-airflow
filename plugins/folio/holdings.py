@@ -101,7 +101,7 @@ def _add_identifiers(
             all_id_map.write(f"{json.dumps(lookup)}\n")
 
     # Updates items tsv replacing CATKEY values with new holdings HRIDs
-    if item_path: 
+    if item_path:
         update_items(
             item_path,
             holdings_records,
