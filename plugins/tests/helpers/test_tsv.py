@@ -2,13 +2,10 @@ import pandas as pd
 import pydantic
 import pytest
 
-from plugins.folio.helpers.tsv import (
-    _merge_notes,
-    transform_move_tsvs,
-)
+from plugins.folio.helpers.tsv import _merge_notes, transform_move_tsvs, update_items
 
 from plugins.tests.mocks import mock_file_system  # noqa
-from pytest_mock import MockerFixture
+from pytest_mock import MockerFixture  # noqa
 
 
 @pytest.fixture
@@ -47,6 +44,19 @@ class MockTaskInstance(pydantic.BaseModel):
     xcom_push = mock_xcom_push
 
 
+def test_merge_notes_empty(mock_file_system, caplog):  # noqa
+    circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
+
+    circ_notes_df = pd.DataFrame(columns=["BARCODE", "note"])
+
+    circ_notes_df.to_csv(circ_path, sep="\t", index=False)
+
+    notes_df = _merge_notes(circ_path)
+
+    assert notes_df is None
+    assert f"{circ_path} is empty"
+
+
 def test_merge_notes_circnotes(mock_file_system):  # noqa
 
     circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
@@ -62,6 +72,34 @@ def test_merge_notes_circnotes(mock_file_system):  # noqa
     note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
     assert note_row["note"].item() == "pen marks 6/5/19cc"
     assert note_row["NOTE_TYPE"].item() == "CIRCNOTE"
+
+
+def test_merge_notes_circstaff(mock_file_system):  # noqa
+    circ_path = mock_file_system[1] / "test.sample2.circstaff.tsv"
+    circ_notes_df = pd.DataFrame(
+        [{"BARCODE": "36105033974929  ", "CIRCSTAFF": "pen marks 6/5/19cc"}]
+    )
+
+    circ_notes_df.to_csv(circ_path, sep="\t", index=False)
+
+    notes_df = _merge_notes(circ_path)
+    note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
+    assert note_row["note"].item() == "pen marks 6/5/19cc"
+    assert note_row["NOTE_TYPE"].item() == "CIRCNOTE"
+
+
+def test_merge_notes_hvshelfloc(mock_file_system):  # noqa
+    hvshelf_path = mock_file_system[1] / "test.sample2.hvshelfloc.tsv"
+    hvshelf_df = pd.DataFrame(
+        [{"BARCODE": "36105033974929  ", "HVSHELFLOC": "A serial in Hoover"}]
+    )
+
+    hvshelf_df.to_csv(hvshelf_path, sep="\t", index=False)
+
+    notes_df = _merge_notes(hvshelf_path)
+    note_row = notes_df.loc[notes_df["BARCODE"] == "36105033974929"]
+    assert note_row["note"].item() == "A serial in Hoover"
+    assert note_row["NOTE_TYPE"].item() == "HVSHELFLOC"
 
 
 def test_merge_notes_techstaff(mock_file_system):  # noqa
@@ -168,3 +206,41 @@ def test_transform_move_tsvs_doesnt_exist(mock_file_system, mock_dag_run):  # no
             tsv_stem="sample",
             dag_run=mock_dag_run,
         )
+
+
+def test_update_items(mock_file_system, mock_dag_run):  # noqa
+    location_mapping = [
+        {
+            "HOMELOCATION": "STACKS",
+            "LIBRARY": "GREEN",
+            "folio_id": "e06f5d50-8a7b-4777-9f83-d3675695f568",
+        },
+        {
+            "HOMELOCATION": "DEV-HOLD",
+            "LIBRARY": "GREEN",
+            "folio_id": "e06f5d50-8a7b-4777-9f83-d3675695f568",
+        },
+    ]
+    items_tsv_mock = mock_file_system[2] / "source_data/items/ckeys_0001.tsv"
+
+    items_tsv_df = pd.DataFrame(
+        [{"CATKEY": "a12345", "HOMELOCATION": "STACKS", "LIBRARY": "GREEN"}]
+    )
+
+    items_tsv_df.to_csv(items_tsv_mock, sep="\t", index=False)
+
+    holdings = [
+        {
+            "formerIds": ["a12345"],
+            "permanentLocationId": "e06f5d50-8a7b-4777-9f83-d3675695f568",
+            "hrid": "ah12345_1",
+        }
+    ]
+
+    update_items(items_tsv_mock, holdings, location_mapping)
+
+    new_items_df = pd.read_csv(items_tsv_mock, sep="\t")
+
+    item_row = new_items_df.loc[new_items_df["CATKEY"] == "ah12345_1"]
+
+    assert item_row is not None

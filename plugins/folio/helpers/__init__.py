@@ -196,6 +196,7 @@ def process_records(*args, **kwargs) -> list:
 
     return len(records)
 
+
 def setup_dag_run_folders(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]

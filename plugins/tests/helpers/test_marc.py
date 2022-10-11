@@ -8,6 +8,7 @@ from pymarc import Field, MARCWriter, Record
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     _extract_856s,
+    marc_only,
     move_marc_files,
     _move_001_to_035,
     post_marc_to_srs,
@@ -187,6 +188,42 @@ def test_extract_856s():
     assert output[1]["HOMELOCATION"].startswith("INTERNET")
 
 
+def test_marc_only():
+    global messages
+    messages["bib-files-group"] = {
+        "tsv-files": [],
+        "tsv-base": None,
+    }
+
+    next_task = marc_only(
+        task_instance=MockTaskInstance(),
+        default_task="tsv-holdings",
+        marc_only_task="marc-only",
+    )
+
+    assert next_task.startswith("marc-only")
+
+    messages = {}
+
+
+def test_marc_only_with_tsv():
+    global messages
+    messages["bib-files-group"] = {
+        "tsv-files": ["circnotes.tsv"],
+        "tsv-base": "base.tsv",
+    }
+
+    next_task = marc_only(
+        task_instance=MockTaskInstance(),
+        default_task="tsv-holdings",
+        marc_only_task="marc-only",
+    )
+
+    assert next_task.startswith("tsv-holdings")
+
+    messages = {}
+
+
 def test_missing_001_to_034(mock_marc_record):
     record = mock_marc_record
     record.remove_fields("001")
@@ -272,10 +309,12 @@ def test_post_marc_to_srs(
 
     base_folder = mock_file_system[0] / "migration"
 
-    library_config = MockLibraryConfig(base_folder=str(base_folder))
+    library_config = MockLibraryConfig(
+        base_folder=str(base_folder), iteration_identifier=mock_dag_run.run_id
+    )
 
     post_marc_to_srs(
-        dag_run=dag, library_config=library_config, srs_file="test-srs.json"
+        dag_run=dag, library_config=library_config, srs_filename="test-srs.json"
     )
 
     assert library_config.iteration_identifier == dag.run_id
@@ -299,7 +338,10 @@ def test_remove_srs_json(srs_file, mock_file_system, mock_dag_run):  # noqa
     assert srs_file.exists() is True
 
     remove_srs_json(
-        airflow=mock_file_system[0], dag_run=mock_dag_run, srs_filename="test-srs.json"
+        airflow=mock_file_system[0],
+        dag_run=mock_dag_run,
+        srs_filenames=["test-srs.json"],
+        iteration_id=mock_dag_run.run_id,
     )
 
     assert srs_file.exists() is False

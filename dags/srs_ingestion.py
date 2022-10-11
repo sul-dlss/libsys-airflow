@@ -65,7 +65,7 @@ def add_marc_to_srs():
             folio_release="lotus",
             iteration_identifier=iteration_id,
         )
-        
+
         posted_srs_files = []
         for srs_file in srs_filenames:
             logger.info(f"Starting ingestion of {srs_file}")
@@ -86,9 +86,7 @@ def add_marc_to_srs():
         params = context.get("params")
         iteration_id = params.get("iteration_id")
         logger.info(f"Removing SRS JSON {srs_filenames}")
-        remove_srs_json(
-            srs_filenames=srs_filenames, 
-            iteration_id=iteration_id)
+        remove_srs_json(srs_filenames=srs_filenames, iteration_id=iteration_id)
 
     @task
     def finish():
