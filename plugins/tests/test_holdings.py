@@ -60,7 +60,7 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
         electronic_holdings_id="asdfadsfadsf",
     )
     assert (
-        "Electronic Holdings /opt/airflow/migration/data/items/holdings-transformers.electronic.tsv does not exist"
+        f"Electronic Holdings /opt/airflow/migration/iterations/{mock_dag_run.run_id}/source_data/items/holdings-transformers.electronic.tsv does not exist"
         in caplog.text
     )
 
@@ -104,9 +104,9 @@ holdings = [
 ]
 
 
-def _mock_setup_holdings_json(results_dir: pathlib.Path, dag_run_id: str):
+def _mock_setup_holdings_json(iteration_dir: pathlib.Path):
     holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
+        iteration_dir / "results/folio_holdings_holdings-transformer.json"
     )
 
     with holdings_result_file.open("w+") as holdings_fo:
@@ -118,18 +118,17 @@ def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
 
 
-def test_add_identifiers_missing_hrid_file(mock_file_system):  # noqa
+def test_add_identifiers_missing_hrid_file(mock_file_system, mock_dag_run):  # noqa
     transformer = MockHoldingsTransformer()
-    dag_run_id = "manual_02022-09-16"
+
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
-    _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer)
+    _add_identifiers(str(mock_file_system[0]), mock_dag_run.run_id, transformer, None)
 
-    holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
-    )
+    holdings_result_file = results_dir / "folio_holdings_holdings-transformer.json"
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
 
@@ -145,24 +144,23 @@ def test_add_identifiers_missing_hrid_file(mock_file_system):  # noqa
     assert holdings_records[0]["_version"] == 1
 
 
-def test_add_identifiers_existing_hrid(mock_file_system):  # noqa
+def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
     transformer = MockHoldingsTransformer()
-    dag_run_id = "manual_02022-09-16T22:49:19"
+    dag_run_id = mock_dag_run.run_id
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
     # Mocks holdings_hrid file
-    holdings_hrid_file = results_dir / f"holdings-hrids-{dag_run_id}.json"
+    holdings_hrid_file = iteration_dir / "results/holdings-hrids.json"
 
     with holdings_hrid_file.open("w+") as fo:
         fo.write(json.dumps({"xyzabc-def-ha": 2}))
 
-    _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer)
+    _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer, None)
 
-    holdings_result_file = (
-        results_dir / f"folio_holdings_{dag_run_id}_holdings-transformer.json"
-    )
+    holdings_result_file = results_dir / "folio_holdings_holdings-transformer.json"
     with holdings_result_file.open() as holdings_fo:
         holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
 
@@ -170,13 +168,14 @@ def test_add_identifiers_existing_hrid(mock_file_system):  # noqa
     assert holdings_records[0]["hrid"] == "ah123345_3"
 
 
-def test_run_transformer(mock_file_system, caplog):  # noqa
-    dag_run_id = "manual_02022-09-17T00:49:19"
-    results_dir = mock_file_system[3]
+def test_run_transformer(mock_file_system, mock_dag_run, caplog):  # noqa
+    iteration_dir = mock_file_system[2]
 
-    _mock_setup_holdings_json(results_dir, dag_run_id)
+    _mock_setup_holdings_json(iteration_dir)
 
-    _run_transformer(MockHoldingsTransformer(), str(mock_file_system[0]), dag_run_id)
+    _run_transformer(
+        MockHoldingsTransformer(), str(mock_file_system[0]), mock_dag_run.run_id, None
+    )
 
     assert "Adding HRIDs and re-generated UUIDs for holdings" in caplog.text
 
@@ -189,12 +188,10 @@ def test_run_transformer(mock_file_system, caplog):  # noqa
 def test_consolidate_holdings_map(mock_file_system, mock_dag_run, caplog):  # noqa
     results_dir = mock_file_system[3]
 
-    holdings_id_map = results_dir / f"holdings_id_map_{mock_dag_run.run_id}.json"
+    holdings_id_map = results_dir / "holdings_id_map.json"
     holdings_id_map.touch()
 
-    holdings_id_map_all = (
-        results_dir / f"holdings_id_map_all_{mock_dag_run.run_id}.json"
-    )
+    holdings_id_map_all = results_dir / "holdings_id_map_all.json"
     holdings_id_map_all.write_text(
         json.dumps({"legacy_code": "abcded", "folio_id": "efcageh"})
     )
@@ -210,38 +207,61 @@ def test_update_mhlds_uuids_no_srs(mock_dag_run, caplog):  # noqa
     assert "No MHLD SRS records" in caplog.text
 
 
-def test_update_mhlds_uuids(mock_file_system, mock_dag_run, caplog):  # noqa
+def test_update_mhlds_uuids(
+    mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa  # noqa  # noqa
+):  # noqa
     results_dir = mock_file_system[3]
 
-    mhld_srs_mock_file = (
-        results_dir
-        / f"folio_srs_holdings_{mock_dag_run.run_id}_holdings-mhld-transformer.json"
-    )
+    mhld_srs_mock_file = results_dir / "folio_srs_holdings_mhld-transformer.json"
 
     with mhld_srs_mock_file.open("w+") as fo:
         for srs_rec in [
             {
+                "id": "",
                 "externalIdsHolder": {
                     "holdingsHrid": "ah1234566",
                     "holdingsId": "7e31c879-af1d-53fb-ba7a-60ad247a8dc4",
-                }
+                },
+                "parsedRecord": {
+                    "id": "",
+                    "content": {"fields": [{"004": "a1234566"}]},
+                },
+                "rawRecord": {"id": "", "content": {"fields": []}},
             },
             {
+                "id": "",
                 "externalIdsHolder": {
                     "holdingsHrid": "ah13430268",
                     "holdingsId": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
-                }
+                },
+                "parsedRecord": {
+                    "id": "",
+                    "content": {"fields": [{"004": "a13430268"}]},
+                },
+                "rawRecord": {"id": "", "content": {"fields": []}},
             },
         ]:
             fo.write(f"{json.dumps(srs_rec)}\n")
 
-    holdings_id_map_mock = results_dir / f"holdings_id_map_{mock_dag_run.run_id}.json"
+    holdings_id_map_mock = results_dir / "holdings_id_map.json"
 
     with holdings_id_map_mock.open("w+") as fo:
         for row in [
             {
                 "legacy_id": "ah1234566",
                 "folio_id": "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f",
+            }
+        ]:
+            fo.write(f"{json.dumps(row)}\n")
+
+    holdings_records_mock = results_dir / "folio_holdings_mhld-transformer.json"
+
+    with holdings_records_mock.open("w+") as fo:
+        for row in [
+            {
+                "id": "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f",
+                "hrid": "ah1234566",
+                "formerIds": ["a1234566"],
             }
         ]:
             fo.write(f"{json.dumps(row)}\n")
@@ -262,4 +282,4 @@ def test_update_mhlds_uuids(mock_file_system, mock_dag_run, caplog):  # noqa
     )
 
     # Tests for HRID not present in the mapping file
-    assert "UUID for MHLD ah13430268 not found in SRS record" in caplog.text
+    assert "UUID for MHLD a13430268 not found in SRS record" in caplog.text

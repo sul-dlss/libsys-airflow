@@ -23,10 +23,11 @@ def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) ->
             for line in fo.readlines():
                 holdings_record = json.loads(line)
                 holdings_keys[holdings_record["id"]] = {
-                    "formerId": holdings_record["formerIds"][0],
+                    "formerId": holdings_record["hrid"],
                     "counter": 0,
                 }
 
+    logging.info(f"{len(holdings_keys):,} total holdings keys")
     return holdings_keys
 
 
@@ -57,6 +58,11 @@ def _generate_item_notes(
             case "CIRCSTAFF":
                 note["staffOnly"] = True
                 note["itemNoteTypeId"] = item_note_types.get("Circ Staff")
+                notes.append(note)
+
+            case "HVSHELFLOC":
+                note["staffOnly"] = True
+                note["itemNoteTypeId"] = item_note_types.get("HVSHELFLOC")
                 notes.append(note)
 
             case "PUBLIC":
@@ -99,8 +105,9 @@ def _add_additional_info(**kwargs):
     items_pattern: str = kwargs["items_pattern"]
     tsv_notes_path = kwargs["tsv_notes_path"]
     folio_client = kwargs["folio_client"]
+    dag_run_id: str = kwargs["dag_run_id"]
 
-    results_dir = pathlib.Path(f"{airflow}/migration/results")
+    results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
 
     holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
@@ -112,14 +119,14 @@ def _add_additional_info(**kwargs):
 
     items = []
     for items_file in results_dir.glob(items_pattern):
-
+        logger.info(f"Processing {items_file}")
         with items_file.open() as fo:
             for line in fo.readlines():
                 item = json.loads(line)
                 holding = holdings_keys[item["holdingsRecordId"]]
                 former_id = holding["formerId"]
                 holding["counter"] = holding["counter"] + 1
-                hrid_prefix = former_id[:1] + "i" + former_id[1:]
+                hrid_prefix = former_id[:1] + "i" + former_id[2:]
                 item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
                 if "barcode" in item:
                     id_seed = item["barcode"]
@@ -137,6 +144,9 @@ def _add_additional_info(**kwargs):
                 if tsv_notes_path is not None:
                     _generate_item_notes(item, tsv_notes_df, item_note_types)
                 items.append(item)
+
+                if not len(items) % 1000:
+                    logger.info(f"Updated {len(items):,} item records")
 
         with open(items_file, "w+") as write_output:
             for item in items:
@@ -182,7 +192,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
     items_stem = kwargs["items_stem"]
 
     item_config = ItemsTransformer.TaskConfiguration(
-        name="items-transformer",
+        name="transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
@@ -206,8 +216,9 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     _add_additional_info(
         airflow=airflow,
-        holdings_pattern=f"folio_holdings_{dag.run_id}_holdings-*transformer.json",
-        items_pattern=f"folio_items_{dag.run_id}_items-*transformer.json",
+        dag_run_id=dag.run_id,
+        holdings_pattern="folio_holdings_*transformer.json",
+        items_pattern="folio_items_*transformer.json",
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),

@@ -18,11 +18,18 @@ from folio_migration_tools.library_configuration import LibraryConfiguration
 
 from plugins.folio.helpers import (
     get_bib_files,
-    move_marc_files,
-    process_marc,
     process_records,
-    transform_move_tsvs,
+    setup_dag_run_folders
 )
+
+from plugins.folio.helpers.marc import process as process_marc
+from plugins.folio.helpers.marc import (
+    marc_only,
+    move_marc_files,
+)
+
+from plugins.folio.helpers.tsv import transform_move_tsvs
+
 from plugins.folio.holdings import (
     consolidate_holdings_map,
     electronic_holdings,
@@ -39,18 +46,6 @@ from plugins.folio.instances import post_folio_instance_records, run_bibs_transf
 from plugins.folio.items import run_items_transformer, post_folio_items_records
 
 logger = logging.getLogger(__name__)
-
-
-def marc_only(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
-    tsv_files = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-files")
-    tsv_base = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-base")
-    all_next_task_id = kwargs.get("default_task")
-    marc_only_task_id = kwargs.get("marc_only_task")
-
-    if len(tsv_files) < 1 and tsv_base is None:
-        return marc_only_task_id
-    return all_next_task_id
 
 
 sul_config = LibraryConfiguration(
@@ -99,6 +94,11 @@ with DAG(
 
     bib_files_group = PythonOperator(
         task_id="bib-files-group", python_callable=get_bib_files
+    )
+
+    setup_migration_folders = PythonOperator(
+        task_id="setup-migration-folders",
+        python_callable=setup_dag_run_folders
     )
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
@@ -348,8 +348,9 @@ with DAG(
         task_id="ingest-srs-records",
         trigger_dag_id="add_marc_to_srs",
         conf={
-            "srs_filenames": ["folio_srs_instances_{{ dag_run.run_id }}_bibs-transformer.json",
-                              "folio_srs_holdings_{{ dag_run.run_id }}_holdings-mhld-transformer.json"]
+            "srs_filenames": ["folio_srs_instances_bibs-transformer.json",
+                              "folio_srs_holdings_mhld-transformer.json"],
+            "iteration_id": "{{ dag_run.run_id }}"
         },
     )
 
@@ -363,6 +364,6 @@ with DAG(
         task_id="finish_loading",
     )
 
-    bib_files_group >> move_transform_process >> marc_to_folio
+    bib_files_group >> setup_migration_folders >> move_transform_process >> marc_to_folio
     marc_to_folio >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]

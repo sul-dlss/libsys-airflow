@@ -167,7 +167,7 @@ def test_with_instance_error_file(
     airflow_path = mock_file_system[0]
     results_dir = mock_file_system[3]
 
-    error_file = results_dir / "errors-instance-storage-422-manual__2022-04-07.json"
+    error_file = results_dir / "errors-instance-storage-422.json"
 
     error_file.write_text(f"{json.dumps(instance_error_record)}\n")
 

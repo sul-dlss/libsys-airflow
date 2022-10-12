@@ -46,11 +46,15 @@ def _post_or_put_record(record: dict, endpoint: str, folio_client: FolioClient):
         logging.info(f"Updated {record['id']} to {folio_client.okapi_url}")
     elif put_result.status_code == 404:
         # Record not found in FOLIO, try creating with POST
-        post_result = requests.post(post_url, headers=folio_client.okapi_headers, json=record)
+        post_result = requests.post(
+            post_url, headers=folio_client.okapi_headers, json=record
+        )
         if post_result.status_code < 300:
             logging.info(f"Added {record['id']} to {folio_client.okapi_url}")
         else:
-            logging.error(f"Failed to POST {record['id']} to {folio_client.okapi_url} - {post_result.status_code}\n{post_result.text}")
+            logging.error(
+                f"Failed to POST {record['id']} to {folio_client.okapi_url} - {post_result.status_code}\n{post_result.text}"
+            )
     else:
         logging.error(
             f"Failed to PUT {record['id']} - {put_result.status_code}\n{put_result.text}"
@@ -61,14 +65,14 @@ def handle_record_errors(*args, **kwargs):
     dag = kwargs["dag_run"]
     base = kwargs["base"]
     endpoint = kwargs["endpoint"]
-    folio_client = kwargs['folio_client']
+    folio_client = kwargs["folio_client"]
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     airflow_path = pathlib.Path(airflow)
 
-    results_dir = airflow_path / "migration/results/"
+    results_dir = airflow_path / f"migration/iterations/{dag.run_id}/results"
 
-    pattern = f"errors-{base}-*-{dag.run_id}.json"
+    pattern = f"errors-{base}*.json"
 
     for error_file in results_dir.glob(pattern):
         logging.info(f"Processing error file {error_file} ")

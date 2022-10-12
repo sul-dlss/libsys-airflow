@@ -8,7 +8,7 @@ from airflow.models import Variable, DagRun
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.marc import post_marc_to_srs, remove_srs_json
+from plugins.folio.helpers.marc import post_marc_to_srs, remove_srs_json
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ def add_marc_to_srs():
         context = get_current_context()
         params = context.get("params")
         srs_filenames = params.get("srs_filenames")
+        iteration_id = params.get("iteration_id")
 
         """
         FOLIO needs to have a number of sul_admin_{N} superusers equal or greater than
@@ -53,9 +54,6 @@ def add_marc_to_srs():
         okapi_password = context.get("okapi_password", Variable.get("FOLIO_PASSWORD"))
         logger.info(f"Okapi username: {okapi_username}")
 
-        for srs_filename in srs_filenames:
-            logger.info(f"Starting ingestion of {srs_filename}")
-
         sul_config = LibraryConfiguration(
             okapi_url=Variable.get("OKAPI_URL"),
             tenant_id="sul",
@@ -65,22 +63,30 @@ def add_marc_to_srs():
             base_folder="/opt/airflow/migration",
             log_level_debug=True,
             folio_release="lotus",
-            iteration_identifier="",
+            iteration_identifier=iteration_id,
         )
 
-        posted_srs_files = post_marc_to_srs(
-            dag_run=context.get("dag_run"),
-            library_config=sul_config,
-            srs_files=srs_filenames,
-            MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 250),
-        )
+        posted_srs_files = []
+        for srs_file in srs_filenames:
+            logger.info(f"Starting ingestion of {srs_file}")
+            post_marc_to_srs(
+                dag_run=context.get("dag_run"),
+                library_config=sul_config,
+                srs_filename=srs_file,
+                iteration_id=iteration_id,
+                MAX_ENTITIES=Variable.get("MAX_SRS_ENTITIES", 250),
+            )
+            posted_srs_files.append(srs_file)
 
         return posted_srs_files
 
     @task
     def cleanup(srs_filenames):
+        context = get_current_context()
+        params = context.get("params")
+        iteration_id = params.get("iteration_id")
         logger.info(f"Removing SRS JSON {srs_filenames}")
-        remove_srs_json(srs_filenames=srs_filenames)
+        remove_srs_json(srs_filenames=srs_filenames, iteration_id=iteration_id)
 
     @task
     def finish():

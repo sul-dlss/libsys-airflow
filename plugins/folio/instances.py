@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
-    dates_df = pd.read_csv(tsv_dates, sep="\t", dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str})
+    dates_df = pd.read_csv(
+        tsv_dates,
+        sep="\t",
+        dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str},
+    )
     records = []
     with open(bibs_transformer.processor.results_file.name) as fo:
         for row in fo.readlines():
@@ -21,7 +25,9 @@ def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
             ckey = record["hrid"].removeprefix("a")
             matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
             if matched_row["CATALOGED_DATE"].values[0] != "0":
-                date_cat = datetime.strptime(matched_row["CATALOGED_DATE"].values[0], "%Y%m%d")
+                date_cat = datetime.strptime(
+                    matched_row["CATALOGED_DATE"].values[0], "%Y%m%d"
+                )
                 record["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
             records.append(record)
     with open(bibs_transformer.processor.results_file.name, "w+") as fo:
@@ -41,7 +47,7 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i: i + batch_size]
+        instance_batch = instance_records[i:i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(

@@ -72,14 +72,8 @@ class FOLIO(AppBuilderBaseView):
         markdown_path = pathlib.Path(f"{MIGRATION_HOME}/reports/{report_name}")
         raw_text = markdown_path.read_text()
         # Sets attribute to convert markdown in embedded HTML tags
-        final_mrkdown = raw_text.replace(
-            "<details>",
-            """<details markdown="block">"""
-        )
-        rendered = markdown.markdown(
-            final_mrkdown,
-            extensions=["tables", "md_in_html"]
-        )
+        final_mrkdown = raw_text.replace("<details>", """<details markdown="block">""")
+        rendered = markdown.markdown(final_mrkdown, extensions=["tables", "md_in_html"])
         return self.render_template("folio/report.html", content=rendered)
 
     @expose("/data_issues/<log_name>")

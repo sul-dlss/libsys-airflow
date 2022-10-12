@@ -22,8 +22,9 @@ def delete_archived_data(*args, **kwargs):
     """Delete archived JSON Instances, Items, and Holdings"""
     airflow = kwargs.get("airflow", "/opt/airflow")
     airflow_path = Path(airflow)
+    dag = kwargs["dag_run"]
 
-    archive_directory = airflow_path / "migration/archive"
+    archive_directory = airflow_path / f"migration/iterations/{dag.run_id}/archive"
 
     for artifact in archive_directory.glob("*.json"):
         modified = datetime.fromtimestamp(Path(artifact).stat().st_mtime)

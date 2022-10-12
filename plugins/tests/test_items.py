@@ -5,7 +5,7 @@ import pytest  # noqa
 import requests
 
 from pytest_mock import MockerFixture
-from plugins.tests.mocks import mock_file_system, MockFOLIOClient  # noqa
+from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
 
 from plugins.folio.items import (
@@ -79,8 +79,8 @@ items_recs = [
 
 
 def setup_items_holdings(
-    airflow_path,
     results_dir,
+    iteration_dir,
     items_recs=items_recs,
     items_notes=items_notes,
     holdings_recs=holdings_recs,
@@ -97,7 +97,7 @@ def setup_items_holdings(
         for rec in items_recs:
             fo.write(f"{json.dumps(rec)}\n")
 
-    data_prep = airflow_path / "migration/data_preparation/"
+    data_prep = iteration_dir / "data_preparation/"
 
     data_prep.mkdir(parents=True)
 
@@ -108,16 +108,18 @@ def setup_items_holdings(
     return items_path, items_notes_path
 
 
-def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
+def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type):  # noqa
     airflow_path = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    items_path, items_notes_path = setup_items_holdings(airflow_path, results_dir)
+    items_path, items_notes_path = setup_items_holdings(results_dir, iteration_dir)
 
     folio_client = MockFOLIOClient()
 
     _add_additional_info(
         airflow=str(airflow_path),
+        dag_run_id=mock_dag_run.run_id,
         holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
@@ -127,7 +129,7 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
     with items_path.open() as items_fo:
         new_items_recs = [json.loads(row) for row in items_fo.readlines()]
 
-    assert new_items_recs[0]["hrid"] == "ai23456_1"
+    assert new_items_recs[0]["hrid"] == "ai23456_1_1"
     assert new_items_recs[0]["id"] == "f644a96e-8bb0-5d99-897a-6b10589fb4da"
     assert new_items_recs[0]["_version"] == 1
     assert new_items_recs[0]["notes"][0]["staffOnly"] is False
@@ -141,7 +143,7 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
         new_items_recs[0]["notes"][1]["itemNoteTypeId"]
         == "e9f6de86-e564-4095-a61a-38c9e0e6b2fc"
     )
-    assert new_items_recs[1]["hrid"] == "ai9704208_1"
+    assert new_items_recs[1]["hrid"] == "ai9704208_1_1"
     assert new_items_recs[1]["notes"][0]["staffOnly"]
     assert (
         new_items_recs[1]["notes"][0]["itemNoteTypeId"]
@@ -151,21 +153,22 @@ def test_add_additional_info(mock_file_system, mock_item_note_type):  # noqa
 
 
 def test_add_additional_info_missing_barcode(
-    mock_file_system, mock_item_note_type  # noqa
+    mock_file_system, mock_dag_run, mock_item_note_type  # noqa
 ):
-    airflow_path = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
     items_recs[0].pop("barcode")
 
     items_path, items_notes_path = setup_items_holdings(
-        airflow_path, results_dir, items_recs
+        results_dir, iteration_dir, items_recs
     )
 
     folio_client = MockFOLIOClient()
 
     _add_additional_info(
         airflow=str(mock_file_system[0]),
+        dag_run_id=mock_dag_run.run_id,
         holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
@@ -175,8 +178,8 @@ def test_add_additional_info_missing_barcode(
     with items_path.open() as items_fo:
         new_items_recs = [json.loads(row) for row in items_fo.readlines()]
 
-    assert new_items_recs[0]["hrid"] == "ai23456_1"
-    assert new_items_recs[0]["id"] == "e2b679b5-bdb4-541f-a37d-04377be40847"
+    assert new_items_recs[0]["hrid"] == "ai23456_1_1"
+    assert new_items_recs[0]["id"] == "682512e6-1052-5ef5-ae50-410393f524d8"
     assert "barcode" not in new_items_recs[0]
 
 
