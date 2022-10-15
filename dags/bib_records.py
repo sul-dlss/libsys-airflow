@@ -30,6 +30,11 @@ from plugins.folio.helpers.marc import (
 
 from plugins.folio.helpers.tsv import transform_move_tsvs
 
+from plugins.folio.helpers.folio_ids import (
+    generate_holdings_identifiers,
+    generate_item_identifiers
+)
+
 from plugins.folio.holdings import (
     consolidate_holdings_map,
     electronic_holdings,
@@ -155,16 +160,6 @@ with DAG(
             },
         )
 
-        marc_only_convert_check = BranchPythonOperator(
-            task_id="marc-only-convert-check",
-            python_callable=marc_only,
-            op_kwargs={
-                "marc_stem": "{{ ti.xcom_pull('move-transform.move-marc-files') }}",  # noqa
-                "default_task": "marc21-and-tsv-to-folio.convert_tsv_to_folio_holdings",  # noqa
-                "marc_only_task": "marc21-and-tsv-to-folio.finished-conversion",  # noqa
-            },
-        )
-
         convert_tsv_to_folio_holdings = PythonOperator(
             task_id="convert_tsv_to_folio_holdings",
             python_callable=run_holdings_tranformer,
@@ -172,6 +167,31 @@ with DAG(
                 "library_config": sul_config,
                 "holdings_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
             },
+        )
+
+        convert_tsv_to_folio_items = PythonOperator(
+            task_id="convert_tsv_to_folio_items",
+            python_callable=run_items_transformer,
+            op_kwargs={
+                "library_config": sul_config,
+                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
+            },
+        )
+
+        finish_conversion = DummyOperator(
+            task_id="finished-conversion",
+            trigger_rule="none_failed_or_skipped",
+        )
+
+        convert_marc_to_folio_instances >> convert_tsv_to_folio_holdings
+        convert_tsv_to_folio_holdings >> convert_tsv_to_folio_items
+        convert_tsv_to_folio_items >> finish_conversion
+
+    with TaskGroup(group_id="mhlds-electronic-holdings") as mhlds_electronic_holdings:
+
+        start_additional_holdings = DummyOperator(
+            task_id="start-mhlds-electronic-holdings",
+            trigger_rule="none_failed_or_skipped",
         )
 
         convert_mhld_to_folio_holdings = PythonOperator(
@@ -194,28 +214,39 @@ with DAG(
             },
         )
 
-        finished_holdings = DummyOperator(
-            task_id="finished-holdings-conversion",
-            trigger_rule="none_failed_or_skipped",
+        finish_additional_holdings = DummyOperator(
+            task_id="finish-additional-holdings"
         )
 
-        convert_tsv_to_folio_items = PythonOperator(
-            task_id="convert_tsv_to_folio_items",
-            python_callable=run_items_transformer,
-            op_kwargs={
-                "library_config": sul_config,
-                "items_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
-            },
-        )
+        start_additional_holdings >> [convert_mhld_to_folio_holdings, generate_electronic_holdings] >> finish_additional_holdings
 
-        consolidate_holdings = PythonOperator(
-            task_id="consolidate-holdings-maps",
-            python_callable=consolidate_holdings_map,
+
+    with TaskGroup(group_id="update-hrids-identifiers") as update_hrids:
+
+        update_holdings_hrids = DummyOperator(
+            task_id="update-holdings-hrid"
         )
 
         update_mhlds_srs = PythonOperator(
             task_id="update-mhlds-srs-uuids",
             python_callable=update_mhlds_uuids
+        )
+
+        update_items = DummyOperator(
+            task_id="update-items"
+        )
+
+        finish_hrid_updates = DummyOperator(
+            task_id="finish-hrid-updates"
+        )
+
+        update_holdings_hrids >> [update_mhlds_srs, update_items] >> finish_hrid_updates
+
+
+    with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
+
+        start_records_to_valid_json = DummyOperator(
+            task_id="start-recs-to-valid-json"
         )
 
         convert_instances_valid_json = PythonOperator(
@@ -248,41 +279,11 @@ with DAG(
             },
         )
 
-        finish_conversion = DummyOperator(
-            task_id="finished-conversion",
-            trigger_rule="none_failed_or_skipped",
+        finished_json_conversion = DummyOperator(
+            task_id="finished-json-conversion"
         )
 
-        convert_marc_to_folio_instances >> marc_only_convert_check
-        (
-            convert_marc_to_folio_instances
-            >> convert_instances_valid_json
-            >> finish_conversion
-        )
-        (
-            convert_marc_to_folio_instances
-            >> marc_only_convert_check
-            >> [
-                convert_tsv_to_folio_holdings,
-                finish_conversion,
-            ]
-        )  # noqa
-        (
-            convert_tsv_to_folio_holdings
-            >> convert_mhld_to_folio_holdings
-            >> generate_electronic_holdings
-            >> consolidate_holdings
-            >> update_mhlds_srs
-            >> finished_holdings
-            >> convert_holdings_valid_json
-            >> finish_conversion
-        )
-        (
-            finished_holdings
-            >> convert_tsv_to_folio_items
-            >> convert_items_valid_json
-            >> finish_conversion
-        )
+        start_records_to_valid_json >> [convert_instances_valid_json, convert_holdings_valid_json, convert_items_valid_json] >> finished_json_conversion
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
 
@@ -365,5 +366,6 @@ with DAG(
     )
 
     bib_files_group >> setup_migration_folders >> move_transform_process >> marc_to_folio
-    marc_to_folio >> post_to_folio >> finish_loading
+    marc_to_folio >> mhlds_electronic_holdings >> update_hrids 
+    update_hrids >> records_valid_json >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]

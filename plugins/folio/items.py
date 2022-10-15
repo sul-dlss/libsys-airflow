@@ -109,7 +109,7 @@ def _add_additional_info(**kwargs):
 
     results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
 
-    holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
+    # holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
     if tsv_notes_path is not None:
         tsv_notes_path = pathlib.Path(tsv_notes_path)
@@ -123,22 +123,22 @@ def _add_additional_info(**kwargs):
         with items_file.open() as fo:
             for line in fo.readlines():
                 item = json.loads(line)
-                holding = holdings_keys[item["holdingsRecordId"]]
-                former_id = holding["formerId"]
-                holding["counter"] = holding["counter"] + 1
-                hrid_prefix = former_id[:1] + "i" + former_id[2:]
-                item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
-                if "barcode" in item:
-                    id_seed = item["barcode"]
-                else:
-                    id_seed = item["hrid"]
-                item["id"] = str(
-                    FolioUUID(
-                        folio_client.okapi_url,
-                        FOLIONamespaces.items,
-                        id_seed,
-                    )
-                )
+                # holding = holdings_keys[item["holdingsRecordId"]]
+                # former_id = holding["formerId"]
+                # holding["counter"] = holding["counter"] + 1
+                # hrid_prefix = former_id[:1] + "i" + former_id[2:]
+                # item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
+                # if "barcode" in item:
+                #     id_seed = item["barcode"]
+                # else:
+                #     id_seed = item["hrid"]
+                # item["id"] = str(
+                #     FolioUUID(
+                #         folio_client.okapi_url,
+                #         FOLIONamespaces.items,
+                #         id_seed,
+                #     )
+                # )
                 # To handle optimistic locking
                 item["_version"] = 1
                 if tsv_notes_path is not None:

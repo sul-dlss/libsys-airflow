@@ -13,8 +13,6 @@ from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
 )
 
-from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
-
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 from plugins.folio.helpers.tsv import update_items
 
@@ -30,7 +28,7 @@ def _run_transformer(transformer, airflow, dag_run_id, item_path):
 
     transformer.wrap_up()
 
-    _add_identifiers(airflow, dag_run_id, transformer, item_path)
+    #_add_identifiers(airflow, dag_run_id, transformer, item_path)
 
 
 def _add_identifiers(
@@ -186,7 +184,7 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="csv-transformer",
         migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="preserve001",
+        hrid_handling="default",
         files=[{"file_name": holdings_filepath.name, "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
@@ -268,7 +266,7 @@ def electronic_holdings(*args, **kwargs) -> str:
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="electronic-transformer",
         migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="preserve001",
+        hrid_handling="default",
         files=[{"file_name": filename, "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
