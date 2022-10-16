@@ -3,7 +3,7 @@ import logging
 import pathlib
 import re
 
-
+from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 from airflow.models import Variable
 
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
@@ -182,7 +182,7 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_filepath = library_config.base_folder / f"iterations/{dag.run_id}/source_data/items/{holdings_stem}.tsv"
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="csv-transformer",
+        name="tsv-transformer",
         migration_task_type="HoldingsCsvTransformer",
         hrid_handling="default",
         files=[{"file_name": holdings_filepath.name, "suppress": False}],
@@ -285,19 +285,6 @@ def electronic_holdings(*args, **kwargs) -> str:
     _run_transformer(holdings_transformer, airflow, dag.run_id, full_path)
 
     logger.info(f"Finished transforming electronic {filename} to FOLIO holdings")
-
-
-def consolidate_holdings_map(*args, **kwargs):
-    dag = kwargs["dag_run"]
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    last_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map.json"
-    )
-    all_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all.json"
-    )
-    all_id_map.rename(last_id_map)
-    logger.info(f"Finished moving {all_id_map} to {last_id_map}")
 
 
 def update_mhlds_uuids(*args, **kwargs):

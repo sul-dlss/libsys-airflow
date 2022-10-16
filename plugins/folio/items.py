@@ -13,23 +13,6 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
-def _generate_holdings_keys(results_dir: pathlib.Path, holdings_pattern: str) -> dict:
-    """Initializes Holdings lookup and counter for hrid generation"""
-    holdings_keys = {}
-
-    for holdings_file in results_dir.glob(holdings_pattern):
-        logger.info(f"Loading holdings file {holdings_file.name}")
-        with holdings_file.open() as fo:
-            for line in fo.readlines():
-                holdings_record = json.loads(line)
-                holdings_keys[holdings_record["id"]] = {
-                    "formerId": holdings_record["hrid"],
-                    "counter": 0,
-                }
-
-    logging.info(f"{len(holdings_keys):,} total holdings keys")
-    return holdings_keys
-
 
 def _generate_item_notes(
     item, tsv_note_df: pd.DataFrame, item_note_types: dict
@@ -101,15 +84,12 @@ def _add_additional_info(**kwargs):
     """Adds an HRID based on Holdings formerIds and generates notes from
     tsv files"""
     airflow: str = kwargs["airflow"]
-    holdings_pattern: str = kwargs["holdings_pattern"]
     items_pattern: str = kwargs["items_pattern"]
     tsv_notes_path = kwargs["tsv_notes_path"]
     folio_client = kwargs["folio_client"]
     dag_run_id: str = kwargs["dag_run_id"]
 
     results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
-
-    # holdings_keys = _generate_holdings_keys(results_dir, holdings_pattern)
 
     if tsv_notes_path is not None:
         tsv_notes_path = pathlib.Path(tsv_notes_path)
@@ -123,23 +103,6 @@ def _add_additional_info(**kwargs):
         with items_file.open() as fo:
             for line in fo.readlines():
                 item = json.loads(line)
-                # holding = holdings_keys[item["holdingsRecordId"]]
-                # former_id = holding["formerId"]
-                # holding["counter"] = holding["counter"] + 1
-                # hrid_prefix = former_id[:1] + "i" + former_id[2:]
-                # item["hrid"] = f"{hrid_prefix}_{holding['counter']}"
-                # if "barcode" in item:
-                #     id_seed = item["barcode"]
-                # else:
-                #     id_seed = item["hrid"]
-                # item["id"] = str(
-                #     FolioUUID(
-                #         folio_client.okapi_url,
-                #         FOLIONamespaces.items,
-                #         id_seed,
-                #     )
-                # )
-                # To handle optimistic locking
                 item["_version"] = 1
                 if tsv_notes_path is not None:
                     _generate_item_notes(item, tsv_notes_df, item_note_types)
@@ -217,7 +180,6 @@ def run_items_transformer(*args, **kwargs) -> bool:
     _add_additional_info(
         airflow=airflow,
         dag_run_id=dag.run_id,
-        holdings_pattern="folio_holdings_*transformer.json",
         items_pattern="folio_items_*transformer.json",
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
