@@ -3,7 +3,7 @@ import logging
 import pathlib
 import re
 
-
+from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 from airflow.models import Variable
 
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
@@ -13,10 +13,7 @@ from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
 )
 
-from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
-
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
-from plugins.folio.helpers.tsv import update_items
 
 logger = logging.getLogger(__name__)
 
@@ -29,83 +26,6 @@ def _run_transformer(transformer, airflow, dag_run_id, item_path):
     transformer.do_work()
 
     transformer.wrap_up()
-
-    _add_identifiers(airflow, dag_run_id, transformer, item_path)
-
-
-def _add_identifiers(
-    airflow: str,
-    dag_run_id: str,
-    holdings_transformer: HoldingsCsvTransformer,
-    item_path: pathlib.Path
-):
-    # Creates/opens file with Instance IDs
-    instance_holdings_path = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings-hrids.json"
-    )
-
-    if instance_holdings_path.exists():
-        with instance_holdings_path.open() as fo:
-            instance_keys = json.load(fo)
-    else:
-        instance_keys = {}
-
-    holdings_path = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag_run_id}/results/folio_holdings_{holdings_transformer.task_configuration.name}.json"
-    )
-
-    with holdings_path.open() as fo:
-        holdings_records = [json.loads(row) for row in fo.readlines()]
-
-    logger.info("Adding HRIDs and re-generated UUIDs for holdings")
-
-    for record in holdings_records:
-        instance_uuid = record["instanceId"]
-        former_id = record["formerIds"][0]
-        # Adds an "h" for holdings prefix
-        if former_id.startswith("a"):
-            former_id = former_id[:1] + "h" + former_id[1:]
-        if instance_uuid in instance_keys:
-            new_count = instance_keys[instance_uuid] + 1
-        else:
-            new_count = 1
-        instance_keys[instance_uuid] = new_count
-        record["hrid"] = f"{former_id}_{new_count}"
-
-        # Adds Determinstic UUID based on CATKEY and HRID
-        record["id"] = str(
-            FolioUUID(
-                holdings_transformer.folio_client.okapi_url,
-                FOLIONamespaces.holdings,
-                f"{record['formerIds'][0]}{record['hrid']}",
-            )
-        )
-
-        # To handle optimistic locking
-        record["_version"] = 1
-
-    with instance_holdings_path.open("w+") as fo:
-        json.dump(instance_keys, fo)
-
-    with holdings_path.open("w+") as fo:
-        for holding in holdings_records:
-            fo.write(f"{json.dumps(holding)}\n")
-
-    # Saves holdings id maps to backup
-    with open(
-        f"{airflow}/migration/iterations/{dag_run_id}/results/holdings_id_map_all.json",
-        "a+",
-    ) as all_id_map:
-        for holding in holdings_records:
-            lookup = {"legacy_id": holding["hrid"], "folio_id": holding["id"]}
-            all_id_map.write(f"{json.dumps(lookup)}\n")
-
-    # Updates items tsv replacing CATKEY values with new holdings HRIDs
-    if item_path:
-        update_items(
-            item_path,
-            holdings_records,
-            holdings_transformer.mapper.location_mapping.regular_mappings)
 
 
 def _extract_catkey(mhld_record: list) -> str:
@@ -184,9 +104,9 @@ def run_holdings_tranformer(*args, **kwargs):
     holdings_filepath = library_config.base_folder / f"iterations/{dag.run_id}/source_data/items/{holdings_stem}.tsv"
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
-        name="csv-transformer",
+        name="tsv-transformer",
         migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="preserve001",
+        hrid_handling="default",
         files=[{"file_name": holdings_filepath.name, "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
@@ -268,7 +188,7 @@ def electronic_holdings(*args, **kwargs) -> str:
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="electronic-transformer",
         migration_task_type="HoldingsCsvTransformer",
-        hrid_handling="preserve001",
+        hrid_handling="default",
         files=[{"file_name": filename, "suppress": False}],
         create_source_records=False,
         call_number_type_map_file_name="call_number_type_mapping.tsv",
@@ -287,19 +207,6 @@ def electronic_holdings(*args, **kwargs) -> str:
     _run_transformer(holdings_transformer, airflow, dag.run_id, full_path)
 
     logger.info(f"Finished transforming electronic {filename} to FOLIO holdings")
-
-
-def consolidate_holdings_map(*args, **kwargs):
-    dag = kwargs["dag_run"]
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    last_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map.json"
-    )
-    all_id_map = pathlib.Path(
-        f"{airflow}/migration/iterations/{dag.run_id}/results/holdings_id_map_all.json"
-    )
-    all_id_map.rename(last_id_map)
-    logger.info(f"Finished moving {all_id_map} to {last_id_map}")
 
 
 def update_mhlds_uuids(*args, **kwargs):
