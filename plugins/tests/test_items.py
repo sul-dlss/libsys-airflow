@@ -120,7 +120,6 @@ def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type
     _add_additional_info(
         airflow=str(airflow_path),
         dag_run_id=mock_dag_run.run_id,
-        holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
         folio_client=folio_client,
@@ -129,8 +128,6 @@ def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type
     with items_path.open() as items_fo:
         new_items_recs = [json.loads(row) for row in items_fo.readlines()]
 
-    assert new_items_recs[0]["hrid"] == "ai23456_1_1"
-    assert new_items_recs[0]["id"] == "f644a96e-8bb0-5d99-897a-6b10589fb4da"
     assert new_items_recs[0]["_version"] == 1
     assert new_items_recs[0]["notes"][0]["staffOnly"] is False
     assert new_items_recs[0]["notes"][0]["note"] == "available for checkout"
@@ -143,7 +140,7 @@ def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type
         new_items_recs[0]["notes"][1]["itemNoteTypeId"]
         == "e9f6de86-e564-4095-a61a-38c9e0e6b2fc"
     )
-    assert new_items_recs[1]["hrid"] == "ai9704208_1_1"
+
     assert new_items_recs[1]["notes"][0]["staffOnly"]
     assert (
         new_items_recs[1]["notes"][0]["itemNoteTypeId"]
@@ -178,8 +175,8 @@ def test_add_additional_info_missing_barcode(
     with items_path.open() as items_fo:
         new_items_recs = [json.loads(row) for row in items_fo.readlines()]
 
-    assert new_items_recs[0]["hrid"] == "ai23456_1_1"
-    assert new_items_recs[0]["id"] == "682512e6-1052-5ef5-ae50-410393f524d8"
+    assert new_items_recs[0]["_version"] == 1
+
     assert "barcode" not in new_items_recs[0]
 
 

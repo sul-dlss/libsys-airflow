@@ -138,29 +138,3 @@ def transform_move_tsvs(*args, **kwargs):
         task_instance.xcom_push(key="tsv-notes", value=str(notes_path))
 
     return tsv_base.name
-
-
-def update_items(full_path: pathlib.Path, holdings: list, mapping: list):
-    id_location_library = {}
-    for row in mapping:
-        info = {"HOMELOCATION": row["HOMELOCATION"], "LIBRARY": row["LIBRARY"]}
-        if row["folio_id"] in id_location_library:
-            id_location_library[row["folio_id"]].append(info)
-        else:
-            id_location_library[row["folio_id"]] = [
-                info,
-            ]
-    items_df = pd.read_csv(full_path, sep="\t")
-    new_items_df = pd.DataFrame()
-    for holding in holdings:
-        location_info = id_location_library[holding["permanentLocationId"]]
-        for info in location_info:
-            matched_items = items_df.loc[
-                (items_df["CATKEY"] == holding["formerIds"][0])
-                & (items_df["HOMELOCATION"] == info["HOMELOCATION"])
-                & (items_df["LIBRARY"] == info["LIBRARY"])
-            ].copy()
-            if len(matched_items) > 0:
-                matched_items["CATKEY"] = holding["hrid"]
-                new_items_df = pd.concat([new_items_df, matched_items])
-    new_items_df.to_csv(full_path, sep="\t", index=False)

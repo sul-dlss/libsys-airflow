@@ -5,13 +5,10 @@ import pytest  # noqa
 import pydantic
 
 from plugins.folio.holdings import (
-    _add_identifiers,
-    consolidate_holdings_map,
     electronic_holdings,
     post_folio_holding_records,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
-    _run_transformer,
     update_mhlds_uuids,
 )
 
@@ -116,89 +113,6 @@ def _mock_setup_holdings_json(iteration_dir: pathlib.Path):
 
 def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
-
-
-def test_add_identifiers_missing_hrid_file(mock_file_system, mock_dag_run):  # noqa
-    transformer = MockHoldingsTransformer()
-
-    iteration_dir = mock_file_system[2]
-    results_dir = mock_file_system[3]
-
-    _mock_setup_holdings_json(iteration_dir)
-
-    _add_identifiers(str(mock_file_system[0]), mock_dag_run.run_id, transformer, None)
-
-    holdings_result_file = results_dir / "folio_holdings_holdings-transformer.json"
-    with holdings_result_file.open() as holdings_fo:
-        holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
-
-    # Test UUIDS
-    assert holdings_records[0]["id"] == "3000ae83-e7ee-5e3c-ab0c-7a931a23a393"
-    assert holdings_records[1]["id"] == "67360f4a-fb55-5c78-ad11-585e1a6c6aa4"
-
-    # Test HRIDs
-    assert holdings_records[0]["hrid"] == "ah123345_1"
-    assert holdings_records[1]["hrid"] == "ah123345_2"
-
-    # Test _version
-    assert holdings_records[0]["_version"] == 1
-
-
-def test_add_identifiers_existing_hrid(mock_file_system, mock_dag_run):  # noqa
-    transformer = MockHoldingsTransformer()
-    dag_run_id = mock_dag_run.run_id
-    iteration_dir = mock_file_system[2]
-    results_dir = mock_file_system[3]
-
-    _mock_setup_holdings_json(iteration_dir)
-
-    # Mocks holdings_hrid file
-    holdings_hrid_file = iteration_dir / "results/holdings-hrids.json"
-
-    with holdings_hrid_file.open("w+") as fo:
-        fo.write(json.dumps({"xyzabc-def-ha": 2}))
-
-    _add_identifiers(str(mock_file_system[0]), dag_run_id, transformer, None)
-
-    holdings_result_file = results_dir / "folio_holdings_holdings-transformer.json"
-    with holdings_result_file.open() as holdings_fo:
-        holdings_records = [json.loads(line) for line in holdings_fo.readlines()]
-
-    # Test HRIDs
-    assert holdings_records[0]["hrid"] == "ah123345_3"
-
-
-def test_run_transformer(mock_file_system, mock_dag_run, caplog):  # noqa
-    iteration_dir = mock_file_system[2]
-
-    _mock_setup_holdings_json(iteration_dir)
-
-    _run_transformer(
-        MockHoldingsTransformer(), str(mock_file_system[0]), mock_dag_run.run_id, None
-    )
-
-    assert "Adding HRIDs and re-generated UUIDs for holdings" in caplog.text
-
-    # Removes file artifact created by setup_data_logging's data_issue_file_handler
-    empty_results = pathlib.Path("results")
-    if empty_results.exists():
-        empty_results.unlink()
-
-
-def test_consolidate_holdings_map(mock_file_system, mock_dag_run, caplog):  # noqa
-    results_dir = mock_file_system[3]
-
-    holdings_id_map = results_dir / "holdings_id_map.json"
-    holdings_id_map.touch()
-
-    holdings_id_map_all = results_dir / "holdings_id_map_all.json"
-    holdings_id_map_all.write_text(
-        json.dumps({"legacy_code": "abcded", "folio_id": "efcageh"})
-    )
-
-    consolidate_holdings_map(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
-
-    assert f"Finished moving {holdings_id_map_all} to {holdings_id_map}" in caplog.text
 
 
 def test_update_mhlds_uuids_no_srs(mock_dag_run, caplog):  # noqa

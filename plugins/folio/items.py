@@ -6,12 +6,10 @@ import pandas as pd
 import requests
 
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
-from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
-
 
 
 def _generate_item_notes(
