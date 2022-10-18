@@ -2,6 +2,8 @@ import json
 import logging
 import pathlib
 
+from csv import DictReader
+
 from airflow.models import Variable
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 
@@ -20,6 +22,44 @@ def _generate_instance_map(instance_path: pathlib.Path) -> dict:
             instance_map[instance["id"]] = {"hrid": instance["hrid"], "holdings": []}
 
     return instance_map
+
+
+def _generate_barcode_call_number_map(tsv_path: pathlib.Path) -> dict:
+    """
+    Generates a dict of item barcodes to holdings call numbers
+    """
+    barcode_call_number_map = {}
+    with tsv_path.open() as fo:
+        dict_reader = DictReader(fo, delimiter="\t")
+        for row in dict_reader:
+            barcode_call_number_map[row["BARCODE"]] = row["BASE_CALL_NUMBER"]
+
+    return barcode_call_number_map
+
+
+def _lookup_holdings_uuid(
+    barcode_call_number_map: dict, holdings_map: dict, barcode: str
+) -> str:
+    """
+    Does a lookup to retrieve the call numbers for an item's barcode
+    in order to extract the correct holdings uuid
+    """
+    # Creates a dict of call numbers to holdings uuid
+    call_number_holdings = {}
+    for uuid, info in holdings_map.items():
+        call_number_holdings[info["call_number"]] = uuid
+    item_call_number = barcode_call_number_map[barcode]
+    return call_number_holdings[item_call_number]
+
+
+def _update_holdings_map(mapping, hrid, uuid, holding) -> None:
+    if len(mapping) < 1:
+        return
+    info = {"hrid": hrid, "call_number": holding["callNumber"], "items": []}
+    if holding["id"] in mapping:
+        mapping[holding["id"]][uuid] = info
+    else:
+        mapping[holding["id"]] = {uuid: info}
 
 
 def _update_holding_ids(
@@ -48,12 +88,7 @@ def _update_holding_ids(
             new_holdings_id = str(
                 FolioUUID(okapi_url, FOLIONamespaces.holdings, holdings_hrid)
             )
-            if len(holdings_map) > 0:
-                holdings_map[holding["id"]] = {
-                    "new": new_holdings_id,
-                    "hrid": holdings_hrid,
-                    "items": [],
-                }
+            _update_holdings_map(holdings_map, holdings_hrid, new_holdings_id, holding)
             holding["id"] = new_holdings_id
             # For optimistic locking handling
             holding["_version"] = 1
@@ -112,8 +147,18 @@ def generate_item_identifiers(**kwargs) -> None:
     """
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
-    results_dir = pathlib.Path(airflow) / f"migration/iterations/{dag.run_id}/results/"
+    task_instance = kwargs["task_instance"]
+    iteration_dir = pathlib.Path(airflow) / f"migration/iterations/{dag.run_id}/"
+    results_dir = iteration_dir / "results"
     okapi_url = Variable.get("OKAPI_URL")
+
+    tsv_filename = task_instance.xcom_pull(
+        task_ids="bib-files-group", key="tsv-base"
+    ).split("/")[-1]
+
+    items_lookup = _generate_barcode_call_number_map(
+        iteration_dir / f"source_data/items/{tsv_filename}"
+    )
 
     items_path = results_dir / "folio_items_transformer.json"
 
@@ -123,15 +168,24 @@ def generate_item_identifiers(**kwargs) -> None:
     with (results_dir / "holdings-items-map.json").open() as fo:
         holdings_map = json.load(fo)
 
+    logger.info(f"Start updating identifiers for {len(items):,} items")
     with items_path.open("w+") as fo:
         for i, item in enumerate(items):
-            holding_id = item["holdingsRecordId"]
-            current_holding = holdings_map[holding_id]
+            original_holding_id = item["holdingsRecordId"]
+            if len(holdings_map[original_holding_id]) == 1:
+                # Only one holding exists so use
+                holding_uuid = list(holdings_map[original_holding_id].keys())[0]
+            else:
+                # Retrieves the new Holding's UUID based on call number
+                holding_uuid = _lookup_holdings_uuid(
+                    items_lookup, holdings_map[original_holding_id], item["barcode"]
+                )
+            current_holding = holdings_map[original_holding_id][holding_uuid]
             holdings_hrid = current_holding["hrid"]
             current_count = len(current_holding["items"])
             item_hrid = f"{holdings_hrid[:1]}i{holdings_hrid[2:]}_{current_count + 1}"
             item["hrid"] = item_hrid
-            item["holdingsRecordId"] = current_holding["new"]
+            item["holdingsRecordId"] = holding_uuid
             item_uuid = str(FolioUUID(okapi_url, FOLIONamespaces.items, item_hrid))
             item["id"] = item_uuid
             current_holding["items"].append(item_uuid)
