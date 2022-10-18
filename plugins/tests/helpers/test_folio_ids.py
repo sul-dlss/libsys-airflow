@@ -1,8 +1,11 @@
 import json
 
+import pydantic
+
 from plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
     generate_item_identifiers,
+    _lookup_holdings_uuid,
 )
 
 from plugins.tests.test_holdings import holdings as mock_holding_records
@@ -63,6 +66,10 @@ def test_generate_holdings_identifiers(
     assert electronic_modified_holdings[0]["hrid"] == "ah123345_3"
 
 
+class MockTaskInstance(pydantic.BaseModel):
+    xcom_pull = lambda *args, **kwargs: "ckey_0001.tsv"  # noqa
+
+
 def test_generate_item_identifiers(
     mock_file_system, mock_dag_run, mock_okapi_variable  # noqa
 ):
@@ -76,9 +83,11 @@ def test_generate_item_identifiers(
             json.dumps(
                 {
                     "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3": {
-                        "hrid": "ah650005_1",
-                        "items": [],
-                        "new": "1df5a25b-2b80-59a3-824a-1ab8f983cfaf",
+                        "1df5a25b-2b80-59a3-824a-1ab8f983cfaf": {
+                            "hrid": "ah650005_1",
+                            "items": [],
+                            "call_number": "B3212 .Z7 A12",
+                        },
                     }
                 }
             )
@@ -98,7 +107,14 @@ def test_generate_item_identifiers(
         ]:
             fo.write(f"{json.dumps(item)}\n")
 
-    generate_item_identifiers(airflow=airflow, dag_run=mock_dag_run)
+    mock_items_tsv_filepath = results_dir.parent / "source_data/items/ckey_0001.tsv"
+
+    with mock_items_tsv_filepath.open("w+") as fo:
+        fo.write("BARCODE\tBASE_CALL_NUMBER\n36105226756356\tB3212 .Z7 A12")
+
+    generate_item_identifiers(
+        airflow=airflow, dag_run=mock_dag_run, task_instance=MockTaskInstance()
+    )
 
     with mock_items_filepath.open() as fo:
         mock_modified_items = [json.loads(line) for line in fo.readlines()]
@@ -114,3 +130,24 @@ def test_generate_item_identifiers(
         == "1df5a25b-2b80-59a3-824a-1ab8f983cfaf"
     )
     assert mock_modified_items[1]["hrid"] == "ai650005_1_2"
+
+
+def test_lookup_holdings_uuid():
+    barcode_callnumber_map = {
+        "36105080793552": "DA958.O3 A3",
+        "36105080793560": "DA965 .C6 O18",
+        "36105070345157": "DA958.O5 A3",
+    }
+
+    holdings_map = {
+        "c4287ea6-324d-5de6-973c-50d8a773429d": {
+            "hrid": "ah660592_1",
+            "call_number": "DA965 .C6 O18",
+            "items": [],
+        }
+    }
+
+    holdings_uuid = _lookup_holdings_uuid(
+        barcode_callnumber_map, holdings_map, "36105080793560"
+    )
+    assert holdings_uuid == "c4287ea6-324d-5de6-973c-50d8a773429d"
