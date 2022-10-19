@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 full_text_check = re.compile(
-    r"(table of contents)|(abstract)|(description)|(sample text)", re.IGNORECASE
+    r"(table of contents|abstract|description|sample text)", re.IGNORECASE
 )
 
 vendor_id_re = re.compile(r"\w{2,2}4")
