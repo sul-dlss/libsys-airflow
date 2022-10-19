@@ -15,19 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 full_text_check = re.compile(
-    r"(table of contents|abstract|description|sample text)", re.IGNORECASE
+    r"(table of contents)|(abstract)|(description)|(sample text)", re.IGNORECASE
 )
+
 vendor_id_re = re.compile(r"\w{2,2}4")
 
 
 def _add_electronic_holdings(field856: pymarc.Field) -> bool:
-    if field856.indicator2.startswith("1"):
+    if field856.indicator2 in ["0", "1"]:
         subfield_z = field856.get_subfields("z")
         subfield_3 = field856.get_subfields("3")
         subfield_all = " ".join(subfield_z + subfield_3)
-        if full_text_check.match(subfield_all):
+        if full_text_check.search(subfield_all):
             return False
-    return True
+        return True
+    return False
 
 
 def _extract_856s(**kwargs) -> list:
@@ -43,7 +45,7 @@ def _extract_856s(**kwargs) -> list:
     ]
     output = []
     for field856 in fields:
-        if not _add_electronic_holdings(field856):
+        if _add_electronic_holdings(field856) is False:
             continue
         row = {}
         for field in properties_names:

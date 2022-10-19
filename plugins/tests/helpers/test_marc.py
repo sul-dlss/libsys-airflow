@@ -103,6 +103,17 @@ def test_add_electronic_holdings_skip():
     assert _add_electronic_holdings(skip_856_field) is False
 
 
+def test_add_electronic_holdings_skip_multiple_fields():
+    skip_856_field = Field(
+        tag="856",
+        indicators=["0", "1"],
+        subfields=["z", "Online Abstract from PCI available",
+                   "3", "More information",
+                   "u", "http://example.com/"],
+    )
+    assert _add_electronic_holdings(skip_856_field) is False
+
+
 def test_add_electronic_holdings():
     field_856 = Field(
         tag="856", indicators=["0", "0"], subfields=["u", "http://example.com/"]
@@ -137,7 +148,7 @@ def test_extract_856s():
         ),
         Field(
             tag="856",
-            indicators=["0", "8"],
+            indicators=["0", "0"],
             subfields=[
                 "u",
                 "http://doi.org/34456",
@@ -151,6 +162,11 @@ def test_extract_856s():
             tag="856",
             indicators=["0", "1"],
             subfields=["u", "https://example.doi.org/4566", "3", "sample text"],
+        ),
+        Field(
+            tag="856",
+            indicators=["0", "8"],
+            subfields=["u", "https://example.doi.org/45668"],
         ),
     ]
     output = _extract_856s(catkey=catkey, fields=all856_fields, library="SUL")
