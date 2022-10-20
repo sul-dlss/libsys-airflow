@@ -8,9 +8,6 @@ import pymarc
 
 from pathlib import Path
 
-from airflow.models import Variable
-
-from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
 
@@ -20,66 +17,70 @@ logger = logging.getLogger(__name__)
 full_text_check = re.compile(
     r"(table of contents|abstract|description|sample text)", re.IGNORECASE
 )
+
 vendor_id_re = re.compile(r"\w{2,2}4")
 
 
 def _add_electronic_holdings(field856: pymarc.Field) -> bool:
-    if field856.indicator2.startswith("1"):
+    if field856.indicator2 in ["0", "1"]:
         subfield_z = field856.get_subfields("z")
         subfield_3 = field856.get_subfields("3")
         subfield_all = " ".join(subfield_z + subfield_3)
-        if full_text_check.match(subfield_all):
+        if full_text_check.search(subfield_all):
             return False
-    return True
+        return True
+    return False
 
 
-def _extract_856s(catkey: str, fields: list, relationships: dict) -> list:
+def _extract_856s(**kwargs) -> list:
+    catkey = kwargs["catkey"]
+    fields = kwargs["fields"]
+    library = kwargs["library"]
+
     properties_names = [
         "CATKEY",
         "HOMELOCATION",
         "LIBRARY",
-        "LINK_TEXT",
         "MAT_SPEC",
-        "PUBLIC_NOTE",
-        "RELATIONSHIP",
-        "URI",
-        "VENDOR_CODE",
-        "NOTE",
     ]
     output = []
     for field856 in fields:
-        if not _add_electronic_holdings(field856):
+        if _add_electronic_holdings(field856) is False:
             continue
         row = {}
         for field in properties_names:
             row[field] = None
         row["CATKEY"] = catkey
-        row["URI"] = "".join(field856.get_subfields("u"))
-        if row["URI"].startswith("https://purl.stanford"):
-            row["HOMELOCATION"] = "SUL-SDR"
+        uri = "".join(field856.get_subfields("u"))
+
+        if uri.startswith("https://purl.stanford"):
             row["LIBRARY"] = "SUL-SDR"
         else:
-            row["HOMELOCATION"] = "INTERNET"
-            row["LIBRARY"] = "SUL"
+            row["LIBRARY"] = library
+
+        row["HOMELOCATION"] = "INTERNET"
+
         material_type = field856.get_subfields("3")
         if len(material_type) > 0:
             row["MAT_SPEC"] = " ".join(material_type)
-        if link_text := field856.get_subfields("y"):
-            row["LINK_TEXT"] = " ".join(link_text)
-        if public_note := field856.get_subfields("z"):
-            row["PUBLIC_NOTE"] = " ".join(public_note)
-        if all_x_subfields := field856.get_subfields("x"):
-            # Checks second to last x for vendor code
-            if len(all_x_subfields) >= 2 and vendor_id_re.search(all_x_subfields[-2]):
-                row["VENDOR_CODE"] = all_x_subfields.pop(-2)
-            # Adds remaining x subfield values to note
-            row["NOTE"] = "|".join(all_x_subfields)
-        if field856.indicator2 in relationships:
-            row["RELATIONSHIP"] = relationships[field856.indicator2]
-        else:
-            row["RELATIONSHIP"] = relationships["_"]
         output.append(row)
     return output
+
+
+def _get_library(fields596: list) -> str:
+    # Default is SUL library
+    library = "SUL"
+    if len(fields596) < 1:
+        return library
+    # Use first 596 field
+    subfield_a = "".join(fields596[0].get_subfields("a"))
+    if "24" in subfield_a:
+        library = "LAW"
+    elif "25" in subfield_a or "27" in subfield_a:
+        library = "HOOVER"
+    elif "28" in subfield_a:
+        library = "BUSINESS"
+    return library
 
 
 def _move_001_to_035(record: pymarc.Record) -> str:
@@ -99,30 +100,6 @@ def _move_001_to_035(record: pymarc.Record) -> str:
             record.remove_field(field001)
 
     return catkey
-
-
-def _query_for_relationships(folio_client=None) -> dict:
-    if folio_client is None:
-        folio_client = FolioClient(
-            Variable.get("OKAPI_URL"),
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
-        )
-
-    relationships = {}
-    for row in folio_client.electronic_access_relationships:
-        if row["name"] == "Resource":
-            relationships["0"] = row["id"]
-        if row["name"] == "Version of resource":
-            relationships["1"] = row["id"]
-        if row["name"] == "Related resource":
-            relationships["2"] = row["id"]
-        if row["name"] == "No display constant generated":
-            relationships["8"] = row["id"]
-        if row["name"] == "No information provided":
-            relationships["_"] = row["id"]
-    return relationships
 
 
 def marc_only(*args, **kwargs):
@@ -203,14 +180,15 @@ def process(*args, **kwargs):
     )
     marc_reader = pymarc.MARCReader(marc_path.read_bytes())
 
-    relationship_ids = _query_for_relationships(folio_client=kwargs.get("folio_client"))
-
     marc_records = []
     electronic_holdings = []
     for record in marc_reader:
         catkey = _move_001_to_035(record)
+        library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
-            _extract_856s(catkey, record.get_fields("856"), relationship_ids)
+            _extract_856s(
+                catkey=catkey, fields=record.get_fields("856"), library=library
+            )
         )
         marc_records.append(record)
         count = len(marc_records)
@@ -228,7 +206,7 @@ def process(*args, **kwargs):
         marc_writer = pymarc.MARCWriter(fo)
         for i, record in enumerate(marc_records):
             marc_writer.write(record)
-            if not i % 10000:
+            if not i % 10_000 and i > 0:
                 logger.info(f"Writing record {i}")
 
 

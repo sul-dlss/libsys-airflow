@@ -8,11 +8,11 @@ from pymarc import Field, MARCWriter, Record
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     _extract_856s,
+    _get_library,
     marc_only,
     move_marc_files,
     _move_001_to_035,
     post_marc_to_srs,
-    _query_for_relationships,
     remove_srs_json,
 )
 
@@ -89,16 +89,6 @@ def srs_file(mock_file_system):  # noqa
     return srs_filepath
 
 
-class MockFolioClient(pydantic.BaseModel):
-    electronic_access_relationships = [
-        {"name": "Resource", "id": "db9092dbc9dd"},
-        {"name": "Version of resource", "id": "9cd0"},
-        {"name": "Related resource", "id": "4add"},
-        {"name": "No display constant generated", "id": "bae0"},
-        {"name": "No information provided", "id": "f50c90c9"},
-    ]
-
-
 class MockTaskInstance(pydantic.BaseModel):
     xcom_pull = mock_xcom_pull
     xcom_push = mock_xcom_push
@@ -109,6 +99,17 @@ def test_add_electronic_holdings_skip():
         tag="856",
         indicators=["0", "1"],
         subfields=["z", "table of contents", "u", "http://example.com/"],
+    )
+    assert _add_electronic_holdings(skip_856_field) is False
+
+
+def test_add_electronic_holdings_skip_multiple_fields():
+    skip_856_field = Field(
+        tag="856",
+        indicators=["0", "1"],
+        subfields=["z", "Online Abstract from PCI available",
+                   "3", "More information",
+                   "u", "http://example.com/"],
     )
     assert _add_electronic_holdings(skip_856_field) is False
 
@@ -147,7 +148,7 @@ def test_extract_856s():
         ),
         Field(
             tag="856",
-            indicators=["0", "8"],
+            indicators=["0", "0"],
             subfields=[
                 "u",
                 "http://doi.org/34456",
@@ -162,27 +163,19 @@ def test_extract_856s():
             indicators=["0", "1"],
             subfields=["u", "https://example.doi.org/4566", "3", "sample text"],
         ),
+        Field(
+            tag="856",
+            indicators=["0", "8"],
+            subfields=["u", "https://example.doi.org/45668"],
+        ),
     ]
-    output = _extract_856s(
-        catkey,
-        all856_fields,
-        {
-            "1": "3b430592-2e09-4b48-9a0c-0636d66b9fb3",
-            "_": "f50c90c9-bae0-4add-9cd0-db9092dbc9dd",
-        },
-    )
+    output = _extract_856s(catkey=catkey, fields=all856_fields, library="SUL")
     assert len(output) == 2
     assert output[0] == {
         "CATKEY": "34456",
-        "HOMELOCATION": "SUL-SDR",
+        "HOMELOCATION": "INTERNET",
         "LIBRARY": "SUL-SDR",
-        "LINK_TEXT": "Access on Campus Only",
         "MAT_SPEC": "Finding Aid",
-        "PUBLIC_NOTE": "Stanford Use Only Restricted",
-        "RELATIONSHIP": "3b430592-2e09-4b48-9a0c-0636d66b9fb3",
-        "URI": "https://purl.stanford.edu/123345",
-        "VENDOR_CODE": "cz4",
-        "NOTE": "purchased|Provider: Cambridge University Press",
     }
     assert output[1]["LIBRARY"].startswith("SUL")
     assert output[1]["HOMELOCATION"].startswith("INTERNET")
@@ -204,6 +197,35 @@ def test_marc_only():
     assert next_task.startswith("marc-only")
 
     messages = {}
+
+
+def test_get_library_default():
+    library = _get_library([])
+    assert library.startswith("SUL")
+
+
+def test_get_library_law():
+    fields = [Field(tag="596", subfields=["a", "24"])]
+    library = _get_library(fields)
+    assert library.startswith("LAW")
+
+
+def test_get_library_hoover():
+    fields_25 = [Field(tag="596", subfields=["a", "25 22"])]
+    library_hoover = _get_library(fields_25)
+    assert library_hoover.startswith("HOOVER")
+    fields_27 = [Field(tag="596", subfields=["a", "27 22"])]
+    library_hoover2 = _get_library(fields_27)
+    assert library_hoover2.startswith("HOOVER")
+
+
+def test_get_library_business():
+    fields = [
+        Field(tag="596", subfields=["a", "28"]),
+        Field(tag="596", subfields=["a", "28 22"]),
+    ]
+    library = _get_library(fields)
+    assert library.startswith("BUSINESS")
 
 
 def test_marc_only_with_tsv():
@@ -323,15 +345,6 @@ def test_post_marc_to_srs(
 
 def test_process_marc():
     assert process_marc
-
-
-def test_query_for_relationships():
-    relationships = _query_for_relationships(folio_client=MockFolioClient())
-    assert relationships["0"] == "db9092dbc9dd"
-    assert relationships["1"] == "9cd0"
-    assert relationships["2"] == "4add"
-    assert relationships["8"] == "bae0"
-    assert relationships["_"] == "f50c90c9"
 
 
 def test_remove_srs_json(srs_file, mock_file_system, mock_dag_run):  # noqa
