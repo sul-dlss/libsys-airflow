@@ -24,36 +24,38 @@ logger = logging.getLogger(__name__)
 
 
 def post_to_folio(*args, **kwargs):
-    pattern = "preceding_succeeding_titles-*.json"
-    results = kwargs["results_dir"]
+    airflow = kwargs.get("airflow", "/opt/airflow/")
+    context = get_current_context()
+    params = context.get("params")
+    iteration_id = params["iteration_id"]
     task_instance = kwargs["task_instance"]
     jwt = task_instance.xcom_pull(task_ids="folio_login")
+    preceding_succeeding_titles_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/preceding_succeeding_titles.json"
 
-    for file in Path(results).glob(pattern):
-        logger.info(f"opening {file}")
-        with open(file) as fo:
-            for obj in fo.readlines():
-                obj = json.loads(obj)
+    logger.info(f"Opening {preceding_succeeding_titles_path}")
+    with preceding_succeeding_titles_path.open() as fo:
+        for obj in fo.readlines():
+            obj = json.loads(obj)
 
-                logger.info(f"Posting {obj}")
-                result = post_to_okapi(
+            logger.info(f"Posting {obj}")
+            result = post_to_okapi(
+                token=jwt,
+                records=obj,
+                endpoint="/preceding-succeeding-titles",
+                payload_key=None,
+                **kwargs,
+            )
+
+            if "errors" in result:
+                logger.warn(
+                    f"{result['errors'][0]['message']} -- trying a PUT instead"
+                )
+                put_to_okapi(
                     token=jwt,
                     records=obj,
-                    endpoint="/preceding-succeeding-titles",
+                    endpoint=f"/preceding-succeeding-titles/{obj['id']}",
                     payload_key=None,
-                    **kwargs,
                 )
-
-                if "errors" in result:
-                    logger.warn(
-                        f"{result['errors'][0]['message']} -- trying a PUT instead"
-                    )
-                    put_to_okapi(
-                        token=jwt,
-                        records=obj,
-                        endpoint=f"/preceding-succeeding-titles/{obj['id']}",
-                        payload_key=None,
-                    )
 
 
 def finish():
@@ -76,7 +78,6 @@ with DAG(
     preceding_succeeding_titles = PythonOperator(
         task_id="load_preceding_succeeding_titles",
         python_callable=post_to_folio,
-        op_kwargs={"results_dir": "/opt/airflow/migration/results"},  # noqa
     )
 
     wrap_up = PythonOperator(task_id="log_finished", python_callable=finish)

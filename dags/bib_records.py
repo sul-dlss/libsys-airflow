@@ -302,6 +302,14 @@ with DAG(
 
             login >> post_instances >> finish_instances
 
+        ingest_proceding_succeeding = TriggerDagRunOperator(
+            task_id="ingest-proceding-succeeding",
+            trigger_dag_id="process_preceding_succeeding_titles",
+            conf={"iteration_id": "{{ dag_run.run_id }}"},
+        )
+
+        finish_instances >> ingest_proceding_succeeding
+
         marc_only_post_check = BranchPythonOperator(
             task_id="marc-only-post-check",
             python_callable=marc_only,
