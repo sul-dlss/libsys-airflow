@@ -18,3 +18,4 @@ RUN git clone https://github.com/sul-dlss/folio_migration_tools.git --depth=2
 RUN pip install /opt/airflow/folio_migration_tools
 RUN pip install apache-airflow
 RUN pip install apache-airflow-providers-postgres
+RUN pip install folioclient folio-uuid
