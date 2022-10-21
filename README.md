@@ -73,13 +73,18 @@ code in the plugin, you'll need to restart the `airflow-webserver` container
 by running `cap {stage} airflow:webserver` or ssh into the server and run `docker-compose restart airflow-webserver`
 to see changes in the running Airflow environment.
 
-The `optimistic_locking_management` DAG requires a Postgres Airflow 
+The `optimistic_locking_management` DAG requires a Postgres Airflow
 [connection](https://airflow.apache.org/docs/apache-airflow/stable/concepts/connections.html) with the host, login, and password fields matching the
 database being used by Okapi.
 
 ## Testing
-First install the FOLIO-FSE tools run: `pip install folioclient folio-uuid`
-Install sul-dlss fork of folio_migration_tools: `pip install ${local_directory}/folio_migration_tools`
+- Activate python virtual environment: `source /venv/bin/activate`
+- Install the FOLIO-FSE tools: `pip install folioclient folio-uuid`
+- Install sul-dlss fork of folio_migration_tools: `pip install ${local_directory}/folio_migration_tools`
+- Install Airflow: `pip install apache-airflow apache-airflow-providers-postgres`
+
+Run the flake8 linter:
+`flake8 dags/ plugins/`
 
 Then, to run the test suite, use [pytest](https://docs.pytest.org/).
 `pytest`
