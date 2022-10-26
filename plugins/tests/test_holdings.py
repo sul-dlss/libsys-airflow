@@ -90,13 +90,13 @@ holdings = [
         "id": "abcdedf123345",
         "instanceId": "xyzabc-def-ha",
         "formerIds": ["a123345"],
-        "callNumber": "A1234",
+        "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3"
     },
     {
         "id": "exyqdf123345",
         "instanceId": "xyzabc-def-ha",
         "formerIds": ["a123345"],
-        "callNumber": "B1234",
+        "permanentLocationId": "04c54d2f-0e14-42ab-97a6-27fc7f4d061"
     },
 ]
 

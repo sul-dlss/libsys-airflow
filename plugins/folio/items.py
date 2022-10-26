@@ -79,8 +79,7 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
 
 
 def _add_additional_info(**kwargs):
-    """Adds an HRID based on Holdings formerIds and generates notes from
-    tsv files"""
+    """Generates notes from tsv files"""
     airflow: str = kwargs["airflow"]
     items_pattern: str = kwargs["items_pattern"]
     tsv_notes_path = kwargs["tsv_notes_path"]
@@ -112,9 +111,6 @@ def _add_additional_info(**kwargs):
         with open(items_file, "w+") as write_output:
             for item in items:
                 write_output.write(f"{json.dumps(item)}\n")
-
-    if tsv_notes_path is not None:
-        tsv_notes_path.unlink()
 
 
 def post_folio_items_records(**kwargs):

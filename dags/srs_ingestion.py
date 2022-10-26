@@ -80,20 +80,12 @@ def add_marc_to_srs():
 
         return posted_srs_files
 
-    @task
-    def cleanup(srs_filenames):
-        context = get_current_context()
-        params = context.get("params")
-        iteration_id = params.get("iteration_id")
-        logger.info(f"Removing SRS JSON {srs_filenames}")
-        remove_srs_json(srs_filenames=srs_filenames, iteration_id=iteration_id)
 
     @task
     def finish():
         logger.info("Finished migration")
 
-    srs_files = ingestion_marc()
-    cleanup(srs_files) >> finish()
+    ingestion_marc() >> finish()
 
 
 ingest_marc_to_srs = add_marc_to_srs()
