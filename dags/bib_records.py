@@ -121,8 +121,6 @@ with DAG(
                     ("BARCODE", lambda x: x.strip() if isinstance(x, str) else x),
                 ],
                 "tsv_files": "{{ ti.xcom_pull('bib-files-group', key='tsv-files') }}",  # noqa
-                # Libraries where FORMAT determines ITEM_TYPE
-                "libraries": ["HOOVER", "HV-ARCHIVE"],
             },
         )
 
