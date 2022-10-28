@@ -71,11 +71,22 @@ class MockTaskInstance(pydantic.BaseModel):
 
 
 def test_generate_item_identifiers(
-    mock_file_system, mock_dag_run, mock_okapi_variable  # noqa
+    mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa
 ):
 
     airflow = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
+
+    mock_source_tsv = iteration_dir / "source_data/items/ckey_0001.tsv"
+
+    with mock_source_tsv.open("w+") as fo:
+        for row in [
+            "BARCODE\tBASE_CALL_NUMBER",
+            "36105080396299\tCSA 1.10:W 99/ ",
+            "36105080396356\tPREX 2.8/3:962",
+        ]:
+            fo.write(f"{row}\n")
 
     mock_holdings_items_map = results_dir / "holdings-items-map.json"
     with mock_holdings_items_map.open("w+") as fo:
@@ -85,6 +96,7 @@ def test_generate_item_identifiers(
                     "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3": {
                         "1df5a25b-2b80-59a3-824a-1ab8f983cfaf": {
                             "hrid": "ah650005_1",
+                            "callNumber": "CSA 1.10:W 99/",
                             "items": [],
                             "permanentLocationId": "b26d05ad-80a3-460d-8b49-00ddb72593bc",
                         },
@@ -100,6 +112,7 @@ def test_generate_item_identifiers(
                 "id": "f9262e00-1501-5f6e-a9ee-cc14a8f641ec",
                 "holdingsRecordId": "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3",
                 "permanentLocationId": "b26d05ad-80a3-460d-8b49-00ddb72593bc",
+                "barcode": "36105080396299",
             },
             {
                 "id": "1cde0ebe-2cdd-5c9c-90f3-d4ce0dc63587",
@@ -123,28 +136,23 @@ def test_generate_item_identifiers(
     assert mock_modified_items[0]["hrid"] == "ai650005_1_1"
 
     assert (
-        mock_modified_items[1]["holdingsRecordId"]
-        == "1df5a25b-2b80-59a3-824a-1ab8f983cfaf"
+        "New holdings UUID not found for item with permanentLocationId" in caplog.text
     )
-    assert mock_modified_items[1]["hrid"] == "ai650005_1_2"
+    assert "Unable to retrieve generated holdings UUID" in caplog.text
 
 
 def test_lookup_holdings_uuid():
-    item_uuid_location_map = {
-        "ad9fce9d-e538-5916-ba74-4bfbce9af81a": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
-        "994c8f9a-d622-566e-9a03-42703b6083d5": "2b94c631-fca9-4892-a730-03ee529ffe27",
-        "36778651d-c393-5718-943e-dea3ebd73706": "2b94c631-fca9-4892-a730-03ee529ffe27",
-    }
 
     holdings_map = {
         "527b783d-6624-56fe-be28-895f2c69cf1f": {
             "hrid": "ah660592_1",
             "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
             "items": [],
+            "callNumber": "MORE 1.345",
         }
     }
 
     holdings_uuid = _lookup_holdings_uuid(
-        item_uuid_location_map, holdings_map, "ad9fce9d-e538-5916-ba74-4bfbce9af81a"
+        "0edeef57-074a-4f07-aee2-9f09d55e65c3", "MORE 1.345", holdings_map
     )
     assert holdings_uuid == "527b783d-6624-56fe-be28-895f2c69cf1f"
