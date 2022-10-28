@@ -362,9 +362,11 @@ with DAG(
     )
 
     remediate_errors = TriggerDagRunOperator(
-        task_id="remediate-errors",
-        trigger_dag_id="fix_failed_record_loads",
-        trigger_run_id="{{ dag_run.run_id }}",
+        task_id="check-remediate-errors",
+        trigger_dag_id="check_fix_failed_record_loads",
+        conf={
+            "iteration_id": "{{ dag_run.run_id }}"
+        }
     )
 
     finish_loading = DummyOperator(

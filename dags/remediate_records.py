@@ -10,14 +10,9 @@ from airflow.models import Variable
 from textwrap import dedent
 
 from folioclient import FolioClient
-from plugins.folio.remediate import handle_record_errors
+from plugins.folio.remediate import start_record_qa, handle_record_errors
 
-folio_client = FolioClient(
-    Variable.get("OKAPI_URL"),
-    "sul",
-    Variable.get("FOLIO_USER"),
-    Variable.get("FOLIO_PASSWORD"),
-)
+
 
 default_args = {
     "owner": "folio",
@@ -29,13 +24,18 @@ default_args = {
 }
 
 with DAG(
-    "fix_failed_record_loads",
+    "check_fix_failed_record_loads",
     default_args=default_args,
     start_date=datetime(2022, 3, 28),
     catchup=False,
     tags=["bib_import"],
 ) as dag:
     dag.doc = dedent("""# Remediation DAG""")
+
+    start_check_add = PythonOperator(
+        task_id="start-check-add",
+        python_callable=start_record_qa
+    )
 
     instances_errors = PythonOperator(
         task_id="instances-handler",
