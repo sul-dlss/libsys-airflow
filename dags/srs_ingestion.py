@@ -8,7 +8,7 @@ from airflow.models import Variable, DagRun
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.helpers.marc import post_marc_to_srs, remove_srs_json
+from plugins.folio.helpers.marc import post_marc_to_srs
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,6 @@ def add_marc_to_srs():
             posted_srs_files.append(srs_file)
 
         return posted_srs_files
-
 
     @task
     def finish():
