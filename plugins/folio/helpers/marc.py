@@ -6,8 +6,6 @@ import shutil
 import pandas as pd
 import pymarc
 
-from pathlib import Path
-
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 
 
@@ -208,16 +206,3 @@ def process(*args, **kwargs):
             marc_writer.write(record)
             if not i % 10_000 and i > 0:
                 logger.info(f"Writing record {i}")
-
-
-def remove_srs_json(*args, **kwargs):
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    srs_filenames = kwargs["srs_filenames"]
-    iteration_id = kwargs["iteration_id"]
-
-    srs_filedir = Path(airflow) / f"migration/iterations/{iteration_id}/results/"
-
-    for srs_file in srs_filenames:
-        srs_filepath = srs_filedir / srs_file
-        srs_filepath.unlink()
-        logger.info(f"Removed {srs_filepath}")

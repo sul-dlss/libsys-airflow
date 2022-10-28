@@ -99,7 +99,7 @@ def _processes_tsv(**kwargs):
         tsv_notes_name = ".".join(tsv_notes_name_parts)
 
         new_tsv_notes_path = pathlib.Path(
-            f"{airflow}/migration/data_preparation/{tsv_notes_name}"
+            f"{airflow}/migration/iterations/{dag_run_id}/source_data/items/{tsv_notes_name}"
         )
 
         tsv_notes_df.to_csv(new_tsv_notes_path, sep="\t", index=False)

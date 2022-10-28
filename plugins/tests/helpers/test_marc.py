@@ -13,7 +13,6 @@ from plugins.folio.helpers.marc import (
     move_marc_files,
     _move_001_to_035,
     post_marc_to_srs,
-    remove_srs_json,
 )
 
 from plugins.folio.helpers.marc import process as process_marc
@@ -345,16 +344,3 @@ def test_post_marc_to_srs(
 
 def test_process_marc():
     assert process_marc
-
-
-def test_remove_srs_json(srs_file, mock_file_system, mock_dag_run):  # noqa
-    assert srs_file.exists() is True
-
-    remove_srs_json(
-        airflow=mock_file_system[0],
-        dag_run=mock_dag_run,
-        srs_filenames=["test-srs.json"],
-        iteration_id=mock_dag_run.run_id,
-    )
-
-    assert srs_file.exists() is False

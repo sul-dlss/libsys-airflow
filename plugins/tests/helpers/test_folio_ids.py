@@ -71,11 +71,22 @@ class MockTaskInstance(pydantic.BaseModel):
 
 
 def test_generate_item_identifiers(
-    mock_file_system, mock_dag_run, mock_okapi_variable  # noqa
+    mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa
 ):
 
     airflow = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
+
+    mock_source_tsv = iteration_dir / "source_data/items/ckey_0001.tsv"
+
+    with mock_source_tsv.open("w+") as fo:
+        for row in [
+            "BARCODE\tBASE_CALL_NUMBER",
+            "36105080396299\tCSA 1.10:W 99/ ",
+            "36105080396356\tPREX 2.8/3:962",
+        ]:
+            fo.write(f"{row}\n")
 
     mock_holdings_items_map = results_dir / "holdings-items-map.json"
     with mock_holdings_items_map.open("w+") as fo:
@@ -85,8 +96,9 @@ def test_generate_item_identifiers(
                     "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3": {
                         "1df5a25b-2b80-59a3-824a-1ab8f983cfaf": {
                             "hrid": "ah650005_1",
+                            "callNumber": "CSA 1.10:W 99/",
                             "items": [],
-                            "call_number": "B3212 .Z7 A12",
+                            "permanentLocationId": "b26d05ad-80a3-460d-8b49-00ddb72593bc",
                         },
                     }
                 }
@@ -97,20 +109,18 @@ def test_generate_item_identifiers(
     with mock_items_filepath.open("w+") as fo:
         for item in [
             {
+                "id": "f9262e00-1501-5f6e-a9ee-cc14a8f641ec",
                 "holdingsRecordId": "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3",
-                "barcode": "36105226756356",
+                "permanentLocationId": "b26d05ad-80a3-460d-8b49-00ddb72593bc",
+                "barcode": "36105080396299",
             },
             {
+                "id": "1cde0ebe-2cdd-5c9c-90f3-d4ce0dc63587",
                 "holdingsRecordId": "e9ff785b-97e1-5f00-8dd0-4fce8fef1da3",
-                "barcode": "36105021595322",
+                "permanentLocationId": "b26d05ad-80a3-460d-8b49-00ddb72593bc",
             },
         ]:
             fo.write(f"{json.dumps(item)}\n")
-
-    mock_items_tsv_filepath = results_dir.parent / "source_data/items/ckey_0001.tsv"
-
-    with mock_items_tsv_filepath.open("w+") as fo:
-        fo.write("BARCODE\tBASE_CALL_NUMBER\n36105226756356\tB3212 .Z7 A12")
 
     generate_item_identifiers(
         airflow=airflow, dag_run=mock_dag_run, task_instance=MockTaskInstance()
@@ -126,28 +136,23 @@ def test_generate_item_identifiers(
     assert mock_modified_items[0]["hrid"] == "ai650005_1_1"
 
     assert (
-        mock_modified_items[1]["holdingsRecordId"]
-        == "1df5a25b-2b80-59a3-824a-1ab8f983cfaf"
+        "New holdings UUID not found for item with permanentLocationId" in caplog.text
     )
-    assert mock_modified_items[1]["hrid"] == "ai650005_1_2"
+    assert "Unable to retrieve generated holdings UUID" in caplog.text
 
 
 def test_lookup_holdings_uuid():
-    barcode_callnumber_map = {
-        "36105080793552": "DA958.O3 A3",
-        "36105080793560": "DA965 .C6 O18",
-        "36105070345157": "DA958.O5 A3",
-    }
 
     holdings_map = {
-        "c4287ea6-324d-5de6-973c-50d8a773429d": {
+        "527b783d-6624-56fe-be28-895f2c69cf1f": {
             "hrid": "ah660592_1",
-            "call_number": "DA965 .C6 O18",
+            "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
             "items": [],
+            "callNumber": "MORE 1.345",
         }
     }
 
     holdings_uuid = _lookup_holdings_uuid(
-        barcode_callnumber_map, holdings_map, "36105080793560"
+        "0edeef57-074a-4f07-aee2-9f09d55e65c3", "MORE 1.345", holdings_map
     )
-    assert holdings_uuid == "c4287ea6-324d-5de6-973c-50d8a773429d"
+    assert holdings_uuid == "527b783d-6624-56fe-be28-895f2c69cf1f"
