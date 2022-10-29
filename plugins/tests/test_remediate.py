@@ -8,11 +8,7 @@ from pytest_mock import MockerFixture
 
 from plugins.tests.mocks import mock_file_system  # noqa
 
-from plugins.folio.remediate import (
-    handle_record_errors,
-    _post_or_put_record,
-    _is_missing_or_outdated,
-)
+from plugins.folio.remediate import handle_record_errors
 
 
 def mock_folio_get(client, path):

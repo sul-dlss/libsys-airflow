@@ -362,7 +362,7 @@ with DAG(
     )
 
     remediate_errors = TriggerDagRunOperator(
-        task_id="check-remediate-errors",
+        task_id="audit_fix_record_loads",
         trigger_dag_id="check_fix_failed_record_loads",
         conf={
             "iteration_id": "{{ dag_run.run_id }}"

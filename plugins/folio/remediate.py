@@ -20,24 +20,6 @@ folio_client = FolioClient(
     Variable.get("FOLIO_PASSWORD"),
 )
 
-def _is_missing_or_outdated(
-    record: dict, endpoint: str, folio_client: FolioClient
-) -> bool:
-    """Checks if record is present and updatedDate if present"""
-    record_uuid = record.get("id")
-    latest_date = datetime.datetime.fromisoformat(record["metadata"]["updatedDate"])
-    path = f"{endpoint}/{record_uuid}"
-
-    try:
-        folio_record = folio_client.folio_get(path)
-        update_date = datetime.datetime.fromisoformat(
-            folio_record["metadata"]["updatedDate"]
-        )
-        return latest_date > update_date
-    except Exception as e:
-        logging.info(f"{record_uuid} not present in {folio_client.okapi_url}\n{e}")
-        return True
-
 
 def _post_or_put_record(record: dict, endpoint: str, folio_client: FolioClient):
     """Posts record to FOLIO"""
@@ -65,47 +47,19 @@ def _post_or_put_record(record: dict, endpoint: str, folio_client: FolioClient):
             f"Failed to PUT {record['id']} - {put_result.status_code}\n{put_result.text}"
         )
 
-def _record_exists(record, endoint, ):
-    """Checks to see if Record Exists in FOLIO"""
-    record_result = requests
-
-def check_add_records(*args, **kwargs):
-    task_instance = kwargs["task_instance"]
-    records = kwargs["records"]
-    endpoint = kwargs["endpoint"]
-    folio_client = kwargs["folio_client"]
-
+def add_missing_records(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
-    airflow_path = pathlib.Path(airflow)
+    task_instance = kwargs["task_instance"]
 
-    results_dir = airflow_path / f"migration/iterations/{dag.run_id}/results"
-
-
-    for file_name in records:
-        logging.info(f"Processing file {file_name}")
-        file_path = results_dir / file_name
-        record_count = 0
-        for line in file_path.readlines():
-            record = json.loads(line)
-            if _record_exists(record) is False:
-                post_result = _post_record(record, endpoint, folio_client)
-                match post_result.status_code:
-
-                    case 400:
-                        pass
-                    
-                    case 422:
-                        _handle_422_error(record, endpoint, folio_client)
-
-
-    logging.info(f"Finished error handling for {base} errors")
+    audit_db = pathlib.Path(airflow) / f"migration/iterations/{task_instance}/results/"
 
 
 def start_record_qa(*args, **kwargs):
-    iteration_id = params.get("iteration_id")
     context = get_current_context()
     params = context.get("params")
-
+    iteration_id = params.get("iteration_id")
+    if iteration_id is None:
+        raise ValueError(f"Iteration ID cannot be None")
     logger.info(f"Starting Record QA and Remediation for {iteration_id}")
     return iteration_id
 
