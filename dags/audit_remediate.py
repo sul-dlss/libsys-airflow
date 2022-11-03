@@ -11,7 +11,7 @@ from textwrap import dedent
 
 from folioclient import FolioClient
 from plugins.folio.audit import setup_audit_db, audit_instance_views
-from plugins.folio.remediate import start_record_qa
+from plugins.folio.remediate import add_missing_records, start_record_qa
 
 folio_client = FolioClient(
     Variable.get("OKAPI_URL"),
@@ -56,11 +56,19 @@ with DAG(
         python_callable=audit_instance_views,
         op_kwargs={
             "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add')}}",
-            "folio_client": folio_client
+        }
+    )
+
+    remediate_missing_records = PythonOperator(
+        task_id="remediate-missing-records",
+        python_callable=add_missing_records,
+        ops_kwargs={
+            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add')}}",
         }
     )
 
     finished = DummyOperator(task_id="finished-errors-handling")
 
     start_check_add >> init_audit_remediation_db
-    init_audit_remediation_db >> instance_views_audit >> finished
+    init_audit_remediation_db >> instance_views_audit
+    instance_views_audit >> remediate_missing_records >> finished
