@@ -80,7 +80,7 @@ with DAG(
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["bib_import"],
-    max_active_runs=Variable.get("IMPORT_MAX_RUNS", 3),
+    max_active_runs=int(Variable.get("IMPORT_MAX_RUNS", 3)),
 ) as dag:
 
     dag.doc_md = dedent(
@@ -363,7 +363,7 @@ with DAG(
 
     remediate_errors = TriggerDagRunOperator(
         task_id="audit_fix_record_loads",
-        trigger_dag_id="check_fix_failed_record_loads",
+        trigger_dag_id="audit_fix_record_loads",
         conf={
             "iteration_id": "{{ dag_run.run_id }}"
         }
