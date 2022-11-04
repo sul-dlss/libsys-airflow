@@ -55,15 +55,15 @@ with DAG(
         task_id="instance-views-audit",
         python_callable=audit_instance_views,
         op_kwargs={
-            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add')}}",
+            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}",
         }
     )
 
     remediate_missing_records = PythonOperator(
         task_id="remediate-missing-records",
         python_callable=add_missing_records,
-        ops_kwargs={
-            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add')}}",
+        op_kwargs={
+            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}",
         }
     )
 
