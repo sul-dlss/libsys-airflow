@@ -88,6 +88,9 @@ def _update_holding_ids(
     on the instance map, and optionally populates a holdings map for
     later item identifier generation
     """
+    if not holdings_path.exists():
+        logger.info(f"{holdings_path.name} does not exist, returning")
+        return
     with holdings_path.open() as fo:
         holdings = [json.loads(line) for line in fo.readlines()]
 

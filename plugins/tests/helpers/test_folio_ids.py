@@ -6,6 +6,7 @@ from plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
     generate_item_identifiers,
     _lookup_holdings_uuid,
+    _update_holding_ids,
 )
 
 from plugins.tests.test_holdings import holdings as mock_holding_records
@@ -156,3 +157,17 @@ def test_lookup_holdings_uuid():
         "0edeef57-074a-4f07-aee2-9f09d55e65c3", "MORE 1.345", holdings_map
     )
     assert holdings_uuid == "527b783d-6624-56fe-be28-895f2c69cf1f"
+
+
+def test__update_holding_ids_no_file(mock_file_system, caplog):  # noqa
+
+    empty_mhlds_path = (
+        mock_file_system[2] / "results/folio_holdings_mhlds-transformer.json"
+    )
+
+    result = _update_holding_ids(empty_mhlds_path, {}, "http://okapi.edu/", {})
+
+    assert result is None
+    assert (
+        "folio_holdings_mhlds-transformer.json does not exist, returning" in caplog.text
+    )
