@@ -47,7 +47,7 @@ def post_to_folio(*args, **kwargs):
             )
 
             if "errors" in result:
-                logger.warn(
+                logger.warning(
                     f"{result['errors'][0]['message']} -- trying a PUT instead"
                 )
                 put_to_okapi(

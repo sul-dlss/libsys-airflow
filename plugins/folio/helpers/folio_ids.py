@@ -53,7 +53,7 @@ def _lookup_holdings_uuid(
                 new_holdings_uuid = uuid
                 break
     if new_holdings_uuid is None:
-        logger.warn(
+        logger.warning(
             f"New holdings UUID not found for item with permanentLocationId of {item_permanent_location_id} and call number {item_call_number}"
         )
     return new_holdings_uuid
