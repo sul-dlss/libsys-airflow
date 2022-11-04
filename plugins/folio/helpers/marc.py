@@ -82,6 +82,7 @@ def _get_library(fields596: list) -> str:
 
 
 def _move_001_to_035(record: pymarc.Record) -> str:
+
     all001 = record.get_fields("001")
 
     if len(all001) < 1:
@@ -181,6 +182,8 @@ def process(*args, **kwargs):
     marc_records = []
     electronic_holdings = []
     for record in marc_reader:
+        if record is None:
+            continue
         catkey = _move_001_to_035(record)
         library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
