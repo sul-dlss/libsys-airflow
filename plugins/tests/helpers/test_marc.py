@@ -106,9 +106,14 @@ def test_add_electronic_holdings_skip_multiple_fields():
     skip_856_field = Field(
         tag="856",
         indicators=["0", "1"],
-        subfields=["z", "Online Abstract from PCI available",
-                   "3", "More information",
-                   "u", "http://example.com/"],
+        subfields=[
+            "z",
+            "Online Abstract from PCI available",
+            "3",
+            "More information",
+            "u",
+            "http://example.com/",
+        ],
     )
     assert _add_electronic_holdings(skip_856_field) is False
 
@@ -147,6 +152,24 @@ def test_extract_856s():
         ),
         Field(
             tag="856",
+            indicators=["4", "1"],
+            subfields=[
+                "u",
+                "http://purl.stanford.edu/bh752xn6465",
+                "x",
+                "SDR-PURL",
+                "x",
+                "file:bh752xn6465%2FSC1228_Powwow_program_2014_001.jp2",
+                "x",
+                "collection:cy369sj5591:10719939:Stanford University, Native American Cultural Center, records",
+                "x",
+                "label:2014",
+                "x",
+                "rights:world",
+            ],
+        ),
+        Field(
+            tag="856",
             indicators=["0", "0"],
             subfields=[
                 "u",
@@ -169,15 +192,16 @@ def test_extract_856s():
         ),
     ]
     output = _extract_856s(catkey=catkey, fields=all856_fields, library="SUL")
-    assert len(output) == 2
+    assert len(output) == 3
     assert output[0] == {
         "CATKEY": "34456",
         "HOMELOCATION": "INTERNET",
         "LIBRARY": "SUL-SDR",
         "MAT_SPEC": "Finding Aid",
     }
-    assert output[1]["LIBRARY"].startswith("SUL")
+    assert output[1]["LIBRARY"] == "SUL-SDR"
     assert output[1]["HOMELOCATION"].startswith("INTERNET")
+    assert output[2]["LIBRARY"] == "SUL"
 
 
 def test_marc_only():
