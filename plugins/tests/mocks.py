@@ -71,6 +71,10 @@ def mock_file_system(tmp_path, mock_dag_run):
     iteration_dir = airflow_path / f"migration/iterations/{mock_dag_run.run_id}"
     iteration_dir.mkdir(parents=True)
 
+    # Mock config directory
+    config_dir = airflow_path / "config"
+    config_dir.mkdir(parents=True)
+
     # Makes directories for different type of data for mock_dag_run
     source_data = iteration_dir / "source_data"
     (source_data / "instances").mkdir(parents=True)
