@@ -18,6 +18,8 @@ full_text_check = re.compile(
 
 vendor_id_re = re.compile(r"\w{2,2}4")
 
+sdr_sul_re = re.compile(r"https*:\/\/purl.stanford.edu")
+
 
 def _add_electronic_holdings(field856: pymarc.Field) -> bool:
     if field856.indicator2 in ["0", "1"]:
@@ -51,7 +53,7 @@ def _extract_856s(**kwargs) -> list:
         row["CATKEY"] = catkey
         uri = "".join(field856.get_subfields("u"))
 
-        if uri.startswith("https://purl.stanford"):
+        if sdr_sul_re.search(uri):
             row["LIBRARY"] = "SUL-SDR"
         else:
             row["LIBRARY"] = library
