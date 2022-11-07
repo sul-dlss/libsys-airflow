@@ -53,7 +53,7 @@ def _lookup_holdings_uuid(
                 new_holdings_uuid = uuid
                 break
     if new_holdings_uuid is None:
-        logger.warn(
+        logger.warning(
             f"New holdings UUID not found for item with permanentLocationId of {item_permanent_location_id} and call number {item_call_number}"
         )
     return new_holdings_uuid
@@ -88,6 +88,9 @@ def _update_holding_ids(
     on the instance map, and optionally populates a holdings map for
     later item identifier generation
     """
+    if not holdings_path.exists():
+        logger.info(f"{holdings_path.name} does not exist, returning")
+        return
     with holdings_path.open() as fo:
         holdings = [json.loads(line) for line in fo.readlines()]
 
