@@ -196,7 +196,7 @@ def setup_audit_db(*args, **kwargs):
     con = sqlite3.connect(str(db_file.absolute()))
     cur = con.cursor()
     # Create Audit Run Database
-    with open(airflow / "config/qa.sql") as fo:
+    with open(airflow / "plugins/folio/qa.sql") as fo:
         sql_init = fo.read()
     cur.executescript(sql_init)
     con.commit()
