@@ -25,8 +25,8 @@ def mock_audit_database(mock_dag_run, mock_file_system):  # noqa
     airflow = mock_file_system[0]
 
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "config/qa.sql"
-    mock_db_init_file = airflow / "config/qa.sql"
+    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
+    mock_db_init_file = airflow / "plugins/folio/qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 
     setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
