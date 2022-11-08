@@ -1,3 +1,5 @@
+import json
+
 import pydantic
 import pytest  # noqa
 
@@ -287,9 +289,6 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     airflow_path = mock_file_system[0]
     source_dir = mock_file_system[1]
 
-    # Calls setup to mock out expected iteration
-    # setup_dag_run_folders(dag_run=mock_dag_run, airflow=str(airflow_path))
-
     sample_mrc = source_dir / "sample.mrc"
     with sample_mrc.open("wb+") as fo:
         marc_record = Record()
@@ -350,20 +349,52 @@ def test_post_marc_to_srs(
     mock_okapi_variable,  # noqa
     caplog,
 ):
+    airflow = mock_file_system[0]
     dag = mock_dag_run
 
-    base_folder = mock_file_system[0] / "migration"
+    base_folder = airflow / "migration"
+
+    library_config = MockLibraryConfig(
+        base_folder=str(base_folder), iteration_identifier=mock_dag_run.run_id
+    )
+
+    test_srs = base_folder / f"iterations/{mock_dag_run.run_id}/results/test-srs.json"
+
+    test_srs.write_text(json.dumps({}))
+
+    post_marc_to_srs(
+        airflow=airflow,
+        dag_run=dag,
+        library_config=library_config,
+        iteration_id="manual_2022-03-05",
+        srs_filename="test-srs.json",
+    )
+
+    assert library_config.iteration_identifier == dag.run_id
+    assert "Finished posting MARC json to SRS" in caplog.text
+
+
+def test_missing_file_post_marc_to_srs(
+    srs_file, mock_dag_run, mock_file_system, caplog  # noqa  # noqa
+):
+
+    airflow = mock_file_system[0]
+
+    base_folder = airflow / "migration"
 
     library_config = MockLibraryConfig(
         base_folder=str(base_folder), iteration_identifier=mock_dag_run.run_id
     )
 
     post_marc_to_srs(
-        dag_run=dag, library_config=library_config, srs_filename="test-srs.json"
+        airflow=airflow,
+        dag_run=mock_dag_run,
+        library_config=library_config,
+        iteration_id="manual_2022-03-05",
+        srs_filename="test-mhlds-srs.json",
     )
 
-    assert library_config.iteration_identifier == dag.run_id
-    assert "Finished posting MARC json to SRS" in caplog.text
+    assert "test-mhlds-srs.json does not exist, existing task" in caplog.text
 
 
 def test_process_marc():
