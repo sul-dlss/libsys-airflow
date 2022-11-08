@@ -21,10 +21,10 @@ vendor_id_re = re.compile(r"\w{2,2}4")
 sdr_sul_re = re.compile(r"https*:\/\/purl.stanford.edu")
 
 
-def _add_electronic_holdings(field856: pymarc.Field) -> bool:
-    if field856.indicator2 in ["0", "1"]:
-        subfield_z = field856.get_subfields("z")
-        subfield_3 = field856.get_subfields("3")
+def _add_electronic_holdings(field: pymarc.Field) -> bool:
+    if field.indicator2 in ["0", "1"]:
+        subfield_z = field.get_subfields("z")
+        subfield_3 = field.get_subfields("3")
         subfield_all = " ".join(subfield_z + subfield_3)
         if full_text_check.search(subfield_all):
             return False
@@ -32,7 +32,7 @@ def _add_electronic_holdings(field856: pymarc.Field) -> bool:
     return False
 
 
-def _extract_856s(**kwargs) -> list:
+def _extract_fields(**kwargs) -> list:
     catkey = kwargs["catkey"]
     fields = kwargs["fields"]
     library = kwargs["library"]
@@ -44,14 +44,14 @@ def _extract_856s(**kwargs) -> list:
         "MAT_SPEC",
     ]
     output = []
-    for field856 in fields:
-        if _add_electronic_holdings(field856) is False:
+    for marc_field in fields:
+        if _add_electronic_holdings(marc_field) is False:
             continue
         row = {}
         for field in properties_names:
             row[field] = None
         row["CATKEY"] = catkey
-        uri = "".join(field856.get_subfields("u"))
+        uri = "".join(marc_field.get_subfields("u"))
 
         if sdr_sul_re.search(uri):
             row["LIBRARY"] = "SUL-SDR"
@@ -60,7 +60,7 @@ def _extract_856s(**kwargs) -> list:
 
         row["HOMELOCATION"] = "INTERNET"
 
-        material_type = field856.get_subfields("3")
+        material_type = marc_field.get_subfields("3")
         if len(material_type) > 0:
             row["MAT_SPEC"] = " ".join(material_type)
         output.append(row)
@@ -197,8 +197,15 @@ def process(*args, **kwargs):
         catkey = _move_001_to_035(record)
         library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
-            _extract_856s(
+            _extract_fields(
                 catkey=catkey, fields=record.get_fields("856"), library=library
+            )
+        )
+        electronic_holdings.extend(
+            _extract_fields(
+                catkey=catkey,
+                fields=record.get_fields("956"),
+                library=library
             )
         )
         marc_records.append(record)
