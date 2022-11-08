@@ -148,7 +148,9 @@ def move_marc_files(*args, **kwargs) -> str:
 
 
 def post_marc_to_srs(*args, **kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
     srs_filename = kwargs.get("srs_filename")
+    iteration_id = kwargs["iteration_id"]
 
     task_config = BatchPoster.TaskConfiguration(
         name="marc-to-srs-batch-poster",
@@ -157,6 +159,12 @@ def post_marc_to_srs(*args, **kwargs):
         files=[{"file_name": srs_filename}],
         batch_size=kwargs.get("MAX_ENTITIES", 1000),
     )
+
+    iteration_dir = pathlib.Path(airflow) / f"migration/iterations/{iteration_id}"
+
+    if not (iteration_dir / f"results/{srs_filename}").exists():
+        logger.info(f"{srs_filename} does not exist, existing task")
+        return
 
     library_config = kwargs["library_config"]
 
