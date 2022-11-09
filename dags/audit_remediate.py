@@ -64,6 +64,7 @@ with DAG(
         python_callable=add_missing_records,
         op_kwargs={
             "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}",
+            "folio_client": folio_client
         }
     )
 
