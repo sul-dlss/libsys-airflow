@@ -9,7 +9,7 @@ from pymarc import Field, MARCWriter, Record
 
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
-    _extract_856s,
+    _extract_e_holdings_fields,
     _get_library,
     marc_only,
     move_marc_files,
@@ -193,7 +193,7 @@ def test_extract_856s():
             subfields=["u", "https://example.doi.org/45668"],
         ),
     ]
-    output = _extract_856s(catkey=catkey, fields=all856_fields, library="SUL")
+    output = _extract_e_holdings_fields(catkey=catkey, fields=all856_fields, library="SUL")
     assert len(output) == 3
     assert output[0] == {
         "CATKEY": "34456",
@@ -204,6 +204,35 @@ def test_extract_856s():
     assert output[1]["LIBRARY"] == "SUL-SDR"
     assert output[1]["HOMELOCATION"].startswith("INTERNET")
     assert output[2]["LIBRARY"] == "SUL"
+
+
+def test_extract_956s():
+    catkey = "a591929"
+    all_956_fields = [
+        Field(
+            tag="956",
+            indicators=["4", "1"],
+            subfields=[
+                "u",
+                "http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&9008",
+            ],
+        ),
+        Field(
+            tag="956",
+            indicators=["0", "1"],
+            subfields=[
+                "u",
+                "http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&8998",
+                "z",
+                "Sample text",
+            ],
+        ),
+    ]
+
+    output = _extract_e_holdings_fields(catkey=catkey, fields=all_956_fields, library="SUL")
+    assert len(output) == 1
+    assert output[0]["HOMELOCATION"].startswith("INTERNET")
+    assert output[0]["LIBRARY"] == "SUL"
 
 
 def test_marc_only():
