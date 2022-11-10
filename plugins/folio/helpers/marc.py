@@ -32,7 +32,7 @@ def _add_electronic_holdings(field: pymarc.Field) -> bool:
     return False
 
 
-def _extract_fields(**kwargs) -> list:
+def _extract_e_holdings_fields(**kwargs) -> list:
     catkey = kwargs["catkey"]
     fields = kwargs["fields"]
     library = kwargs["library"]
@@ -197,12 +197,12 @@ def process(*args, **kwargs):
         catkey = _move_001_to_035(record)
         library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
-            _extract_fields(
+            _extract_e_holdings_fields(
                 catkey=catkey, fields=record.get_fields("856"), library=library
             )
         )
         electronic_holdings.extend(
-            _extract_fields(
+            _extract_e_holdings_fields(
                 catkey=catkey,
                 fields=record.get_fields("956"),
                 library=library

@@ -9,7 +9,7 @@ from pymarc import Field, MARCWriter, Record
 
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
-    _extract_fields,
+    _extract_e_holdings_fields,
     _get_library,
     marc_only,
     move_marc_files,
@@ -193,7 +193,7 @@ def test_extract_856s():
             subfields=["u", "https://example.doi.org/45668"],
         ),
     ]
-    output = _extract_fields(catkey=catkey, fields=all856_fields, library="SUL")
+    output = _extract_e_holdings_fields(catkey=catkey, fields=all856_fields, library="SUL")
     assert len(output) == 3
     assert output[0] == {
         "CATKEY": "34456",
@@ -229,7 +229,7 @@ def test_extract_956s():
         ),
     ]
 
-    output = _extract_fields(catkey=catkey, fields=all_956_fields, library="SUL")
+    output = _extract_e_holdings_fields(catkey=catkey, fields=all_956_fields, library="SUL")
     assert len(output) == 1
     assert output[0]["HOMELOCATION"].startswith("INTERNET")
     assert output[0]["LIBRARY"] == "SUL"
