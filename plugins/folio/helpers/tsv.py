@@ -15,10 +15,28 @@ def _apply_transforms(df, column_transforms):
     return df
 
 
-def _modify_item_type(df, libraries):
+def _modify_item_type(df):
+    hila = ["HOOVER", "HV-ARCHIVE"]
+    hila_item_types = ["NONCIRC", "REF", "STKS", "VAULT"]
+
+    complex_item_types = ["LIBUSEONLY", "NH-7DAY", "NH-INHOUSE", "NH-MEDSTKS"]
+    libuseonly_libraries = ["GREEN", "HOOVER", "HV-ARCHIVE"]
+
     df["ITEM_TYPE"].mask(
-        df["LIBRARY"].isin(libraries),
+        df["LIBRARY"].isin(hila) & df["ITEM_TYPE"].isin(hila_item_types),
         other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
+        axis=0,
+        inplace=True,
+    )
+    df["ITEM_TYPE"].mask(
+        df["LIBRARY"].isin(libuseonly_libraries) & df["ITEM_TYPE"].isin(["LIBUSEONLY"]),
+        other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
+        axis=0,
+        inplace=True,
+    )
+    df["ITEM_TYPE"].mask(
+        df["ITEM_TYPE"].isin(complex_item_types),
+        other=df["ITEM_TYPE"] + " " + df["FORMAT"],
         axis=0,
         inplace=True,
     )
@@ -67,7 +85,6 @@ def _processes_tsv(**kwargs):
     tsv_notes = kwargs["tsv_notes"]
     airflow = kwargs["airflow"]
     column_transforms = kwargs["column_transforms"]
-    libraries = kwargs["libraries"]
     dag_run_id = kwargs["dag_run_id"]
 
     items_dir = pathlib.Path(
@@ -76,7 +93,7 @@ def _processes_tsv(**kwargs):
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
     tsv_base_df = _apply_transforms(tsv_base_df, column_transforms)
-    tsv_base_df = _modify_item_type(tsv_base_df, libraries)
+    tsv_base_df = _modify_item_type(tsv_base_df)
     new_tsv_base_path = items_dir / tsv_base.name
 
     tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
@@ -111,7 +128,6 @@ def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
     column_transforms = kwargs.get("column_transforms", [])
-    libraries = kwargs.get("libraries", [])
     task_instance = kwargs["task_instance"]
 
     tsv_notes_files = task_instance.xcom_pull(
@@ -127,7 +143,6 @@ def transform_move_tsvs(*args, **kwargs):
         tsv_notes=tsv_notes,
         airflow=airflow,
         column_transforms=column_transforms,
-        libraries=libraries,
         dag_run_id=dag.run_id,
     )
 
