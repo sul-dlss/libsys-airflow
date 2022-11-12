@@ -6,34 +6,88 @@
     <table class="table table-striped">
         <tr>
             <th>DAG Run ID</th>
+            <th>Sources</th>
             <th>Transformation Reports</th>
             <th>Data Issues</th>
-            <th>Error MARC21 file</th>
+            <th>FOLIO Records</th>
         </tr>
     {% for dag_run_id, info in content.items() %}
     <tr>
-        <td><a href="/graph?dag_id=symphony_marc_import&run_id={{ dag_run_id }}">{{ dag_run_id }}</a></td>
+        <td>
+            <p>
+                <a href="/graph?dag_id=symphony_marc_import&run_id={{ dag_run_id }}">{{ dag_run_id }}</a>
+            </p>
+            <p>
+                <strong>CKEY Range</strong>: {{ info.get("ckey_start", "None") }} to 
+                {{ info.get("ckey_end", "None") }}
+            </p>
+        </td>
+        <td>
+            <ul>
+                <li>
+                    <strong>Instances</strong>
+                    {% for row in info["sources"]["instances"] %}
+                    <a href="{{ url_for('FOLIO.source_record', iteration_id=dag_run_id, folio_type='instances', filename=row) }}" download>{{ row }}</a>
+                    {% endfor %}
+                </li>
+                <li>
+                    <strong>Holdings</strong>
+                    {% for row in info["sources"]["holdings"] %}
+                    {% if "mhlds" in row %}
+                    <a href="{{ url_for('FOLIO.source_record', iteration_id=dag_run_id, folio_type='holdings', filename=row) }}" download>{{ row }}</a>
+                    {% else %}
+                    <a href="{{ url_for('FOLIO.source_record', iteration_id=dag_run_id, folio_type='items', filename=row) }}" download>{{ row }}</a>
+                    {% endif %}
+                    {% endfor %}    
+                </li>
+                <li>
+                    <strong>Items</strong>
+                    {% for row in info["sources"]["items"] %}
+                    <a href="{{ url_for('FOLIO.source_record', iteration_id=dag_run_id, folio_type='items', filename=row) }}" download>{{ row }}</a>
+                    {% endfor %} 
+                </li>
+            </ul>
+        </td>
         <td>
             <ul>
             {% for report in info.get('reports') %}
-            <li><a href="{{ url_for('FOLIO.folio_report', report_name=report) }}">{{ report }}</a></li>
+            <li><a href="{{ url_for('FOLIO.folio_report', iteration_id=dag_run_id, report_name=report) }}">{{ report }}</a></li>
             {% endfor %}
             </ul>
         </td>
         <td>
             <ul>
             {% for issues_log in info.get('data_issues') %}
-            <li><a href="{{ url_for('FOLIO.folio_data_issues', log_name=issues_log) }}">{{ issues_log }}</a></li>
+            <li><a href="{{ url_for('FOLIO.folio_data_issues', iteration_id=dag_run_id, log_name=issues_log) }}">{{ issues_log }}</a></li>
             {% endfor %}
             </ul>
         </td>
         <td>
             <ul>
-            {% for row in info.get('marc_errors') %}
-            <li><a href="{{ url_for('FOLIO.folio_marc_error', filename=row.file) }}">{{ row.file }}</a>
-             Size: {{ row.size }} kb
-            </li>
-            {% endfor %}
+                <li>
+                    <strong>Instances</strong>
+                    {% for row in info["records"]["instances"] %}
+                        <a href="{{ url_for('FOLIO.folio_json_records', iteration_id=dag_run_id, filename=row) }}" download>{{ row }}</a>
+                    {% endfor %}
+                </li>
+                <li>
+                    <strong>Holdings</strong>
+                    {% for row in info["records"]["holdings"] %}
+                    <a href="{{ url_for('FOLIO.folio_json_records', iteration_id=dag_run_id, filename=row) }}" download>{{ row }}</a>
+                    {% endfor %}    
+                </li>
+                <li>
+                    <strong>Items</strong>
+                    {% for row in info["records"]["items"] %}
+                    <a href="{{ url_for('FOLIO.folio_json_records', iteration_id=dag_run_id, filename=row) }}" download>{{ row }}</a>
+                    {% endfor %} 
+                </li>
+                <li>
+                    <strong>Source Record Storage</strong>
+                    {% for row in info["records"]["srs"] %}
+                    <a href="{{ url_for('FOLIO.folio_json_records', iteration_id=dag_run_id, filename=row) }}" download>{{ row }}</a>
+                    {% endfor %}
+                </li>
             </ul>
         </td>
     </tr>
