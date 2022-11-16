@@ -32,6 +32,10 @@ def post_to_folio(*args, **kwargs):
     jwt = task_instance.xcom_pull(task_ids="folio_login")
     preceding_succeeding_titles_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/preceding_succeeding_titles.json"
 
+    if not preceding_succeeding_titles_path.exists():
+        logger.info(f"{preceding_succeeding_titles_path} does not exist.")
+        return
+
     logger.info(f"Opening {preceding_succeeding_titles_path}")
     with preceding_succeeding_titles_path.open() as fo:
         for obj in fo.readlines():
@@ -70,7 +74,7 @@ with DAG(
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "preceding_succeeding_titles"],
-    max_active_runs=1,
+    max_active_runs=3,
 ) as dag:
 
     login = PythonOperator(task_id="folio_login", python_callable=folio_login)  # noqa
