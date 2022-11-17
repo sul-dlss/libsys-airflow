@@ -94,6 +94,7 @@ def _update_holding_ids(
     with holdings_path.open() as fo:
         holdings = [json.loads(line) for line in fo.readlines()]
 
+    i = 0
     with holdings_path.open("w+") as fo:
         for i, holding in enumerate(holdings):
             instance_id = holding["instanceId"]
