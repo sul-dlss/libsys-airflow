@@ -31,9 +31,11 @@ default_args = {
 
 with DAG(
     "audit_fix_record_loads",
+    schedule_interval=None,
     default_args=default_args,
     start_date=datetime(2022, 3, 28),
     catchup=False,
+    max_active_runs=3,
     tags=["bib_import"],
 ) as dag:
     dag.doc = dedent("""# Audit and Remediation DAG""")
