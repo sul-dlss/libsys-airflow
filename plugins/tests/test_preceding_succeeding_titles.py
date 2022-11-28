@@ -1,11 +1,9 @@
-from unittest.mock import MagicMock
 import requests
 import pytest
 
-
 from pytest_mock import MockerFixture
 from dags.preceding_succeding_titles import post_to_folio
-from plugins.folio import helpers
+
 from plugins.tests.mocks import (  # noqa
     MockTaskInstance,
     mock_file_system,
@@ -57,8 +55,6 @@ def test_preceding_succeeding_titles(
     airflow = mock_file_system[0]
     results_dir = mock_file_system[3]
 
-    helpers._save_error_record_ids = MagicMock(airflow=results_dir)
-
     # Create mock JSON file
     titles_filename = "preceding_succeeding_titles.json"
     titles_file = results_dir / titles_filename
@@ -68,7 +64,7 @@ def test_preceding_succeeding_titles(
 
     mock_task_instance = MockTaskInstance
     post_to_folio(
-        airflow=str(airflow),
+        airflow=airflow,
         dag_run=mock_dag_run,
         task_instance=mock_task_instance,
     )

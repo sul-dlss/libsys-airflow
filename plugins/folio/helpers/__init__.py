@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _save_error_record_ids(**kwargs):
-    dag = kwargs["dag_run"]
+    iteration_id = kwargs["iteration_id"]
     records = kwargs["records"]
     endpoint = kwargs["endpoint"]
     error_code = kwargs["error_code"]
@@ -25,11 +25,11 @@ def _save_error_record_ids(**kwargs):
     error_filepath = (
         airflow
         / "migration/iterations"
-        / f"{dag.run_id}/results"
+        / f"{iteration_id}/results"
         / f"errors-{record_base}-{error_code}.json"
     )
 
-    with error_filepath.open("a") as error_file:
+    with error_filepath.open("a+") as error_file:
         for rec in records:
             error_file.write(json.dumps(rec))
             error_file.write("\n")
@@ -90,7 +90,7 @@ def get_bib_files(**kwargs):
 def post_to_okapi(**kwargs) -> bool:
     endpoint = kwargs.get("endpoint")
     jwt = kwargs["token"]
-
+    iteration_id = kwargs.get("iteration_id")
     records = kwargs["records"]
     payload_key = kwargs["payload_key"]
 
@@ -120,6 +120,8 @@ def post_to_okapi(**kwargs) -> bool:
 
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
+        if iteration_id is None:
+            kwargs["iteration_id"]= kwargs.get("dag_run").run_id
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
     if len(new_record_result.text) < 1:

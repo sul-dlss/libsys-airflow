@@ -47,6 +47,7 @@ def post_to_folio(*args, **kwargs):
                 records=obj,
                 endpoint="/preceding-succeeding-titles",
                 payload_key=None,
+                iteration_id=iteration_id,
                 **kwargs,
             )
 
