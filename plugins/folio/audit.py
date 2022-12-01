@@ -75,6 +75,8 @@ def _audit_holdings_records(
         (results_path / "folio_holdings_mhld-transformer.json"),
     ]
     for holdings_file in holdings_files:
+        if not holdings_file.exists():
+            continue
         logger.info(f"Starting auditing of {holdings_file.name}")
         with holdings_file.open() as fo:
             for line in fo.readlines():

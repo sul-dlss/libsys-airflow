@@ -14,8 +14,5 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-RUN git clone https://github.com/sul-dlss/folio_migration_tools.git --depth=2
-RUN pip install /opt/airflow/folio_migration_tools
-RUN pip install -r /opt/airflow/folio_migration_tools/requirements.txt
 RUN pip install apache-airflow
 RUN pip install apache-airflow-providers-postgres
