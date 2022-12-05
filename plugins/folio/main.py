@@ -1,13 +1,19 @@
+import json
 import pathlib
 
 import markdown
 import pandas as pd
 
+
 from airflow.plugins_manager import AirflowPlugin
 
-from flask import Blueprint
+
+from flask import Blueprint, flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
+from plugins.folio.apps.circ_rules_tester import CircRulesTester as Circ_Rules_Tester
+
+CIRC_HOME = "/opt/airflow/circ"
 MIGRATION_HOME = "/opt/airflow/migration"
 
 bp = Blueprint(
@@ -154,11 +160,19 @@ class FOLIO(AppBuilderBaseView):
         return file_bytes
 
 
-v_appbuilder_view = FOLIO()
-v_appbuilder_package = {
+folio_appbuilder_view = FOLIO()
+folio_appbuilder_package = {
     "name": "FOLIO Reports and Logs",
     "category": "FOLIO",
-    "view": v_appbuilder_view,
+    "view": folio_appbuilder_view,
+}
+
+# Circ Rules Tester App
+circ_rules_tester_view = Circ_Rules_Tester()
+circ_rules_tester_package = {
+    "name": "Circ Rules Tester",
+    "category": "FOLIO",
+    "view": circ_rules_tester_view
 }
 
 
@@ -169,5 +183,5 @@ class FOLIOPlugin(AirflowPlugin):
     hooks = []
     executors = []
     admin_views = []
-    appbuilder_views = [v_appbuilder_package]
+    appbuilder_views = [folio_appbuilder_package, circ_rules_tester_package]
     appbuilder_menu_items = []
