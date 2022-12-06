@@ -3,7 +3,7 @@
 {% block content %}
 <div>
     <h2>FOLIO Circ Rules Tester Report</h2>
-    <h3>Report from <a href="/graph?dag_id=single_circ_rules_tests&run_id={{ dag_run }}">{{ dag_run }}</a></a></h3>
+    <h3>Report from <a href="/graph?dag_id=circ_rules_scenario_tests&run_id={{ dag_run }}" target="_blank">{{ dag_run }}</a></a></h3>
     {% if report %}
     <div class="list-group">
         {% for label, value in report.items() %}
@@ -14,7 +14,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <button onclick="location.reload(); return false">Check for Report</button>
+    <button class="btn btn-default" onclick="location.reload(); return false">Check for Report</button>
     {% endif %}
 </div>
 {% endblock %}

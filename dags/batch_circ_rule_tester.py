@@ -10,13 +10,13 @@ from airflow.models import Variable
 
 from folioclient import FolioClient
 from plugins.folio.circ_tester import (
-    friendly_report,
-    generate_report,
-    generate_urls,
-    policy_report,
+    friendly_batch_report,
+    generate_batch_report,
+    generate_batch_urls,
+    policy_batch_report,
     policy_types,
-    retrieve_policies,
-    setup_rules,
+    retrieve_batch_policies,
+    setup_batch_rules,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ folio_client = FolioClient(
 
 
 with DAG(
-    "circ_rules_scenario_tests",
+    "circ_rules_batch_tests",
     schedule_interval=None,
     start_date=datetime.datetime(2022, 12, 1),
     catchup=False,
@@ -38,8 +38,8 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    setup_circ_rules = PythonOperator(
-        task_id="setup-circ-rules", python_callable=setup_rules
+    setup = PythonOperator(
+        task_id="setup-circ-rules", python_callable=setup_batch_rules
     )
 
     with TaskGroup(group_id="retrieve-policies-group") as retrieve_policies_group:
@@ -49,16 +49,15 @@ with DAG(
         end_policy = DummyOperator(task_id="end-policies-retrieval")
 
         for policy_type in policy_types:
-
             rule_type_urls = PythonOperator(
                 task_id=f"{policy_type}-generate-urls",
-                python_callable=generate_urls,
+                python_callable=generate_batch_urls,
                 op_kwargs={"folio_client": folio_client, "policy_type": policy_type},
             )
 
             retrieve_circ_policies = PythonOperator(
                 task_id=f"{policy_type}-get-policies",
-                python_callable=retrieve_policies,
+                python_callable=retrieve_batch_policies,
                 op_kwargs={"folio_client": folio_client, "policy_type": policy_type},
             )
 
@@ -66,29 +65,28 @@ with DAG(
 
     with TaskGroup(group_id="friendly-report-group") as report_group:
 
-        finish_reports = DummyOperator(task_id="end-reporting")
-
         friendly_labels = PythonOperator(
             task_id="friendly-report",
-            python_callable=friendly_report,
+            python_callable=friendly_batch_report,
             op_kwargs={"folio_client": folio_client},
         )
 
+        finish_reports = DummyOperator(task_id="end-reporting")
+
         for policy_type in policy_types:
-            policy_test = PythonOperator(
+            policy_tests = PythonOperator(
                 task_id=f"{policy_type}-policy-test",
-                python_callable=policy_report,
+                python_callable=policy_batch_report,
                 op_kwargs={"folio_client": folio_client, "policy_type": policy_type},
             )
 
-            friendly_labels >> policy_test >> finish_reports
-
-    finish_circ_rules_test = DummyOperator(task_id="finished-circ-rules")
+            friendly_labels >> policy_tests >> finish_reports
 
     generate_circ_test_report = PythonOperator(
-        task_id="generate-final-report",
-        python_callable=generate_report
+        task_id="generate-final-report", python_callable=generate_batch_report
     )
 
-    setup_circ_rules >> retrieve_policies_group >> report_group
-    report_group >> generate_circ_test_report >>finish_circ_rules_test
+    finished_batch_report = DummyOperator(task_id="finished-test-batch")
+
+    setup >> retrieve_policies_group >> report_group
+    report_group >> generate_circ_test_report >> finished_batch_report

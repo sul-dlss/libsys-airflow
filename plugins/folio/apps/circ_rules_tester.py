@@ -18,24 +18,20 @@ class CircRulesTester(AppBuilderBaseView):
     default_view = "circ_home"
     route_base = "/circ_rule_tester"
 
-    def _trigger_dag_runs(self, scenerio_file):
+    def _trigger_dag_run(self, scenerio_file):
         dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("single_circ_rules_tests")
-        self.report_dagruns = []
+        dag = dagbag.get_dag("circ_rules_batch_tests")
         scenerio_df = pd.read_csv(scenerio_file)
-        for row in scenerio_df.iterrows():
-            execution_date = timezone.utcnow()
-            run_id = f"manual__{execution_date.isoformat()}"
-            conf = row[1].to_dict()
-            conf.pop("status_name")
-            dag.create_dagrun(
-                run_id=run_id,
-                execution_date=execution_date,
-                state=State.RUNNING,
-                conf=conf,
-                external_trigger=True,
-            )
-            self.report_dagruns.append(run_id)
+        execution_date = timezone.utcnow()
+        run_id = f"manual__{execution_date.isoformat()}"
+        dag.create_dagrun(
+            run_id=run_id,
+            execution_date=execution_date,
+            state=State.RUNNING,
+            conf={"scenarios": scenerio_df.to_json()},
+            external_trigger=True,
+        )
+        return run_id
 
     @expose("/")
     def circ_home(self):
@@ -52,15 +48,15 @@ class CircRulesTester(AppBuilderBaseView):
         if not scenario_file.filename.endswith("csv"):
             flash("Scenario file must be a csv")
         else:
-            self._trigger_dag_runs(scenario_file)
-            flash(f"Total dags {self.report_dagruns}")
+            dag_run_id = self._trigger_dag_run(scenario_file)
+            return redirect(f"{CircRulesTester.route_base}/batch_report/{dag_run_id}")
         return self.render_template("circ_rules_tester/index.html")
 
     @expose("/test", methods=["POST"])
     def run_test(self):
         execution_date = timezone.utcnow()
         dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("single_circ_rules_tests")
+        dag = dagbag.get_dag("circ_rules_scenario_tests")
         run_id = f"manual__{execution_date.isoformat()}"
         dag.create_dagrun(
             run_id=run_id,
@@ -76,6 +72,18 @@ class CircRulesTester(AppBuilderBaseView):
         )
         return redirect(f"{CircRulesTester.route_base}/report/{run_id}")
 
+    @expose("/batch_report/<dag_run>")
+    def report_batch(self, dag_run):
+        batch_report_path = pathlib.Path(f"{CIRC_HOME}/{dag_run}.json")
+        if not batch_report_path.exists():
+            flash(f"Report for DAG Run not completed. DAG ID {dag_run}")
+            report = None
+        else:
+            report = pd.read_json(batch_report_path, encoding="utf-8-sig")
+        return self.render_template(
+            "circ_rules_tester/batch_report.html", dag_run=dag_run, report=report
+        )
+
     @expose("/report/<dag_run>")
     def report_scenario(self, dag_run):
         scenario_report_path = pathlib.Path(f"{CIRC_HOME}/{dag_run}.json")
@@ -83,7 +91,7 @@ class CircRulesTester(AppBuilderBaseView):
             flash(f"Report for DAG Run not completed. DAG ID {dag_run}")
             report = None
         else:
-            with scenario_report_path.open() as report_fo:
+            with scenario_report_path.open(encoding="utf-8-sig") as report_fo:
                 report = json.load(report_fo)
         return self.render_template(
             "circ_rules_tester/report.html", dag_run=dag_run, report=report
