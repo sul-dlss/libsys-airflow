@@ -32,6 +32,7 @@ policy_lookup = {
 
 policy_types = ["loan", "request", "notice", "overdue-fine", "lost-item"]
 
+
 def _friendly_name(**kwargs):
     folio_client = kwargs["folio_client"]
     query = kwargs["query"]
@@ -146,30 +147,34 @@ def generate_report(**kwargs):
 
     # Generate Header
     record = {
-        "Library Name": instance.xcom_pull(task_ids="friendly-report-group.friendly-report",
-                                          key="libraryName"),
-        "Loan Type": instance.xcom_pull(task_ids="friendly-report-group.friendly-report",
-                                        key="loan_type"),
-        "Location": instance.xcom_pull(task_ids="friendly-report-group.friendly-report",
-                                        key="location"),
-        "Material Type": instance.xcom_pull(task_ids="friendly-report-group.friendly-report",
-                                        key="material_type"),
-        "Patron Group": instance.xcom_pull(task_ids="friendly-report-group.friendly-report",
-                                        key="patron_group")
+        "Library Name": instance.xcom_pull(
+            task_ids="friendly-report-group.friendly-report", key="libraryName"
+        ),
+        "Loan Type": instance.xcom_pull(
+            task_ids="friendly-report-group.friendly-report", key="loan_type"
+        ),
+        "Location": instance.xcom_pull(
+            task_ids="friendly-report-group.friendly-report", key="location"
+        ),
+        "Material Type": instance.xcom_pull(
+            task_ids="friendly-report-group.friendly-report", key="material_type"
+        ),
+        "Patron Group": instance.xcom_pull(
+            task_ids="friendly-report-group.friendly-report", key="patron_group"
+        ),
     }
 
     for policy_type in policy_types:
         record[f"{policy_type} Winning Policy"] = instance.xcom_pull(
             task_ids=f"friendly-report-group.{policy_type}-policy-test",
-            key="winning-policy")
+            key="winning-policy",
+        )
 
     with report_path.open("w+") as fo:
         json.dump(record, fo, indent=2)
 
     logging.info(f"Finished Generating Report at {report_path}")
     return record
-
-
 
 
 def generate_urls(**kwargs):
@@ -285,4 +290,6 @@ def setup_rules(*args, **kwargs):
     context = get_current_context()
     params = context.get("params")
     for key, value in params.items():
+        if value is None:
+            raise ValueError(f"{key} value is None")
         instance.xcom_push(key=key, value=value)

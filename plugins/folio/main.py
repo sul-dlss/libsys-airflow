@@ -1,4 +1,3 @@
-import json
 import pathlib
 
 import markdown
@@ -8,12 +7,11 @@ import pandas as pd
 from airflow.plugins_manager import AirflowPlugin
 
 
-from flask import Blueprint, flash, request
+from flask import Blueprint
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from plugins.folio.apps.circ_rules_tester import CircRulesTester as Circ_Rules_Tester
 
-CIRC_HOME = "/opt/airflow/circ"
 MIGRATION_HOME = "/opt/airflow/migration"
 
 bp = Blueprint(
