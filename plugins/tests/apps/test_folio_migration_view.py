@@ -2,11 +2,12 @@ import pytest  # noqa
 
 from plugins.tests.mocks import mock_file_system, mock_dag_run  # noqa
 
-from plugins.folio.main import (
+from plugins.folio.apps.folio_migration_view import (
     _get_catkey_range,
     _get_folio_records,
     _get_reports_data_issues,
     _get_source_data,
+    FOLIOMigrationReports,
 )
 
 
@@ -110,3 +111,8 @@ def test_get_source_data(mock_file_system):  # noqa
     assert sources["instances"] == ["ckey_003000_005000.mrc"]
     assert len(sources["holdings"]) == 2
     assert len(sources["items"]) == 1
+
+
+def test_folio_migration_view():
+    folio_app = FOLIOMigrationReports()
+    assert folio_app

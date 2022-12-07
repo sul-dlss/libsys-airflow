@@ -7,6 +7,7 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 MIGRATION_HOME = "/opt/airflow/migration"
 
+
 def _get_catkey_range(path):
     start, end = None, None
 
@@ -33,12 +34,7 @@ def _get_catkey_range(path):
 
 
 def _get_folio_records(path):
-    records = {
-        "instances": [],
-        "holdings": [],
-        "items": [],
-        "srs": []
-    }
+    records = {"instances": [], "holdings": [], "items": [], "srs": []}
     for result_path in (path / "results").glob("folio_*"):
         result_name = result_path.name
         match result_name:
@@ -79,6 +75,7 @@ def _get_source_data(path):
         sources["holdings"].append(file_name)
         sources["items"].append(file_name)
     return sources
+
 
 class FOLIOMigrationReports(AppBuilderBaseView):
     default_view = "folio_view"

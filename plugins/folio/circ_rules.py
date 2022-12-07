@@ -67,7 +67,6 @@ def _library_location_names(**kwargs):
 
     lib_id_expr = parse("$.locations[0].libraryId")
     lib_id_match = lib_id_expr.find(library_location_payload)
-    logger.info(f"Library location payload {library_location_payload}")
 
     location_code = "Location not found"
     if len(lib_id_match) > 0:
@@ -77,7 +76,6 @@ def _library_location_names(**kwargs):
             f"""{folio_client.okapi_url}/location-units/libraries?query=(id=="{library_id}")""",
             headers=folio_client.okapi_headers,
         )
-
         location_code_expr = parse("$.loclibs[0].code")
         location_code_matches = location_code_expr.find(location_units_results.json())
         if len(location_code_matches) > 0:
@@ -223,7 +221,6 @@ def generate_urls(**kwargs):
     policy_type = kwargs["policy_type"]
     folio_client = kwargs["folio_client"]
     row_count = kwargs.get("row_count", "")
-    logger.info(f"Row count is {row_count}")
     query_string = urllib.parse.urlencode(
         {
             "patron_type_id": instance.xcom_pull(
@@ -282,8 +279,6 @@ def policy_report(**kwargs):
 
     policy_url = f"{folio_client.okapi_url}/{endpoint}"
 
-    logger.info(f"Checking url {policy_url} for policy")
-
     policies_result = requests.get(policy_url, headers=folio_client.okapi_headers)
 
     policies = policies_result.json()
@@ -294,8 +289,6 @@ def policy_report(**kwargs):
             key=f"single-policy{row_count}",
         )
     )
-
-    logger.info(f"{policy_type} {single_policy}")
 
     all_policies = json.loads(
         instance.xcom_pull(
@@ -341,20 +334,21 @@ def retrieve_policies(**kwargs):
     single_policy_url = instance.xcom_pull(
         task_ids=task_id, key=f"single-policy-url{row_count}"
     )
-    logger.info(f"Single policy URL {single_policy_url}")
 
     all_policies_url = instance.xcom_pull(
         task_ids=task_id, key=f"all-policies-url{row_count}"
     )
-    logger.info(f"All policies URL {all_policies_url}")
 
     single_policy_result = requests.get(
         single_policy_url, headers=folio_client.okapi_headers
     )
+
     if single_policy_result.status_code == 200:
         instance.xcom_push(
             key=f"single-policy{row_count}", value=single_policy_result.text
         )
+    else:
+        logger.error(f"Cannot retrieve {single_policy_url}\n{single_policy_result.text}")
 
     all_policies_result = requests.get(
         all_policies_url, headers=folio_client.okapi_headers
@@ -372,7 +366,7 @@ def retrieve_batch_policies(**kwargs):
     total_rows = instance.xcom_pull(task_ids="setup-circ-rules", key="total")
     for i in range(int(total_rows)):
         retrieve_policies(row_count=i, **kwargs)
-    logger.info(f"Finished retrieving policies for {i:,} batches")
+    logger.info(f"Finished retrieving policies for {total_rows:,} batches")
 
 
 def setup_batch_rules(*args, **kwargs):
@@ -381,10 +375,14 @@ def setup_batch_rules(*args, **kwargs):
     params = context.get("params")
     raw_scenarios = params["scenarios"]
     scenarios = json.loads(raw_scenarios)
-    instance.xcom_push(key="total", value=len(scenarios))
+    # Calculate total batches based on number of patron_type_id rows
+    total = len(scenarios['patron_type_id'])
+    instance.xcom_push(key="total", value=total)
     for policy_type, rows in scenarios.items():
         for row_count, uuid in rows.items():
             instance.xcom_push(key=f"{policy_type}{row_count}", value=uuid)
+
+    logger.info(f"Setup completed for {total:,} batches")
 
 
 def setup_rules(*args, **kwargs):
