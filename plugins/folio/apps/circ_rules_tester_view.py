@@ -1,3 +1,4 @@
+import datetime
 import json
 import pathlib
 
@@ -9,7 +10,7 @@ from airflow.utils.state import State
 
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
-from flask import flash, request, redirect
+from flask import flash, request, redirect, Response
 
 CIRC_HOME = "/opt/airflow/circ"
 
@@ -82,6 +83,20 @@ class CircRulesTester(AppBuilderBaseView):
             report = pd.read_json(batch_report_path, encoding="utf-8-sig")
         return self.render_template(
             "circ_rules_tester/batch_report.html", dag_run=dag_run, report=report
+        )
+
+    @expose("/download/<dag_run>")
+    def download_report(self, dag_run):
+        batch_report_path = pathlib.Path(f"{CIRC_HOME}/{dag_run}.json")
+        if not batch_report_path.exists():
+            flash(f"Batch report DAG ID {dag_run} doesn't exist")
+            return redirect(f"{CircRulesTester.route_base}")
+        report = pd.read_json(batch_report_path, encoding="utf-8-sig")
+        timestamp = datetime.datetime.utcnow()
+        return Response(
+            report.to_csv(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"},
         )
 
     @expose("/report/<dag_run>")

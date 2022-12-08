@@ -8,7 +8,7 @@
     {% if report is none %}
     <button class="btn btn-default" onclick="location.reload(); return false">Check for Report</button>
     {% else %}
-    <button class="btn btn-default">Download</button>
+    <a class="btn btn-default" href="{{ url_for('CircRulesTester.download_report', dag_run=dag_run) }}" download>Download</a>
     {{ report.to_html(index=False, classes=['table', 'table-striped'])|safe }}
     {% endif %}
 </div>
