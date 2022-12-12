@@ -1,0 +1,67 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Circ Rules Tester</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <h3>CSV Batch</h3>
+
+            <form enctype="multipart/form-data" method="POST" action="{{ url_for('CircRulesTester.run_batch_test') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <p class="help-block">
+                        Upload csv file with uuids with the following columns:
+                        <ul>
+                            <li>patron_type_id</li>
+                            <li>item_type_id</li>
+                            <li>loan_type_id</li>
+                            <li>location_id</li>
+                            <!-- <li>status_name</li> -->
+                        </ul> 
+                    </p>
+                    <input type="file" id="upload-scenarios" name="upload-scenarios">
+
+                </div>
+                <input type="submit" class="btn btn-default" value="Run Batch Test">
+            </form>
+        </div>
+        <div class="col-md-6" class="form-horizontal" >
+            <h3>Single Scenario</h3>
+            <form method="POST" action="{{ url_for('CircRulesTester.run_test') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="patron_type" class="col-sm-2 control-label">
+                        Patron Type
+                    </label>
+                    <input name="patron_type_id" id="patron_type_id" class="form-control" placeholder="Patron Type UUID">
+                </div>
+                <div class="form-group">
+                    <label for="item_type_id" class="col-sm-2 control-label">
+                        Item Type
+                    </label>
+                    <input name="item_type_id" id="item_type_id" class="form-control" placeholder="Item Type UUID">
+                </div>
+                <div class="form-group">
+                    <label for="loan_type_id" class="col-sm-2 control-label">
+                        Loan Type
+                    </label>
+                    <input name="loan_type_id" id="loan_type_id" class="form-control" placeholder="Loan Type UUID">
+                </div>
+                <div class="form-group">
+                    <label for="location_id" class="col-sm-2 control-label">
+                        Location
+                    </label>
+                    <input name="location_id" id="location_id" class="form-control" placeholder="Location UUID">
+                </div>
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-default">Run Test</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    
+    </div>
+</div>
+{% endblock %}

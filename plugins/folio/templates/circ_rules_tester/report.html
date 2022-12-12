@@ -1,0 +1,20 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Circ Rules Tester Report</h2>
+    <h3>Report from <a href="/graph?dag_id=circ_rules_scenario_tests&run_id={{ dag_run }}" target="_blank">{{ dag_run }}</a></a></h3>
+    {% if report %}
+    <div class="list-group">
+        {% for label, value in report.items() %}
+        <div class="list-group-item">
+            <h4 class="list-group-item-heading">{{ label }}</h4>
+            <p class="list-group-item-text">{{ value }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <button class="btn btn-default" onclick="location.reload(); return false">Check for Report</button>
+    {% endif %}
+</div>
+{% endblock %}

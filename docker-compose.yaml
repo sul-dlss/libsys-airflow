@@ -65,6 +65,7 @@ x-airflow-common:
     - ./plugins:/opt/airflow/plugins
     - ./symphony:/opt/airflow/symphony
     - ./migration:/opt/airflow/migration
+    - ./circ:/opt/airflow/circ
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on

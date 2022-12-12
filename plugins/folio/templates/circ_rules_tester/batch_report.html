@@ -1,0 +1,15 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Circ Rules Tester Report</h2>
+    <h3>Report from <a href="/graph?dag_id=circ_rules_batch_tests&run_id={{ dag_run }}" target="_blank">{{ dag_run }}</a></a></h3>
+    
+    {% if report is none %}
+    <button class="btn btn-default" onclick="location.reload(); return false">Check for Report</button>
+    {% else %}
+    <a class="btn btn-default" href="{{ url_for('CircRulesTester.download_report', dag_run=dag_run) }}" download>Download</a>
+    {{ report.to_html(index=False, classes=['table', 'table-striped'])|safe }}
+    {% endif %}
+</div>
+{% endblock %}
