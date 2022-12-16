@@ -1,5 +1,4 @@
 import json
-import pathlib
 
 import pytest  # noqa
 import pydantic
@@ -7,6 +6,7 @@ import pydantic
 from plugins.folio.holdings import (
     electronic_holdings,
     post_folio_holding_records,
+    merge_update_holdings,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
 )
@@ -61,6 +61,193 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
     )
 
 
+def test_merge_update_holdings_no_holdings(
+    mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
+):
+    merge_update_holdings(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
+
+    assert "No MHLDs holdings" in caplog.text
+
+
+holdings = [
+    {
+        "id": "abcdedf123345",
+        "hrid": "ah123345_1",
+        "instanceId": "xyzabc-def-ha",
+        "formerIds": ["a123345"],
+        "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
+        "callNumber": "AB 12345",
+    },
+    {
+        "id": "exyqdf123345",
+        "hrid": "ah123345_2",
+        "instanceId": "xyzabc-def-ha",
+        "formerIds": ["a123345"],
+        "permanentLocationId": "04c54d2f-0e14-42ab-97a6-27fc7f4d061",
+    },
+]
+
+mhld_holdings = [
+    {
+        "id": "7e31c879-af1d-53fb-ba7a-60ad247a8dc4",
+        "instanceId": "xyzabc-def-ha",
+        "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
+        "holdingsStatements": [
+            {
+                "statement": "1914/1916-1916/1918,1932/1934-1934/1936",
+                "note": "",
+                "staffNote": "",
+            }
+        ],
+        "holdingsStatementsForIndexes": [
+            {"statement": "No indices exist", "note": "", "staffNote": ""}
+        ],
+    },
+    {
+        "id": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
+        "instanceId": "xyzabc-def-ha",
+        "permanentLocationId": "782c40a2-51ba-4176-8b03-2abb96ee89b4",
+        "holdingsStatementsForSupplements": [
+            {"statement": "For years 2022-2023", "note": "", "staffNote": ""}
+        ],
+        "notes": [{"note": "a short note"}],
+    },
+]
+
+srs_mhdls = [
+    {
+        "id": "",
+        "externalIdsHolder": {
+            "holdingsHrid": "ah1234566",
+            "holdingsId": "7e31c879-af1d-53fb-ba7a-60ad247a8dc4",
+        },
+        "parsedRecord": {
+            "id": "",
+            "content": {
+                "fields": [
+                    {"001": "123344"},
+                    {"004": "a1234566"},
+                    {
+                        "825": {
+                            "subfields": [{"a": "CSt"}, {"b": "ART"}, {"c": "STACKS"}]
+                        }
+                    },
+                    {
+                        "999": {
+                            "subfields": [
+                                {"i": "3e5242ad-fec6-53c4-8dee-eaa807ab7f4d"},
+                                {"s": "6e976de1-6c08-5159-b06b-af72d9a6bc26"},
+                            ],
+                            "ind1": "f",
+                            "ind2": "f",
+                        }
+                    },
+                ]
+            },
+        },
+        "rawRecord": {"id": "", "content": {"fields": []}},
+    },
+    {
+        "id": "",
+        "externalIdsHolder": {
+            "holdingsHrid": "ah13430268",
+            "holdingsId": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
+        },
+        "parsedRecord": {
+            "id": "",
+            "content": {"fields": [{"004": "a13430268"}]},
+        },
+        "rawRecord": {"id": "", "content": {"fields": []}},
+    },
+]
+
+
+instances_holdings_map = {
+    "xyzabc-def-ha": {
+        "hrid": "a123345",
+        "holdings": {
+            "abcdedf123345": {
+                "location_id": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
+                "merged": False,
+            },
+            "exyqdf123345": {
+                "location_id": "04c54d2f-0e14-42ab-97a6-27fc7f4d061",
+                "merged": False,
+            },
+            "nweoasdf42425": {  # Stand-in for Electronic Holding
+                "location_id": "16211e24-f904-47f8-beaa-f91b4646c434",
+                "merged": True,
+            },
+        },
+    }
+}
+
+
+def test_merge_update_holdings(
+    mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
+):
+    results_dir = mock_file_system[3]
+    holdings_tsv = results_dir / "folio_holdings_tsv-transformer.json"
+    holdings_mhld = results_dir / "folio_holdings_mhld-transformer.json"
+
+    with (holdings_tsv).open("w+") as fo:
+        for row in holdings:
+            fo.write(f"{json.dumps(row)}\n")
+
+    with (holdings_mhld).open("w+") as fo:
+        for row in mhld_holdings:
+            fo.write(f"{json.dumps(row)}\n")
+
+    with (results_dir / "instance_holdings_map.json").open("w+") as fo:
+        json.dump(instances_holdings_map, fo)
+
+    with (results_dir / "folio_srs_holdings_mhld-transformer.json").open("w+") as fo:
+        for row in srs_mhdls:
+            fo.write(f"{json.dumps(row)}\n")
+
+    assert holdings_tsv.exists()
+    assert holdings_mhld.exists()
+
+    merge_update_holdings(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
+
+    with (results_dir / "folio_holdings.json").open() as fo:
+        combined_holdings = [json.loads(line) for line in fo.readlines()]
+
+    assert not holdings_tsv.exists()
+    assert not holdings_mhld.exists()
+
+    # Tests merged Holdings with MHLD Holdings Record 1
+    assert combined_holdings[0]["hrid"] == "ah123345_1"
+    assert combined_holdings[0]["callNumber"] == "AB 12345"
+    assert (
+        combined_holdings[0]["holdingsStatements"][0]["statement"]
+        == "1914/1916-1916/1918,1932/1934-1934/1936"
+    )
+
+    # Tests TSV Holding that didn't match
+    assert combined_holdings[1]["hrid"] == "ah123345_2"
+    assert "holdingsStatements" not in combined_holdings[1]
+
+    # Test Added MHLD Holding that didn't match
+    assert combined_holdings[2]["hrid"] == "ah123345_4"
+    assert (
+        combined_holdings[2]["holdingsStatementsForSupplements"][0]["statement"]
+        == "For years 2022-2023"
+    )
+
+    # Tests modifications to the MHLDs MARC Record
+    with (results_dir / "folio_srs_holdings_mhld-transformer.json").open() as fo:
+        modified_srs = [json.loads(line) for line in fo.readlines()]
+    first_rec_fields = modified_srs[0]["parsedRecord"]["content"]["fields"]
+    assert first_rec_fields[0]["001"] == "ah123345_1"
+    assert first_rec_fields[1]["004"] == "a1234566"
+    assert (
+        first_rec_fields[2]["825"]["subfields"][1]["b"]
+        == "0edeef57-074a-4f07-aee2-9f09d55e65c3"
+    )
+    assert len(first_rec_fields[2]["825"]["subfields"]) == 2
+
+
 def test_post_folio_holding_records(
     mock_okapi_success, mock_dag_run, mock_okapi_variable, tmp_path, caplog  # noqa
 ):
@@ -84,110 +271,5 @@ def test_run_holdings_tranformer():
     assert run_holdings_tranformer
 
 
-holdings = [
-    {
-        "id": "abcdedf123345",
-        "instanceId": "xyzabc-def-ha",
-        "formerIds": ["a123345"],
-        "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3"
-    },
-    {
-        "id": "exyqdf123345",
-        "instanceId": "xyzabc-def-ha",
-        "formerIds": ["a123345"],
-        "permanentLocationId": "04c54d2f-0e14-42ab-97a6-27fc7f4d061"
-    },
-]
-
-
-def _mock_setup_holdings_json(iteration_dir: pathlib.Path):
-    holdings_result_file = (
-        iteration_dir / "results/folio_holdings_holdings-transformer.json"
-    )
-
-    with holdings_result_file.open("w+") as holdings_fo:
-        for holding in holdings:
-            holdings_fo.write(f"{json.dumps(holding)}\n")
-
-
 def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
-
-
-
-def old_test(
-    mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa  # noqa  # noqa
-):  # noqa
-    results_dir = mock_file_system[3]
-
-    mhld_srs_mock_file = results_dir / "folio_srs_holdings_mhld-transformer.json"
-
-    with mhld_srs_mock_file.open("w+") as fo:
-        for srs_rec in [
-            {
-                "id": "",
-                "externalIdsHolder": {
-                    "holdingsHrid": "ah1234566",
-                    "holdingsId": "7e31c879-af1d-53fb-ba7a-60ad247a8dc4",
-                },
-                "parsedRecord": {
-                    "id": "",
-                    "content": {"fields": [{"004": "a1234566"}]},
-                },
-                "rawRecord": {"id": "", "content": {"fields": []}},
-            },
-            {
-                "id": "",
-                "externalIdsHolder": {
-                    "holdingsHrid": "ah13430268",
-                    "holdingsId": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
-                },
-                "parsedRecord": {
-                    "id": "",
-                    "content": {"fields": [{"004": "a13430268"}]},
-                },
-                "rawRecord": {"id": "", "content": {"fields": []}},
-            },
-        ]:
-            fo.write(f"{json.dumps(srs_rec)}\n")
-
-    holdings_id_map_mock = results_dir / "holdings_id_map.json"
-
-    with holdings_id_map_mock.open("w+") as fo:
-        for row in [
-            {
-                "legacy_id": "ah1234566",
-                "folio_id": "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f",
-            }
-        ]:
-            fo.write(f"{json.dumps(row)}\n")
-
-    holdings_records_mock = results_dir / "folio_holdings_mhld-transformer.json"
-
-    with holdings_records_mock.open("w+") as fo:
-        for row in [
-            {
-                "id": "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f",
-                "hrid": "ah1234566",
-                "formerIds": ["a1234566"],
-            }
-        ]:
-            fo.write(f"{json.dumps(row)}\n")
-
-    update_mhlds_uuids(
-        dag_run=mock_dag_run,
-        airflow=mock_file_system[0],
-    )
-
-    with mhld_srs_mock_file.open() as fo:
-        srs_records = [json.loads(line) for line in fo.readlines()]
-
-    # Tests for output SRS records that have updated UUID
-    assert len(srs_records) == 1
-    assert (
-        srs_records[0]["externalIdsHolder"]["holdingsId"]
-        == "1a3123ba-5dc4-4653-a2ae-5a972a3ad01f"
-    )
-
-    # Tests for HRID not present in the mapping file
-    assert "UUID for MHLD a13430268 not found in SRS record" in caplog.text

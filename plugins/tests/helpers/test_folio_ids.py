@@ -34,12 +34,16 @@ def test_generate_holdings_identifiers(
         for holding in mock_holding_records:
             fo.write(f"{json.dumps(holding)}\n")
 
-
     electronic_holdings_filepath = (
         results_dir / "folio_holdings_electronic-transformer.json"
     )
     with electronic_holdings_filepath.open("w+") as fo:
-        for holding in [{"instanceId": "xyzabc-def-ha"}]:
+        for holding in [
+            {
+                "instanceId": "xyzabc-def-ha",
+                "permanentLocationId": "048eda24-a3af-4d2f-94f5-efe039d50c79",
+            }
+        ]:
             fo.write(f"{json.dumps(holding)}\n")
 
     generate_holdings_identifiers(airflow=airflow, dag_run=mock_dag_run)
@@ -51,7 +55,6 @@ def test_generate_holdings_identifiers(
     assert modified_holdings[0]["id"] == "03e6d8da-9c1e-58d1-8459-4f657200a5df"
 
     assert modified_holdings[1]["hrid"] == "ah123345_2"
-
 
     with electronic_holdings_filepath.open() as fo:
         electronic_modified_holdings = [json.loads(line) for line in fo.readlines()]
@@ -151,13 +154,18 @@ def test_lookup_holdings_uuid():
     assert holdings_uuid == "527b783d-6624-56fe-be28-895f2c69cf1f"
 
 
-def test__update_holding_ids_no_file(mock_file_system, caplog):  # noqa
+def test_update_holding_ids_no_file(mock_file_system, caplog):  # noqa
 
     empty_mhlds_path = (
         mock_file_system[2] / "results/folio_holdings_mhlds-transformer.json"
     )
 
-    result = _update_holding_ids(empty_mhlds_path, {}, "http://okapi.edu/", {})
+    result = _update_holding_ids(
+        holdings_path=empty_mhlds_path,
+        instance_map={},
+        okapi_url="http://okapi.edu/",
+        holdings_map={},
+    )
 
     assert result is None
     assert (
