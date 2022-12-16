@@ -146,11 +146,6 @@ def generate_holdings_identifiers(**kwargs) -> None:
     )
     logger.info(f"Finished updating tsv holdings {tsv_holdings_path}")
 
-    # Updates MHLD holdings
-    mhld_holdings_path = results_dir / "folio_holdings_mhld-transformer.json"
-    _update_holding_ids(mhld_holdings_path, instance_map, okapi_url)
-    logger.info(f"Finished updating mhls holdings {mhld_holdings_path}")
-
     # Updates Electronic holdings
     electronic_holdings_path = (
         results_dir / "folio_holdings_electronic-transformer.json"

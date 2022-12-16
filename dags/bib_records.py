@@ -33,10 +33,10 @@ from plugins.folio.helpers.folio_ids import (
 
 from plugins.folio.holdings import (
     electronic_holdings,
+    merge_update_holdings,
+    post_folio_holding_records,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
-    post_folio_holding_records,
-    update_mhlds_uuids,
 )
 
 from plugins.folio.login import folio_login
@@ -221,8 +221,10 @@ with DAG(
             python_callable=generate_holdings_identifiers,
         )
 
-        update_mhlds_srs = PythonOperator(
-            task_id="update-mhlds-srs-uuids", python_callable=update_mhlds_uuids
+        merge_all_holdings = PythonOperator(
+            task_id="merge-all-holdings",
+            python_callable=merge_update_holdings,
+
         )
 
         update_items = PythonOperator(
@@ -231,7 +233,8 @@ with DAG(
 
         finish_hrid_updates = DummyOperator(task_id="finish-hrid-updates")
 
-        update_holdings_hrids >> [update_mhlds_srs, update_items] >> finish_hrid_updates
+        update_holdings_hrids >> merge_all_holdings >> update_items
+        update_items >> finish_hrid_updates
 
     with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
 
