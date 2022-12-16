@@ -28,28 +28,18 @@ def _run_transformer(transformer, airflow, dag_run_id, item_path):
     transformer.wrap_up()
 
 
-def _generate_lookups(holdings_path: pathlib.Path, instance_path: dict) -> tuple:
+def _generate_lookups(holdings_tsv_path: pathlib.Path) -> tuple:
     """
     Takes FOLIO holdings file, creates a dictionary by holdings id for
     merging MHLD records with existing holdings records
     """
-    instance_map = {}
-    with instance_path.open() as fo:
-        for line in fo.readlines():
-            instance = json.loads(line)
-            instance_map[instance["id"]] = {"hrid": instance["hrid"], "holdings": {}}
     all_holdings = dict()
-    with holdings_path.open() as fo:
+    with holdings_tsv_path.open() as fo:
         for line in fo.readlines():
             holding = json.loads(line)
             holding_id = holding["id"]
-            instance_id = holding["instanceId"]
             all_holdings[holding_id] = holding
-            instance_map[instance_id][holding_id] = {
-                "location_id": holding["permanentLocationId"],
-                "merged": False,
-            }
-    return all_holdings, instance_map
+    return all_holdings
 
 
 def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
@@ -101,6 +91,7 @@ def _process_mhld(**kwargs) -> dict:
             with mhld_report.open("a") as fo:
                 fo.write(f"Merged {mhld_record['id']} into {holdings_rec['id']}\n\n")
             break
+
     # Use MHLD record if failed to merge into existing holding
     if merged_holding is None:
         current_count = len(instance["holdings"])
@@ -110,6 +101,7 @@ def _process_mhld(**kwargs) -> dict:
         holding_id = str(FolioUUID(okapi_url, FOLIONamespaces.holdings, holdings_hrid))
         mhld_record["id"] = holding_id
         all_holdings[holding_id] = mhld_record
+        mhld_record["_version"] = 1
         instance["holdings"][holding_id] = {
             "location_id": mhld_record["permanentLocationId"],
             "merged": True,
@@ -153,7 +145,7 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str) -> dict
                             row[subfield] = location_id
 
                         case "c":
-                            row.pop(i)
+                            field[tag]["subfields"].pop(i)
 
             case "999":
                 for row in field[tag]["subfields"]:
@@ -177,6 +169,7 @@ def merge_update_holdings(**kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
+    holdings_tsv_path = iteration_dir / "results/folio_holdings_tsv-transformer.json"
     mhld_holdings_path = iteration_dir / "results/folio_holdings_mhld-transformer.json"
 
     if not mhld_holdings_path.exists():
@@ -191,12 +184,10 @@ def merge_update_holdings(**kwargs):
     with srs_path.open() as fo:
         srs_records = [json.loads(line) for line in fo.readlines()]
 
-    holdings_tsv_path = iteration_dir / "results/folio_holdings_tsv-transformer.json"
+    with (iteration_dir / "results/instance_holdings_map.json").open() as fo:
+        instance_map = json.load(fo)
 
-    all_holdings, instance_map = _generate_lookups(
-        holdings_tsv_path,
-        iteration_dir / "results/folio_instances_bibs-transformer.json",
-    )
+    all_holdings= _generate_lookups(holdings_tsv_path)
 
     updated_srs_records = []
     count = 0
