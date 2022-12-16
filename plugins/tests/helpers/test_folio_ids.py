@@ -34,10 +34,6 @@ def test_generate_holdings_identifiers(
         for holding in mock_holding_records:
             fo.write(f"{json.dumps(holding)}\n")
 
-    mhlds_holdings_filepath = results_dir / "folio_holdings_mhld-transformer.json"
-    with mhlds_holdings_filepath.open("w+") as fo:
-        for holding in [{"instanceId": "d97eeaae-9087-5b38-a78b-e789d0ab67f0"}]:
-            fo.write(f"{json.dumps(holding)}\n")
 
     electronic_holdings_filepath = (
         results_dir / "folio_holdings_electronic-transformer.json"
@@ -56,10 +52,6 @@ def test_generate_holdings_identifiers(
 
     assert modified_holdings[1]["hrid"] == "ah123345_2"
 
-    with mhlds_holdings_filepath.open() as fo:
-        mhlds_modified_holdings = [json.loads(line) for line in fo.readlines()]
-
-    assert mhlds_modified_holdings[0]["hrid"] == "ah700000_1"
 
     with electronic_holdings_filepath.open() as fo:
         electronic_modified_holdings = [json.loads(line) for line in fo.readlines()]

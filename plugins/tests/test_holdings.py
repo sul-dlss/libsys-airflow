@@ -9,7 +9,6 @@ from plugins.folio.holdings import (
     post_folio_holding_records,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
-    update_mhlds_uuids,
 )
 
 from plugins.tests.mocks import (  # noqa
@@ -115,13 +114,8 @@ def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
 
 
-def test_update_mhlds_uuids_no_srs(mock_dag_run, caplog):  # noqa
-    update_mhlds_uuids(dag_run=mock_dag_run)
 
-    assert "No MHLD SRS records" in caplog.text
-
-
-def test_update_mhlds_uuids(
+def old_test(
     mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa  # noqa  # noqa
 ):  # noqa
     results_dir = mock_file_system[3]
