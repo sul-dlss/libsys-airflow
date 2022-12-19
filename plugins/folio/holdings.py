@@ -137,7 +137,7 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str) -> dict
             case "001":
                 field[tag] = existing_hrid
 
-            case "825":
+            case "852":
                 for i, row in enumerate(field[tag]["subfields"]):
                     subfield = list(row)[0]
                     match subfield:
@@ -203,6 +203,7 @@ def merge_update_holdings(**kwargs):
         updated_srs_records.append(updated_srs)
         if not count % 1_000:
             logger.info(f"Merged and updated {count:,} MHLD and SRS records")
+        count += 1
 
     with srs_path.open("w+") as fo:
         for record in updated_srs_records:

@@ -128,7 +128,7 @@ srs_mhdls = [
                     {"001": "123344"},
                     {"004": "a1234566"},
                     {
-                        "825": {
+                        "852": {
                             "subfields": [{"a": "CSt"}, {"b": "ART"}, {"c": "STACKS"}]
                         }
                     },
@@ -242,10 +242,10 @@ def test_merge_update_holdings(
     assert first_rec_fields[0]["001"] == "ah123345_1"
     assert first_rec_fields[1]["004"] == "a1234566"
     assert (
-        first_rec_fields[2]["825"]["subfields"][1]["b"]
+        first_rec_fields[2]["852"]["subfields"][1]["b"]
         == "0edeef57-074a-4f07-aee2-9f09d55e65c3"
     )
-    assert len(first_rec_fields[2]["825"]["subfields"]) == 2
+    assert len(first_rec_fields[2]["852"]["subfields"]) == 2
 
 
 def test_post_folio_holding_records(
