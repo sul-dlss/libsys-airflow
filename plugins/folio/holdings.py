@@ -54,6 +54,8 @@ def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
                 holding_record[name].extend(mhld_record[name])
             else:
                 holding_record[name] = mhld_record[name]
+    # Change Source to MARC to display MHLD MARC record in FOLIO
+    holding_record['sourceId'] = mhld_record['sourceId']
     return holding_record
 
 

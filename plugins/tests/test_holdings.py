@@ -77,6 +77,7 @@ holdings = [
         "formerIds": ["a123345"],
         "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
         "callNumber": "AB 12345",
+        "sourceId": "f32d531e-df79-46b3-8932-cdd35f7a2264"
     },
     {
         "id": "exyqdf123345",
@@ -102,6 +103,7 @@ mhld_holdings = [
         "holdingsStatementsForIndexes": [
             {"statement": "No indices exist", "note": "", "staffNote": ""}
         ],
+        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59"
     },
     {
         "id": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
@@ -111,6 +113,7 @@ mhld_holdings = [
             {"statement": "For years 2022-2023", "note": "", "staffNote": ""}
         ],
         "notes": [{"note": "a short note"}],
+        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59"
     },
 ]
 
