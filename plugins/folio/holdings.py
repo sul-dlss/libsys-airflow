@@ -77,7 +77,7 @@ def _process_mhld(**kwargs) -> dict:
     instance = instance_map[instance_id]
     merged_holding = None
 
-    mhld_report = iteration_dir / "reports/mhld-merges.md"
+    mhld_report = iteration_dir / "reports/report_mhld-merges.md"
     mhld_report.write_text("# MHLD Merge Report\n")
 
     for holding_id, info in instance["holdings"].items():
