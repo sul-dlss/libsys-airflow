@@ -64,7 +64,11 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
 def test_merge_update_holdings_no_holdings(
     mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
 ):
-    merge_update_holdings(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
+    merge_update_holdings(
+        airflow=str(mock_file_system[0]),
+        dag_run=mock_dag_run,
+        folio_client=MockFOLIOClient(),
+    )
 
     assert "No MHLDs holdings" in caplog.text
 
@@ -77,7 +81,7 @@ holdings = [
         "formerIds": ["a123345"],
         "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
         "callNumber": "AB 12345",
-        "sourceId": "f32d531e-df79-46b3-8932-cdd35f7a2264"
+        "sourceId": "f32d531e-df79-46b3-8932-cdd35f7a2264",
     },
     {
         "id": "exyqdf123345",
@@ -103,7 +107,7 @@ mhld_holdings = [
         "holdingsStatementsForIndexes": [
             {"statement": "No indices exist", "note": "", "staffNote": ""}
         ],
-        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59"
+        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59",
     },
     {
         "id": "d1e33e3-3b57-53e4-bba0-b2faed059f40",
@@ -113,7 +117,7 @@ mhld_holdings = [
             {"statement": "For years 2022-2023", "note": "", "staffNote": ""}
         ],
         "notes": [{"note": "a short note"}],
-        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59"
+        "sourceId": "036ee84a-6afd-4c3c-9ad3-4a12ab875f59",
     },
 ]
 
@@ -190,6 +194,7 @@ def test_merge_update_holdings(
     mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
 ):
     results_dir = mock_file_system[3]
+    reports_dir = mock_file_system[2] / "reports"
     holdings_tsv = results_dir / "folio_holdings_tsv-transformer.json"
     holdings_mhld = results_dir / "folio_holdings_mhld-transformer.json"
 
@@ -211,7 +216,15 @@ def test_merge_update_holdings(
     assert holdings_tsv.exists()
     assert holdings_mhld.exists()
 
-    merge_update_holdings(airflow=str(mock_file_system[0]), dag_run=mock_dag_run)
+    mock_folio_client = MockFOLIOClient(
+        locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-STACKS"}]
+    )
+
+    merge_update_holdings(
+        airflow=str(mock_file_system[0]),
+        dag_run=mock_dag_run,
+        folio_client=mock_folio_client,
+    )
 
     with (results_dir / "folio_holdings.json").open() as fo:
         combined_holdings = [json.loads(line) for line in fo.readlines()]
@@ -244,11 +257,20 @@ def test_merge_update_holdings(
     first_rec_fields = modified_srs[0]["parsedRecord"]["content"]["fields"]
     assert first_rec_fields[0]["001"] == "ah123345_1"
     assert first_rec_fields[1]["004"] == "a1234566"
-    assert (
-        first_rec_fields[2]["852"]["subfields"][1]["b"]
-        == "0edeef57-074a-4f07-aee2-9f09d55e65c3"
-    )
+    assert first_rec_fields[2]["852"]["subfields"][1]["b"] == "GRE-STACKS"
     assert len(first_rec_fields[2]["852"]["subfields"]) == 2
+
+    # Tests reports for MHLDS merge
+    mhld_merge_report = (reports_dir / "report_mhld-merges.md").read_text()
+
+    assert (
+        "Merged 7e31c879-af1d-53fb-ba7a-60ad247a8dc4 into abcdedf123345"
+        in mhld_merge_report
+    )
+    assert (
+        "No match found in existing Holdings record 71857ce4-0ea0-5d4a-b7a5-456255515c63 for instance HRID a123345"
+        in mhld_merge_report
+    )
 
 
 def test_post_folio_holding_records(

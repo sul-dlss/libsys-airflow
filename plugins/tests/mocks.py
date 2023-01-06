@@ -103,6 +103,7 @@ def mock_file_system(tmp_path, mock_dag_run):
 class MockFOLIOClient(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_headers: dict = {}
+    locations: list = []
 
 
 class MockTaskInstance(pydantic.BaseModel):
