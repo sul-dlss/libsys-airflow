@@ -4,6 +4,8 @@ import pathlib
 import re
 
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
+from folioclient import FolioClient
+
 from airflow.models import Variable
 
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
@@ -72,13 +74,14 @@ def _process_mhld(**kwargs) -> dict:
     instance_map: dict = kwargs["instance_map"]
     okapi_url: str = kwargs["okapi_url"]
     iteration_dir: pathlib.Path = kwargs["iteration_dir"]
+    locations_lookup: dict = kwargs["locations_lookup"]
 
     instance_id = mhld_record["instanceId"]
     instance = instance_map[instance_id]
     merged_holding = None
 
-    mhld_report = iteration_dir / "reports/report_mhld-merges.md"
-    mhld_report.write_text("# MHLD Merge Report\n")
+    mhld_report_file = iteration_dir / "reports/report_mhld-merges.md"
+    mhld_report = mhld_report_file.open("a+")
 
     for holding_id, info in instance["holdings"].items():
         location_id = info["location_id"]
@@ -90,8 +93,7 @@ def _process_mhld(**kwargs) -> dict:
             merged_holding = _mhld_into_holding(mhld_record, holdings_rec)
             all_holdings[holding_id] = merged_holding
             info["merged"] = True
-            with mhld_report.open("a") as fo:
-                fo.write(f"Merged {mhld_record['id']} into {holdings_rec['id']}\n\n")
+            mhld_report.write(f"Merged {mhld_record['id']} into {holdings_rec['id']}\n")
             break
 
     # Use MHLD record if failed to merge into existing holding
@@ -108,15 +110,15 @@ def _process_mhld(**kwargs) -> dict:
             "location_id": mhld_record["permanentLocationId"],
             "merged": True,
         }
-        with mhld_report.open("a") as fo:
-            fo.write(
-                f"\nNo match found in existing Holdings record for {holding_id}\n\n"
-            )
-    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, okapi_url)
+        mhld_report.write(
+            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n"
+        )
+    mhld_report.close()
+    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, okapi_url, locations_lookup)
     return srs_record
 
 
-def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str) -> dict:
+def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str, locations_lookup: dict) -> dict:
 
     existing_hrid = mhld_record["hrid"]
     existing_holdings_uuid = mhld_record["id"]
@@ -144,7 +146,7 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str) -> dict
                     subfield = list(row)[0]
                     match subfield:
                         case "b":
-                            row[subfield] = location_id
+                            row[subfield] = locations_lookup[location_id]
 
                         case "c":
                             field[tag]["subfields"].pop(i)
@@ -168,6 +170,17 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str) -> dict
 
 def merge_update_holdings(**kwargs):
     okapi_url = Variable.get("OKAPI_URL")
+
+    folio_client = kwargs.get("folio_client")
+
+    if folio_client is None:
+        folio_client = FolioClient(
+            okapi_url,
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD")
+        )
+
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
@@ -177,6 +190,9 @@ def merge_update_holdings(**kwargs):
     if not mhld_holdings_path.exists():
         logger.info(f"No MHLDs holdings {mhld_holdings_path}, exiting")
         return
+
+    mhld_report_file = iteration_dir / "reports/report_mhld-merges.md"
+    mhld_report_file.write_text("# MHLD Merge Report\n")
 
     srs_path = iteration_dir / "results/folio_srs_holdings_mhld-transformer.json"
 
@@ -188,6 +204,10 @@ def merge_update_holdings(**kwargs):
 
     with (iteration_dir / "results/instance_holdings_map.json").open() as fo:
         instance_map = json.load(fo)
+
+    locations_lookup = {}
+    for location in folio_client.locations:
+        locations_lookup[location['id']] = location['code']
 
     all_holdings= _generate_lookups(holdings_tsv_path)
 
@@ -201,6 +221,7 @@ def merge_update_holdings(**kwargs):
             instance_map=instance_map,
             okapi_url=okapi_url,
             iteration_dir=iteration_dir,
+            locations_lookup=locations_lookup
         )
         updated_srs_records.append(updated_srs)
         if not count % 1_000:
