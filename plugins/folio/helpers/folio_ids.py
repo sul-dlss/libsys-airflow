@@ -19,7 +19,7 @@ def _generate_instance_map(instance_path: pathlib.Path) -> dict:
     with instance_path.open() as fo:
         for line in fo.readlines():
             instance = json.loads(line)
-            instance_map[instance["id"]] = {"hrid": instance["hrid"], "holdings": []}
+            instance_map[instance["id"]] = {"hrid": instance["hrid"], "holdings": {}}
 
     return instance_map
 
@@ -77,17 +77,17 @@ def _update_holdings_map(mapping, hrid, uuid, holding) -> None:
         mapping[holding["id"]] = {uuid: info}
 
 
-def _update_holding_ids(
-    holdings_path: pathlib.Path,
-    instance_map: dict,
-    okapi_url: str,
-    holdings_map: dict = {},
-) -> None:
+def _update_holding_ids(**kwargs) -> None:
     """
     Iterates through a list of holdings, generates uuid and hrids based
     on the instance map, and optionally populates a holdings map for
     later item identifier generation
     """
+    holdings_path: pathlib.Path = kwargs["holdings_path"]
+    instance_map: dict = kwargs["instance_map"]
+    okapi_url: str = kwargs["okapi_url"]
+    holdings_map: dict = kwargs.get("holdings_map", {})
+    merged: bool = kwargs.get("merged", False)
     if not holdings_path.exists():
         logger.info(f"{holdings_path.name} does not exist, returning")
         return
@@ -111,7 +111,10 @@ def _update_holding_ids(
             holding["id"] = new_holdings_id
             # For optimistic locking handling
             holding["_version"] = 1
-            instance_map[instance_id]["holdings"].append(new_holdings_id)
+            instance_map[instance_id]["holdings"][new_holdings_id] = {
+                "location_id": holding["permanentLocationId"],
+                "merged": merged,
+            }
             fo.write(f"{json.dumps(holding)}\n")
             if not i % 1_000 and i > 0:
                 logger.info(f"Generated uuids and hrids for {i:,} holdings")
@@ -142,20 +145,27 @@ def generate_holdings_identifiers(**kwargs) -> None:
 
     # Adds a stub key-value holdings map to populate from base tsv file
     _update_holding_ids(
-        tsv_holdings_path, instance_map, okapi_url, {"type": "base tsv"}
+        holdings_path=tsv_holdings_path,
+        instance_map=instance_map,
+        okapi_url=okapi_url,
+        holdings_map={"type": "base tsv"},
     )
     logger.info(f"Finished updating tsv holdings {tsv_holdings_path}")
-
-    # Updates MHLD holdings
-    mhld_holdings_path = results_dir / "folio_holdings_mhld-transformer.json"
-    _update_holding_ids(mhld_holdings_path, instance_map, okapi_url)
-    logger.info(f"Finished updating mhls holdings {mhld_holdings_path}")
 
     # Updates Electronic holdings
     electronic_holdings_path = (
         results_dir / "folio_holdings_electronic-transformer.json"
     )
-    _update_holding_ids(electronic_holdings_path, instance_map, okapi_url)
+    _update_holding_ids(
+        holdings_path=electronic_holdings_path,
+        instance_map=instance_map,
+        okapi_url=okapi_url,
+        merged=True,
+    )
+
+    with (results_dir / "instance_holdings_map.json").open("w+") as fo:
+        json.dump(instance_map, fo, indent=2)
+
     logger.info(f"Finished updating electronic holdings {electronic_holdings_path}")
 
 
@@ -199,7 +209,9 @@ def generate_item_identifiers(**kwargs) -> None:
                 holdings_map[original_holding_id],
             )
             if holding_uuid is None:
-                logger.error(f"Unable to retrieve generated holdings UUID for {item['id']}")
+                logger.error(
+                    f"Unable to retrieve generated holdings UUID for {item['id']}"
+                )
                 continue
             current_holding = holdings_map[original_holding_id][holding_uuid]
             holdings_hrid = current_holding["hrid"]
