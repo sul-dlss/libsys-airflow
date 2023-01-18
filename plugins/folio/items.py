@@ -64,7 +64,7 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
     """Retrieves itemNoteTypes from Okapi"""
     note_types = dict()
     note_types_response = requests.get(
-        f"{folio_client.okapi_url}/item-note-types", headers=folio_client.okapi_headers
+        f"{folio_client.okapi_url}/item-note-types?limit=100", headers=folio_client.okapi_headers
     )
 
     if note_types_response.status_code > 399:
