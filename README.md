@@ -78,9 +78,9 @@ The `optimistic_locking_management` DAG requires a Postgres Airflow
 database being used by Okapi.
 
 ## Testing
-- Activate python virtual environment: `source /venv/bin/activate`
+- Activate python virtual environment: `source virtual-env/bin/activate`
 - Install the FOLIO-FSE tools: `pip install folioclient folio-uuid`
-- Install sul-dlss fork of folio_migration_tools: `pip install ${local_directory}/folio_migration_tools`
+- Install sul-dlss fork of folio_migration_tools: `pip install ${local_directory}/folio_migration_tools` (e.g. `pip install ../folio_migration_tools/`)
 - Install Airflow: `pip install apache-airflow apache-airflow-providers-postgres`
 
 Run the flake8 linter:

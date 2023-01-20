@@ -179,7 +179,6 @@ def generate_item_identifiers(**kwargs) -> None:
     task_instance = kwargs["task_instance"]
     iteration_dir = pathlib.Path(airflow) / f"migration/iterations/{dag.run_id}/"
     results_dir = iteration_dir / "results"
-    okapi_url = Variable.get("OKAPI_URL")
 
     tsv_filename = task_instance.xcom_pull(
         task_ids="bib-files-group", key="tsv-base"
@@ -219,9 +218,7 @@ def generate_item_identifiers(**kwargs) -> None:
             item_hrid = f"{holdings_hrid[:1]}i{holdings_hrid[2:]}_{current_count + 1}"
             item["hrid"] = item_hrid
             item["holdingsRecordId"] = holding_uuid
-            item_uuid = str(FolioUUID(okapi_url, FOLIONamespaces.items, item_hrid))
-            item["id"] = item_uuid
-            current_holding["items"].append(item_uuid)
+            current_holding["items"].append(item["id"])
             if not i % 1_000 and i > 0:
                 logger.info(f"Generated uuids and hrids for {i:,} items")
             fo.write(f"{json.dumps(item)}\n")
