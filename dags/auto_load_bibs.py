@@ -46,6 +46,7 @@ def auto_bib_loads(**kwargs):
                 "tsv": [],
                 "tsv-base": None,
                 "tsv-dates": None,
+                "tsv-bwchild": None,
             }
             marc_file_parts = marc_file.stem.split(".")
             mhld_file = files_path / ".".join([marc_file_parts[0], "mhld", "mrc"])
@@ -59,6 +60,8 @@ def auto_bib_loads(**kwargs):
                     record_group["tsv-base"] = str(tsv_file)
                 elif tsv_file.name == f"{marc_file.stem}.dates.tsv":
                     record_group["tsv-dates"] = str(tsv_file)
+                elif tsv_file.name.endswith("bwchild.tsv"):
+                    record_group["tsv-bwchild"] = str(tsv_file)
                 else:
                     record_group["tsv"].append(str(tsv_file))
             bib_record_groups.append(record_group)
