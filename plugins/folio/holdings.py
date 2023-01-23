@@ -325,7 +325,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
         name="mhld-transformer",
         migration_task_type="HoldingsMarcTransformer",
-        legacy_id_marc_path="001",
+        legacy_id_marc_path="004",
         use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=[{"file_name": filepath.name, "supressed": False}],

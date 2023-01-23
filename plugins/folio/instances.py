@@ -65,7 +65,7 @@ def run_bibs_transformer(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     dag = kwargs["dag_run"]
-    
+
     iteration_dir = Path(f"{airflow}/migration/iterations/{dag.run_id}")
 
     library_config = kwargs["library_config"]
