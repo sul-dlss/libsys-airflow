@@ -56,10 +56,10 @@ def test_preceding_succeeding_titles(
     results_dir = mock_file_system[3]
 
     # Create mock JSON file
-    titles_filename = "preceding_succeeding_titles.json"
+    titles_filename = "extradata_bibs-transformer.extradata"
     titles_file = results_dir / titles_filename
     titles_file.write_text(
-        """{ "id": "11111111-1111-1111-1111-111111111111", "title": "Preceding Title", "identifiers": [], "succeedingInstanceId": "22222222-2222-2222-2222-222222222222" }"""
+        """succeedingTitles\t{ "id": "11111111-1111-1111-1111-111111111111", "title": "Preceding Title", "identifiers": [], "succeedingInstanceId": "22222222-2222-2222-2222-222222222222" }"""
     )
 
     mock_task_instance = MockTaskInstance
