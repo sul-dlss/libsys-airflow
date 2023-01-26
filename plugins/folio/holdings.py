@@ -111,7 +111,7 @@ def _process_mhld(**kwargs) -> dict:
             "merged": True,
         }
         mhld_report.write(
-            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n"
+            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n\n"
         )
     mhld_report.close()
     srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, okapi_url, locations_lookup)
