@@ -56,7 +56,7 @@ sul_config = LibraryConfiguration(
     library_name="Stanford University Libraries",
     base_folder="/opt/airflow/migration",
     log_level_debug=True,
-    folio_release="lotus",
+    folio_release="morning-glory",
     iteration_identifier="",
 )
 

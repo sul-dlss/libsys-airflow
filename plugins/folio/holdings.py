@@ -111,7 +111,7 @@ def _process_mhld(**kwargs) -> dict:
             "merged": True,
         }
         mhld_report.write(
-            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n"
+            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n\n"
         )
     mhld_report.close()
     srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, okapi_url, locations_lookup)
@@ -325,7 +325,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
         name="mhld-transformer",
         migration_task_type="HoldingsMarcTransformer",
-        legacy_id_marc_path="001",
+        legacy_id_marc_path="004",
         use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=[{"file_name": filepath.name, "supressed": False}],

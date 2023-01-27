@@ -30,15 +30,18 @@ def post_to_folio(*args, **kwargs):
     iteration_id = params["iteration_id"]
     task_instance = kwargs["task_instance"]
     jwt = task_instance.xcom_pull(task_ids="folio_login")
-    preceding_succeeding_titles_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/preceding_succeeding_titles.json"
+    extra_data_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/extradata_bibs-transformer.extradata"
 
-    if not preceding_succeeding_titles_path.exists():
-        logger.info(f"{preceding_succeeding_titles_path} does not exist.")
+    if not extra_data_path.exists():
+        logger.info(f"{extra_data_path} does not exist.")
         return
 
-    logger.info(f"Opening {preceding_succeeding_titles_path}")
-    with preceding_succeeding_titles_path.open() as fo:
-        for obj in fo.readlines():
+    logger.info(f"Opening {extra_data_path}")
+    with extra_data_path.open() as fo:
+        for row in fo.readlines():
+            object_type, obj = row.split("\t")
+            if not object_type.startswith("succeedingTitles"):
+                continue
             obj = json.loads(obj)
 
             logger.info(f"Posting {obj}")

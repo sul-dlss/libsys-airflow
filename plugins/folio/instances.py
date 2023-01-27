@@ -5,20 +5,21 @@ from datetime import datetime
 from pathlib import Path
 
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
+from folio_migration_tools.library_configuration import HridHandling
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 
 
-def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
+def _adjust_records(instances_path: Path, tsv_dates: str):
     dates_df = pd.read_csv(
         tsv_dates,
         sep="\t",
         dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str},
     )
     records = []
-    with open(bibs_transformer.processor.results_file.name) as fo:
+    with instances_path.open() as fo:
         for row in fo.readlines():
             record = json.loads(row)
             record["_version"] = 1  # for handling optimistic locking
@@ -30,7 +31,7 @@ def _adjust_records(bibs_transformer: BibsTransformer, tsv_dates: str):
                 )
                 record["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
             records.append(record)
-    with open(bibs_transformer.processor.results_file.name, "w+") as fo:
+    with instances_path.open("w+") as fo:
         for record in records:
             fo.write(f"{json.dumps(record)}\n")
     Path(tsv_dates).unlink()
@@ -61,7 +62,11 @@ def post_folio_instance_records(**kwargs):
 
 
 def run_bibs_transformer(*args, **kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+
     dag = kwargs["dag_run"]
+
+    iteration_dir = Path(f"{airflow}/migration/iterations/{dag.run_id}")
 
     library_config = kwargs["library_config"]
 
@@ -75,7 +80,8 @@ def run_bibs_transformer(*args, **kwargs):
         name="bibs-transformer",
         migration_task_type="BibsTransformer",
         library_config=library_config,
-        hrid_handling="preserve001",
+        hrid_handling=HridHandling.preserve001,
+        never_update_hrid_settings=True,
         files=[{"file_name": f"{marc_stem}.mrc", "suppress": False}],
         ils_flavour="tag001",
     )
@@ -90,6 +96,8 @@ def run_bibs_transformer(*args, **kwargs):
 
     bibs_transformer.do_work()
 
-    _adjust_records(bibs_transformer, tsv_dates)
+    instances_record_path = iteration_dir / "results/folio_instances_bibs-transformer.json"
+
+    _adjust_records(instances_record_path, tsv_dates)
 
     bibs_transformer.wrap_up()

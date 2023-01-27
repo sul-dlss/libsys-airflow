@@ -101,7 +101,7 @@ def _processes_tsv(**kwargs):
     all_notes = []
     # Iterate on tsv notes and merge into the tsv_notes DF
     for tsv_note_path in tsv_notes:
-        logging.error(f"Starting merge of {tsv_note_path}")
+        logging.info(f"Starting merge of {tsv_note_path}")
         note_df = _merge_notes(tsv_note_path)
         if note_df is not None:
             all_notes.append(note_df)

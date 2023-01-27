@@ -25,7 +25,6 @@ class MockBibsTransformer(pydantic.BaseModel):
 
 
 def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
-    bib_transformer = MockBibsTransformer()
     instances_file = mock_file_system[3] / "folio_srs_instances.json"
     instances_file.write_text(
         """{"id": "3e815a91-8a6e-4bbf-8bd9-cf42f9f789e1", "hrid": "a123456"}
@@ -37,9 +36,7 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
 123456\t19900927\t19950710
 98765\t20220101\t0""")
 
-    bib_transformer.processor.results_file.name = str(instances_file)
-
-    _adjust_records(bib_transformer, str(tsv_dates_file))
+    _adjust_records(instances_file, str(tsv_dates_file))
 
     with instances_file.open() as fo:
         instance_records = [json.loads(row) for row in fo.readlines()]

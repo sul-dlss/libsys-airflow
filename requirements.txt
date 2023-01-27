@@ -9,4 +9,4 @@ pydantic
 pymarc
 pytest
 pytest_mock
-folio_migration_tools==1.6.4
+folio_migration_tools == 1.7.1
