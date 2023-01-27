@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import pathlib
@@ -387,3 +388,79 @@ def electronic_holdings(*args, **kwargs) -> str:
     _run_transformer(holdings_transformer, airflow, dag.run_id, full_path)
 
     logger.info(f"Finished transforming electronic {filename} to FOLIO holdings")
+
+
+def boundwith_holdings(*args, **kwargs):
+    okapi_url = Variable.get("OKAPI_URL")
+    folio_client = kwargs["folio_client"]
+
+    dag = kwargs["dag_run"]
+    task_instance = kwargs["task_instance"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
+
+    iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
+    bw_tsv_path = pathlib.Path(task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file"))
+    bw_holdings_json_path = iteration_dir / "results/folio_holdings_boundwith.json"
+    bw_parts_json_path = iteration_dir / "results/boundwith_parts.json"
+
+    if folio_client is None:
+        folio_client = FolioClient(
+            okapi_url,
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD")
+        )
+
+    locations_lookup = {}
+    for location in folio_client.locations:
+        if location["code"] == "SEE-OTHER":
+            locations_lookup[location['code']] = location['id']
+
+    """
+        includes the default call number type Ids
+    """
+    call_number_codes = {
+        "0": "6caca63e-5651-4db6-9247-3205156e9699",
+        "ALPHANUM": "28927d76-e097-4f63-8510-e56f2b7a3ad0",
+        "DEWEY": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
+        "DEWEYPER": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
+        "LC": "95467209-6d7b-468b-94df-0f5d7ad2747d",
+        "LCPER": "95467209-6d7b-468b-94df-0f5d7ad2747d",
+        "SUDOC": "fc388041-6cd0-4806-8a74-ebe3b9ab4c6e",
+    }
+
+    with bw_tsv_path.open() as tsv:
+        logger.info("Processing boundwiths")
+        bw_reader = csv.DictReader(tsv, delimiter="\t")
+
+        with bw_holdings_json_path.open("w+") as bwh, bw_parts_json_path.open("w+") as bwp:
+            for row in bw_reader:
+                """
+                    includes default holdings-type id for 'Bound-with'
+                """
+                holdings_id = str(FolioUUID(okapi_url, FOLIONamespaces.holdings, f"{row['CATKEY']}{row['CALL_SEQ']}"))
+
+                holdings = {
+                    "id": holdings_id,
+                    "instanceId": str(FolioUUID(okapi_url, FOLIONamespaces.instances, row['CATKEY'])),
+                    "callNumber": row['BASE_CALL_NUMBER'],
+                    "callNumberTypeId": call_number_codes[row['CALL_NUMBER_TYPE']],
+                    "permanentLocationId": locations_lookup[row['HOMELOCATION']],
+                    "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
+                }
+
+                logger.info(f"Writing holdings id {holdings_id} to file")
+                bwh.write(f"{json.dumps(holdings)}\n")
+
+                bw_id = str(FolioUUID(okapi_url, FOLIONamespaces.other, row['CATKEY'] + row['BARCODE']))
+
+                bw_parts = {
+                    "id": bw_id,
+                    "holdingsRecordId": holdings_id,
+                    "itemId": str(FolioUUID(okapi_url, FOLIONamespaces.items, row['BARCODE'])),
+                }
+
+                logger.info(f"Writing bound-with part id {bw_id} to file")
+                bwp.write(f"{json.dumps(bw_parts)}\n")
+
+    bw_tsv_path.unlink()

@@ -9,6 +9,7 @@ from plugins.folio.holdings import (
     merge_update_holdings,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
+    boundwith_holdings,
 )
 
 from plugins.tests.mocks import (  # noqa
@@ -17,7 +18,10 @@ from plugins.tests.mocks import (  # noqa
     mock_okapi_variable,
     mock_file_system,
     MockFOLIOClient,
+    MockTaskInstance,
 )
+
+import plugins.tests.mocks as mocks
 
 
 class MockMapper(pydantic.BaseModel):
@@ -39,11 +43,6 @@ class MockHoldingsTransformer(pydantic.BaseModel):
     folio_client: MockFOLIOClient = MockFOLIOClient()
     task_configuration: MockHoldingsConfiguration = MockHoldingsConfiguration()
     wrap_up = lambda x: "wrap_up"  # noqa
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = lambda *args, **kwargs: {}  # noqa
-    xcom_push = lambda *args, **kwargs: None  # noqa
 
 
 def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
@@ -298,3 +297,38 @@ def test_run_holdings_tranformer():
 
 def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
+
+
+def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system):  # noqa
+    dag = mock_dag_run
+
+    bw_tsv = mock_file_system[1] / "ckeys_.tsv.bwchild.tsv"
+    mocks.messages["bib-files-group"] = {"bwchild-file": str(bw_tsv)}
+
+    bw_tsv_lines=[
+        "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
+        "2956972\t2\t1\t36105127895816\tGREEN\tSEE-OTHER\tSEE-OTHER\tGOVSTKS\tBW-CHILD\t\t0\tSUDOC\tI\t29.9/5:148\t\t0\tMARC\t0"
+    ]
+
+    with bw_tsv.open("w+") as fo:
+        for line in bw_tsv_lines:
+            fo.write(f"{line}\n")
+
+    holdings_json = mock_file_system[3] / "folio_holdings_boundwith.json"
+
+    mock_folio_client = MockFOLIOClient(
+        locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "SEE-OTHER"}]
+    )
+
+    boundwith_holdings(
+        airflow=mock_file_system[0], dag_run=dag, folio_client=mock_folio_client, task_instance=MockTaskInstance()
+    )
+
+    with holdings_json.open() as hld:
+        holdings_rec = [json.loads(line) for line in hld.readlines()]
+
+    bw_part = mock_file_system[3] / "boundwith_parts.json"
+    with bw_part.open() as bwp:
+        bw_part_rec = [json.loads(line) for line in bwp.readlines()]
+
+    assert holdings_rec[0]["id"] == bw_part_rec[0]["holdingsRecordId"]

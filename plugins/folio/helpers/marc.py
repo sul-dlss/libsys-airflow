@@ -123,7 +123,6 @@ def move_marc_files(*args, **kwargs) -> str:
     task_instance = kwargs["task_instance"]
 
     marc_filepath = task_instance.xcom_pull(task_ids="bib-files-group", key="marc-file")
-
     marc_path = pathlib.Path(marc_filepath)
     marc_target = pathlib.Path(
         f"{airflow}/migration/iterations/{dag.run_id}/source_data/instances/{marc_path.name}"

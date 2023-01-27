@@ -37,6 +37,7 @@ from plugins.folio.holdings import (
     post_folio_holding_records,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
+    boundwith_holdings,
 )
 
 from plugins.folio.login import folio_login
@@ -179,7 +180,8 @@ with DAG(
         convert_tsv_to_folio_holdings >> convert_tsv_to_folio_items
         convert_tsv_to_folio_items >> finish_conversion
 
-    with TaskGroup(group_id="mhlds-electronic-holdings") as mhlds_electronic_holdings:
+    # with TaskGroup(group_id="mhlds-electronic-holdings") as mhlds_electronic_holdings:
+    with TaskGroup(group_id="additional-holdings") as additional_holdings:
 
         start_additional_holdings = DummyOperator(
             task_id="start-mhlds-electronic-holdings",
@@ -206,11 +208,16 @@ with DAG(
             },
         )
 
+        generate_boundwith_holdings = PythonOperator(
+            task_id="generate-boundwith-holdings",
+            python_callable=boundwith_holdings,
+        )
+
         finish_additional_holdings = DummyOperator(task_id="finish-additional-holdings")
 
         (
             start_additional_holdings
-            >> [convert_mhld_to_folio_holdings, generate_electronic_holdings]
+            >> [convert_mhld_to_folio_holdings, generate_electronic_holdings, generate_boundwith_holdings]
             >> finish_additional_holdings
         )
 
@@ -380,6 +387,6 @@ with DAG(
         >> move_transform_process
         >> marc_to_folio
     )
-    marc_to_folio >> mhlds_electronic_holdings >> update_hrids
+    marc_to_folio >> additional_holdings >> update_hrids
     update_hrids >> records_valid_json >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]

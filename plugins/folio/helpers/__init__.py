@@ -85,6 +85,7 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="tsv-base", value=bib_file_load["tsv-base"])
     task_instance.xcom_push(key="tsv-dates", value=bib_file_load["tsv-dates"])
     task_instance.xcom_push(key="mhld-file", value=bib_file_load.get("mhld"))
+    task_instance.xcom_push(key="bwchild-file", value=bib_file_load.get("tsv-bwchild"))
 
 
 def post_to_okapi(**kwargs) -> bool:

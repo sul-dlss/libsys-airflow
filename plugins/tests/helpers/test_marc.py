@@ -1,6 +1,5 @@
 import json
 
-import pydantic
 import pytest  # noqa
 
 import folio_migration_tools.migration_tasks.batch_poster as batch_poster
@@ -26,26 +25,10 @@ from plugins.tests.mocks import (  # noqa
     mock_okapi_variable,
     MockFOLIOClient,
     MockLibraryConfig,
+    MockTaskInstance,
 )
 
-# Mock xcom messages dict
-messages = {}
-
-
-# Mock xcoms
-def mock_xcom_push(*args, **kwargs):
-    key = kwargs["key"]
-    value = kwargs["value"]
-    messages[key] = value
-
-
-def mock_xcom_pull(*args, **kwargs):
-    task_id = kwargs["task_ids"]
-    key = kwargs["key"]
-    if task_id in messages:
-        if key in messages[task_id]:
-            return messages[task_id][key]
-    return "unknown"
+import plugins.tests.mocks as mocks
 
 
 @pytest.fixture
@@ -88,11 +71,6 @@ def srs_file(mock_file_system):  # noqa
         """{ "id": "e9a161b7-3541-54d6-bd1d-e4f2c3a3db79", "rawRecord": { "content": {"leader": "01634pam a2200433 i 4500"}}}"""
     )
     return srs_filepath
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = mock_xcom_pull
-    xcom_push = mock_xcom_push
 
 
 def test_add_electronic_holdings_skip():
@@ -236,8 +214,7 @@ def test_extract_956s():
 
 
 def test_marc_only():
-    global messages
-    messages["bib-files-group"] = {
+    mocks.messages["bib-files-group"] = {
         "tsv-files": [],
         "tsv-base": None,
     }
@@ -250,7 +227,7 @@ def test_marc_only():
 
     assert next_task.startswith("marc-only")
 
-    messages = {}
+    mocks.messages = {}
 
 
 def test_get_library_default():
@@ -283,8 +260,7 @@ def test_get_library_business():
 
 
 def test_marc_only_with_tsv():
-    global messages
-    messages["bib-files-group"] = {
+    mocks.messages["bib-files-group"] = {
         "tsv-files": ["circnotes.tsv"],
         "tsv-base": "base.tsv",
     }
@@ -297,7 +273,7 @@ def test_marc_only_with_tsv():
 
     assert next_task.startswith("tsv-holdings")
 
-    messages = {}
+    mocks.messages = {}
 
 
 def test_missing_001_to_034(mock_marc_record):
@@ -341,8 +317,7 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
         writer = MARCWriter(mhld_fo)
         writer.write(marc_record)
 
-    global messages
-    messages["bib-files-group"] = {
+    mocks.messages["bib-files-group"] = {
         "marc-file": str(sample_mrc),
         "mhld-file": str(sample_mhld_mrc),
     }
@@ -366,7 +341,7 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
         / f"migration/iterations/{mock_dag_run.run_id}/source_data/instances/sample.mrc"
     ).exists()
 
-    messages = {}
+    mocks.messages = {}
 
 
 def test_post_marc_to_srs(

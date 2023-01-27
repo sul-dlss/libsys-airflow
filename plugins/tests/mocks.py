@@ -100,6 +100,26 @@ def mock_file_system(tmp_path, mock_dag_run):
     return [airflow_path, source_dir, iteration_dir, results_dir, archive_dir, tmp]
 
 
+# Mock xcom messages dict
+messages = {}
+
+
+# Mock xcoms
+def mock_xcom_push(*args, **kwargs):
+    key = kwargs["key"]
+    value = kwargs["value"]
+    messages[key] = value
+
+
+def mock_xcom_pull(*args, **kwargs):
+    task_id = kwargs["task_ids"]
+    key = kwargs["key"]
+    if task_id in messages:
+        if key in messages[task_id]:
+            return messages[task_id][key]
+    return "a0token"
+
+
 class MockFOLIOClient(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_headers: dict = {}
@@ -107,7 +127,8 @@ class MockFOLIOClient(pydantic.BaseModel):
 
 
 class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = lambda *args, **kwargs: "a0token"  # noqa
+    xcom_pull = mock_xcom_pull
+    xcom_push = mock_xcom_push
 
 
 class MockLibraryConfig(pydantic.BaseModel):
