@@ -73,6 +73,17 @@ code in the plugin, you'll need to restart the `airflow-webserver` container
 by running `cap {stage} airflow:webserver` or ssh into the server and run `docker-compose restart airflow-webserver`
 to see changes in the running Airflow environment.
 
+## Running the DAGs to load Folio Inventory
+### Optionally turn off archiving for bulk loading
+```
+echo $OKAPI_PASSWORD
+ssh folio@$PG_DB_HOST
+psql -h localhost -U okapi
+alter system set archive_mode=off;
+ksu
+systemctl restart postgresql
+```
+
 The `optimistic_locking_management` DAG requires a Postgres Airflow
 [connection](https://airflow.apache.org/docs/apache-airflow/stable/concepts/connections.html) with the host, login, and password fields matching the
 database being used by Okapi.
