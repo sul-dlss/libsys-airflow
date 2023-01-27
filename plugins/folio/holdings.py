@@ -16,7 +16,7 @@ from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
 )
 
-from plugins.folio.helpers import post_to_okapi, setup_data_logging
+from plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
 
 logger = logging.getLogger(__name__)
 
@@ -413,21 +413,8 @@ def boundwith_holdings(*args, **kwargs):
 
     locations_lookup = {}
     for location in folio_client.locations:
-        if location["code"] == "SEE-OTHER":
+        if "SEE-OTHER" in location["code"]:
             locations_lookup[location['code']] = location['id']
-
-    """
-        includes the default call number type Ids
-    """
-    call_number_codes = {
-        "0": "6caca63e-5651-4db6-9247-3205156e9699",
-        "ALPHANUM": "28927d76-e097-4f63-8510-e56f2b7a3ad0",
-        "DEWEY": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
-        "DEWEYPER": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
-        "LC": "95467209-6d7b-468b-94df-0f5d7ad2747d",
-        "LCPER": "95467209-6d7b-468b-94df-0f5d7ad2747d",
-        "SUDOC": "fc388041-6cd0-4806-8a74-ebe3b9ab4c6e",
-    }
 
     with bw_tsv_path.open() as tsv:
         logger.info("Processing boundwiths")
@@ -439,13 +426,15 @@ def boundwith_holdings(*args, **kwargs):
                     includes default holdings-type id for 'Bound-with'
                 """
                 holdings_id = str(FolioUUID(okapi_url, FOLIONamespaces.holdings, f"{row['CATKEY']}{row['CALL_SEQ']}"))
+                loc_code = f"{constants.see_other_lib_locs[row['LIBRARY']]}"
+                perm_loc_id = locations_lookup[loc_code]
 
                 holdings = {
                     "id": holdings_id,
                     "instanceId": str(FolioUUID(okapi_url, FOLIONamespaces.instances, row['CATKEY'])),
                     "callNumber": row['BASE_CALL_NUMBER'],
-                    "callNumberTypeId": call_number_codes[row['CALL_NUMBER_TYPE']],
-                    "permanentLocationId": locations_lookup[row['HOMELOCATION']],
+                    "callNumberTypeId": constants.call_number_codes[row['CALL_NUMBER_TYPE']],
+                    "permanentLocationId": perm_loc_id,
                     "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
                 }
 

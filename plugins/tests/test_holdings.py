@@ -317,7 +317,7 @@ def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system)
     holdings_json = mock_file_system[3] / "folio_holdings_boundwith.json"
 
     mock_folio_client = MockFOLIOClient(
-        locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "SEE-OTHER"}]
+        locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-SEE-OTHER"}]
     )
 
     boundwith_holdings(
