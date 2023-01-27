@@ -29,7 +29,7 @@ def post_to_folio(*args, **kwargs):
     params = context.get("params")
     iteration_id = params["iteration_id"]
     task_instance = kwargs["task_instance"]
-    jwt = task_instance.xcom_pull(task_ids="folio_login", key="")
+    jwt = task_instance.xcom_pull(task_ids="folio_login")
     preceding_succeeding_titles_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/preceding_succeeding_titles.json"
 
     if not preceding_succeeding_titles_path.exists():

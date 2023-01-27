@@ -180,7 +180,6 @@ with DAG(
         convert_tsv_to_folio_holdings >> convert_tsv_to_folio_items
         convert_tsv_to_folio_items >> finish_conversion
 
-    # with TaskGroup(group_id="mhlds-electronic-holdings") as mhlds_electronic_holdings:
     with TaskGroup(group_id="additional-holdings") as additional_holdings:
 
         start_additional_holdings = DummyOperator(

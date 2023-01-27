@@ -113,7 +113,7 @@ def mock_xcom_push(*args, **kwargs):
 
 def mock_xcom_pull(*args, **kwargs):
     task_id = kwargs["task_ids"]
-    key = kwargs["key"]
+    key = kwargs.get("key")
     if task_id in messages:
         if key in messages[task_id]:
             return messages[task_id][key]
