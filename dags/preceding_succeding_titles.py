@@ -40,7 +40,7 @@ def post_to_folio(*args, **kwargs):
     with extra_data_path.open() as fo:
         for row in fo.readlines():
             object_type, obj = row.split("\t")
-            if not object_type.startswith("succeedingTitles"):
+            if not (object_type.startswith("succeedingTitles") or object_type.startswith("precedingTitles")):
                 continue
             obj = json.loads(obj)
 

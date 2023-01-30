@@ -59,7 +59,8 @@ def test_preceding_succeeding_titles(
     titles_filename = "extradata_bibs-transformer.extradata"
     titles_file = results_dir / titles_filename
     titles_file.write_text(
-        """succeedingTitles\t{ "id": "11111111-1111-1111-1111-111111111111", "title": "Preceding Title", "identifiers": [], "succeedingInstanceId": "22222222-2222-2222-2222-222222222222" }"""
+        """succeedingTitles\t{ "id": "11111111-1111-1111-1111-111111111111", "title": "Preceding Title", "identifiers": [], "succeedingInstanceId": "22222222-2222-2222-2222-222222222222" }
+precedingTitles\t{"id": "b9665be4-f3d6-4f89-82f7-681db77b7f4c", "title": "Monthly molybdenum report", "identifiers": [], "succeedingInstanceId": "a211eedc-1442-54c1-81cb-15826e5437a1"}"""
     )
 
     mock_task_instance = MockTaskInstance
