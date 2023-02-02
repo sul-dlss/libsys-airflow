@@ -2,11 +2,6 @@ import json
 import logging
 import pathlib
 
-from csv import DictReader
-
-from airflow.models import Variable
-from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +28,7 @@ def _update_holding(**kwargs) -> None:
     instance_map: dict = kwargs["instance_map"]
     holding: dict = kwargs["holding"]
 
-    instance_id = holding['instanceId']
+    instance_id = holding["instanceId"]
     instance_hrid = instance_map[instance_id]["hrid"]
     current_count = len(instance_map[instance_id]["holdings"])
     holding_hrid = f"{instance_hrid[:1]}h{instance_hrid[1:]}_{current_count + 1}"
@@ -44,7 +39,7 @@ def _update_holding(**kwargs) -> None:
 
     instance_map[instance_id]["holdings"][holding["id"]] = {
         "hrid": holding_hrid,
-        "items": []
+        "items": [],
     }
 
 
@@ -65,22 +60,23 @@ def generate_holdings_identifiers(**kwargs) -> None:
         for holdings_name in [
             "folio_holdings_tsv-transformer.json",
             "folio_holdings_electronic-transformer.json",
-            "folio_holdings_boundwith.json" ]:
+            "folio_holdings_boundwith.json",
+        ]:
             logger.info(f"Starting holdings update for {holdings_name}")
             holdings_path = results_dir / holdings_name
             with holdings_path.open() as fo:
                 for i, row in enumerate(fo.readlines()):
                     holding = json.loads(row)
-                    _update_holding(
-                        holding=holding,
-                        instance_map=instance_map
-                    )
+                    _update_holding(holding=holding, instance_map=instance_map)
                     holdings_fo.write(f"{json.dumps(holding)}\n")
-                    if not i%1_000 and i > 0:
-                        logger.info(f"Generated holdings hrids for {i:,} in {holdings_name} ")
+                    if not i % 1_000 and i > 0:
+                        logger.info(
+                            f"Generated holdings hrids for {i:,} in {holdings_name} "
+                        )
     with (results_dir / "instance-holdings-items.json").open("w+") as fo:
         json.dump(instance_map, fo, indent=2)
-    logger.info(f"Finished updating Holdings")
+
+    logger.info("Finished updating Holdings")
 
 
 def generate_item_identifiers(**kwargs) -> None:
@@ -113,7 +109,7 @@ def generate_item_identifiers(**kwargs) -> None:
     with items_path.open("w+") as fo:
         for i, item in enumerate(items):
             holding_id = item["holdingsRecordId"]
-            if not holding_id in holdings_map:
+            if holding_id not in holdings_map:
                 logger.error(f"{holding_id} not in found in Holdings")
                 continue
             current_holding = holdings_map[holding_id]
@@ -122,7 +118,9 @@ def generate_item_identifiers(**kwargs) -> None:
             item_hrid = f"{holdings_hrid[:1]}i{holdings_hrid[2:]}_{current_count + 1}"
             item["hrid"] = item_hrid
             current_holding["items"].append(item["id"])
-            instances_map[current_holding["instance"]]["holdings"][holding_id]["items"].append(item["id"])
+            instances_map[current_holding["instance"]]["holdings"][holding_id][
+                "items"
+            ].append(item["id"])
             if not i % 1_000 and i > 0:
                 logger.info(f"Generated uuids and hrids for {i:,} items")
             fo.write(f"{json.dumps(item)}\n")

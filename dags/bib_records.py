@@ -215,10 +215,10 @@ with DAG(
         finish_additional_holdings = DummyOperator(task_id="finish-additional-holdings")
 
         (
-            start_additional_holdings >> 
-            generate_electronic_holdings >> 
-            [ convert_mhld_to_folio_holdings, generate_boundwith_holdings] >>
-            finish_additional_holdings
+            start_additional_holdings
+            >> generate_electronic_holdings
+            >> [convert_mhld_to_folio_holdings, generate_boundwith_holdings]
+            >> finish_additional_holdings
         )
 
     with TaskGroup(group_id="update-hrids-identifiers") as update_hrids:
@@ -231,7 +231,6 @@ with DAG(
         merge_all_holdings = PythonOperator(
             task_id="merge-all-holdings",
             python_callable=merge_update_holdings,
-
         )
 
         update_items = PythonOperator(
@@ -372,9 +371,7 @@ with DAG(
     remediate_errors = TriggerDagRunOperator(
         task_id="audit_fix_record_loads",
         trigger_dag_id="audit_fix_record_loads",
-        conf={
-            "iteration_id": "{{ dag_run.run_id }}"
-        }
+        conf={"iteration_id": "{{ dag_run.run_id }}"},
     )
 
     finish_loading = DummyOperator(
