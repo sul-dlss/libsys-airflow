@@ -48,6 +48,8 @@ def test_generate_holdings_identifiers(
 
     generate_holdings_identifiers(airflow=airflow, dag_run=mock_dag_run)
 
+    assert not holdings_filepath.exists()
+
     with (results_dir / "folio_holdings.json").open() as fo:
         modified_holdings = [json.loads(line) for line in fo.readlines()]
 

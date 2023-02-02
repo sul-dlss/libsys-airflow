@@ -16,36 +16,17 @@ from plugins.folio.helpers import (
     setup_data_logging,
 )
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system  # noqa
+from plugins.tests.mocks import ( # noqa
+    mock_dag_run,
+    mock_file_system,
+    MockTaskInstance
+)
 
-# Mock xcom messages dict
-messages = {}
-
-
-# Mock xcoms
-def mock_xcom_push(*args, **kwargs):
-    key = kwargs["key"]
-    value = kwargs["value"]
-    messages[key] = value
-
-
-def mock_xcom_pull(*args, **kwargs):
-    task_id = kwargs["task_ids"]
-    key = kwargs["key"]
-    if task_id in messages:
-        if key in messages[task_id]:
-            return messages[task_id][key]
-    return "unknown"
+import plugins.tests.mocks as mocks
 
 
 class MockDagRun(pydantic.BaseModel):
     run_id: str = "manual_2022-09-30T22:03:42"
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = mock_xcom_pull
-    xcom_push = mock_xcom_push
-
 
 
 def test_archive_artifacts(mock_dag_run, mock_file_system):  # noqa
@@ -179,16 +160,16 @@ def test_get_bib_files():
         }
     }
 
-    global messages
-    assert len(messages) == 0
+    assert len(mocks.messages) == 0
 
     get_bib_files(task_instance=MockTaskInstance(), context=context)
 
-    assert messages["marc-file"].startswith("sample.mrc")
-    assert len(messages["tsv-files"]) == 2
-    assert messages["tsv-base"].startswith("sample.tsv")
-    assert messages["tsv-dates"].startswith("sample.dates.tsv")
-    messages
+    assert mocks.messages["marc-file"].startswith("sample.mrc")
+    assert len(mocks.messages["tsv-files"]) == 2
+    assert mocks.messages["tsv-base"].startswith("sample.tsv")
+    assert mocks.messages["tsv-dates"].startswith("sample.dates.tsv")
+
+    mocks.messages = {}
 
 
 def test_get_bib_files_no_load():

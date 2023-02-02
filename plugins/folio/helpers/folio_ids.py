@@ -77,6 +77,8 @@ def generate_holdings_identifiers(**kwargs) -> None:
                         logger.info(
                             f"Generated holdings hrids for {i:,} in {holdings_name} "
                         )
+            holdings_path.unlink()
+
     with (results_dir / "instance-holdings-items.json").open("w+") as fo:
         json.dump(instance_map, fo, indent=2)
 

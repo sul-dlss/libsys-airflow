@@ -7,7 +7,9 @@ from plugins.folio.helpers.tsv import (
     transform_move_tsvs,
 )
 
-from plugins.tests.mocks import mock_file_system  # noqa
+import plugins.tests.mocks as mocks
+
+from plugins.tests.mocks import mock_file_system, MockTaskInstance  # noqa
 from pytest_mock import MockerFixture  # noqa
 
 
@@ -20,31 +22,6 @@ def mock_dag_run(mocker: MockerFixture):
 
 class MockDagRun(pydantic.BaseModel):
     run_id: str = "manual_2022-09-30T22:03:42"
-
-
-# Mock xcom messages dict
-messages = {}
-
-
-# Mock xcoms
-def mock_xcom_push(*args, **kwargs):
-    key = kwargs["key"]
-    value = kwargs["value"]
-    messages[key] = value
-
-
-def mock_xcom_pull(*args, **kwargs):
-    task_id = kwargs["task_ids"]
-    key = kwargs["key"]
-    if task_id in messages:
-        if key in messages[task_id]:
-            return messages[task_id][key]
-    return "unknown"
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    xcom_pull = mock_xcom_pull
-    xcom_push = mock_xcom_push
 
 
 def test_merge_notes_empty(mock_file_system, caplog):  # noqa
@@ -163,8 +140,7 @@ def test_transform_move_tsvs(mock_file_system, mock_dag_run):  # noqa
     data_prep.mkdir(parents=True)
 
     # Mocks successful upstream task
-    global messages
-    messages["bib-files-group"] = {
+    mocks.messages["bib-files-group"] = {
         "tsv-files": [
             str(symphony_notes_tsv),
             str(symphony_circnotes_tsv),
@@ -199,7 +175,7 @@ def test_transform_move_tsvs(mock_file_system, mock_dag_run):  # noqa
     assert sample_lines[6] == "a789012\tMANUSCRPT\tLC 67890\t12345\tSPEC-COLL\tLIBUSEONLY MANUSCRPT\n"
     assert sample_lines[7] == "a789012\tMAP\tLC 67890\t12345\tGREEN\tNH-MEDSTKS MAP\n"
     assert sample_lines[8] == "a789012\tTECHRPTS\tLC 67890\t12345\tSAL3\tNH-INHOUSE TECHRPTS\n"
-    messages = {}
+    mocks.messages = {}
 
 
 def test_transform_move_tsvs_doesnt_exist(mock_file_system, mock_dag_run):  # noqa
