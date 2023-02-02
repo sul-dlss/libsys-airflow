@@ -215,9 +215,10 @@ with DAG(
         finish_additional_holdings = DummyOperator(task_id="finish-additional-holdings")
 
         (
-            start_additional_holdings
-            >> [convert_mhld_to_folio_holdings, generate_electronic_holdings, generate_boundwith_holdings]
-            >> finish_additional_holdings
+            start_additional_holdings >> 
+            generate_electronic_holdings >> 
+            [ convert_mhld_to_folio_holdings, generate_boundwith_holdings] >>
+            finish_additional_holdings
         )
 
     with TaskGroup(group_id="update-hrids-identifiers") as update_hrids:
