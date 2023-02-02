@@ -39,6 +39,8 @@ def _update_holding(**kwargs) -> None:
 
     instance_map[instance_id]["holdings"][holding["id"]] = {
         "hrid": holding_hrid,
+        "permanentLocationId": holding["permanentLocationId"],
+        "merged": False,
         "items": [],
     }
 
@@ -64,6 +66,8 @@ def generate_holdings_identifiers(**kwargs) -> None:
         ]:
             logger.info(f"Starting holdings update for {holdings_name}")
             holdings_path = results_dir / holdings_name
+            if not holdings_path.exists():
+                continue
             with holdings_path.open() as fo:
                 for i, row in enumerate(fo.readlines()):
                     holding = json.loads(row)
@@ -124,6 +128,11 @@ def generate_item_identifiers(**kwargs) -> None:
             if not i % 1_000 and i > 0:
                 logger.info(f"Generated uuids and hrids for {i:,} items")
             fo.write(f"{json.dumps(item)}\n")
+
+    # Remove instance uuid from holdings in map
+    for instance in instances_map.values():
+        for holding in instance['holdings'].values():
+            holding.pop('instance')
 
     with (results_dir / "instance-holdings-items.json").open("w+") as fo:
         json.dump(instances_map, fo)

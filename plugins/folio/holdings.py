@@ -91,6 +91,7 @@ def _process_mhld(**kwargs) -> dict:
     all_holdings: dict = kwargs["all_holdings"]
     instance_map: dict = kwargs["instance_map"]
     iteration_dir: pathlib.Path = kwargs["iteration_dir"]
+    locations_lookup: dict = kwargs["locations_lookup"]
 
     instance_id = mhld_record["instanceId"]
     instance = instance_map[instance_id]
@@ -100,7 +101,7 @@ def _process_mhld(**kwargs) -> dict:
     mhld_report = mhld_report_file.open("a+")
 
     for holding_id, info in instance["holdings"].items():
-        location_id = info["location_id"]
+        location_id = info["permanentLocationId"]
         if (
             location_id == mhld_record["permanentLocationId"]
             and info["merged"] is False
@@ -121,19 +122,19 @@ def _process_mhld(**kwargs) -> dict:
         all_holdings[holding_id] = mhld_record
         mhld_record["_version"] = 1
         instance["holdings"][holding_id] = {
-            "location_id": mhld_record["permanentLocationId"],
+            "permanentLocationId": mhld_record["permanentLocationId"],
             "merged": True,
         }
         mhld_report.write(
             f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n\n"
         )
     mhld_report.close()
-    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record)
+    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, locations_lookup)
     return srs_record
 
 
 def _update_srs_ids(
-    mhld_record: dict, srs_record: dict, okapi_url: str, locations_lookup: dict
+    mhld_record: dict, srs_record: dict, locations_lookup: dict
 ) -> dict:
     existing_hrid = mhld_record["hrid"]
     location_id = mhld_record["permanentLocationId"]
@@ -237,6 +238,7 @@ def merge_update_holdings(**kwargs):
         for holdings_record in all_holdings.values():
             fo.write(f"{json.dumps(holdings_record)}\n")
 
+    mhld_holdings_path.unlink()
     logger.info("Finished merging MHLDS holdings records and updating SRS records")
 
 
@@ -333,6 +335,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         never_update_hrid_settings=True,
     )
 
+    # Overrides static method to allow duplicate CATKEYs in MHLD records
     RulesMapperHoldings.get_legacy_ids = partialmethod(
         _alt_get_legacy_ids, RulesMapperHoldings
     )
