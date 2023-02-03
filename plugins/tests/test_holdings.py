@@ -274,7 +274,7 @@ def test_merge_update_holdings(
         in mhld_merge_report
     )
     assert (
-        "No match found in existing Holdings record nweoasdf42425 for instance HRID a123345"
+        "No match found in existing Holdings record d1e33e3-3b57-53e4-bba0-b2faed059f40 for instance HRID a123345"
         in mhld_merge_report
     )
 
@@ -313,7 +313,7 @@ def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system)
     mocks.messages["bib-files-group"] = {"bwchild-file": str(bw_tsv)}
 
     bw_tsv_lines=[
-        "CAT_KEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
+        "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
         "2956972\t2\t1\t36105127895816\tGREEN\tSEE-OTHER\tSEE-OTHER\tGOVSTKS\tBW-CHILD\t\t0\tSUDOC\tI\t29.9/5:148\t\t0\tMARC\t0"
     ]
 

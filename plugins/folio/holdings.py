@@ -117,6 +117,7 @@ def _process_mhld(**kwargs) -> dict:
     if merged_holding is None:
         current_count = len(instance["holdings"])
         instance_hrid = instance["hrid"]
+        holding_id = mhld_record["id"]
         holdings_hrid = f"{instance_hrid[:1]}h{instance_hrid[1:]}_{current_count + 1}"
         mhld_record["hrid"] = holdings_hrid
         all_holdings[holding_id] = mhld_record
@@ -432,7 +433,7 @@ def boundwith_holdings(*args, **kwargs):
                     FolioUUID(
                         okapi_url,
                         FOLIONamespaces.holdings,
-                        f"{row['CAT_KEY']}{row['CALL_SEQ']}",
+                        f"{row['CATKEY']}{row['CALL_SEQ']}",
                     )
                 )
                 loc_code = f"{constants.see_other_lib_locs[row['LIBRARY']]}"
@@ -442,7 +443,7 @@ def boundwith_holdings(*args, **kwargs):
                     "id": holdings_id,
                     "instanceId": str(
                         FolioUUID(
-                            okapi_url, FOLIONamespaces.instances, f"a{row['CAT_KEY']}"
+                            okapi_url, FOLIONamespaces.instances, f"a{row['CATKEY']}"
                         )
                     ),
                     "callNumber": row["BASE_CALL_NUMBER"],
@@ -460,7 +461,7 @@ def boundwith_holdings(*args, **kwargs):
                     FolioUUID(
                         okapi_url,
                         FOLIONamespaces.other,
-                        row["CAT_KEY"] + row["BARCODE"],
+                        row["CATKEY"] + row["BARCODE"],
                     )
                 )
 
