@@ -137,9 +137,11 @@ def _process_mhld(**kwargs) -> dict:
 def _update_srs_ids(
     mhld_record: dict, srs_record: dict, locations_lookup: dict
 ) -> dict:
+    existing_holdings_uuid = mhld_record["id"]
     existing_hrid = mhld_record["hrid"]
     location_id = mhld_record["permanentLocationId"]
     srs_record["externalIdsHolder"]["holdingsHrid"] = existing_hrid
+    srs_record["externalIdsHolder"]["holdingsId"] = existing_holdings_uuid
     for field in srs_record["parsedRecord"]["content"]["fields"]:
         tag = list(field.keys())[0]
         match tag:
