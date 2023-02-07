@@ -435,7 +435,7 @@ def boundwith_holdings(*args, **kwargs):
                     FolioUUID(
                         okapi_url,
                         FOLIONamespaces.holdings,
-                        f"{row['CATKEY']}{row['CALL_SEQ']}",
+                        f"{row['CATKEY']}{row['CALL_SEQ']}{row['COPY']}",
                     )
                 )
                 loc_code = f"{constants.see_other_lib_locs[row['LIBRARY']]}"
