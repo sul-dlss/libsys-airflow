@@ -58,8 +58,10 @@ def _alt_get_legacy_ids(*args):
     """
     marc_record = args[2]
     catkey = marc_record["004"].value()
-    library = marc_record["852"]["b"]
-    location = marc_record["852"]["c"]
+    library, location = "", ""
+    if "852" in marc_record:
+        library = marc_record["852"]["b"]
+        location = marc_record["852"]["c"]
     return [f"{catkey} {library} {location}"]
 
 
