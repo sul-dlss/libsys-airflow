@@ -57,12 +57,12 @@ def _alt_get_legacy_ids(*args):
     that duplicate CATKEYs in the 004 will generate separate records
     """
     marc_record = args[2]
-    catkey = marc_record["004"].value()
+    field_001 = marc_record["001"].value()
     library, location = "", ""
     if "852" in marc_record:
         library = marc_record["852"]["b"]
         location = marc_record["852"]["c"]
-    return [f"{catkey} {library} {location}"]
+    return [f"{field_001} {library} {location}"]
 
 
 def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
