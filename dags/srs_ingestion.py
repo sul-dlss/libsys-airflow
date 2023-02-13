@@ -4,7 +4,7 @@ from datetime import datetime
 
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
-from airflow.models import Variable, DagRun
+from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
@@ -38,18 +38,7 @@ def add_marc_to_srs():
         srs_filenames = params.get("srs_filenames")
         iteration_id = params.get("iteration_id")
 
-        """
-        FOLIO needs to have a number of sul_admin_{N} superusers equal or greater than
-        the maximum number of possible 'add_marc_to_srs' dags that can run.
-        """
-        running_dags = DagRun.active_runs_of_dags(only_running=True).get(
-            "add_marc_to_srs"
-        )
-        okapi_admin = 0 if running_dags is None else f"sul_admin_{running_dags}"
-
-        okapi_username = okapi_admin or params.get(
-            "okapi_username", Variable.get("FOLIO_USER")
-        )
+        okapi_username = Variable.get("FOLIO_USER")
 
         okapi_password = context.get("okapi_password", Variable.get("FOLIO_PASSWORD"))
         logger.info(f"Okapi username: {okapi_username}")

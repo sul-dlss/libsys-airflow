@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 import logging
 
+
 from textwrap import dedent
 from typing_extensions import TypeAlias  # noqa
 
@@ -24,7 +25,7 @@ from plugins.folio.helpers.marc import (
     move_marc_files,
 )
 
-from plugins.folio.helpers.tsv import transform_move_tsvs
+from plugins.folio.helpers.tsv import transform_move_tsvs, unwanted_item_cat1
 
 from plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
@@ -118,6 +119,8 @@ with DAG(
                 "column_transforms": [
                     # Adds a prefix to match bib 001
                     ("CATKEY", lambda x: x if x.startswith("a") else f"a{x}"),
+                    # Filters out unwanted values we don't want mapped to statcodes
+                    ("ITEM_CAT1", lambda x: None if x in unwanted_item_cat1 else x),
                     # Strips out spaces from barcode
                     ("BARCODE", lambda x: x.strip() if isinstance(x, str) else x),
                 ],
@@ -216,7 +219,8 @@ with DAG(
 
         (
             start_additional_holdings
-            >> [convert_mhld_to_folio_holdings, generate_electronic_holdings, generate_boundwith_holdings]
+            >> generate_electronic_holdings
+            >> [convert_mhld_to_folio_holdings, generate_boundwith_holdings]
             >> finish_additional_holdings
         )
 
@@ -230,7 +234,6 @@ with DAG(
         merge_all_holdings = PythonOperator(
             task_id="merge-all-holdings",
             python_callable=merge_update_holdings,
-
         )
 
         update_items = PythonOperator(
@@ -371,9 +374,7 @@ with DAG(
     remediate_errors = TriggerDagRunOperator(
         task_id="audit_fix_record_loads",
         trigger_dag_id="audit_fix_record_loads",
-        conf={
-            "iteration_id": "{{ dag_run.run_id }}"
-        }
+        conf={"iteration_id": "{{ dag_run.run_id }}"},
     )
 
     finish_loading = DummyOperator(

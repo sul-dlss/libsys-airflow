@@ -4,6 +4,8 @@ import logging
 import pathlib
 import re
 
+from functools import partialmethod
+
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 from folioclient import FolioClient
 
@@ -14,6 +16,10 @@ from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
 )
 from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
+)
+
+from folio_migration_tools.marc_rules_transformation.rules_mapper_holdings import (
+    RulesMapperHoldings,
 )
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
@@ -45,6 +51,20 @@ def _generate_lookups(holdings_tsv_path: pathlib.Path) -> tuple:
     return all_holdings
 
 
+def _alt_get_legacy_ids(*args):
+    """
+    This function overrides RulesMapperHolding method for MHLDs so
+    that duplicate CATKEYs in the 004 will generate separate records
+    """
+    marc_record = args[2]
+    field_001 = marc_record["001"].value()
+    library, location = "", ""
+    if "852" in marc_record:
+        library = marc_record["852"]["b"]
+        location = marc_record["852"]["c"]
+    return [f"{field_001} {library} {location}"]
+
+
 def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
     for name in [
         "holdingsStatements",
@@ -58,7 +78,7 @@ def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
             else:
                 holding_record[name] = mhld_record[name]
     # Change Source to MARC to display MHLD MARC record in FOLIO
-    holding_record['sourceId'] = mhld_record['sourceId']
+    holding_record["sourceId"] = mhld_record["sourceId"]
     return holding_record
 
 
@@ -68,12 +88,10 @@ def _process_mhld(**kwargs) -> dict:
     merge into existing holdings record, and then updates and returns
     the updated SRS record
     """
-
     mhld_record: dict = kwargs["mhld_record"]
     srs_record: dict = kwargs["srs_record"]
     all_holdings: dict = kwargs["all_holdings"]
     instance_map: dict = kwargs["instance_map"]
-    okapi_url: str = kwargs["okapi_url"]
     iteration_dir: pathlib.Path = kwargs["iteration_dir"]
     locations_lookup: dict = kwargs["locations_lookup"]
 
@@ -85,7 +103,7 @@ def _process_mhld(**kwargs) -> dict:
     mhld_report = mhld_report_file.open("a+")
 
     for holding_id, info in instance["holdings"].items():
-        location_id = info["location_id"]
+        location_id = info["permanentLocationId"]
         if (
             location_id == mhld_record["permanentLocationId"]
             and info["merged"] is False
@@ -101,41 +119,31 @@ def _process_mhld(**kwargs) -> dict:
     if merged_holding is None:
         current_count = len(instance["holdings"])
         instance_hrid = instance["hrid"]
+        holding_id = mhld_record["id"]
         holdings_hrid = f"{instance_hrid[:1]}h{instance_hrid[1:]}_{current_count + 1}"
         mhld_record["hrid"] = holdings_hrid
-        holding_id = str(FolioUUID(okapi_url, FOLIONamespaces.holdings, holdings_hrid))
-        mhld_record["id"] = holding_id
         all_holdings[holding_id] = mhld_record
         mhld_record["_version"] = 1
         instance["holdings"][holding_id] = {
-            "location_id": mhld_record["permanentLocationId"],
+            "permanentLocationId": mhld_record["permanentLocationId"],
             "merged": True,
         }
         mhld_report.write(
             f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n\n"
         )
     mhld_report.close()
-    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, okapi_url, locations_lookup)
+    srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, locations_lookup)
     return srs_record
 
 
-def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str, locations_lookup: dict) -> dict:
-
-    existing_hrid = mhld_record["hrid"]
+def _update_srs_ids(
+    mhld_record: dict, srs_record: dict, locations_lookup: dict
+) -> dict:
     existing_holdings_uuid = mhld_record["id"]
+    existing_hrid = mhld_record["hrid"]
     location_id = mhld_record["permanentLocationId"]
-    new_srs_record_id = str(
-        FolioUUID(
-            okapi_url,
-            FOLIONamespaces.srs_records_holdingsrecord,
-            existing_hrid,
-        )
-    )
-    srs_record["id"] = new_srs_record_id
-    srs_record["matchedId"] = new_srs_record_id
-    srs_record["externalIdsHolder"]["holdingsId"] = existing_holdings_uuid
     srs_record["externalIdsHolder"]["holdingsHrid"] = existing_hrid
-    srs_record["parsedRecord"]["id"] = new_srs_record_id
+    srs_record["externalIdsHolder"]["holdingsId"] = existing_holdings_uuid
     for field in srs_record["parsedRecord"]["content"]["fields"]:
         tag = list(field.keys())[0]
         match tag:
@@ -157,12 +165,12 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str, locatio
                     subfield = list(row)[0]
                     match subfield:
                         case "i":
-                            row[subfield] = existing_holdings_uuid
+                            row[subfield] = mhld_record["id"]
 
                         case "s":
-                            row["s"] = new_srs_record_id
+                            row["s"] = srs_record["id"]
 
-    srs_record["rawRecord"]["id"] = new_srs_record_id
+    srs_record["rawRecord"]["id"] = srs_record["id"]
     srs_record["rawRecord"]["content"] = json.dumps(
         srs_record["parsedRecord"]["content"]
     )
@@ -170,22 +178,21 @@ def _update_srs_ids(mhld_record: dict, srs_record: dict, okapi_url: str, locatio
 
 
 def merge_update_holdings(**kwargs):
-    okapi_url = Variable.get("OKAPI_URL")
 
     folio_client = kwargs.get("folio_client")
 
     if folio_client is None:
         folio_client = FolioClient(
-            okapi_url,
+            Variable.get("OKAPI_URL"),
             "sul",
             Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD")
+            Variable.get("FOLIO_PASSWORD"),
         )
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
-    holdings_tsv_path = iteration_dir / "results/folio_holdings_tsv-transformer.json"
+    holdings_path = iteration_dir / "results/folio_holdings.json"
     mhld_holdings_path = iteration_dir / "results/folio_holdings_mhld-transformer.json"
 
     if not mhld_holdings_path.exists():
@@ -203,14 +210,14 @@ def merge_update_holdings(**kwargs):
     with srs_path.open() as fo:
         srs_records = [json.loads(line) for line in fo.readlines()]
 
-    with (iteration_dir / "results/instance_holdings_map.json").open() as fo:
+    with (iteration_dir / "results/instance-holdings-items.json").open() as fo:
         instance_map = json.load(fo)
 
     locations_lookup = {}
     for location in folio_client.locations:
-        locations_lookup[location['id']] = location['code']
+        locations_lookup[location["id"]] = location["code"]
 
-    all_holdings= _generate_lookups(holdings_tsv_path)
+    all_holdings = _generate_lookups(holdings_path)
 
     updated_srs_records = []
     count = 0
@@ -220,9 +227,8 @@ def merge_update_holdings(**kwargs):
             srs_record=srs,
             all_holdings=all_holdings,
             instance_map=instance_map,
-            okapi_url=okapi_url,
             iteration_dir=iteration_dir,
-            locations_lookup=locations_lookup
+            locations_lookup=locations_lookup,
         )
         updated_srs_records.append(updated_srs)
         if not count % 1_000:
@@ -237,10 +243,7 @@ def merge_update_holdings(**kwargs):
         for holdings_record in all_holdings.values():
             fo.write(f"{json.dumps(holdings_record)}\n")
 
-    # Remove existing holdings JSON files
     mhld_holdings_path.unlink()
-    holdings_tsv_path.unlink()
-
     logger.info("Finished merging MHLDS holdings records and updating SRS records")
 
 
@@ -327,7 +330,6 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         name="mhld-transformer",
         migration_task_type="HoldingsMarcTransformer",
         legacy_id_marc_path="004",
-        use_tenant_mapping_rules=False,
         hrid_handling="default",
         files=[{"file_name": filepath.name, "supressed": False}],
         mfhd_mapping_file_name="mhld_rules.json",
@@ -336,6 +338,11 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
         create_source_records=True,
         never_update_hrid_settings=True,
+    )
+
+    # Overrides static method to allow duplicate CATKEYs in MHLD records
+    RulesMapperHoldings.get_legacy_ids = partialmethod(
+        _alt_get_legacy_ids, RulesMapperHoldings
     )
 
     holdings_transformer = HoldingsMarcTransformer(
@@ -392,48 +399,61 @@ def electronic_holdings(*args, **kwargs) -> str:
 
 def boundwith_holdings(*args, **kwargs):
     okapi_url = Variable.get("OKAPI_URL")
-    folio_client = kwargs["folio_client"]
+    folio_client = kwargs.get("folio_client")
 
     dag = kwargs["dag_run"]
     task_instance = kwargs["task_instance"]
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
-    bw_tsv_path = pathlib.Path(task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file"))
+    bw_tsv_path = pathlib.Path(
+        task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file")
+    )
     bw_holdings_json_path = iteration_dir / "results/folio_holdings_boundwith.json"
     bw_parts_json_path = iteration_dir / "results/boundwith_parts.json"
 
     if folio_client is None:
         folio_client = FolioClient(
-            okapi_url,
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD")
+            okapi_url, "sul", Variable.get("FOLIO_USER"), Variable.get("FOLIO_PASSWORD")
         )
 
     locations_lookup = {}
     for location in folio_client.locations:
         if "SEE-OTHER" in location["code"]:
-            locations_lookup[location['code']] = location['id']
+            locations_lookup[location["code"]] = location["id"]
 
-    with bw_tsv_path.open() as tsv:
+    with bw_tsv_path.open(encoding="utf-8-sig") as tsv:
         logger.info("Processing boundwiths")
         bw_reader = csv.DictReader(tsv, delimiter="\t")
 
-        with bw_holdings_json_path.open("w+") as bwh, bw_parts_json_path.open("w+") as bwp:
+        with bw_holdings_json_path.open("w+") as bwh, bw_parts_json_path.open(
+            "w+"
+        ) as bwp:
             for row in bw_reader:
                 """
-                    includes default holdings-type id for 'Bound-with'
+                includes default holdings-type id for 'Bound-with'
                 """
-                holdings_id = str(FolioUUID(okapi_url, FOLIONamespaces.holdings, f"{row['CATKEY']}{row['CALL_SEQ']}"))
+                holdings_id = str(
+                    FolioUUID(
+                        okapi_url,
+                        FOLIONamespaces.holdings,
+                        f"{row['CATKEY']}{row['CALL_SEQ']}{row['COPY']}",
+                    )
+                )
                 loc_code = f"{constants.see_other_lib_locs[row['LIBRARY']]}"
                 perm_loc_id = locations_lookup[loc_code]
 
                 holdings = {
                     "id": holdings_id,
-                    "instanceId": str(FolioUUID(okapi_url, FOLIONamespaces.instances, row['CATKEY'])),
-                    "callNumber": row['BASE_CALL_NUMBER'],
-                    "callNumberTypeId": constants.call_number_codes[row['CALL_NUMBER_TYPE']],
+                    "instanceId": str(
+                        FolioUUID(
+                            okapi_url, FOLIONamespaces.instances, f"a{row['CATKEY']}"
+                        )
+                    ),
+                    "callNumber": row["BASE_CALL_NUMBER"],
+                    "callNumberTypeId": constants.call_number_codes[
+                        row["CALL_NUMBER_TYPE"]
+                    ],
                     "permanentLocationId": perm_loc_id,
                     "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
                 }
@@ -441,12 +461,20 @@ def boundwith_holdings(*args, **kwargs):
                 logger.info(f"Writing holdings id {holdings_id} to file")
                 bwh.write(f"{json.dumps(holdings)}\n")
 
-                bw_id = str(FolioUUID(okapi_url, FOLIONamespaces.other, row['CATKEY'] + row['BARCODE']))
+                bw_id = str(
+                    FolioUUID(
+                        okapi_url,
+                        FOLIONamespaces.other,
+                        row["CATKEY"] + row["BARCODE"],
+                    )
+                )
 
                 bw_parts = {
                     "id": bw_id,
                     "holdingsRecordId": holdings_id,
-                    "itemId": str(FolioUUID(okapi_url, FOLIONamespaces.items, row['BARCODE'])),
+                    "itemId": str(
+                        FolioUUID(okapi_url, FOLIONamespaces.items, row["BARCODE"])
+                    ),
                 }
 
                 logger.info(f"Writing bound-with part id {bw_id} to file")

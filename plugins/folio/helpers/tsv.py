@@ -124,6 +124,29 @@ def _processes_tsv(**kwargs):
         return new_tsv_notes_path
 
 
+unwanted_item_cat1 = [
+    "BUSCORPRPT",
+    "BW-CHILD",
+    "BW-PARENT",
+    "CATEVAL",
+    "EEM",
+    "M-MARCADIA",
+    "PC-FALLSEM",
+    "PC-FQTR",
+    "PC-F-SPSEM",
+    "PC-FWSQTRS"
+    "PC-PERM",
+    "PC-SPQTR",
+    "PC-SPSEM",
+    "PC-SUQTR",
+    "PC-WQTR",
+    "RECYCLE",
+    "SALPROB1",
+    "SALPROB2",
+    "TEAMS"
+]
+
+
 def transform_move_tsvs(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]

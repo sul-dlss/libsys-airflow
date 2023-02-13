@@ -2,6 +2,7 @@ import json
 
 import pytest  # noqa
 import pydantic
+import pymarc
 
 from plugins.folio.holdings import (
     electronic_holdings,
@@ -10,6 +11,7 @@ from plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
+    _alt_get_legacy_ids
 )
 
 from plugins.tests.mocks import (  # noqa
@@ -168,21 +170,27 @@ srs_mhdls = [
 ]
 
 
-instances_holdings_map = {
+instances_holdings_items_map = {
     "xyzabc-def-ha": {
         "hrid": "a123345",
         "holdings": {
             "abcdedf123345": {
-                "location_id": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
+                "hrid": "ah123345_1",
+                "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
                 "merged": False,
+                "items": []
             },
             "exyqdf123345": {
-                "location_id": "04c54d2f-0e14-42ab-97a6-27fc7f4d061",
+                "hrid": "ah123345_2",
+                "permanentLocationId": "21b7083b-1013-440e-8e62-64169824dcb8",
                 "merged": False,
+                "items": []
             },
             "nweoasdf42425": {  # Stand-in for Electronic Holding
-                "location_id": "16211e24-f904-47f8-beaa-f91b4646c434",
-                "merged": True,
+                "hrid": "ah123345_3",
+                "permanentLocationId": "b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91",
+                "merged": False,
+                "items": []
             },
         },
     }
@@ -194,7 +202,7 @@ def test_merge_update_holdings(
 ):
     results_dir = mock_file_system[3]
     reports_dir = mock_file_system[2] / "reports"
-    holdings_tsv = results_dir / "folio_holdings_tsv-transformer.json"
+    holdings_tsv = results_dir / "folio_holdings.json"
     holdings_mhld = results_dir / "folio_holdings_mhld-transformer.json"
 
     with (holdings_tsv).open("w+") as fo:
@@ -205,8 +213,8 @@ def test_merge_update_holdings(
         for row in mhld_holdings:
             fo.write(f"{json.dumps(row)}\n")
 
-    with (results_dir / "instance_holdings_map.json").open("w+") as fo:
-        json.dump(instances_holdings_map, fo)
+    with (results_dir / "instance-holdings-items.json").open("w+") as fo:
+        json.dump(instances_holdings_items_map, fo)
 
     with (results_dir / "folio_srs_holdings_mhld-transformer.json").open("w+") as fo:
         for row in srs_mhdls:
@@ -228,7 +236,6 @@ def test_merge_update_holdings(
     with (results_dir / "folio_holdings.json").open() as fo:
         combined_holdings = [json.loads(line) for line in fo.readlines()]
 
-    assert not holdings_tsv.exists()
     assert not holdings_mhld.exists()
 
     # Tests merged Holdings with MHLD Holdings Record 1
@@ -267,7 +274,7 @@ def test_merge_update_holdings(
         in mhld_merge_report
     )
     assert (
-        "No match found in existing Holdings record 71857ce4-0ea0-5d4a-b7a5-456255515c63 for instance HRID a123345"
+        "No match found in existing Holdings record d1e33e3-3b57-53e4-bba0-b2faed059f40 for instance HRID a123345"
         in mhld_merge_report
     )
 
@@ -332,3 +339,13 @@ def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system)
         bw_part_rec = [json.loads(line) for line in bwp.readlines()]
 
     assert holdings_rec[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
+
+
+def test_alt_get_legacy_ids():
+    marc_record = pymarc.Record()
+    field_001 = pymarc.Field(tag='001', data='1964746')
+    marc_record.add_field(field_001)
+    field_852 = pymarc.Field(tag='852', subfields=['b', 'SAL3', 'c', 'PAGE-GR'])
+    marc_record.add_field(field_852)
+    legacy_id = _alt_get_legacy_ids(None, None, marc_record)
+    assert legacy_id == ["1964746 SAL3 PAGE-GR"]
