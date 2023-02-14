@@ -186,7 +186,7 @@ def process(*args, **kwargs):
     marc_path = pathlib.Path(
         f"{airflow}/migration/iterations/{dag.run_id}/source_data/instances/{marc_stem}.mrc"
     )
-    marc_reader = pymarc.MARCReader(marc_path.read_bytes())
+    marc_reader = pymarc.MARCReader(marc_path.read_bytes(), force_utf8=True)
 
     marc_records = []
     electronic_holdings = []
