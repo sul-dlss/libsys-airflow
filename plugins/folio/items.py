@@ -148,12 +148,17 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     items_stem = kwargs["items_stem"]
 
+    if items_stem.startswith("ON-ORDER"):
+        mapping_file = "item_mapping_on_order.json"
+    else:
+        mapping_file = "item_mapping.json"
+
     item_config = ItemsTransformer.TaskConfiguration(
         name="transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
-        items_mapping_file_name="item_mapping.json",
+        items_mapping_file_name=mapping_file,
         location_map_file_name="locations.tsv",
         default_call_number_type_name="Library of Congress classification",
         material_types_map_file_name="material_types.tsv",
