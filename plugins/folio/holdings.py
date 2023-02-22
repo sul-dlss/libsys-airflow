@@ -406,9 +406,12 @@ def boundwith_holdings(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
-    bw_tsv_path = pathlib.Path(
-        task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file")
-    )
+    bwchild_file = task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file")
+    if bwchild_file is None:
+        logger.error("Boundwidth child file does not exist, exiting")
+        return
+    bw_tsv_path = pathlib.Path(bwchild_file)
+
     bw_holdings_json_path = iteration_dir / "results/folio_holdings_boundwith.json"
     bw_parts_json_path = iteration_dir / "results/boundwith_parts.json"
 
@@ -440,8 +443,12 @@ def boundwith_holdings(*args, **kwargs):
                         f"{row['CATKEY']}{row['CALL_SEQ']}{row['COPY']}",
                     )
                 )
-                loc_code = f"{constants.see_other_lib_locs[row['LIBRARY']]}"
-                perm_loc_id = locations_lookup[loc_code]
+                loc_code = f"{constants.see_other_lib_locs.get(row.get('LIBRARY'))}"
+
+                perm_loc_id = locations_lookup.get(loc_code)
+                if perm_loc_id is None:
+                    logger.error(f"Failed to find location for {row}")
+                    continue
 
                 holdings = {
                     "id": holdings_id,
