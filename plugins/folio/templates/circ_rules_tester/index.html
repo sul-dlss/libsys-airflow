@@ -13,8 +13,8 @@
                     <p class="help-block">
                         Upload csv file with uuids with the following columns:
                         <ul>
-                            <li>patron_type_id</li>
-                            <li>item_type_id</li>
+                            <li>patron_group_id</li>
+                            <li>material_type_id</li>
                             <li>loan_type_id</li>
                             <li>location_id</li>
                             <!-- <li>status_name</li> -->
@@ -32,15 +32,15 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="patron_type" class="col-sm-2 control-label">
-                        Patron Type
+                        Patron Group
                     </label>
-                    <input name="patron_type_id" id="patron_type_id" class="form-control" placeholder="Patron Type UUID">
+                    <input name="patron_group_id" id="patron_group_id" class="form-control" placeholder="Patron Group UUID">
                 </div>
                 <div class="form-group">
-                    <label for="item_type_id" class="col-sm-2 control-label">
-                        Item Type
+                    <label for="material_type_id" class="col-sm-2 control-label">
+                        Material Type
                     </label>
-                    <input name="item_type_id" id="item_type_id" class="form-control" placeholder="Item Type UUID">
+                    <input name="material_type_id" id="material_type_id" class="form-control" placeholder="Material Type UUID">
                 </div>
                 <div class="form-group">
                     <label for="loan_type_id" class="col-sm-2 control-label">

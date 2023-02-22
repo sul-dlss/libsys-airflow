@@ -64,8 +64,8 @@ class CircRulesTester(AppBuilderBaseView):
             execution_date=execution_date,
             state=State.RUNNING,
             conf=dict(
-                patron_type_id=request.form["patron_type_id"],
-                item_type_id=request.form["item_type_id"],
+                patron_group_id=request.form["patron_group_id"],
+                material_type_id=request.form["material_type_id"],
                 loan_type_id=request.form["loan_type_id"],
                 location_id=request.form["location_id"],
             ),
