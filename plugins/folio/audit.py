@@ -101,6 +101,7 @@ def _audit_items(
     """Audits FOLIO Item through retrieval from the FOLIO Database"""
     logger.info("Starting Items Audit")
     select_sql = "SELECT * FROM sul_mod_inventory_storage.item WHERE id=%s"
+    count = 0
     with (results_path / "folio_items_transformer.json").open() as fo:
         for i, line in enumerate(fo.readlines()):
             item = json.loads(line)
@@ -113,8 +114,9 @@ def _audit_items(
             )
             if not i % 1_000:
                 logger.info(f"Audited {i:,} items")
-    logger.info(f"Finished Auditing {i:,} Items")
-    return i
+            count = i
+    logger.info(f"Finished Auditing {count:,} Items")
+    return count
 
 
 def _add_record(record, con, record_type):
