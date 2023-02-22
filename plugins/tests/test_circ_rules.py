@@ -24,9 +24,9 @@ from plugins.folio.circ_rules import (
 # Mock xcom messages dict
 setup_circ_rules = {
     "setup-circ-rules": {
-        "patron_type_id": "503a81cd-6c26-400f-b620-14c08943697c",
+        "patron_group_id": "503a81cd-6c26-400f-b620-14c08943697c",
         "loan_type_id": "2b94c631-fca9-4892-a730-03ee529ffe27",
-        "item_type_id": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
+        "material_type_id": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
         "location_id": "758258bc-ecc1-41b8-abca-f7b610822ffd",
     }
 }
@@ -34,9 +34,9 @@ setup_circ_rules = {
 setup_batch_circ_rules = {
     "setup-circ-rules": {
         "total": 3,
-        "item_type_id0": "dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1",
-        "item_type_id1": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
-        "item_type_id2": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
+        "material_type_id0": "dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1",
+        "material_type_id1": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
+        "material_type_id2": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
         "loan_type_id0": "a1dc1ce3-d56f-4d8a-b498-d5d674ccc845",
         "loan_type_id1": "e8b311a6-3b21-43f2-a269-dd9310cb2d0e",
         "loan_type_id2": "2b94c631-fca9-4892-a730-03ee529ffe27",
@@ -44,9 +44,9 @@ setup_batch_circ_rules = {
         "location_id1": "fcd64ce1-6995-48f0-840e-89ffa2288371",
         "location_id2": "fcd64ce1-6995-48f0-840e-89ffa2288371",
         "location_id3": "b241764c-1466-4e1d-a028-1a3684a5da87",
-        "patron_type_id0": "503a81cd-6c26-400f-b620-14c08943697c",
-        "patron_type_id1": "bdc2b6d4-5ceb-4a12-ab46-249b9a68473e",
-        "patron_type_id2": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
+        "patron_group_id0": "503a81cd-6c26-400f-b620-14c08943697c",
+        "patron_group_id1": "bdc2b6d4-5ceb-4a12-ab46-249b9a68473e",
+        "patron_group_id2": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
     }
 }
 
@@ -153,10 +153,10 @@ def mock_valid_current_context(monkeypatch, mocker: MockerFixture):
     def mock_get_current_context():
         context = mocker.stub(name="context")
         context.get = lambda arg: {
-            "item_type_id": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
+            "material_type_id": "fd6c6515-d470-4561-9c32-3e3290d4ca98",
             "loan_type_id": "2b94c631-fca9-4892-a730-03ee529ffe27",
             "location_id": "fcd64ce1-6995-48f0-840e-89ffa2288371",
-            "patron_type_id": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
+            "patron_group_id": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
         }
         return context
 
@@ -170,10 +170,10 @@ def mock_missing_current_context(monkeypatch, mocker: MockerFixture):
     def mock_get_current_context():
         context = mocker.stub(name="context")
         context.get = lambda arg: {
-            "item_type_id": None,
+            "material_type_id": None,
             "loan_type_id": "2b94c631-fca9-4892-a730-03ee529ffe27",
             "location_id": "fcd64ce1-6995-48f0-840e-89ffa2288371",
-            "patron_type_id": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
+            "patron_group_id": "ad0bc554-d5bc-463c-85d1-5562127ae91b",
         }
         return context
 
@@ -188,8 +188,8 @@ def mock_batch_current_context(monkeypatch, mocker: MockerFixture):
         context = mocker.stub(name="context")
         context.get = lambda arg: {
             "scenarios": """{
-                "patron_type_id":{"0":"503a81cd-6c26-400f-b620-14c08943697c","1":"bdc2b6d4-5ceb-4a12-ab46-249b9a68473e"},
-                "item_type_id":{"0":"dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1","1":"1a54b431-2e4f-452d-9cae-9cee66c9a892"}
+                "patron_group_id":{"0":"503a81cd-6c26-400f-b620-14c08943697c","1":"bdc2b6d4-5ceb-4a12-ab46-249b9a68473e"},
+                "material_type_id":{"0":"dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1","1":"1a54b431-2e4f-452d-9cae-9cee66c9a892"}
             }"""
         }
         return context
@@ -428,7 +428,7 @@ def test_setup_rules(mock_valid_current_context):
 def test_missing_setup_rules(mock_missing_current_context):
     task_id = "setup-circ-rules"
     task_instance = MockTaskInstance(task_id=task_id)
-    with pytest.raises(ValueError, match="item_type_id value is None"):
+    with pytest.raises(ValueError, match="material_type_id value is None"):
         setup_rules(task_instance=task_instance)
 
 

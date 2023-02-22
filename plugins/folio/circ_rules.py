@@ -89,14 +89,14 @@ def friendly_report(**kwargs):
     instance = kwargs["task_instance"]
     folio_client = kwargs["folio_client"]
     row_count = kwargs.get("row_count", "")
-    patron_type_id = instance.xcom_pull(
-        task_ids="setup-circ-rules", key=f"patron_type_id{row_count}"
+    patron_group_id = instance.xcom_pull(
+        task_ids="setup-circ-rules", key=f"patron_group_id{row_count}"
     )
     loan_type_id = instance.xcom_pull(
         task_ids="setup-circ-rules", key=f"loan_type_id{row_count}"
     )
-    item_type_id = instance.xcom_pull(
-        task_ids="setup-circ-rules", key=f"item_type_id{row_count}"
+    material_type_id = instance.xcom_pull(
+        task_ids="setup-circ-rules", key=f"material_type_id{row_count}"
     )
     location_id = instance.xcom_pull(
         task_ids="setup-circ-rules", key=f"location_id{row_count}"
@@ -107,7 +107,7 @@ def friendly_report(**kwargs):
         key=f"patron_group{row_count}",
         value=_friendly_name(
             folio_client=folio_client,
-            query=f"""groups?query=(id=="{patron_type_id}")""",
+            query=f"""groups?query=(id=="{patron_group_id}")""",
             json_path="$.usergroups[0].group",
             fallback="Patron group not found",
         ),
@@ -126,12 +126,12 @@ def friendly_report(**kwargs):
     )
     logger.info("Finished Loan type friendly name")
 
-    # Material type friendly name (API refers to it as item_type_id)
+    # Material type friendly name
     instance.xcom_push(
         key=f"material_type{row_count}",
         value=_friendly_name(
             folio_client=folio_client,
-            query=f"""material-types?query=(id=="{item_type_id}")""",
+            query=f"""material-types?query=(id=="{material_type_id}")""",
             json_path="$.mtypes[0].name",
             fallback="Material type not found",
         ),
@@ -224,13 +224,13 @@ def generate_urls(**kwargs):
     query_string = urllib.parse.urlencode(
         {
             "patron_type_id": instance.xcom_pull(
-                task_ids="setup-circ-rules", key=f"patron_type_id{row_count}"
+                task_ids="setup-circ-rules", key=f"patron_group_id{row_count}"
             ),
             "loan_type_id": instance.xcom_pull(
                 task_ids="setup-circ-rules", key=f"loan_type_id{row_count}"
             ),
             "item_type_id": instance.xcom_pull(
-                task_ids="setup-circ-rules", key=f"item_type_id{row_count}"
+                task_ids="setup-circ-rules", key=f"material_type_id{row_count}"
             ),
             "location_id": instance.xcom_pull(
                 task_ids="setup-circ-rules", key=f"location_id{row_count}"
@@ -375,8 +375,8 @@ def setup_batch_rules(*args, **kwargs):
     params = context.get("params")
     raw_scenarios = params["scenarios"]
     scenarios = json.loads(raw_scenarios)
-    # Calculate total batches based on number of patron_type_id rows
-    total = len(scenarios['patron_type_id'])
+    # Calculate total batches based on number of patron_group_id rows
+    total = len(scenarios['patron_group_id'])
     instance.xcom_push(key="total", value=total)
     for policy_type, rows in scenarios.items():
         for row_count, uuid in rows.items():
