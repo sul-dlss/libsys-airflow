@@ -10,7 +10,7 @@ import pydantic
 from airflow.models import Connection
 
 from plugins.tests.mocks import mock_dag_run, mock_file_system  # noqa
-from plugins.folio.audit import audit_instance_views, setup_audit_db
+from plugins.folio.audit import _add_json_record, audit_instance_views, setup_audit_db
 
 
 class MockCursor(object):
@@ -119,31 +119,21 @@ def test_audit_instance_views(
         ]:
             fo.write(f"{json.dumps(row)}\n")
 
-    (results_dir / "folio_holdings_tsv-transformer.json").write_text(
-        json.dumps(
+    with (results_dir / "folio_holdings.json").open("w+") as fo:
+        for row in [
             {
                 "id": "e64cb1b4-adaa-59d2-8b0a-97ccc8c86191",
                 "hrid": "ah4050006_1",
                 "_version": 1,
-            }
-        )
-        + "\n"
-    )
-
-    (results_dir / "folio_holdings_mhld-transformer.json").write_text(
-        json.dumps(
+            },
             {
                 "id": "457c5df6-0bcb-5a0b-af2a-072228e0f2dc",
                 "hrid": "ah4050013_2",
                 "_version": 1,
-            }
-        )
-        + "\n"
-    )
-
-    (results_dir / "folio_holdings_electronic-transformer.json").write_text(
-        json.dumps({"id": "missing_uuid", "hrid": "ah4400001_1", "_version": 1}) + "\n"
-    )
+            },
+            {"id": "missing_uuid", "hrid": "ah4400001_1", "_version": 1},
+        ]:
+            fo.write(f"{json.dumps(row)}\n")
 
     (results_dir / "folio_items_transformer.json").write_text(
         json.dumps(
@@ -175,15 +165,19 @@ def test_audit_instance_views(
     audit_db_filepath.unlink()
 
 
+def _init_mock_db(airflow):
+    current_file = pathlib.Path(__file__)
+    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
+    mock_db_init_file = airflow / "plugins/folio/qa.sql"
+    mock_db_init_file.write_text(db_init_file.read_text())
+
+
 def test_setup_audit_db(mock_dag_run, mock_file_system):  # noqa
     airflow = mock_file_system[0]
 
     iterations_dir = mock_file_system[2]
 
-    current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
-    mock_db_init_file = airflow / "plugins/folio/qa.sql"
-    mock_db_init_file.write_text(db_init_file.read_text())
+    _init_mock_db(airflow)
 
     audit_db_filepath = iterations_dir / "results/audit-remediation.db"
 
@@ -205,3 +199,36 @@ def test_existing_audit_db(mock_dag_run, mock_file_system, caplog):  # noqa
     setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
 
     assert f"SQLite Database {audit_db_filepath} already exists" in caplog.text
+
+
+def test_add_json_record_uniqueness(mock_dag_run, mock_file_system, caplog):  # noqa
+    airflow = mock_file_system[0]
+    iterations_dir = mock_file_system[2]
+
+    audit_db_filepath = iterations_dir / "results/audit-remediation.db"
+
+    _init_mock_db(airflow)
+
+    setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
+
+    record = {"id": "f07feb8d-4dbc-408f-a37f-62a53f9d03d4"}
+    con = sqlite3.connect(audit_db_filepath)
+
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO Record (uuid, folio_type) VALUES (?,?);", (record["id"], 2)
+    )
+    con.commit()
+    record_id = cur.lastrowid
+
+    cur.execute(
+        "INSERT INTO JsonPayload (record_id, payload) VALUES (?,?)",
+        (record_id, json.dumps(record)),
+    )
+    con.commit()
+    cur.close()
+
+    _add_json_record(json.dumps(record), con, record_id)
+
+    assert f"{record['id']} already exists in JsonPayload table" in caplog.text
+    con.close()
