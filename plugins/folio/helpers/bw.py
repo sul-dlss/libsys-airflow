@@ -4,9 +4,6 @@ import pathlib
 
 import requests
 
-from airflow.models import Variable
-from folioclient import FolioClient
-
 logger = logging.getLogger(__name__)
 
 
@@ -39,16 +36,8 @@ def discover_bw_parts_files(**kwargs):
 
 def check_add_bw(**kwargs):
     instance = kwargs["task_instance"]
-    folio_client = kwargs.get("folio_client")
+    folio_client = kwargs["folio_client"]
     job_number = kwargs["job"]
-
-    if folio_client is None:
-        folio_client = FolioClient(
-            Variable.get("OKAPI_URL"),
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
-        )
 
     bw_file_parts = instance.xcom_pull(
         task_ids="discovery-bw-parts", key=f"job-{job_number}"

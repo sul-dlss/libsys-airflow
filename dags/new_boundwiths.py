@@ -6,9 +6,18 @@ from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
+from folioclient import FolioClient
+
 from plugins.folio.helpers.bw import check_add_bw, discover_bw_parts_files
 
 logger = logging.getLogger(__name__)
+
+folio_client = FolioClient(
+    Variable.get("OKAPI_URL"),
+    "sul",
+    Variable.get("FOLIO_USER"),
+    Variable.get("FOLIO_PASSWORD"),
+)
 
 default_args = {
     "owner": "folio",
@@ -43,7 +52,9 @@ with DAG(
 
     for i in range(int(parallel_posts)):
         check_add_relationships = PythonOperator(
-            task_id=f"check-add-{i}", python_callable=check_add_bw, op_kwargs={"job": i}
+            task_id=f"check-add-{i}",
+            python_callable=check_add_bw,
+            op_kwargs={"job": i, "folio_client": folio_client}
         )
 
         start_checks_add >> check_add_relationships >> finished_checks_add
