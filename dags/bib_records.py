@@ -9,7 +9,7 @@ from typing_extensions import TypeAlias  # noqa
 
 from airflow import DAG
 
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.task_group import TaskGroup
@@ -136,7 +136,7 @@ with DAG(
             },
         )
 
-        finished_move_transform = DummyOperator(
+        finished_move_transform = EmptyOperator(
             task_id="finished-move-transform", trigger_rule="none_failed_or_skipped"
         )
 
@@ -174,7 +174,7 @@ with DAG(
             },
         )
 
-        finish_conversion = DummyOperator(
+        finish_conversion = EmptyOperator(
             task_id="finished-conversion",
             trigger_rule="none_failed_or_skipped",
         )
@@ -185,7 +185,7 @@ with DAG(
 
     with TaskGroup(group_id="additional-holdings") as additional_holdings:
 
-        start_additional_holdings = DummyOperator(
+        start_additional_holdings = EmptyOperator(
             task_id="start-mhlds-electronic-holdings",
             trigger_rule="none_failed_or_skipped",
         )
@@ -215,7 +215,7 @@ with DAG(
             python_callable=boundwith_holdings,
         )
 
-        finish_additional_holdings = DummyOperator(task_id="finish-additional-holdings")
+        finish_additional_holdings = EmptyOperator(task_id="finish-additional-holdings")
 
         (
             start_additional_holdings
@@ -240,14 +240,15 @@ with DAG(
             task_id="update-items-idents", python_callable=generate_item_identifiers
         )
 
-        finish_hrid_updates = DummyOperator(task_id="finish-hrid-updates")
+        finish_hrid_updates = EmptyOperator(task_id="finish-hrid-updates")
 
         update_holdings_hrids >> merge_all_holdings >> update_items
         update_items >> finish_hrid_updates
 
+
     with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
 
-        start_records_to_valid_json = DummyOperator(task_id="start-recs-to-valid-json")
+        start_records_to_valid_json = EmptyOperator(task_id="start-recs-to-valid-json")
 
         convert_instances_valid_json = PythonOperator(
             task_id="instances_to_valid_json",
@@ -279,7 +280,7 @@ with DAG(
             },
         )
 
-        finished_json_conversion = DummyOperator(task_id="finished-json-conversion")
+        finished_json_conversion = EmptyOperator(task_id="finished-json-conversion")
 
         (
             start_records_to_valid_json
@@ -297,9 +298,9 @@ with DAG(
             task_id="folio_login", python_callable=folio_login
         )  # noqa
 
-        finish_instances = DummyOperator(task_id="finish-posting-instances")
+        finish_instances = EmptyOperator(task_id="finish-posting-instances")
 
-        finished_all_posts = DummyOperator(
+        finished_all_posts = EmptyOperator(
             task_id="finish-all-posts", trigger_rule="none_failed_or_skipped"
         )
 
@@ -329,7 +330,7 @@ with DAG(
             },
         )
 
-        start_holdings = DummyOperator(task_id="start-holdings-posting")
+        start_holdings = EmptyOperator(task_id="start-holdings-posting")
 
         (
             finish_instances
@@ -337,7 +338,7 @@ with DAG(
             >> [start_holdings, finished_all_posts]
         )  # noqa
 
-        finish_holdings = DummyOperator(task_id="finish-posting-holdings")
+        finish_holdings = EmptyOperator(task_id="finish-posting-holdings")
 
         for i in range(int(parallel_posts)):
             post_holdings = PythonOperator(
@@ -348,7 +349,7 @@ with DAG(
 
             start_holdings >> post_holdings >> finish_holdings
 
-        finish_items = DummyOperator(task_id="finish-posting-items")
+        finish_items = EmptyOperator(task_id="finish-posting-items")
 
         for i in range(int(parallel_posts)):
             post_items = PythonOperator(
@@ -377,7 +378,7 @@ with DAG(
         conf={"iteration_id": "{{ dag_run.run_id }}"},
     )
 
-    finish_loading = DummyOperator(
+    finish_loading = EmptyOperator(
         task_id="finish_loading",
     )
 
