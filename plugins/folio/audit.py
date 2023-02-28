@@ -45,8 +45,9 @@ def _audit_instances(
     select_sql = (
         "SELECT creation_date FROM sul_mod_inventory_storage.instance WHERE id=%s;"
     )
+    instance_count = 0
     with (results_path / "folio_instances_bibs-transformer.json").open() as fo:
-        for i, line in enumerate(fo.readlines()):
+        for line in fo.readlines():
             instance = json.loads(line)
             _audit_record(
                 record=instance,
@@ -55,10 +56,11 @@ def _audit_instances(
                 pg_cursor=pg_cursor,
                 sql=select_sql,
             )
-            if not i % 1_000:
-                logger.info(f"Audited {i:,} instances")
-    logger.info(f"Finished Auditing {i:,} Instances")
-    return i
+            if not instance_count % 1_000:
+                logger.info(f"Audited {instance_count:,} instances")
+            instance_count += 1
+    logger.info(f"Finished Auditing {instance_count:,} Instances")
+    return instance_count
 
 
 def _audit_holdings_records(
@@ -69,28 +71,20 @@ def _audit_holdings_records(
     select_sql = """SELECT creation_date FROM sul_mod_inventory_storage.holdings_record
      WHERE id=%s"""
     holdings_count = 0
-    holdings_files = [
-        (results_path / "folio_holdings_tsv-transformer.json"),
-        (results_path / "folio_holdings_electronic-transformer.json"),
-        (results_path / "folio_holdings_mhld-transformer.json"),
-    ]
-    for holdings_file in holdings_files:
-        if not holdings_file.exists():
-            continue
-        logger.info(f"Starting auditing of {holdings_file.name}")
-        with holdings_file.open() as fo:
-            for line in fo.readlines():
-                holdings = json.loads(line)
-                _audit_record(
-                    record=holdings,
-                    record_type=FOLIONamespaces.holdings.value,
-                    audit_con=audit_connection,
-                    pg_cursor=pg_cursor,
-                    sql=select_sql,
-                )
-                if not holdings_count % 1_000:
-                    logger.info(f"Audited {holdings_count:,} holdings")
-                holdings_count += 1
+
+    with (results_path / "folio_holdings.json").open() as fo:
+        for line in fo.readlines():
+            holdings = json.loads(line)
+            _audit_record(
+                record=holdings,
+                record_type=FOLIONamespaces.holdings.value,
+                audit_con=audit_connection,
+                pg_cursor=pg_cursor,
+                sql=select_sql,
+            )
+            if not holdings_count % 1_000:
+                logger.info(f"Audited {holdings_count:,} holdings")
+            holdings_count += 1
     logger.info(f"Finished Auditing {holdings_count:,} Holdings")
     return holdings_count
 
@@ -101,9 +95,9 @@ def _audit_items(
     """Audits FOLIO Item through retrieval from the FOLIO Database"""
     logger.info("Starting Items Audit")
     select_sql = "SELECT * FROM sul_mod_inventory_storage.item WHERE id=%s"
-    count = 0
+    item_count = 0
     with (results_path / "folio_items_transformer.json").open() as fo:
-        for i, line in enumerate(fo.readlines()):
+        for line in fo.readlines():
             item = json.loads(line)
             _audit_record(
                 record=item,
@@ -112,11 +106,11 @@ def _audit_items(
                 pg_cursor=pg_cursor,
                 sql=select_sql,
             )
-            if not i % 1_000:
-                logger.info(f"Audited {i:,} items")
-            count = i
-    logger.info(f"Finished Auditing {count:,} Items")
-    return count
+            if not item_count % 1_000:
+                logger.info(f"Audited {item_count:,} items")
+            item_count += 1
+    logger.info(f"Finished Auditing {item_count:,} Items")
+    return item_count
 
 
 def _add_record(record, con, record_type):
@@ -135,11 +129,15 @@ def _add_record(record, con, record_type):
 def _add_json_record(record, con, record_db_id):
     """Add full record for later remediation"""
     cur = con.cursor()
-    cur.execute(
-        """INSERT INTO JsonPayload (record_id, payload)
-                    VALUES (?,?);""",
-        (record_db_id, json.dumps(record)),
-    )
+    try:
+        cur.execute(
+            """INSERT INTO JsonPayload (record_id, payload)
+                        VALUES (?,?);""",
+            (record_db_id, json.dumps(record)),
+        )
+    except sqlite3.IntegrityError:
+        record = json.loads(record)
+        logger.error(f"{record['id']} already exists in JsonPayload table")
     cur.close()
 
 
