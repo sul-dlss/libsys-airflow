@@ -45,7 +45,10 @@ from plugins.folio.login import folio_login
 
 from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
 
-from plugins.folio.items import run_items_transformer, post_folio_items_records
+from plugins.folio.items import (
+    post_folio_items_records,
+    run_items_transformer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +248,6 @@ with DAG(
         update_holdings_hrids >> merge_all_holdings >> update_items
         update_items >> finish_hrid_updates
 
-
     with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
 
         start_records_to_valid_json = EmptyOperator(task_id="start-recs-to-valid-json")
@@ -389,5 +391,6 @@ with DAG(
         >> marc_to_folio
     )
     marc_to_folio >> additional_holdings >> update_hrids
-    update_hrids >> records_valid_json >> post_to_folio >> finish_loading
+    update_hrids >> records_valid_json
+    records_valid_json >> post_to_folio >> finish_loading
     finish_loading >> [ingest_srs_records, remediate_errors]
