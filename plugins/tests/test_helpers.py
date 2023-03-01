@@ -160,14 +160,15 @@ def test_get_bib_files():
         }
     }
 
-    assert len(mocks.messages) == 0
+    mocks.messages = {}
 
-    get_bib_files(task_instance=MockTaskInstance(), context=context)
+    get_bib_files(task_instance=MockTaskInstance(task_id="bib-files-group"),
+                  context=context)
 
-    assert mocks.messages["marc-file"].startswith("sample.mrc")
-    assert len(mocks.messages["tsv-files"]) == 2
-    assert mocks.messages["tsv-base"].startswith("sample.tsv")
-    assert mocks.messages["tsv-dates"].startswith("sample.dates.tsv")
+    assert mocks.messages["bib-files-group"]["marc-file"].startswith("sample.mrc")
+    assert len(mocks.messages["bib-files-group"]["tsv-files"]) == 2
+    assert mocks.messages["bib-files-group"]["tsv-base"].startswith("sample.tsv")
+    assert mocks.messages["bib-files-group"]["tsv-dates"].startswith("sample.dates.tsv")
 
     mocks.messages = {}
 

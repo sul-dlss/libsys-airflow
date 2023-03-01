@@ -91,9 +91,12 @@ def test_discover_bw_parts_files(mock_file_system, caplog):  # noqa
         }
         fo.write(f"{json.dumps(record)}\n")
 
-    discover_bw_parts_files(airflow=airflow, jobs=2, task_instance=MockTaskInstance())
-    assert len(mocks.messages["job-0"]) == 0
-    assert mocks.messages["job-1"] == [str(boundwith_file)]
+    discover_bw_parts_files(
+        airflow=airflow,
+        jobs=2,
+        task_instance=MockTaskInstance(task_id="discovery-bw-parts"))
+    assert len(mocks.messages["discovery-bw-parts"]["job-0"]) == 0
+    assert mocks.messages["discovery-bw-parts"]["job-1"] == [str(boundwith_file)]
 
     assert (
         "manual__2023-02-24/results/boundwith_parts.json doesn't exist" in caplog.text

@@ -106,9 +106,13 @@ messages = {}
 
 # Mock xcoms
 def mock_xcom_push(*args, **kwargs):
+    task_instance = args[0]
     key = kwargs["key"]
     value = kwargs["value"]
-    messages[key] = value
+    if task_instance.task_id in messages:
+        messages[task_instance.task_id][key] = value
+    else:
+        messages[task_instance.task_id] = {key: value}
 
 
 def mock_xcom_pull(*args, **kwargs):
@@ -127,6 +131,7 @@ class MockFOLIOClient(pydantic.BaseModel):
 
 
 class MockTaskInstance(pydantic.BaseModel):
+    task_id: str = "MockTaskInstance"
     xcom_pull = mock_xcom_pull
     xcom_push = mock_xcom_push
 

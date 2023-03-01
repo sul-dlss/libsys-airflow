@@ -235,6 +235,7 @@ def generate_urls(**kwargs):
             "location_id": instance.xcom_pull(
                 task_ids="setup-circ-rules", key=f"location_id{row_count}"
             ),
+            "limit": 2_000  # Should be plenty
         }
     )
     base = f"{folio_client.okapi_url}/circulation/rules/{policy_type}-policy"
@@ -277,7 +278,7 @@ def policy_report(**kwargs):
         policy_id = f"{policy_type}PolicyId"
         all_policy_id = policy_id
 
-    policy_url = f"{folio_client.okapi_url}/{endpoint}"
+    policy_url = f"{folio_client.okapi_url}/{endpoint}?limit=2000"
 
     policies_result = requests.get(policy_url, headers=folio_client.okapi_headers)
 
@@ -310,6 +311,10 @@ def policy_report(**kwargs):
                 winning_policy = f"Winning policy is {suffix}"
             else:
                 losing_policies.append(f"Losing policy is {suffix}")
+    if winning_policy is None:
+        for policy in policies:
+            if policy.get('name', "").startswith("No"):
+                winning_policy = policy['name']
     instance.xcom_push(key=f"winning-policy{row_count}", value=winning_policy)
     instance.xcom_push(key=f"losing-policies{row_count}", value=losing_policies)
     logger.info("Finished Policy Report")

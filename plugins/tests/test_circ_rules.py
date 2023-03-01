@@ -1,10 +1,16 @@
 import pytest
-import pydantic
 import requests
 
 from pytest_mock import MockerFixture
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
+from plugins.tests.mocks import (  # noqa
+    mock_dag_run,
+    mock_file_system,
+    MockFOLIOClient,
+    MockTaskInstance
+)
+
+import plugins.tests.mocks as mocks
 
 from plugins.folio.circ_rules import (
     friendly_report,
@@ -50,33 +56,7 @@ setup_batch_circ_rules = {
     }
 }
 
-messages = setup_circ_rules.copy()
-
-
-# Mock xcoms
-def mock_xcom_push(*args, **kwargs):
-    task_id = args[0].task_id
-    if task_id not in messages:
-        messages[task_id] = {}
-    messages[task_id]
-    key = kwargs["key"]
-    value = kwargs["value"]
-    messages[task_id][key] = value
-
-
-def mock_xcom_pull(*args, **kwargs):
-    task_id = kwargs["task_ids"]
-    key = kwargs["key"]
-    if task_id in messages:
-        if key in messages[task_id]:
-            return messages[task_id][key]
-    return {"message": "unknown"}
-
-
-class MockTaskInstance(pydantic.BaseModel):
-    task_id: str = ""
-    xcom_pull = mock_xcom_pull
-    xcom_push = mock_xcom_push
+mocks.messages = setup_circ_rules.copy()
 
 
 @pytest.fixture
@@ -124,7 +104,7 @@ def mock_requests(monkeypatch, mocker: MockerFixture):  # noqa
         get_response = mocker.stub(name="get_result")
         get_response.status_code = 200
         url = args[0]
-        json_func = lambda: "{}"  # noqa
+        json_func = lambda: {}  # noqa
         if "groups" in url:
             json_func = mock_group
         if "loan-types" in url:
@@ -200,42 +180,42 @@ def mock_batch_current_context(monkeypatch, mocker: MockerFixture):
 
 
 def test_friendly_report(mock_dag_run, mock_requests):  # noqa
-    global messages
-
+    mocks.messages = setup_circ_rules.copy()
     task_id = "friendly-report-group.friendly-report"
     task_instance = MockTaskInstance(task_id=task_id)
     friendly_report(folio_client=MockFOLIOClient(), task_instance=task_instance)
-    assert messages[task_id]["patron_group"] == "faculty"
-    assert messages[task_id]["loan_type"] == "4-hour loan type"
-    assert messages[task_id]["material_type"] == "sound recording"
-    assert messages[task_id]["libraryName"] == "Green Library"
-    assert messages[task_id]["location"] == "BUSINESS"
-    messages = setup_circ_rules.copy()
+
+    assert mocks.messages[task_id]["patron_group"] == "faculty"
+    assert mocks.messages[task_id]["loan_type"] == "4-hour loan type"
+    assert mocks.messages[task_id]["material_type"] == "sound recording"
+    assert mocks.messages[task_id]["libraryName"] == "Green Library"
+    assert mocks.messages[task_id]["location"] == "BUSINESS"
+    mocks.messages = {}
 
 
 def test_friendly_batch_report(mock_dag_run, mock_requests):  # noqa
-    global messages
     # Setup xcom messages for batch testing
-    messages = setup_batch_circ_rules.copy()
+    mocks.messages = setup_batch_circ_rules.copy()
 
     task_id = "friendly-report-group.friendly-report"
     friendly_batch_report(
         folio_client=MockFOLIOClient(), task_instance=MockTaskInstance(task_id=task_id)
     )
 
-    assert messages[task_id]["patron_group0"] == "faculty"
-    assert messages[task_id]["material_type2"] == "sound recording"
-    assert messages[task_id]["libraryName2"] == "Green Library"
+    assert mocks.messages[task_id]["patron_group0"] == "faculty"
+    assert mocks.messages[task_id]["material_type2"] == "sound recording"
+    assert mocks.messages[task_id]["libraryName2"] == "Green Library"
 
     # Resets xcom messages for remaining tests
-    messages = setup_circ_rules.copy()
+    mocks.messages = {}
 
 
 def test_generate_report(mock_dag_run, tmp_path):  # noqa
-    global messages
-    messages["friendly-report-group.friendly-report"] = {"libraryName": "Art"}
+    mocks.messages = setup_batch_circ_rules.copy()
 
-    messages["friendly-report-group.loan-policy-test"] = {
+    mocks.messages["friendly-report-group.friendly-report"] = {"libraryName": "Art"}
+
+    mocks.messages["friendly-report-group.loan-policy-test"] = {
         "winning-policy": "Winning policy is No loan - 2"
     }
 
@@ -248,12 +228,11 @@ def test_generate_report(mock_dag_run, tmp_path):  # noqa
     assert report_filepath.exists()
     assert record["Library Name"] == "Art"
     assert record["loan"] == "Winning policy is No loan - 2"
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_generate_batch_report(mock_dag_run, tmp_path, caplog):  # noqa
-    global messages
-    messages = setup_batch_circ_rules.copy()
+    mocks.messages = setup_batch_circ_rules.copy()
 
     generate_batch_report(
         task_instance=MockTaskInstance(task_id="generate-final-report"),
@@ -262,31 +241,29 @@ def test_generate_batch_report(mock_dag_run, tmp_path, caplog):  # noqa
     )
 
     assert "Finished Generating Batch Report for 3 batches" in caplog.text
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_generate_urls():
-    global messages
     task_id = "retrieve-policies-group.loan-generate-urls"
     task_instance = MockTaskInstance(task_id=task_id)
     generate_urls(
         task_instance=task_instance, folio_client=MockFOLIOClient(), policy_type="loan"
     )
     assert (
-        messages[task_id]["single-policy-url"]
-        == "https://okapi.edu/circulation/rules/loan-policy?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd"
+        mocks.messages[task_id]["single-policy-url"]
+        == "https://okapi.edu/circulation/rules/loan-policy?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd&limit=2000"
     )
     assert (
-        messages[task_id]["all-policies-url"]
-        == "https://okapi.edu/circulation/rules/loan-policy-all?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd"
+        mocks.messages[task_id]["all-policies-url"]
+        == "https://okapi.edu/circulation/rules/loan-policy-all?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd&limit=2000"
     )
 
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_generate_batch_urls(caplog):
-    global messages
-    messages = setup_batch_circ_rules.copy()
+    mocks.messages = setup_batch_circ_rules.copy()
     task_id = "retrieve-policies-group.loan-generate-urls"
     generate_batch_urls(
         task_instance=MockTaskInstance(task_id=task_id),
@@ -295,17 +272,16 @@ def test_generate_batch_urls(caplog):
     )
 
     assert "Finished generating urls for 3 batches" in caplog.text
-    assert "all-policies-url1" in messages[task_id]
-    assert "single-policy-url2" in messages[task_id]
+    assert "all-policies-url1" in mocks.messages[task_id]
+    assert "single-policy-url2" in mocks.messages[task_id]
 
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_policy_report(mock_requests):
-    global messages
     task_id = "friendly-report-group.request-policy-test"
-
-    messages["retrieve-policies-group.request-get-policies"] = {
+    mocks.messages = setup_circ_rules.copy()
+    mocks.messages["retrieve-policies-group.request-get-policies"] = {
         "single-policy": """{
             "requestPolicyId" : "8a58b9d6-855d-49bb-9a16-8b409e590dfe",
             "appliedRuleConditions" : {
@@ -333,17 +309,16 @@ def test_policy_report(mock_requests):
         policy_type="request",
     )
     assert (
-        messages[task_id]["winning-policy"]
+        mocks.messages[task_id]["winning-policy"]
         == "Winning policy is No requests allowed - 2"
     )
-    assert len(messages[task_id]["losing-policies"]) == 2
-    messages = setup_circ_rules.copy()
+    assert len(mocks.messages[task_id]["losing-policies"]) == 2
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_policy_batch_report(mock_requests, caplog):
-    global messages
-    messages = setup_batch_circ_rules.copy()
-    messages["retrieve-policies-group.loan-get-policies"] = {
+    mocks.messages = setup_batch_circ_rules.copy()
+    mocks.messages["retrieve-policies-group.loan-get-policies"] = {
         "all-policies0": """{ "circulationRuleMatches": [] }""",
         "all-policies1": """{ "circulationRuleMatches": [] }""",
         "all-policies2": """{ "circulationRuleMatches": [] }""",
@@ -360,13 +335,13 @@ def test_policy_batch_report(mock_requests, caplog):
     )
 
     assert "Finished generating policy reports for 3 batches" in caplog.text
-    messages = setup_circ_rules.copy()
+    mocks.messages = {}
 
 
 def test_retrieve_policies(mock_requests):
-    global messages
+    mocks.messages = setup_batch_circ_rules.copy()
 
-    messages["retrieve-policies-group.overdue-fine-generate-urls"] = {
+    mocks.messages["retrieve-policies-group.overdue-fine-generate-urls"] = {
         "single-policy-url": "https://okapi.edu/circulation/rules/overdue-fine-policy?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd",
         "all-policies-url": "https://okapi.edu/circulation/rules/overdue-fine-policy-all?patron_type_id=503a81cd-6c26-400f-b620-14c08943697c&loan_type_id=2b94c631-fca9-4892-a730-03ee529ffe27&item_type_id=fd6c6515-d470-4561-9c32-3e3290d4ca98&location_id=758258bc-ecc1-41b8-abca-f7b610822ffd",
     }
@@ -379,18 +354,18 @@ def test_retrieve_policies(mock_requests):
         folio_client=MockFOLIOClient(),
     )
 
-    assert "overdueFinePolicyId" in messages[task_id]["single-policy"]
-    assert "overduePolicyId" in messages[task_id]["all-policies"]
+    assert "overdueFinePolicyId" in mocks.messages[task_id]["single-policy"]
+    assert "overduePolicyId" in mocks.messages[task_id]["all-policies"]
 
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_retrieve_batch_policies(mock_requests, caplog):
-    global messages
-    messages = setup_batch_circ_rules.copy()
+
+    mocks.messages = setup_batch_circ_rules.copy()
     task_id = "retrieve-policies-group.overdue-fine-get-policies"
 
-    messages["retrieve-policies-group.overdue-fine-generate-urls"] = {
+    mocks.messages["retrieve-policies-group.overdue-fine-generate-urls"] = {
         "all-policies-url0": "http://okapi/overdue-fine-policy-all/0",
         "all-policies-url1": "http://okapi/overdue-fine-policy-all/1",
         "all-policies-url2": "http://okapi/overdue-fine-policy-all/2",
@@ -407,22 +382,21 @@ def test_retrieve_batch_policies(mock_requests, caplog):
 
     assert "Finished retrieving policies for 3 batches" in caplog.text
 
-    messages = setup_circ_rules.copy()
+    mocks.messages = setup_circ_rules.copy()
 
 
 def test_setup_rules(mock_valid_current_context):
-    global messages
-    messages = {}
+    mocks.messages = {}
     task_id = "setup-circ-rules"
     task_instance = MockTaskInstance(task_id=task_id)
     setup_rules(
         task_instance=task_instance,
     )
 
-    assert len(messages[task_id]) == 4
-    assert messages[task_id]["location_id"] == "fcd64ce1-6995-48f0-840e-89ffa2288371"
+    assert len(mocks.messages[task_id]) == 4
+    assert mocks.messages[task_id]["location_id"] == "fcd64ce1-6995-48f0-840e-89ffa2288371"
 
-    messages = setup_circ_rules.copy()
+    mocks.messages = {}
 
 
 def test_missing_setup_rules(mock_missing_current_context):
@@ -438,3 +412,7 @@ def test_setup_batch_rules(mock_batch_current_context, caplog):
     setup_batch_rules(task_instance=task_instance)
 
     assert "Setup completed for 2 batches" in caplog.text
+
+
+# Ensures messages are empty after finishing all tests
+mocks.messages = {}
