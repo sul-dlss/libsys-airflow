@@ -113,6 +113,12 @@ def _audit_items(
     return item_count
 
 
+def __audit_srs(
+    results_path: pathlib.Path, audit_connection: sqlite3.Connection, pg_cursor
+):
+    """Audits FOLIO MARC BIB and MHLD SRS Records"""
+    
+
 def _add_record(record, con, record_type):
     cur = con.cursor()
     cur.execute(
@@ -164,7 +170,7 @@ def _get_add_record(record, con, record_type):
     return record_id
 
 
-def _check_instance_views(results_dir, pg_hook) -> dict:
+def _check_instance_views(results_dir, pg_hook, task_instance) -> dict:
     """
     Associates Instances to it's Holdings and Items.
     """
@@ -174,12 +180,14 @@ def _check_instance_views(results_dir, pg_hook) -> dict:
     instance_count = _audit_instances(results_dir, con, pg_cursor)
     holdings_count = _audit_holdings_records(results_dir, con, pg_cursor)
     items_count = _audit_items(results_dir, con, pg_cursor)
+    srs_count = _audit_srs(results_dir, con, pg_cursor)
     pg_cursor.close()
     pg_connection.close()
     con.close()
     logger.info(
         f"Finished auditing {instance_count:,} instances, {holdings_count:,} holdings and {items_count:,} items"
     )
+
 
 
 def setup_audit_db(*args, **kwargs):
@@ -218,5 +226,5 @@ def audit_instance_views(*args, **kwargs):
         pathlib.Path(airflow) / f"migration/iterations/{iteration_id}/results/"
     )
     logger.info("Constructing instance views")
-    _check_instance_views(results_dir, pg_hook)
+    _check_instance_views(results_dir, pg_hook, task_instance)
     logger.info("Finished audit of Instance views")
