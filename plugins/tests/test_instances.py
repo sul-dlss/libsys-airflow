@@ -36,14 +36,21 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
 123456\t19900927\t19950710
 98765\t20220101\t0""")
 
-    _adjust_records(instances_file, str(tsv_dates_file))
+    instance_statuses = {
+        "Cataloged": "9634a5ab-9228-4703-baf2-4d12ebc77d56",
+        "Uncataloged": "26f5208e-110a-4394-be29-1569a8c84a65"
+    }
+
+    _adjust_records(instances_file, str(tsv_dates_file), instance_statuses)
 
     with instances_file.open() as fo:
         instance_records = [json.loads(row) for row in fo.readlines()]
 
     assert instance_records[0]["_version"] == 1
     assert instance_records[0]["catalogedDate"] == "1995-07-10"
+    assert instance_records[0]["statusId"] == "9634a5ab-9228-4703-baf2-4d12ebc77d56"
     assert "catalogedDate" not in instance_records[1]
+    assert instance_records[1]["statusId"] == "26f5208e-110a-4394-be29-1569a8c84a65"
     assert not tsv_dates_file.exists()
 
 
