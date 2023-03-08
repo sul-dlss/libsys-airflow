@@ -15,6 +15,15 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _remove_dup_admin_notes(record: dict):
+    """
+    Removes administrativeNotes that contain duplicated HRID
+    """
+    for i, admin_note in enumerate(record.get('administrativeNotes', [])):
+        if admin_note.startswith("Identifier(s) from previous system"):
+            record['administrativeNotes'].pop(i)
+
+
 def _adjust_records(instances_path: Path, tsv_dates: str, instance_status: dict):
 
     dates_df = pd.read_csv(
@@ -37,6 +46,7 @@ def _adjust_records(instances_path: Path, tsv_dates: str, instance_status: dict)
                 record["statusId"] = instance_status["Cataloged"]
             else:
                 record["statusId"] = instance_status["Uncataloged"]
+            _remove_dup_admin_notes(record)
             records.append(record)
     with instances_path.open("w+") as fo:
         for record in records:
