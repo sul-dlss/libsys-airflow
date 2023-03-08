@@ -242,7 +242,7 @@ def merge_update_holdings(**kwargs):
     with (iteration_dir / "results/folio_holdings.json").open("w+") as fo:
         for holdings_record in all_holdings.values():
             if "formerIds" in holdings_record:
-                del(holdings_record["formerIds"])
+                del (holdings_record["formerIds"])
             fo.write(f"{json.dumps(holdings_record)}\n")
 
     mhld_holdings_path.unlink()
