@@ -47,6 +47,8 @@ CREATE UNIQUE INDEX IdxRecord ON Record (id);
 INSERT INTO FolioType (id, name) VALUES (0, "Holding");
 INSERT INTO FolioType (id, name) VALUES (1, "Item");
 INSERT INTO FolioType (id, name) VALUES (2, "Instance");
+INSERT INTO FolioType (id, name) VALUES (3, "SRS Bibilographic");
+INSERT INTO FolioType (id, name) VALUES (16, "SRS Holdings Record");
 
 INSERT INTO Status (name) VALUES ("Exists");
 INSERT INTO Status (name) VALUES ("Missing");

@@ -1,13 +1,20 @@
+import json
 import logging
 import pathlib
 import re
 import shutil
+import sqlite3
+import uuid
 
 import pandas as pd
 import pymarc
+import requests
 
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
+from folio_uuid.folio_uuid import FOLIONamespaces
 
+from plugins.folio.audit import AuditStatus, _add_audit_log
+from plugins.folio.remediate import _save_error
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +37,67 @@ def _add_electronic_holdings(field: pymarc.Field) -> bool:
             return False
         return True
     return False
+
+
+def _add_srs_audit_record(record: dict, connection, record_type):
+    """Adds SRS Record to Audit Database"""
+    cur = connection.cursor()
+    if record_type == FOLIONamespaces.srs_records_holdingsrecord:
+        hrid = record["externalIdsHolder"]["holdingsHrid"]
+    else:
+        hrid = record["externalIdsHolder"]["instanceHrid"]
+    cur.execute(
+        """INSERT INTO Record (uuid, hrid, folio_type, current_version)
+           VALUES (?,?,?,?);""",
+        (record["id"], hrid, record_type, record["generation"]),
+    )
+    record_id = cur.lastrowid
+    connection.commit()
+    cur.close()
+    return record_id
+
+
+def _check_add_srs_records(**kwargs):
+    srs_record: dict = kwargs["srs_record"]
+    snapshot_id: str = kwargs["snapshot_id"]
+    folio_client = kwargs["folio_client"]
+    audit_connection = kwargs["audit_connection"]
+    record_type = kwargs["record_type"]
+
+    db_record_id = _add_srs_audit_record(srs_record, audit_connection, record_type)
+
+    srs_id = srs_record["id"]
+    check_record = requests.get(
+        f"{folio_client.okapi_url}/source-storage/records/{srs_id}",
+        headers=folio_client.okapi_headers,
+    )
+
+    match check_record.status_code:
+
+        case 200:
+            _add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
+            return
+
+        case 404:
+            _add_audit_log(db_record_id, audit_connection, AuditStatus.MISSING.value)
+            srs_record["snapshotId"] = snapshot_id
+            add_result = requests.post(
+                f"{folio_client.okapi_url}/source-storage/records",
+                headers=folio_client.okapi_headers,
+                json=srs_record,
+            )
+            if add_result.status_code != 201:
+                _save_error(audit_connection, db_record_id, add_result)
+                logger.error(
+                    f"Failed to add {srs_id} http-code {add_result.status_code} error {add_result.text}"
+                )
+
+        case _:
+            _add_audit_log(db_record_id, audit_connection, AuditStatus.ERROR.value)
+            _save_error(audit_connection, db_record_id, check_record)
+            logger.error(
+                f"Failed to retrieve {srs_id}, {check_record.status_code} message {check_record.text}"
+            )
 
 
 def _extract_e_holdings_fields(**kwargs) -> list:
@@ -83,6 +151,18 @@ def _get_library(fields596: list) -> str:
     return library
 
 
+def _get_snapshot_id(folio_client):
+    snapshot_id = str(uuid.uuid4())
+    snapshot_result = requests.post(
+        f"{folio_client.okapi_url}/source-storage/snapshots",
+        headers=folio_client.okapi_headers,
+        json={"jobExecutionId": snapshot_id, "status": "PARSING_IN_PROGRESS"},
+    )
+    if snapshot_result.status_code != 201:
+        logger.error(f"Error getting snapshot {snapshot_result.text}")
+    return snapshot_id
+
+
 def _move_001_to_035(record: pymarc.Record) -> str:
 
     all001 = record.get_fields("001")
@@ -101,6 +181,192 @@ def _move_001_to_035(record: pymarc.Record) -> str:
             record.remove_field(field001)
 
     return catkey
+
+
+def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
+    """
+    Generates a SRS Audit Report
+    """
+    report_path = pathlib.Path(iteration) / "reports/srs-audit.md"
+    audit_report = (
+        f"""# SRS Audit/Remediation report for {iteration.split("/")[-1]}\n"""
+    )
+    cur = db_connection.cursor()
+    srs_total_sql = """SELECT count(id) FROM Record where folio_type=?;"""
+    srs_status_sql = """SELECT count(AuditLog.id) FROM AuditLog, Record
+WHERE AuditLog.record_id = Record.id AND
+Record.folio_type=? AND
+AuditLog.status=?;"""
+    total_mhld_srs_records = cur.execute(
+        srs_total_sql, (FOLIONamespaces.srs_records_holdingsrecord.value,)
+    ).fetchone()[0]
+    audit_report += (
+        f"## Totals SRS Records\n- **MHLD SRS Records**: {total_mhld_srs_records}"
+    )
+    total_bib_srs_records = cur.execute(
+        srs_total_sql, (FOLIONamespaces.srs_records_bib.value,)
+    ).fetchone()[0]
+    audit_report += f"- **SRS BIBs Records**: {total_bib_srs_records}\n"
+    exists_mhld = cur.execute(
+        srs_status_sql,
+        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.EXISTS.value),
+    ).fetchone()[0]
+    audit_report += f"## SRS MHLD Audit Status\n- **Exists**: {exists_mhld}\n"
+    missing_mhld = cur.execute(
+        srs_status_sql,
+        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.MISSING.value),
+    ).fetchone()[0]
+    audit_report += f"- **Missing**: {missing_mhld}\n"
+    error_mhld = cur.execute(
+        srs_status_sql,
+        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.ERROR.value),
+    ).fetchone()[0]
+    audit_report += f"- **Errors**: {error_mhld}"
+    exists_bibs = cur.execute(
+        srs_status_sql,
+        (FOLIONamespaces.srs_records_bib.value, AuditStatus.EXISTS.value),
+    ).fetchone()[0]
+    audit_report += f"## SRS BIBs Audit Status\n- **Exists**: {exists_bibs}\n"
+    missing_bibs = cur.execute(
+        srs_status_sql,
+        (FOLIONamespaces.srs_records_bib.value, AuditStatus.MISSING.value),
+    ).fetchone()[0]
+    audit_report += f"- **Missing**: {missing_bibs}\n"
+    error_bibs = cur.execute(
+        srs_status_sql, (FOLIONamespaces.srs_records_bib.value, AuditStatus.ERROR.value)
+    ).fetchone()[0]
+    audit_report += f"- **Errors**: {error_bibs}"
+    cur.close()
+    report_path.write_text(audit_report)
+
+
+def _srs_check_add(**kwargs):
+    """
+    Runs audit/remediation for a single SRS file
+    """
+    results_dir: pathlib.Path = kwargs["results_dir"]
+    srs_type: int = kwargs["srs_type"]
+    audit_connection: sqlite3.Connection = kwargs["audit_connection"]
+    file_name: str = kwargs["file_name"]
+    srs_label: str = kwargs["srs_label"]
+    snapshot_id: str = kwargs["snapshot_id"]
+
+    srs_file = results_dir / file_name
+
+    if not srs_file.exists():
+        logger.info(f"{srs_label} does not exist")
+        return 0
+
+    srs_count = 0
+    logger.info(f"{srs_label} ")
+    with srs_file.open() as fo:
+        for line in fo.readlines():
+            record = json.loads(line)
+            _check_add_srs_records(
+                srs_record=record,
+                snapshot_id=snapshot_id,
+                audit_connection=audit_connection,
+                record_type=srs_type,
+            )
+            if not srs_count % 1_000:
+                logger.info(f"Checked/Added {srs_count:,} SRS records")
+            srs_count += 1
+
+    logger.info(f"Finished audit/remediate for {srs_label} for total {srs_count:,}")
+    return srs_count
+
+
+def _handle_srs_iteration(**kwargs):
+    iteration = kwargs["iteration"]
+    folio_client = kwargs["folio_client"]
+    iteration_name = iteration.split("/")[-1]
+    results_dir = pathlib.Path(f"{iteration}/results/")
+
+    audit_db_path = results_dir / "audit-remediation.db"
+    audit_connection = sqlite3.connect(str(audit_db_path))
+
+    snapshot = _get_snapshot_id(folio_client)
+
+    logger.info(f"Starting {iteration_name} iteration")
+
+    mhld_count = _srs_check_add(
+        audit_connection=audit_connection,
+        results_dir=results_dir,
+        srs_type=FOLIONamespaces.srs_records_holdingsrecord.value,
+        file_name="folio_srs_holdings_mhld-transformer.json",
+        snapshot_id=snapshot,
+        srs_label="SRS MHLDs",
+    )
+
+    bib_count = _srs_check_add(
+        audit_connection=audit_connection,
+        results_dir=results_dir,
+        srs_type=FOLIONamespaces.srs_records_bib.value,
+        file_name="folio_srs_instances_bibs-transformer.json",
+        snapshot_id=snapshot,
+        srs_label="SRS MARC BIBs",
+    )
+
+    _srs_audit_report(audit_connection, iteration)
+
+    audit_connection.close()
+    logger.info(f"Total SRS Records audited/remediated {(mhld_count + bib_count):,}")
+
+
+def discover_srs_files(*args, **kwargs):
+    """
+    Iterates through migration iterations directory and checks for SRS file
+    existence for later auditing/remediation
+    """
+    airflow = kwargs.get("airflow", "/opt/airflow/")
+    jobs = int(kwargs["jobs"])
+    task_instance = kwargs["task_instance"]
+
+    iterations_dir = pathlib.Path(airflow) / "migration/iterations"
+    srs_iterations = []
+    # Checks for SRS bibs
+    for iteration in iterations_dir.iterdir():
+        srs_file = iteration / "results/folio_srs_instances_bibs-transformer.json"
+        if srs_file.exists():
+            srs_iterations.append(str(srs_file))
+
+    shard_size = int(len(srs_iterations) / jobs)
+    for i in range(jobs):
+        start = i * shard_size
+        end = shard_size * (i + 1)
+        if i == jobs - 1:
+            end = len(srs_iterations)
+
+        task_instance.xcom_push(key=f"job-{i}", value=srs_iterations[start:end])
+
+    logger.info(
+        f"Finished SRS discovery, found {len(srs_iterations)} files and created {jobs} batches"
+    )
+
+
+def handle_srs_files(*args, **kwargs):
+    """
+    Using a list of iteration directories, calls function for checking/adding
+    SRS files.
+    """
+    task_instance = kwargs["task_instance"]
+    job = kwargs["job"]
+    folio_client = kwargs["folio_client"]
+
+    iterations = task_instance.xcom_pull(task_ids="find-srs-files", key=f"job-{job}")
+
+    logger.info(f"Starting Check/Add SRS Bibs files for {len(iterations):,}")
+
+    total_srs_count = 0
+    for iteration in iterations:
+        total_srs_count += _handle_srs_iteration(
+            iteration=iteration, folio_client=folio_client
+        )
+
+    logger.info(
+        f"Finished auditing/remediation of {total_srs_count:,} records for {len(iterations)}"
+    )
+    return total_srs_count
 
 
 def marc_only(*args, **kwargs):
@@ -202,9 +468,7 @@ def process(*args, **kwargs):
         )
         electronic_holdings.extend(
             _extract_e_holdings_fields(
-                catkey=catkey,
-                fields=record.get_fields("956"),
-                library=library
+                catkey=catkey, fields=record.get_fields("956"), library=library
             )
         )
         marc_records.append(record)
