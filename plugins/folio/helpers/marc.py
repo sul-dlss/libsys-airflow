@@ -42,7 +42,7 @@ def _add_electronic_holdings(field: pymarc.Field) -> bool:
 def _add_srs_audit_record(record: dict, connection, record_type):
     """Adds SRS Record to Audit Database"""
     cur = connection.cursor()
-    if record_type == FOLIONamespaces.srs_records_holdingsrecord:
+    if record_type == FOLIONamespaces.srs_records_holdingsrecord.value:
         hrid = record["externalIdsHolder"]["holdingsHrid"]
     else:
         hrid = record["externalIdsHolder"]["instanceHrid"]
@@ -187,9 +187,9 @@ def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
     """
     Generates a SRS Audit Report
     """
-    report_path = pathlib.Path(iteration) / "reports/srs-audit.md"
+    report_path = pathlib.Path(iteration) / "reports/report_srs-audit.md"
     audit_report = (
-        f"""# SRS Audit/Remediation report for {iteration.split("/")[-1]}\n"""
+        """# SRS Audit/Remediation Report\n"""
     )
     cur = db_connection.cursor()
     srs_total_sql = """SELECT count(id) FROM Record where folio_type=?;"""
@@ -201,7 +201,7 @@ AuditLog.status=?;"""
         srs_total_sql, (FOLIONamespaces.srs_records_holdingsrecord.value,)
     ).fetchone()[0]
     audit_report += (
-        f"## Totals SRS Records\n- **MHLD SRS Records**: {total_mhld_srs_records}"
+        f"## Totals SRS Records\n- **MHLD SRS Records**: {total_mhld_srs_records}\n"
     )
     total_bib_srs_records = cur.execute(
         srs_total_sql, (FOLIONamespaces.srs_records_bib.value,)
@@ -211,27 +211,27 @@ AuditLog.status=?;"""
         srs_status_sql,
         (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.EXISTS.value),
     ).fetchone()[0]
-    audit_report += f"## SRS MHLD Audit Status\n- **Exists**: {exists_mhld}\n"
+    audit_report += f"## SRS MHLD Audit Status\n- **Exists**: {exists_mhld:,}\n"
     missing_mhld = cur.execute(
         srs_status_sql,
         (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.MISSING.value),
     ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_mhld}\n"
+    audit_report += f"- **Missing**: {missing_mhld:,}\n"
     error_mhld = cur.execute(
         srs_status_sql,
         (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.ERROR.value),
     ).fetchone()[0]
-    audit_report += f"- **Errors**: {error_mhld}"
+    audit_report += f"- **Errors**: {error_mhld:,}\n"
     exists_bibs = cur.execute(
         srs_status_sql,
         (FOLIONamespaces.srs_records_bib.value, AuditStatus.EXISTS.value),
     ).fetchone()[0]
-    audit_report += f"## SRS BIBs Audit Status\n- **Exists**: {exists_bibs}\n"
+    audit_report += f"## SRS BIBs Audit Status\n- **Exists**: {exists_bibs:,}\n"
     missing_bibs = cur.execute(
         srs_status_sql,
         (FOLIONamespaces.srs_records_bib.value, AuditStatus.MISSING.value),
     ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_bibs}\n"
+    audit_report += f"- **Missing**: {missing_bibs:,}\n"
     error_bibs = cur.execute(
         srs_status_sql, (FOLIONamespaces.srs_records_bib.value, AuditStatus.ERROR.value)
     ).fetchone()[0]
@@ -248,6 +248,7 @@ def _srs_check_add(**kwargs):
     srs_type: int = kwargs["srs_type"]
     audit_connection: sqlite3.Connection = kwargs["audit_connection"]
     file_name: str = kwargs["file_name"]
+    folio_client = kwargs["folio_client"]
     srs_label: str = kwargs["srs_label"]
     snapshot_id: str = kwargs["snapshot_id"]
 
@@ -267,6 +268,7 @@ def _srs_check_add(**kwargs):
                 snapshot_id=snapshot_id,
                 audit_connection=audit_connection,
                 record_type=srs_type,
+                folio_client=folio_client
             )
             if not srs_count % 1_000:
                 logger.info(f"Checked/Added {srs_count:,} SRS records")
@@ -295,6 +297,7 @@ def _handle_srs_iteration(**kwargs):
         srs_type=FOLIONamespaces.srs_records_holdingsrecord.value,
         file_name="folio_srs_holdings_mhld-transformer.json",
         snapshot_id=snapshot,
+        folio_client=folio_client,
         srs_label="SRS MHLDs",
     )
 
@@ -304,13 +307,17 @@ def _handle_srs_iteration(**kwargs):
         srs_type=FOLIONamespaces.srs_records_bib.value,
         file_name="folio_srs_instances_bibs-transformer.json",
         snapshot_id=snapshot,
+        folio_client=folio_client,
         srs_label="SRS MARC BIBs",
     )
 
     _srs_audit_report(audit_connection, iteration)
 
     audit_connection.close()
-    logger.info(f"Total SRS Records audited/remediated {(mhld_count + bib_count):,}")
+    total = mhld_count + bib_count
+    logger.info(f"Total SRS Records audited/remediated {total:,}")
+
+    return total
 
 
 def discover_srs_files(*args, **kwargs):
@@ -328,7 +335,7 @@ def discover_srs_files(*args, **kwargs):
     for iteration in iterations_dir.iterdir():
         srs_file = iteration / "results/folio_srs_instances_bibs-transformer.json"
         if srs_file.exists():
-            srs_iterations.append(str(srs_file))
+            srs_iterations.append(str(iteration))
 
     shard_size = int(len(srs_iterations) / jobs)
     for i in range(jobs):

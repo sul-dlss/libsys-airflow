@@ -1,15 +1,24 @@
 import json
+import pathlib
+import sqlite3
+
+import requests
 
 import pytest  # noqa
 
 import folio_migration_tools.migration_tasks.batch_poster as batch_poster
 
+from pytest_mock import MockerFixture
 from pymarc import Field, MARCWriter, Record
+
+from plugins.folio.audit import setup_audit_db
 
 from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
+    discover_srs_files,
     _extract_e_holdings_fields,
     _get_library,
+    handle_srs_files,
     marc_only,
     move_marc_files,
     _move_001_to_035,
@@ -62,14 +71,69 @@ def mock_get_req_size(monkeypatch):
 
 
 @pytest.fixture
+def mock_srs_requests(monkeypatch, mocker: MockerFixture):
+    def mock_post(*args, **kwargs):
+        post_response = mocker.stub(name="post-result")
+        post_response.status_code = 201
+        if not args[0].endswith("snapshots"):
+            if kwargs["json"]["id"] == "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4":
+                post_response.status_code = 422
+                post_response.text = "Invalid user"
+        return post_response
+
+    def mock_get(*args, **kwargs):
+        get_response = mocker.stub(name="get-response")
+        if args[0].endswith("e9a161b7-3541-54d6-bd1d-e4f2c3a3db79"):
+            get_response.status_code = 200
+        if args[0].endswith("9cb89c9a-1184-4969-ae0d-19e4667bcea3") or args[0].endswith(
+            "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4"
+        ):
+            get_response.status_code = 404
+        if args[0].endswith("d0c4f6ef-770d-44de-9d91-0bc6aa654391"):
+            get_response.status_code = 422
+            get_response.text = "Missing Required Fields"
+        return get_response
+
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+@pytest.fixture
 def srs_file(mock_file_system):  # noqa
     results_dir = mock_file_system[3]
 
-    srs_filepath = results_dir / "test-srs.json"
+    srs_filepath = results_dir / "folio_srs_instances_bibs-transformer.json"
 
-    srs_filepath.write_text(
-        """{ "id": "e9a161b7-3541-54d6-bd1d-e4f2c3a3db79", "rawRecord": { "content": {"leader": "01634pam a2200433 i 4500"}}}"""
-    )
+    records = [
+        {
+            "id": "e9a161b7-3541-54d6-bd1d-e4f2c3a3db79",
+            "generation": "0",
+            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+            "externalIdsHolder": {"instanceHrid": "a34567"},
+        },
+        {
+            "id": "9cb89c9a-1184-4969-ae0d-19e4667bcea3",
+            "generation": "0",
+            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+            "externalIdsHolder": {"instanceHrid": "a13981569"},
+        },
+        {
+            "id": "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4",
+            "generation": "0",
+            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+            "externalIdsHolder": {"instanceHrid": "a165578"},
+        },
+        {
+            "id": "d0c4f6ef-770d-44de-9d91-0bc6aa654391",
+            "generation": "0",
+            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+            "externalIdsHolder": {"instanceHrid": "a11665261"},
+        },
+    ]
+
+    with srs_filepath.open("w+") as fo:
+        for record in records:
+            fo.write(f"{json.dumps(record)}\n")
     return srs_filepath
 
 
@@ -103,6 +167,23 @@ def test_add_electronic_holdings():
         tag="856", indicators=["0", "0"], subfields=["u", "http://example.com/"]
     )
     assert _add_electronic_holdings(field_856) is True
+
+
+def test_discover_srs_files(mock_file_system, srs_file):  # noqa
+    airflow = mock_file_system[0]
+    iteration_two_results = airflow / "migration/iterations/manual_2023-03-09/results/"
+    iteration_two_results.mkdir(parents=True)
+    folio_srs2 = iteration_two_results / "folio_srs_instances_bibs-transformer.json"
+    folio_srs2.write_text("""{ "id": "5bfd2479-6773-4100-99dd-fd042063c2ec" }""")
+
+    discover_srs_files(
+        airflow=mock_file_system[0],
+        jobs=2,
+        task_instance=MockTaskInstance(task_id="find-srs-files"),
+    )
+    assert len(mocks.messages["find-srs-files"]["job-1"]) == 1
+    assert mocks.messages["find-srs-files"]["job-0"] == [str(mock_file_system[2])]
+    mocks.messages = {}
 
 
 def test_extract_856s():
@@ -171,7 +252,9 @@ def test_extract_856s():
             subfields=["u", "https://example.doi.org/45668"],
         ),
     ]
-    output = _extract_e_holdings_fields(catkey=catkey, fields=all856_fields, library="SUL")
+    output = _extract_e_holdings_fields(
+        catkey=catkey, fields=all856_fields, library="SUL"
+    )
     assert len(output) == 3
     assert output[0] == {
         "CATKEY": "34456",
@@ -207,10 +290,62 @@ def test_extract_956s():
         ),
     ]
 
-    output = _extract_e_holdings_fields(catkey=catkey, fields=all_956_fields, library="SUL")
+    output = _extract_e_holdings_fields(
+        catkey=catkey, fields=all_956_fields, library="SUL"
+    )
     assert len(output) == 1
     assert output[0]["HOMELOCATION"].startswith("INTERNET")
     assert output[0]["LIBRARY"] == "SUL"
+
+
+def test_handle_srs_files(
+    mock_file_system, mock_dag_run, srs_file, mock_srs_requests, caplog  # noqa
+):
+    airflow = mock_file_system[0]
+    iteration_dir = mock_file_system[2]
+    results_dir = mock_file_system[3]
+
+    mocks.messages["find-srs-files"] = {"job-0": [str(mock_file_system[2])]}
+
+    current_file = pathlib.Path(__file__)
+    db_init_file = current_file.parents[2] / "folio/qa.sql"
+    mock_db_init_file = airflow / "plugins/folio/qa.sql"
+    mock_db_init_file.write_text(db_init_file.read_text())
+
+    setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
+
+    handle_srs_files(
+        task_instance=MockTaskInstance(task_id="find-srs-files"),
+        job=0,
+        folio_client=MockFOLIOClient(),
+    )
+
+    audit_db = sqlite3.connect(results_dir / "audit-remediation.db")
+    cur = audit_db.cursor()
+
+    assert "Starting Check/Add SRS Bibs files for 1" in caplog.text
+
+    total_records = cur.execute("SELECT count(id) FROM Record;").fetchone()[0]
+    assert total_records == 4
+    existing_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=1;"""
+    ).fetchone()[0]
+    assert existing_records == 1
+    missing_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=2;"""
+    ).fetchone()[0]
+    assert missing_records == 2
+    error_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=3;"""
+    ).fetchone()[0]
+    assert error_records == 1
+
+    cur.close()
+    audit_db.close()
+
+    assert (iteration_dir / "reports/report_srs-audit.md").exists()
+
+    mocks.messages = {}
 
 
 def test_marc_only():
