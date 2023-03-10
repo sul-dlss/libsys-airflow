@@ -299,6 +299,7 @@ def policy_report(**kwargs):
     )
 
     winning_policy, losing_policies = None, []
+    found_policy = False
     for circ_rule_match in all_policies["circulationRuleMatches"]:
         circ_policy_id = circ_rule_match[all_policy_id]
         for policy in policies[policy_key]:
@@ -307,10 +308,15 @@ def policy_report(**kwargs):
                 circ_policy_id == policy["id"]
                 and circ_policy_id == single_policy[policy_id]
             ):
-                logger.info(f"Winning {circ_policy_id} {policy_id}")
+                logger.info(f"Winning {circ_policy_id} {suffix}")
                 winning_policy = f"Winning policy is {suffix}"
+                found_policy = True
+                break
             else:
                 losing_policies.append(f"Losing policy is {suffix}")
+        if found_policy is True:
+            break
+
     if winning_policy is None:
         for policy in policies:
             if policy.get('name', "").startswith("No"):

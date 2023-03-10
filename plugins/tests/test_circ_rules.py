@@ -310,9 +310,9 @@ def test_policy_report(mock_requests):
     )
     assert (
         mocks.messages[task_id]["winning-policy"]
-        == "Winning policy is No requests allowed - 2"
+        == "Winning policy is No requests allowed - 132"
     )
-    assert len(mocks.messages[task_id]["losing-policies"]) == 2
+    assert len(mocks.messages[task_id]["losing-policies"]) == 0
     mocks.messages = setup_circ_rules.copy()
 
 
