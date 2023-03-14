@@ -7,7 +7,7 @@ import pymarc
 from plugins.folio.holdings import (
     electronic_holdings,
     post_folio_holding_records,
-    merge_update_holdings,
+    update_holdings,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
@@ -65,7 +65,7 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
 def test_merge_update_holdings_no_holdings(
     mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
 ):
-    merge_update_holdings(
+    update_holdings(
         airflow=str(mock_file_system[0]),
         dag_run=mock_dag_run,
         folio_client=MockFOLIOClient(),
@@ -197,11 +197,10 @@ instances_holdings_items_map = {
 }
 
 
-def test_merge_update_holdings(
+def test_update_holdings(
     mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
 ):
     results_dir = mock_file_system[3]
-    reports_dir = mock_file_system[2] / "reports"
     holdings_tsv = results_dir / "folio_holdings.json"
     holdings_mhld = results_dir / "folio_holdings_mhld-transformer.json"
 
@@ -227,7 +226,7 @@ def test_merge_update_holdings(
         locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-STACKS"}]
     )
 
-    merge_update_holdings(
+    update_holdings(
         airflow=str(mock_file_system[0]),
         dag_run=mock_dag_run,
         folio_client=mock_folio_client,
@@ -238,22 +237,14 @@ def test_merge_update_holdings(
 
     assert not holdings_mhld.exists()
 
-    # Tests merged Holdings with MHLD Holdings Record 1
-    assert combined_holdings[0]["hrid"] == "ah123345_1"
-    assert combined_holdings[0]["callNumber"] == "AB 12345"
-    assert (
-        combined_holdings[0]["holdingsStatements"][0]["statement"]
-        == "1914/1916-1916/1918,1932/1934-1934/1936"
-    )
-
     # Tests TSV Holding that didn't match
     assert combined_holdings[1]["hrid"] == "ah123345_2"
     assert "holdingsStatements" not in combined_holdings[1]
 
-    # Test Added MHLD Holding that didn't match
-    assert combined_holdings[2]["hrid"] == "ah123345_4"
+    # Test MHLD Holding
+    assert combined_holdings[3]["hrid"] == "ah123345_5"
     assert (
-        combined_holdings[2]["holdingsStatementsForSupplements"][0]["statement"]
+        combined_holdings[3]["holdingsStatementsForSupplements"][0]["statement"]
         == "For years 2022-2023"
     )
 
@@ -261,22 +252,10 @@ def test_merge_update_holdings(
     with (results_dir / "folio_srs_holdings_mhld-transformer.json").open() as fo:
         modified_srs = [json.loads(line) for line in fo.readlines()]
     first_rec_fields = modified_srs[0]["parsedRecord"]["content"]["fields"]
-    assert first_rec_fields[0]["001"] == "ah123345_1"
+    assert first_rec_fields[0]["001"] == "ah123345_4"
     assert first_rec_fields[1]["004"] == "a1234566"
     assert first_rec_fields[2]["852"]["subfields"][1]["b"] == "GRE-STACKS"
     assert len(first_rec_fields[2]["852"]["subfields"]) == 2
-
-    # Tests reports for MHLDS merge
-    mhld_merge_report = (reports_dir / "report_mhld-merges.md").read_text()
-
-    assert (
-        "Merged 7e31c879-af1d-53fb-ba7a-60ad247a8dc4 into abcdedf123345"
-        in mhld_merge_report
-    )
-    assert (
-        "No match found in existing Holdings record d1e33e3-3b57-53e4-bba0-b2faed059f40 for instance HRID a123345"
-        in mhld_merge_report
-    )
 
 
 def test_post_folio_holding_records(

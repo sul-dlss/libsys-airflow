@@ -65,73 +65,30 @@ def _alt_get_legacy_ids(*args):
     return [f"{field_001} {library} {location}"]
 
 
-def _mhld_into_holding(mhld_record: dict, holding_record: dict) -> dict:
-    for name in [
-        "holdingsStatements",
-        "holdingsStatementsForIndexes",
-        "holdingsStatementsForSupplements",
-        "notes",
-    ]:
-        if name in mhld_record:
-            if name in holding_record:
-                holding_record[name].extend(mhld_record[name])
-            else:
-                holding_record[name] = mhld_record[name]
-    # Change Source to MARC to display MHLD MARC record in FOLIO
-    holding_record["sourceId"] = mhld_record["sourceId"]
-    return holding_record
-
-
 def _process_mhld(**kwargs) -> dict:
     """
-    Takes a mhld record and it's corresponding SRS record, attempts to
-    merge into existing holdings record, and then updates and returns
-    the updated SRS record
+    Takes a mhld record and it's corresponding SRS record, updates HRID and
+    SRS record and returns the updated SRS record
     """
     mhld_record: dict = kwargs["mhld_record"]
     srs_record: dict = kwargs["srs_record"]
     all_holdings: dict = kwargs["all_holdings"]
     instance_map: dict = kwargs["instance_map"]
-    iteration_dir: pathlib.Path = kwargs["iteration_dir"]
     locations_lookup: dict = kwargs["locations_lookup"]
 
     instance_id = mhld_record["instanceId"]
     instance = instance_map[instance_id]
-    merged_holding = None
 
-    mhld_report_file = iteration_dir / "reports/report_mhld-merges.md"
-    mhld_report = mhld_report_file.open("a+")
-
-    for holding_id, info in instance["holdings"].items():
-        location_id = info["permanentLocationId"]
-        if (
-            location_id == mhld_record["permanentLocationId"]
-            and info["merged"] is False
-        ):
-            holdings_rec = all_holdings[holding_id]
-            merged_holding = _mhld_into_holding(mhld_record, holdings_rec)
-            all_holdings[holding_id] = merged_holding
-            info["merged"] = True
-            mhld_report.write(f"Merged {mhld_record['id']} into {holdings_rec['id']}\n")
-            break
-
-    # Use MHLD record if failed to merge into existing holding
-    if merged_holding is None:
-        current_count = len(instance["holdings"])
-        instance_hrid = instance["hrid"]
-        holding_id = mhld_record["id"]
-        holdings_hrid = f"{instance_hrid[:1]}h{instance_hrid[1:]}_{current_count + 1}"
-        mhld_record["hrid"] = holdings_hrid
-        all_holdings[holding_id] = mhld_record
-        mhld_record["_version"] = 1
-        instance["holdings"][holding_id] = {
-            "permanentLocationId": mhld_record["permanentLocationId"],
-            "merged": True,
-        }
-        mhld_report.write(
-            f"No match found in existing Holdings record {holding_id} for instance HRID {instance_hrid}\n\n"
-        )
-    mhld_report.close()
+    current_count = len(instance["holdings"])
+    instance_hrid = instance["hrid"]
+    holding_id = mhld_record["id"]
+    holdings_hrid = f"{instance_hrid[:1]}h{instance_hrid[1:]}_{current_count + 1}"
+    mhld_record["hrid"] = holdings_hrid
+    all_holdings[holding_id] = mhld_record
+    mhld_record["_version"] = 1
+    instance["holdings"][holding_id] = {
+        "permanentLocationId": mhld_record["permanentLocationId"]
+    }
     srs_record = _update_srs_ids(all_holdings[holding_id], srs_record, locations_lookup)
     return srs_record
 
@@ -177,7 +134,7 @@ def _update_srs_ids(
     return srs_record
 
 
-def merge_update_holdings(**kwargs):
+def update_holdings(**kwargs):
 
     folio_client = kwargs.get("folio_client")
 
@@ -198,9 +155,6 @@ def merge_update_holdings(**kwargs):
     if not mhld_holdings_path.exists():
         logger.info(f"No MHLDs holdings {mhld_holdings_path}, exiting")
         return
-
-    mhld_report_file = iteration_dir / "reports/report_mhld-merges.md"
-    mhld_report_file.write_text("# MHLD Merge Report\n")
 
     srs_path = iteration_dir / "results/folio_srs_holdings_mhld-transformer.json"
 
@@ -227,12 +181,11 @@ def merge_update_holdings(**kwargs):
             srs_record=srs,
             all_holdings=all_holdings,
             instance_map=instance_map,
-            iteration_dir=iteration_dir,
             locations_lookup=locations_lookup,
         )
         updated_srs_records.append(updated_srs)
         if not count % 1_000:
-            logger.info(f"Merged and updated {count:,} MHLD and SRS records")
+            logger.info(f"Updated {count:,} MHLD and SRS records")
         count += 1
 
     with srs_path.open("w+") as fo:
@@ -243,6 +196,9 @@ def merge_update_holdings(**kwargs):
         for holdings_record in all_holdings.values():
             if "formerIds" in holdings_record:
                 del (holdings_record["formerIds"])
+            for i, admin_note in enumerate(holdings_record.get("administrativeNotes", [])):
+                if admin_note.startswith("Identifier(s) from previous system"):
+                    holdings_record["administrativeNotes"].pop(i)
             fo.write(f"{json.dumps(holdings_record)}\n")
 
     mhld_holdings_path.unlink()

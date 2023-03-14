@@ -34,7 +34,7 @@ from plugins.folio.helpers.folio_ids import (
 
 from plugins.folio.holdings import (
     electronic_holdings,
-    merge_update_holdings,
+    update_holdings,
     post_folio_holding_records,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
@@ -233,7 +233,7 @@ with DAG(
 
         merge_all_holdings = PythonOperator(
             task_id="merge-all-holdings",
-            python_callable=merge_update_holdings,
+            python_callable=update_holdings,
         )
 
         update_items = PythonOperator(
