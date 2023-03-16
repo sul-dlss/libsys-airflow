@@ -4,6 +4,8 @@ import pandas as pd
 import pytest  # noqa
 import requests
 
+from copy import deepcopy
+
 from pytest_mock import MockerFixture
 from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
@@ -13,6 +15,7 @@ from plugins.folio.items import (
     run_items_transformer,
     _add_additional_info,
     _generate_item_notes,
+    _suppressed_conditions,
 )
 
 
@@ -75,10 +78,32 @@ items_recs = [
         "holdingsRecordId": "b9cd36d8-a031-5793-b2e8-42042cc2dade",
         "barcode": "1233455",
     },
+    {
+        "holdingsRecordId": "a3a494c2-2af3-4afd-9cf9-666c4052cef9",
+        "barcode": "4614642357",
+    },
+    {
+        "holdingsRecordId": "9c262b9a-532c-4f48-8fcb-e126dac04300",
+        "barcode": "7659908473",
+    },
+    {
+        "holdingsRecordId": "fc473c74-c811-4ae9-bcd9-387a1d10b967",
+        "barcode": "0267132027",
+    },
+]
+
+items_tsv = [
+    "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
+    "23456\t1\t1\t55678446243\tSAL3\tINPROCESS\tCOLDSTOR\tSTKS-MONO\t\t\t0\tLC\tTR640 .I34 1996\t\t0\tMARC\t0",
+    "9704208\t1\t1\t1233455\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tTR640 .I34 1996\t\t0\tMARC\t0",
+    "145623\t1\t1\t4614642357\tSAL3\tSPECB-S\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tRH640 .I34 1996\t\t0\tMARC\t0",
+    "262345\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t1\tLC\tYU40 .J4 2096\t\t0\tMARC\t0",  # ITEM SHADOW
+    "5559991\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tEG640 .J4 1796\t\t1\tMARC\t0",  # CALL SHADOW
 ]
 
 
 def setup_items_holdings(
+    airflow_dir,
     results_dir,
     iteration_dir,
     items_recs=items_recs,
@@ -97,6 +122,22 @@ def setup_items_holdings(
         for rec in items_recs:
             fo.write(f"{json.dumps(rec)}\n")
 
+    item_tsv_source_dir = iteration_dir / "source_data/items"
+
+    with (item_tsv_source_dir / "ckey_001_002.tsv").open("w+") as fo:
+        for row in items_tsv:
+            fo.write(f"{row}\n")
+
+    (item_tsv_source_dir / "ckey_001_002.electronic.tsv").touch()
+
+    suppressed_locations_path = airflow_dir / "migration/mapping_files/items-suppressed-locations.json"
+
+    with suppressed_locations_path.open("w+") as fo:
+        json.dump([
+            "COLDSTOR",
+            "SPECB-S"
+        ], fo)
+
     data_prep = iteration_dir / "data_preparation/"
 
     data_prep.mkdir(parents=True)
@@ -108,12 +149,14 @@ def setup_items_holdings(
     return items_path, items_notes_path
 
 
-def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type):  # noqa
+def test_add_additional_info(
+    mock_file_system, mock_dag_run, mock_item_note_type  # noqa
+):
     airflow_path = mock_file_system[0]
     iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    items_path, items_notes_path = setup_items_holdings(results_dir, iteration_dir)
+    items_path, items_notes_path = setup_items_holdings(airflow_path, results_dir, iteration_dir)
 
     folio_client = MockFOLIOClient()
 
@@ -136,6 +179,8 @@ def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type
         == "62fd6fcc-5cde-4a74-849a-66e2d77a1f12"
     )
     assert new_items_recs[0]["notes"][1]["staffOnly"]
+    assert new_items_recs[0]["discoverySuppress"] is True
+
     assert (
         new_items_recs[0]["notes"][1]["itemNoteTypeId"]
         == "e9f6de86-e564-4095-a61a-38c9e0e6b2fc"
@@ -147,18 +192,28 @@ def test_add_additional_info(mock_file_system, mock_dag_run, mock_item_note_type
         == "1d14675c-c163-4502-98f9-961cd3d17ab2"
     )
     assert new_items_recs[1]["notes"][1]["staffOnly"]
+    assert "discoverySuppress" not in new_items_recs[1]
+    assert new_items_recs[2]["discoverySuppress"] is True
+    assert new_items_recs[3]["discoverySuppress"] is True
 
 
 def test_add_additional_info_missing_barcode(
     mock_file_system, mock_dag_run, mock_item_note_type  # noqa
 ):
+    global items_recs
+    airflow_dir = mock_file_system[0]
     iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
+
+    items_recs_copy = deepcopy(items_recs)
 
     items_recs[0].pop("barcode")
 
     items_path, items_notes_path = setup_items_holdings(
-        results_dir, iteration_dir, items_recs
+        airflow_dir,
+        results_dir,
+        iteration_dir,
+        items_recs
     )
 
     folio_client = MockFOLIOClient()
@@ -179,6 +234,8 @@ def test_add_additional_info_missing_barcode(
 
     assert "barcode" not in new_items_recs[0]
 
+    items_recs = items_recs_copy
+
 
 def test_add_additional_info_hoover(mock_file_system, mock_item_note_type):  # noqa
     pass
@@ -190,3 +247,11 @@ def test_generate_item_notes_missing_barcode(caplog):  # noqa
     _generate_item_notes(item, tsv_notes_df, {})
 
     assert "Item missing barcode, cannot generate notes" in caplog.text
+
+
+def test_suppressed_conditions_missing_item_tsv(
+    mock_file_system, mock_dag_run, caplog  # noqa
+):
+    _suppressed_conditions(mock_file_system[0], mock_dag_run.run_id)
+
+    assert "No item tsv file found" in caplog.text
