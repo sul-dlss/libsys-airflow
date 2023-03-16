@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import pathlib
@@ -64,7 +65,8 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
     """Retrieves itemNoteTypes from Okapi"""
     note_types = dict()
     note_types_response = requests.get(
-        f"{folio_client.okapi_url}/item-note-types?limit=100", headers=folio_client.okapi_headers
+        f"{folio_client.okapi_url}/item-note-types?limit=100",
+        headers=folio_client.okapi_headers,
     )
 
     if note_types_response.status_code > 399:
@@ -86,6 +88,8 @@ def _add_additional_info(**kwargs):
     folio_client = kwargs["folio_client"]
     dag_run_id: str = kwargs["dag_run_id"]
 
+    barcode_lookup = _suppressed_conditions(airflow, dag_run_id)
+
     results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
 
     if tsv_notes_path is not None:
@@ -95,6 +99,7 @@ def _add_additional_info(**kwargs):
         item_note_types = _retrieve_item_notes_ids(folio_client)
 
     items = []
+
     for items_file in results_dir.glob(items_pattern):
         logger.info(f"Processing {items_file}")
         with items_file.open() as fo:
@@ -103,6 +108,7 @@ def _add_additional_info(**kwargs):
                 item["_version"] = 1
                 if tsv_notes_path is not None:
                     _generate_item_notes(item, tsv_notes_df, item_note_types)
+                _set_discovery_suppress(item, barcode_lookup)
                 items.append(item)
 
                 if not len(items) % 1000:
@@ -111,6 +117,46 @@ def _add_additional_info(**kwargs):
         with open(items_file, "w+") as write_output:
             for item in items:
                 write_output.write(f"{json.dumps(item)}\n")
+
+
+def _set_discovery_suppress(item, barcode_lookup):
+    if barcode_lookup.get(item.get("barcode"), False):
+        item["discoverySuppress"] = True
+
+
+def _suppressed_conditions(airflow, dag_run_id):
+    """
+    Creates a lookup dictionary for barcodes that value is a boolean
+    """
+    migration_dir = pathlib.Path(f"{airflow}/migration")
+    source_dir = migration_dir / f"iterations/{dag_run_id}/source_data/items"
+    item_tsv = None
+    for tsv_file in source_dir.glob("*.tsv"):
+        if "electronic" in tsv_file.name or "notes" in tsv_file.name:
+            continue
+        item_tsv = tsv_file
+
+    if item_tsv is None:
+        logger.error(f"No item tsv file found in {source_dir}")
+        return {}
+
+    with (migration_dir / "mapping_files/items-suppressed-locations.json").open() as fo:
+        suppressed_locations = json.load(fo)
+
+    barcode_lookup = {}
+    with item_tsv.open() as fo:
+        item_reader = csv.DictReader(fo, delimiter="\t")
+        for row in item_reader:
+            barcode_lookup[row["BARCODE"]] = False
+            if row["CURRENTLOCATION"] in suppressed_locations:
+                barcode_lookup[row["BARCODE"]] = True
+            if row["HOMELOCATION"] in suppressed_locations:
+                barcode_lookup[row["BARCODE"]] = True
+            if row["ITEM_SHADOW"] == "1":
+                barcode_lookup[row["BARCODE"]] = True
+            if row["CALL_SHADOW"] == "1":
+                barcode_lookup[row["BARCODE"]] = True
+    return barcode_lookup
 
 
 def post_folio_items_records(**kwargs):
@@ -183,5 +229,5 @@ def run_items_transformer(*args, **kwargs) -> bool:
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),
-        folio_client=items_transformer.folio_client,
+        folio_client=items_transformer.folio_client
     )
