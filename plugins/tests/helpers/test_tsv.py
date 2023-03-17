@@ -111,14 +111,7 @@ def test_transform_move_tsvs(mock_file_system, mock_dag_run):  # noqa
     symphony_tsv = source_dir / "sample.tsv"
     symphony_tsv.write_text(
         """CATKEY\tFORMAT\tCALL_NUMBER_TYPE\tBARCODE\tLIBRARY\tITEM_TYPE
-123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC
-345678\tMARC\tLC 345678\t345678  \tHOOVER\tMFILM
-789012\tMARC\tLC 67890\t12345  \tGREEN\tSTKS
-789012\tMARC\tLC 67890\t12345  \tGREEN\tNH-7DAY
-789012\tMARC\tLC 67890\t12345  \tGREEN\tLIBUSEONLY
-789012\tMANUSCRPT\tLC 67890\t12345  \tSPEC-COLL\tLIBUSEONLY
-789012\tMAP\tLC 67890\t12345  \tGREEN\tNH-MEDSTKS
-789012\tTECHRPTS\tLC 67890\t12345  \tSAL3\tNH-INHOUSE"""
+123456\tMARC\tLC 12345\t45677  \tHOOVER\tNONCIRC"""
     )
 
     symphony_notes_tsv = source_dir / "sample.public.tsv"
@@ -166,15 +159,8 @@ def test_transform_move_tsvs(mock_file_system, mock_dag_run):  # noqa
 
     assert (
         sample_lines[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC MARC HOOVER\n"
+        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC\n"
     )
-    assert sample_lines[2] == "a345678\tMARC\tLC 345678\t345678\tHOOVER\tMFILM\n"
-    assert sample_lines[3] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tSTKS\n"
-    assert sample_lines[4] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tNH-7DAY MARC\n"
-    assert sample_lines[5] == "a789012\tMARC\tLC 67890\t12345\tGREEN\tLIBUSEONLY MARC GREEN\n"
-    assert sample_lines[6] == "a789012\tMANUSCRPT\tLC 67890\t12345\tSPEC-COLL\tLIBUSEONLY MANUSCRPT\n"
-    assert sample_lines[7] == "a789012\tMAP\tLC 67890\t12345\tGREEN\tNH-MEDSTKS MAP\n"
-    assert sample_lines[8] == "a789012\tTECHRPTS\tLC 67890\t12345\tSAL3\tNH-INHOUSE TECHRPTS\n"
     mocks.messages = {}
 
 

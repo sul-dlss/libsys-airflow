@@ -15,34 +15,6 @@ def _apply_transforms(df, column_transforms):
     return df
 
 
-def _modify_item_type(df):
-    hila = ["HOOVER", "HV-ARCHIVE"]
-    hila_item_types = ["NONCIRC", "REF", "STKS", "VAULT"]
-
-    complex_item_types = ["LIBUSEONLY", "NH-7DAY", "NH-INHOUSE", "NH-MEDSTKS"]
-    libuseonly_libraries = ["GREEN", "HOOVER", "HV-ARCHIVE"]
-
-    df["ITEM_TYPE"].mask(
-        df["LIBRARY"].isin(hila) & df["ITEM_TYPE"].isin(hila_item_types),
-        other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
-        axis=0,
-        inplace=True,
-    )
-    df["ITEM_TYPE"].mask(
-        df["LIBRARY"].isin(libuseonly_libraries) & df["ITEM_TYPE"].isin(["LIBUSEONLY"]),
-        other=df["ITEM_TYPE"] + " " + df["FORMAT"] + " " + df["LIBRARY"],
-        axis=0,
-        inplace=True,
-    )
-    df["ITEM_TYPE"].mask(
-        df["ITEM_TYPE"].isin(complex_item_types),
-        other=df["ITEM_TYPE"] + " " + df["FORMAT"],
-        axis=0,
-        inplace=True,
-    )
-    return df
-
-
 def _merge_notes(note_path: pathlib.Path):
     notes_df = pd.read_csv(note_path, sep="\t", dtype=object)
 
@@ -93,7 +65,6 @@ def _processes_tsv(**kwargs):
 
     tsv_base_df = pd.read_csv(tsv_base, sep="\t", dtype=object)
     tsv_base_df = _apply_transforms(tsv_base_df, column_transforms)
-    tsv_base_df = _modify_item_type(tsv_base_df)
     new_tsv_base_path = items_dir / tsv_base.name
 
     tsv_base_df.to_csv(new_tsv_base_path, sep="\t", index=False)
