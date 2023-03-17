@@ -65,6 +65,15 @@ def _alt_get_legacy_ids(*args):
     return [f"{field_001} {library} {location}"]
 
 
+def _ignore_coded_holdings_statements(*args):
+    """
+    This function overrides RulesMapperHolding method for mapping
+    various 85x and 86x fields to HoldingsStatements, we want to just
+    use the MARC Holdings map from the FOLIO server
+    """
+    pass
+
+
 def _process_mhld(**kwargs) -> dict:
     """
     Takes a mhld record and it's corresponding SRS record, updates HRID and
@@ -301,6 +310,11 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     # Overrides static method to allow duplicate CATKEYs in MHLD records
     RulesMapperHoldings.get_legacy_ids = partialmethod(
         _alt_get_legacy_ids, RulesMapperHoldings
+    )
+
+    # Overrides method that applies default mappings for 85x and 86x fields
+    RulesMapperHoldings.parse_coded_holdings_statements = partialmethod(
+        _ignore_coded_holdings_statements, RulesMapperHoldings
     )
 
     holdings_transformer = HoldingsMarcTransformer(
