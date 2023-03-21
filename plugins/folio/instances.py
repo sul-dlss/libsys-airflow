@@ -100,8 +100,6 @@ def _adjust_records(**kwargs):
     with instances_path.open("w+") as fo:
         for record in records:
             fo.write(f"{json.dumps(record)}\n")
-    with (instances_path.parent / "instance-lookup.json").open("w+") as fo:
-        json.dump(record_lookups, fo, indent=2)
     Path(tsv_dates).unlink()
 
 
