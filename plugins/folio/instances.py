@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import pandas as pd
@@ -15,6 +16,34 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
+    """
+    Generates record lookup dictionary based on values in tsv
+    """
+    record_lookups = {}
+    logger.error(f"Base {base_tsv}")
+    with base_tsv.open() as fo:
+        tsv_reader = csv.DictReader(fo, delimiter="\t")
+        for row in tsv_reader:
+            catkey = row['CATKEY']
+            discovery_suppress = False
+            if int(row['CATALOG_SHADOW']) > 0:
+                discovery_suppress = True
+            stat_codes = []
+            for item_cat in [row['ITEM_CAT1'], row['ITEM_CAT2']]:
+                if item_cat in lookup_stat_codes:
+                    stat_codes.append(lookup_stat_codes[item_cat])
+            if catkey in record_lookups:
+                record_lookups[catkey]["stat_codes"].extend(stat_codes)
+                record_lookups[catkey]["suppress"] = discovery_suppress
+            else:
+                record_lookups[catkey] = {
+                    "stat_codes": stat_codes,
+                    "suppress": discovery_suppress
+                }
+    return record_lookups
+
+
 def _remove_dup_admin_notes(record: dict):
     """
     Removes administrativeNotes that contain duplicated HRID
@@ -24,28 +53,48 @@ def _remove_dup_admin_notes(record: dict):
             record['administrativeNotes'].pop(i)
 
 
-def _adjust_records(instances_path: Path, tsv_dates: str, instance_status: dict):
+def _set_cataloged_date(instance: dict, dates_df: pd.DataFrame, instance_status: dict):
+    ckey = instance["hrid"].removeprefix("a")
+    matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
+    if matched_row["CATALOGED_DATE"].values[0] != "0":
+        date_cat = datetime.strptime(
+            matched_row["CATALOGED_DATE"].values[0], "%Y%m%d"
+        )
+        instance["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
+        instance["statusId"] = instance_status["Cataloged"]
+    else:
+        instance["statusId"] = instance_status["Uncataloged"]
+
+
+def _adjust_records(**kwargs):
+    """
+    Modifies instances records
+    """
+    instances_path: Path = kwargs["instances_record_path"]
+    tsv_dates: str = kwargs["tsv_dates"]
+    instance_status: dict = kwargs["instance_statuses"]
+    base_tsv: Path = kwargs["base_tsv"]
+    stat_codes: dict = kwargs["stat_codes"]
 
     dates_df = pd.read_csv(
         tsv_dates,
         sep="\t",
         dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str},
     )
+
+    record_lookups = _generate_record_lookups(base_tsv, stat_codes)
+
     records = []
     with instances_path.open() as fo:
         for row in fo.readlines():
             record = json.loads(row)
             record["_version"] = 1  # for handling optimistic locking
-            ckey = record["hrid"].removeprefix("a")
-            matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
-            if matched_row["CATALOGED_DATE"].values[0] != "0":
-                date_cat = datetime.strptime(
-                    matched_row["CATALOGED_DATE"].values[0], "%Y%m%d"
-                )
-                record["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
-                record["statusId"] = instance_status["Cataloged"]
-            else:
-                record["statusId"] = instance_status["Uncataloged"]
+            stat_codes = record_lookups.get(record["hrid"], {}).get("stat_codes", [])
+            if len(stat_codes) > 0:
+                record["statisticalCodeIds"] = list(set(stat_codes))
+            if record_lookups.get(record["hrid"], {}).get("suppress", False):
+                record["discoverySuppress"] = True
+            _set_cataloged_date(record, dates_df, instance_status)
             _remove_dup_admin_notes(record)
             records.append(record)
     with instances_path.open("w+") as fo:
@@ -67,6 +116,36 @@ def _get_instance_status(folio_client: FolioClient) -> dict:
     for row in instance_statuses_result.json()["instanceStatuses"]:
         instance_statuses[row["name"]] = row["id"]
     return instance_statuses
+
+
+def _get_statistical_codes(folio_client: FolioClient) -> dict:
+    """
+    Retrieve statistical codes for instances and saves for lookups
+    """
+    # Get Instance stat code type
+    stat_code_type_result = requests.get(f"{folio_client.okapi_url}/statistical-code-types?query=name==Instance&limit=200",
+                                         headers=folio_client.okapi_headers)
+    stat_code_type_result.raise_for_status()
+    instance_code_type = stat_code_type_result.json()['statisticalCodeTypes'][0]['id']
+    instance_stat_codes_result = requests.get(
+        f"{folio_client.okapi_url}/statistical-codes?query=statisticalCodeTypeId=={instance_code_type}&limit=200",
+        headers=folio_client.okapi_headers)
+    instance_stat_codes_result.raise_for_status()
+    stat_code_lookup = {}
+    for row in instance_stat_codes_result.json()['statisticalCodes']:
+        match row['code']:
+
+            case "E-THESIS":
+                stat_code_lookup["E-THESIS"] = row["id"]
+
+            case "LEVEL3":
+                stat_code_lookup["LEVEL3-CAT"] = row["id"]
+                stat_code_lookup["LEVEL3OCLC"] = row["id"]
+
+            case "MARCIVE":
+                stat_code_lookup["MARCIVE"] = row["id"]
+
+    return stat_code_lookup
 
 
 def post_folio_instance_records(**kwargs):
@@ -143,6 +222,20 @@ def run_bibs_transformer(*args, **kwargs):
 
     instance_statuses = _get_instance_status(folio_client)
 
-    _adjust_records(instances_record_path, tsv_dates, instance_statuses)
+    base_tsv_path = (
+        iteration_dir / f"source_data/items/{marc_stem}.tsv"
+    )
+    logger.error(f"Base tsv path {base_tsv_path} {base_tsv_path.exists()}")
+
+    stat_codes = _get_statistical_codes(folio_client)
+    logger.error(f"Stat codes {stat_codes}")
+
+    _adjust_records(
+        instances_record_path=instances_record_path,
+        tsv_dates=tsv_dates,
+        instance_statuses=instance_statuses,
+        base_tsv=base_tsv_path,
+        stat_codes=stat_codes
+    )
 
     bibs_transformer.wrap_up()
