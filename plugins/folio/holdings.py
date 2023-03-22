@@ -23,6 +23,7 @@ from folio_migration_tools.marc_rules_transformation.rules_mapper_holdings impor
 )
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
+from plugins.folio.helpers.marc import filter_mhlds
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +293,10 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     library_config.iteration_identifier = dag.run_id
 
     filepath = pathlib.Path(mhld_file)
+
+    filter_mhlds(
+        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{filepath.name}")
+    )
 
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
         name="mhld-transformer",
