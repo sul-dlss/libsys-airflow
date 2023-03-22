@@ -206,6 +206,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
         items_mapping_file_name=mapping_file,
         location_map_file_name="locations.tsv",
+        temp_location_map_file_name="temp_locations.tsv",
         default_call_number_type_name="Library of Congress classification",
         material_types_map_file_name="material_types.tsv",
         loan_types_map_file_name="loan_types.tsv",
