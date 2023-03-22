@@ -135,6 +135,20 @@ def _extract_e_holdings_fields(**kwargs) -> list:
     return output
 
 
+def _check_852s(fields: list) -> bool:
+    """
+    Checks 852 subfield 'a' and 'z' for
+    """
+    for field in fields:
+        for a_subfield in field.get_subfields('a'):
+            if "required" in a_subfield.lower():
+                return True
+        for z_subfield in field.get_subfields('z'):
+            if z_subfield.lower().startswith("all holdings transferred to"):
+                return True
+    return False
+
+
 def _get_library(fields596: list) -> str:
     # Default is SUL library
     library = "SUL"
@@ -349,6 +363,30 @@ def discover_srs_files(*args, **kwargs):
     logger.info(
         f"Finished SRS discovery, found {len(srs_iterations)} files and created {jobs} batches"
     )
+
+
+def filter_mhlds(mhld_path: pathlib.Path):
+    """
+    Filters MHLD records based on strings in 852 fields
+    """
+    with mhld_path.open('rb') as fo:
+        marc_reader = pymarc.MARCReader(fo, force_utf8=True)
+        mhld_records = [record for record in marc_reader]
+
+    start_total = len(mhld_records)
+
+    filtered_records = []
+    for record in mhld_records:
+        fields852 = record.get_fields("852")
+        if _check_852s(fields852) is False:
+            filtered_records.append(record)
+
+    with mhld_path.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in filtered_records:
+            marc_writer.write(record)
+
+    logger.info(f"Finished filtering MHLD, start {start_total:,} removed {start_total - len(filtered_records):,} records")
 
 
 def handle_srs_files(*args, **kwargs):

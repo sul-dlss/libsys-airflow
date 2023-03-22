@@ -17,6 +17,7 @@ from plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     discover_srs_files,
     _extract_e_holdings_fields,
+    filter_mhlds,
     _get_library,
     handle_srs_files,
     marc_only,
@@ -346,6 +347,39 @@ def test_handle_srs_files(
     assert (iteration_dir / "reports/report_srs-audit.md").exists()
 
     mocks.messages = {}
+
+
+def test_filter_mhlds(tmp_path, caplog):
+
+    mhld_mock = tmp_path / "mock-mhld.mrc"
+
+    record_one = Record()
+    record_one.add_field(
+        Field(tag="852",
+              indicators=[" ", " "],
+              subfields=['a', 'CSt'])
+    )
+    record_two = Record()
+    record_two.add_field(
+        Field(tag="852",
+              indicators=[" ", " "],
+              subfields=['a', '**REQUIRED Field**'])
+    )
+    record_three = Record()
+    record_three.add_field(
+        Field(tag="852",
+              indicators=[" ", " "],
+              subfields=['z', 'All holdings transferred to CSt'])
+    )
+
+    with mhld_mock.open("wb+") as fo:
+        marc_writer = MARCWriter(fo)
+        for record in [record_one, record_two, record_three]:
+            marc_writer.write(record)
+
+    filter_mhlds(mhld_mock)
+
+    assert "Finished filtering MHLD, start 3 removed 2" in caplog.text
 
 
 def test_marc_only():
