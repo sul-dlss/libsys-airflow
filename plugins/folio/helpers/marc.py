@@ -105,28 +105,21 @@ def _extract_e_holdings_fields(**kwargs) -> list:
     fields = kwargs["fields"]
     library = kwargs["library"]
 
-    properties_names = [
-        "CATKEY",
-        "HOMELOCATION",
-        "LIBRARY",
-        "MAT_SPEC",
-    ]
     output = []
-    for marc_field in fields:
+    for i, marc_field in enumerate(fields):
         if _add_electronic_holdings(marc_field) is False:
             continue
-        row = {}
-        for field in properties_names:
-            row[field] = None
+        row = {
+            "CATKEY": catkey,
+            "HOMELOCATION": "INTERNET",
+            "LIBRARY": library,
+            "MAT_SPEC": None
+        }
         row["CATKEY"] = catkey
         uri = "".join(marc_field.get_subfields("u"))
 
         if sdr_sul_re.search(uri):
-            row["LIBRARY"] = "SUL-SDR"
-        else:
-            row["LIBRARY"] = library
-
-        row["HOMELOCATION"] = "INTERNET"
+            row["HOMELOCATION"] = "SDR"        
 
         material_type = marc_field.get_subfields("3")
         if len(material_type) > 0:
