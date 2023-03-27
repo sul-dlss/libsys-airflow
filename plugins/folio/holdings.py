@@ -14,6 +14,7 @@ from airflow.models import Variable
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
+
 from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
 )
@@ -66,11 +67,36 @@ def _alt_get_legacy_ids(*args):
     return [f"{field_001} {library} {location}"]
 
 
+def _fix_permanent_location_id(holdings_record: dict) -> dict:
+    """
+    Moves the `permanentLocationId` property from the HoldingStatement
+    to a top-level property in the Holdings Record.
+    """
+    if "permanentLocationId" not in holdings_record:
+        for statement in holdings_record.get("holdingsStatements", []):
+            if "permanentLocationId" in statement:
+                holdings_record["permanentLocationId"] = statement.pop(
+                    "permanentLocationId"
+                )
+    return holdings_record
+
+
 def _ignore_coded_holdings_statements(*args):
     """
     This function overrides RulesMapperHolding method for mapping
     various 85x and 86x fields to HoldingsStatements, we want to just
     use the MARC Holdings map from the FOLIO server
+    """
+    pass
+
+
+def _ignore_fix_853_bug_in_rules(*args):
+    """
+    While this function overrides the upstream fix (not really a fix) for the
+    852 mapping rules where the `permanentLocationId` is saved as a property
+    to the holdingsStatement.note, later in the DAG the
+    `fix_permanent_location_id` sets the `permanentLocationId` as a top-level
+    property.
     """
     pass
 
@@ -205,10 +231,13 @@ def update_holdings(**kwargs):
     with (iteration_dir / "results/folio_holdings.json").open("w+") as fo:
         for holdings_record in all_holdings.values():
             if "formerIds" in holdings_record:
-                del (holdings_record["formerIds"])
-            for i, admin_note in enumerate(holdings_record.get("administrativeNotes", [])):
+                del holdings_record["formerIds"]
+            for i, admin_note in enumerate(
+                holdings_record.get("administrativeNotes", [])
+            ):
                 if admin_note.startswith("Identifier(s) from previous system"):
                     holdings_record["administrativeNotes"].pop(i)
+            _fix_permanent_location_id(holdings_record)
             fo.write(f"{json.dumps(holdings_record)}\n")
 
     mhld_holdings_path.unlink()
@@ -295,7 +324,9 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     filepath = pathlib.Path(mhld_file)
 
     filter_mhlds(
-        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{filepath.name}")
+        pathlib.Path(
+            f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{filepath.name}"
+        )
     )
 
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
@@ -320,6 +351,11 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     # Overrides method that applies default mappings for 85x and 86x fields
     RulesMapperHoldings.parse_coded_holdings_statements = partialmethod(
         _ignore_coded_holdings_statements, RulesMapperHoldings
+    )
+
+    # Overrides method that handles 852 field
+    RulesMapperHoldings.fix_853_bug_in_rules = partialmethod(
+        _ignore_fix_853_bug_in_rules, RulesMapperHoldings
     )
 
     holdings_transformer = HoldingsMarcTransformer(
@@ -383,7 +419,9 @@ def boundwith_holdings(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
-    bwchild_file = task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file")
+    bwchild_file = task_instance.xcom_pull(
+        task_ids="bib-files-group", key="bwchild-file"
+    )
     if bwchild_file is None:
         logger.error("Boundwidth child file does not exist, exiting")
         return
