@@ -11,7 +11,8 @@ from plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
-    _alt_get_legacy_ids
+    _alt_get_legacy_ids,
+    _wrap_additional_mapping,
 )
 
 from plugins.tests.mocks import (  # noqa
@@ -60,6 +61,28 @@ def test_electronic_holdings_missing_file(mock_dag_run, caplog):  # noqa
         f"Electronic Holdings /opt/airflow/migration/iterations/{mock_dag_run.run_id}/source_data/items/holdings-transformers.electronic.tsv does not exist"
         in caplog.text
     )
+
+
+def test_wrap_additional_mapping():
+    @_wrap_additional_mapping
+    def additional_mapping(placeholder, holding):
+        assert holding["permanentLocationId"] == "baae3735-97c5-486d-9c6b-c87c41ae51ab"
+        assert holding["callNumberTypeId"] == "95467209-6d7b-468b-94df-0f5d7ad2747d"
+        assert holding["copyNumber"] == "1"
+        assert "permanentLocationId" not in holding["holdingsStatements"]
+        assert len(holding["holdingsStatements"]) == 1
+
+    incorrect_holding = {
+        "holdingsStatements": [
+            {
+                "callNumberTypeId": "95467209-6d7b-468b-94df-0f5d7ad2747d",
+                "permanentLocationId": "baae3735-97c5-486d-9c6b-c87c41ae51ab",
+                "copyNumber": "1",
+            },
+            {"statement": "1988;1994;1999"},
+        ]
+    }
+    additional_mapping(None, incorrect_holding)
 
 
 def test_merge_update_holdings_no_holdings(
@@ -178,19 +201,19 @@ instances_holdings_items_map = {
                 "hrid": "ah123345_1",
                 "permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3",
                 "merged": False,
-                "items": []
+                "items": [],
             },
             "exyqdf123345": {
                 "hrid": "ah123345_2",
                 "permanentLocationId": "21b7083b-1013-440e-8e62-64169824dcb8",
                 "merged": False,
-                "items": []
+                "items": [],
             },
             "nweoasdf42425": {  # Stand-in for Electronic Holding
                 "hrid": "ah123345_3",
                 "permanentLocationId": "b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91",
                 "merged": False,
-                "items": []
+                "items": [],
             },
         },
     }
@@ -285,15 +308,17 @@ def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer
 
 
-def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system):  # noqa
+def test_boundwith_holdings(
+    mock_dag_run, mock_okapi_variable, mock_file_system  # noqa
+):
     dag = mock_dag_run
 
     bw_tsv = mock_file_system[1] / "ckeys_.tsv.bwchild.tsv"
     mocks.messages["bib-files-group"] = {"bwchild-file": str(bw_tsv)}
 
-    bw_tsv_lines=[
+    bw_tsv_lines = [
         "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
-        "2956972\t2\t1\t36105127895816\tGREEN\tSEE-OTHER\tSEE-OTHER\tGOVSTKS\tBW-CHILD\t\t0\tSUDOC\tI\t29.9/5:148\t\t0\tMARC\t0"
+        "2956972\t2\t1\t36105127895816\tGREEN\tSEE-OTHER\tSEE-OTHER\tGOVSTKS\tBW-CHILD\t\t0\tSUDOC\tI\t29.9/5:148\t\t0\tMARC\t0",
     ]
 
     with bw_tsv.open("w+") as fo:
@@ -303,11 +328,16 @@ def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system)
     holdings_json = mock_file_system[3] / "folio_holdings_boundwith.json"
 
     mock_folio_client = MockFOLIOClient(
-        locations=[{"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-SEE-OTHER"}]
+        locations=[
+            {"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-SEE-OTHER"}
+        ]
     )
 
     boundwith_holdings(
-        airflow=mock_file_system[0], dag_run=dag, folio_client=mock_folio_client, task_instance=MockTaskInstance()
+        airflow=mock_file_system[0],
+        dag_run=dag,
+        folio_client=mock_folio_client,
+        task_instance=MockTaskInstance(),
     )
 
     with holdings_json.open() as hld:
@@ -322,9 +352,9 @@ def test_boundwith_holdings(mock_dag_run, mock_okapi_variable, mock_file_system)
 
 def test_alt_get_legacy_ids():
     marc_record = pymarc.Record()
-    field_001 = pymarc.Field(tag='001', data='1964746')
+    field_001 = pymarc.Field(tag="001", data="1964746")
     marc_record.add_field(field_001)
-    field_852 = pymarc.Field(tag='852', subfields=['b', 'SAL3', 'c', 'PAGE-GR'])
+    field_852 = pymarc.Field(tag="852", subfields=["b", "SAL3", "c", "PAGE-GR"])
     marc_record.add_field(field_852)
     legacy_id = _alt_get_legacy_ids(None, None, marc_record)
     assert legacy_id == ["1964746 SAL3 PAGE-GR"]

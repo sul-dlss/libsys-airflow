@@ -14,6 +14,7 @@ from airflow.models import Variable
 from folio_migration_tools.migration_tasks.holdings_csv_transformer import (
     HoldingsCsvTransformer,
 )
+
 from folio_migration_tools.migration_tasks.holdings_marc_transformer import (
     HoldingsMarcTransformer,
 )
@@ -66,11 +67,50 @@ def _alt_get_legacy_ids(*args):
     return [f"{field_001} {library} {location}"]
 
 
+def _wrap_additional_mapping(func):
+    """
+    Decorator that moves the top-level properties from the holdingsStatements
+    in the Holdings Record.
+    """
+    top_level_props = {
+        "callNumberTypeId",
+        "permanentLocationId",
+        "callNumber",
+        "callNumberPrefix",
+        "shelvingTitle",
+        "callNumberSuffix",
+        "copyNumber"
+    }
+
+    def wrapper(*args, **kwargs):
+        holdings_record = args[1]
+        filtered_holdings = []
+        for statement in holdings_record.get("holdingsStatements", []):
+            existing_props = top_level_props.intersection(set(statement.keys()))
+            for prop in list(existing_props):
+                holdings_record[prop] = statement.pop(prop)
+            if len(statement) > 0:
+                filtered_holdings.append(statement)
+        if len(filtered_holdings) > 0:
+            holdings_record["holdingsStatements"] = filtered_holdings
+        func(*args, **kwargs)
+    return wrapper
+
+
 def _ignore_coded_holdings_statements(*args):
     """
     This function overrides RulesMapperHolding method for mapping
     various 85x and 86x fields to HoldingsStatements, we want to just
     use the MARC Holdings map from the FOLIO server
+    """
+    pass
+
+
+def _ignore_fix_853_bug_in_rules(*args):
+    """
+    This function overrides the upstream repo fix (not really a fix) for the
+    852 mapping rules where the `permanentLocationId` is saved as a property
+    to the holdingsStatement.note.
     """
     pass
 
@@ -205,8 +245,10 @@ def update_holdings(**kwargs):
     with (iteration_dir / "results/folio_holdings.json").open("w+") as fo:
         for holdings_record in all_holdings.values():
             if "formerIds" in holdings_record:
-                del (holdings_record["formerIds"])
-            for i, admin_note in enumerate(holdings_record.get("administrativeNotes", [])):
+                del holdings_record["formerIds"]
+            for i, admin_note in enumerate(
+                holdings_record.get("administrativeNotes", [])
+            ):
                 if admin_note.startswith("Identifier(s) from previous system"):
                     holdings_record["administrativeNotes"].pop(i)
             fo.write(f"{json.dumps(holdings_record)}\n")
@@ -295,7 +337,9 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     filepath = pathlib.Path(mhld_file)
 
     filter_mhlds(
-        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{filepath.name}")
+        pathlib.Path(
+            f"{airflow}/migration/iterations/{dag.run_id}/source_data/holdings/{filepath.name}"
+        )
     )
 
     mhld_holdings_config = HoldingsMarcTransformer.TaskConfiguration(
@@ -322,8 +366,17 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         _ignore_coded_holdings_statements, RulesMapperHoldings
     )
 
+    # Overrides method that handles 852 field
+    RulesMapperHoldings.fix_853_bug_in_rules = partialmethod(
+        _ignore_fix_853_bug_in_rules, RulesMapperHoldings
+    )
+
     holdings_transformer = HoldingsMarcTransformer(
         mhld_holdings_config, library_config, use_logging=False
+    )
+
+    holdings_transformer.mapper.perform_additional_mapping = _wrap_additional_mapping(
+        holdings_transformer.mapper.perform_additional_mapping
     )
 
     _run_transformer(holdings_transformer, airflow, dag.run_id, None)
@@ -383,7 +436,9 @@ def boundwith_holdings(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow")
 
     iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
-    bwchild_file = task_instance.xcom_pull(task_ids="bib-files-group", key="bwchild-file")
+    bwchild_file = task_instance.xcom_pull(
+        task_ids="bib-files-group", key="bwchild-file"
+    )
     if bwchild_file is None:
         logger.error("Boundwidth child file does not exist, exiting")
         return
