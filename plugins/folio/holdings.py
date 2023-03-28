@@ -69,18 +69,30 @@ def _alt_get_legacy_ids(*args):
 
 def _wrap_additional_mapping(func):
     """
-    Decorator that moves the `permanentLocationId` property from the
-    holdingsStatements property to a top-level property in the Holdings
-    Record.
+    Decorator that moves the top-level properties from the holdingsStatements
+    in the Holdings Record.
     """
+    top_level_props = {
+        "callNumberTypeId",
+        "permanentLocationId",
+        "callNumber",
+        "callNumberPrefix",
+        "shelvingTitle",
+        "callNumberSuffix",
+        "copyNumber"
+    }
+
     def wrapper(*args, **kwargs):
         holdings_record = args[1]
-        if "permanentLocationId" not in holdings_record:
-            for statement in holdings_record.get("holdingsStatements", []):
-                if "permanentLocationId" in statement:
-                    holdings_record["permanentLocationId"] = statement.pop(
-                        "permanentLocationId"
-                    )
+        filtered_holdings = []
+        for statement in holdings_record.get("holdingsStatements", []):
+            existing_props = top_level_props.intersection(set(statement.keys()))
+            for prop in list(existing_props):
+                holdings_record[prop] = statement.pop(prop)
+            if len(statement) > 0:
+                filtered_holdings.append(statement)
+        if len(filtered_holdings) > 0:
+            holdings_record["holdingsStatements"] = filtered_holdings
         func(*args, **kwargs)
     return wrapper
 

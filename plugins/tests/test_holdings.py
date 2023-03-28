@@ -67,7 +67,10 @@ def test_wrap_additional_mapping():
     @_wrap_additional_mapping
     def additional_mapping(placeholder, holding):
         assert holding["permanentLocationId"] == "baae3735-97c5-486d-9c6b-c87c41ae51ab"
+        assert holding["callNumberTypeId"] == "95467209-6d7b-468b-94df-0f5d7ad2747d"
+        assert holding["copyNumber"] == "1"
         assert "permanentLocationId" not in holding["holdingsStatements"]
+        assert len(holding["holdingsStatements"]) == 1
 
     incorrect_holding = {
         "holdingsStatements": [
