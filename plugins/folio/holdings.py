@@ -67,18 +67,22 @@ def _alt_get_legacy_ids(*args):
     return [f"{field_001} {library} {location}"]
 
 
-def _fix_permanent_location_id(holdings_record: dict) -> dict:
+def _wrap_additional_mapping(func):
     """
-    Moves the `permanentLocationId` property from the HoldingStatement
-    to a top-level property in the Holdings Record.
+    Decorator that moves the `permanentLocationId` property from the
+    holdingsStatements property to a top-level property in the Holdings
+    Record.
     """
-    if "permanentLocationId" not in holdings_record:
-        for statement in holdings_record.get("holdingsStatements", []):
-            if "permanentLocationId" in statement:
-                holdings_record["permanentLocationId"] = statement.pop(
-                    "permanentLocationId"
-                )
-    return holdings_record
+    def wrapper(*args, **kwargs):
+        holdings_record = args[1]
+        if "permanentLocationId" not in holdings_record:
+            for statement in holdings_record.get("holdingsStatements", []):
+                if "permanentLocationId" in statement:
+                    holdings_record["permanentLocationId"] = statement.pop(
+                        "permanentLocationId"
+                    )
+        func(*args, **kwargs)
+    return wrapper
 
 
 def _ignore_coded_holdings_statements(*args):
@@ -92,11 +96,9 @@ def _ignore_coded_holdings_statements(*args):
 
 def _ignore_fix_853_bug_in_rules(*args):
     """
-    While this function overrides the upstream fix (not really a fix) for the
+    This function overrides the upstream repo fix (not really a fix) for the
     852 mapping rules where the `permanentLocationId` is saved as a property
-    to the holdingsStatement.note, later in the DAG the
-    `fix_permanent_location_id` sets the `permanentLocationId` as a top-level
-    property.
+    to the holdingsStatement.note.
     """
     pass
 
@@ -237,7 +239,6 @@ def update_holdings(**kwargs):
             ):
                 if admin_note.startswith("Identifier(s) from previous system"):
                     holdings_record["administrativeNotes"].pop(i)
-            _fix_permanent_location_id(holdings_record)
             fo.write(f"{json.dumps(holdings_record)}\n")
 
     mhld_holdings_path.unlink()
@@ -360,6 +361,10 @@ def run_mhld_holdings_transformer(*args, **kwargs):
 
     holdings_transformer = HoldingsMarcTransformer(
         mhld_holdings_config, library_config, use_logging=False
+    )
+
+    holdings_transformer.mapper.perform_additional_mapping = _wrap_additional_mapping(
+        holdings_transformer.mapper.perform_additional_mapping
     )
 
     _run_transformer(holdings_transformer, airflow, dag.run_id, None)
