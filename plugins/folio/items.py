@@ -63,6 +63,27 @@ def _generate_item_notes(
         item["notes"] = notes
 
 
+def _generate_item_statcode_lookup(items_tsv_path: pathlib.Path,
+                                   airflow: str,
+                                   folio_client: FolioClient):
+    """
+    Generates dict of item barcodes mapped to stat code ids
+    """
+    items_statcodes = {}
+    stat_codes = _statistical_codes_lookup(airflow, folio_client)
+    with items_tsv_path.open() as fo:
+        items_reader = csv.DictReader(fo, delimiter='\t')
+        for row in items_reader:
+            codes = []
+            if len(row["ITEM_CAT1"]) > 0:
+                codes.append(stat_codes[row["ITEM_CAT1"]])
+            if len(row["ITEM_CAT2"]) > 0:
+                codes.append(stat_codes[row["ITEM_CAT2"]])
+            if len(codes) > 0:
+                items_statcodes[row["BARCODE"]] = codes
+    return items_statcodes
+
+
 def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
     """
     Constructs Item statistical lookup dictionary for handling multiple
@@ -86,7 +107,7 @@ def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
     enf_stat_result.raise_for_status()
     folio_code_ids["ENF"] = enf_stat_result.json()['statisticalCodes'][0]['id']
     item_stat_codes = {}
-    with open(airflow / "migration/mapping_files/statcodes.csv") as fo:
+    with open(f"{airflow}/migration/mapping_files/statcodes.tsv") as fo:
         stat_code_reader = csv.DictReader(fo, delimiter="\t")
         for row in stat_code_reader:
             item_stat_codes[row["ITEM_CAT1"]] = folio_code_ids[row["folio_code"]]
@@ -116,6 +137,7 @@ def _add_additional_info(**kwargs):
     """Generates notes from tsv files"""
     airflow: str = kwargs["airflow"]
     items_pattern: str = kwargs["items_pattern"]
+    items_tsv_filename: str = kwargs["items_tsv"]
     tsv_notes_path = kwargs["tsv_notes_path"]
     folio_client = kwargs["folio_client"]
     dag_run_id: str = kwargs["dag_run_id"]
@@ -130,6 +152,12 @@ def _add_additional_info(**kwargs):
 
         item_note_types = _retrieve_item_notes_ids(folio_client)
 
+    items_stats_codes_lookup = _generate_item_statcode_lookup(
+        pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/source_data/items/{items_tsv_filename}"),
+        airflow,
+        folio_client
+    )
+
     items = []
 
     for items_file in results_dir.glob(items_pattern):
@@ -141,6 +169,8 @@ def _add_additional_info(**kwargs):
                 if tsv_notes_path is not None:
                     _generate_item_notes(item, tsv_notes_df, item_note_types)
                 _set_discovery_suppress(item, barcode_lookup)
+                if item.get("barcode", "") in items_stats_codes_lookup:
+                    item["statisticalCodeIds"] = items_stats_codes_lookup[item["barcode"]]
                 items.append(item)
 
                 if not len(items) % 1000:
@@ -224,7 +254,8 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     library_config.iteration_identifier = dag.run_id
 
-    items_stem = kwargs["items_stem"]
+    items_stem = kwargs['items_stem']
+    items_tsv = f"{items_stem}.tsv"
 
     if items_stem.startswith("ON-ORDER"):
         mapping_file = "item_mapping_on_order.json"
@@ -235,7 +266,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         name="transformer",
         migration_task_type="ItemsTransformer",
         hrid_handling="preserve001",
-        files=[{"file_name": f"{items_stem}.tsv", "suppress": False}],
+        files=[{"file_name": items_tsv, "suppress": False}],
         items_mapping_file_name=mapping_file,
         location_map_file_name="locations.tsv",
         temp_location_map_file_name="temp_locations.tsv",
@@ -259,6 +290,7 @@ def run_items_transformer(*args, **kwargs) -> bool:
         airflow=airflow,
         dag_run_id=dag.run_id,
         items_pattern="folio_items_*transformer.json",
+        items_tsv=items_tsv,
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),
