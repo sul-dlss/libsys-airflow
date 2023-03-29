@@ -6,6 +6,8 @@ import pathlib
 import pandas as pd
 import requests
 
+from folioclient import FolioClient
+
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
 
 from plugins.folio.helpers import post_to_okapi, setup_data_logging
@@ -59,6 +61,36 @@ def _generate_item_notes(
 
     if len(notes) > 0:
         item["notes"] = notes
+
+
+def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
+    """
+    Constructs Item statistical lookup dictionary for handling multiple
+    Item stat codes
+    """
+    item_code_type_result = requests.get(
+        f"{folio_client.okapi_url}/statistical-code-types?query=name==Item&limit=200",
+        headers=folio_client.okapi_headers)
+    item_code_type_result.raise_for_status()
+    item_code_type = item_code_type_result.json()['statisticalCodeTypes'][0]['id']
+    item_stat_codes_result = requests.get(
+        f"{folio_client.okapi_url}/statistical-codes?query=statisticalCodeTypeId=={item_code_type}&limit=200",
+        headers=folio_client.okapi_headers)
+    item_stat_codes_result.raise_for_status()
+    folio_code_ids = {}
+    for row in item_stat_codes_result.json()['statisticalCodes']:
+        folio_code_ids[row['code']] = row['id']
+    enf_stat_result = requests.get(
+        f"{folio_client.okapi_url}/statistical-codes?query=code=ENF",
+        headers=folio_client.okapi_headers)
+    enf_stat_result.raise_for_status()
+    folio_code_ids["ENF"] = enf_stat_result.json()['statisticalCodes'][0]['id']
+    item_stat_codes = {}
+    with open(airflow / "migration/mapping_files/statcodes.csv") as fo:
+        stat_code_reader = csv.DictReader(fo, delimiter="\t")
+        for row in stat_code_reader:
+            item_stat_codes[row["ITEM_CAT1"]] = folio_code_ids[row["folio_code"]]
+    return item_stat_codes
 
 
 def _retrieve_item_notes_ids(folio_client) -> dict:
