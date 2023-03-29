@@ -110,7 +110,7 @@ def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
     with open(f"{airflow}/migration/mapping_files/statcodes.tsv") as fo:
         stat_code_reader = csv.DictReader(fo, delimiter="\t")
         for row in stat_code_reader:
-            item_stat_codes[row["ITEM_CAT1"]] = folio_code_ids[row["folio_code"]]
+            item_stat_codes[row["ITEM_CATS"]] = folio_code_ids[row["folio_code"]]
     return item_stat_codes
 
 
@@ -273,7 +273,6 @@ def run_items_transformer(*args, **kwargs) -> bool:
         default_call_number_type_name="Library of Congress classification",
         material_types_map_file_name="material_types.tsv",
         loan_types_map_file_name="loan_types.tsv",
-        statistical_codes_map_file_name="statcodes.tsv",
         item_statuses_map_file_name="item_statuses.tsv",
         call_number_type_map_file_name="call_number_type_mapping.tsv",
     )

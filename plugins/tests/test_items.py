@@ -174,7 +174,7 @@ def setup_items_holdings(
     stat_codes_path = airflow_dir / "migration/mapping_files/statcodes.tsv"
 
     with stat_codes_path.open("w+") as fo:
-        for row in ["ITEM_CAT1\tfolio_code",
+        for row in ["ITEM_CATS\tfolio_code",
                     "DIGI-SENT\tDIGI-SENT",
                     "FED-WEED\tFED-WEED"]:
             fo.write(f"{row}\n")
