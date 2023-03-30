@@ -77,7 +77,7 @@ def _generate_item_statcode_lookup(items_tsv_path: pathlib.Path,
             codes = []
             if len(row["ITEM_CAT1"]) > 0 and row["ITEM_CAT1"] in stat_codes:
                 codes.append(stat_codes[row["ITEM_CAT1"]])
-            if len(row["ITEM_CAT2"]) > 0 and row["ITEM_CAT1"] in stat_codes:
+            if len(row["ITEM_CAT2"]) > 0 and row["ITEM_CAT2"] in stat_codes:
                 codes.append(stat_codes[row["ITEM_CAT2"]])
             if len(codes) > 0:
                 items_statcodes[row["BARCODE"]] = codes
