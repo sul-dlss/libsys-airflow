@@ -202,17 +202,9 @@ def update_holdings(**kwargs):
     holdings_path = iteration_dir / "results/folio_holdings.json"
     mhld_holdings_path = iteration_dir / "results/folio_holdings_mhld-transformer.json"
 
-    if not mhld_holdings_path.exists():
-        logger.info(f"No MHLDs holdings {mhld_holdings_path}, exiting")
-        return
-
     srs_path = iteration_dir / "results/folio_srs_holdings_mhld-transformer.json"
 
-    with mhld_holdings_path.open() as fo:
-        mhld_holdings = [json.loads(line) for line in fo.readlines()]
-
-    with srs_path.open() as fo:
-        srs_records = [json.loads(line) for line in fo.readlines()]
+    all_holdings = _generate_lookups(holdings_path)
 
     with (iteration_dir / "results/instance-holdings-items.json").open() as fo:
         instance_map = json.load(fo)
@@ -221,26 +213,34 @@ def update_holdings(**kwargs):
     for location in folio_client.locations:
         locations_lookup[location["id"]] = location["code"]
 
-    all_holdings = _generate_lookups(holdings_path)
+    if mhld_holdings_path.exists() and srs_path.exists():
 
-    updated_srs_records = []
-    count = 0
-    for mhld, srs in zip(mhld_holdings, srs_records):
-        updated_srs = _process_mhld(
-            mhld_record=mhld,
-            srs_record=srs,
-            all_holdings=all_holdings,
-            instance_map=instance_map,
-            locations_lookup=locations_lookup,
-        )
-        updated_srs_records.append(updated_srs)
-        if not count % 1_000:
-            logger.info(f"Updated {count:,} MHLD and SRS records")
-        count += 1
+        with mhld_holdings_path.open() as fo:
+            mhld_holdings = [json.loads(line) for line in fo.readlines()]
 
-    with srs_path.open("w+") as fo:
-        for record in updated_srs_records:
-            fo.write(f"{json.dumps(record)}\n")
+        with srs_path.open() as fo:
+            srs_records = [json.loads(line) for line in fo.readlines()]
+
+        updated_srs_records = []
+        count = 0
+        for mhld, srs in zip(mhld_holdings, srs_records):
+            updated_srs = _process_mhld(
+                mhld_record=mhld,
+                srs_record=srs,
+                all_holdings=all_holdings,
+                instance_map=instance_map,
+                locations_lookup=locations_lookup,
+            )
+            updated_srs_records.append(updated_srs)
+            if not count % 1_000:
+                logger.info(f"Updated {count:,} MHLD and SRS records")
+            count += 1
+
+        with srs_path.open("w+") as fo:
+            for record in updated_srs_records:
+                fo.write(f"{json.dumps(record)}\n")
+
+        mhld_holdings_path.unlink()
 
     with (iteration_dir / "results/folio_holdings.json").open("w+") as fo:
         for holdings_record in all_holdings.values():
@@ -253,7 +253,6 @@ def update_holdings(**kwargs):
                     holdings_record["administrativeNotes"].pop(i)
             fo.write(f"{json.dumps(holdings_record)}\n")
 
-    mhld_holdings_path.unlink()
     logger.info("Finished merging MHLDS holdings records and updating SRS records")
 
 
