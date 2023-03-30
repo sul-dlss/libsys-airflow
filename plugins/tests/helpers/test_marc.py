@@ -259,13 +259,13 @@ def test_extract_856s():
     assert len(output) == 3
     assert output[0] == {
         "CATKEY": "34456",
-        "HOMELOCATION": "INTERNET",
-        "LIBRARY": "SUL-SDR",
+        "HOMELOCATION": "SDR",
+        "LIBRARY": "SUL",
+        "COPY": 0,
         "MAT_SPEC": "Finding Aid",
     }
-    assert output[1]["LIBRARY"] == "SUL-SDR"
-    assert output[1]["HOMELOCATION"].startswith("INTERNET")
-    assert output[2]["LIBRARY"] == "SUL"
+    assert output[1]["HOMELOCATION"].startswith("SDR")
+    assert output[2]["HOMELOCATION"] == "INTERNET"
 
 
 def test_extract_956s():

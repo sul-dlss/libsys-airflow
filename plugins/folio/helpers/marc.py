@@ -113,13 +113,14 @@ def _extract_e_holdings_fields(**kwargs) -> list:
             "CATKEY": catkey,
             "HOMELOCATION": "INTERNET",
             "LIBRARY": library,
+            "COPY": i,
             "MAT_SPEC": None
         }
         row["CATKEY"] = catkey
         uri = "".join(marc_field.get_subfields("u"))
 
         if sdr_sul_re.search(uri):
-            row["HOMELOCATION"] = "SDR"        
+            row["HOMELOCATION"] = "SDR"
 
         material_type = marc_field.get_subfields("3")
         if len(material_type) > 0:
