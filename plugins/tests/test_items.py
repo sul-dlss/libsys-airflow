@@ -36,13 +36,46 @@ item_note_types = {
     ]
 }
 
+statistical_code_types = {
+    'statisticalCodeTypes': [
+        {
+            'id': '6c126b3a-3859-451c-8576-15b26b205d43',
+            'name': 'Item'
+        }
+    ]
+}
+
+statistical_codes = {
+    'statisticalCodes': [
+        {
+            'id': '8be8d577-1cd7-4b84-ae71-d9472fc4d2b1',
+            'code': 'DIGI-SENT'
+        },
+        {
+            'id': '9c98fbcc-1728-41f5-9382-038d9fa45c0f',
+            'code': 'FED-WEED'
+        }
+    ]
+}
+
 
 @pytest.fixture
-def mock_item_note_type(monkeypatch, mocker: MockerFixture):  # noqa
+def mock_okapi_items_endpoint(monkeypatch, mocker: MockerFixture):  # noqa
     def mock_get(*args, **kwargs):
         get_response = mocker.stub(name="get_result")
         get_response.status_code = 200
-        get_response.json = lambda: item_note_types
+        endpoint = args[0].split("/")[-1]
+        match endpoint:
+            case 'item-note-types?limit=100':
+                get_response.json = lambda: item_note_types
+
+            case 'statistical-code-types?query=name==Item&limit=200':
+                get_response.json = lambda: statistical_code_types
+
+            case _:
+                get_response.json = lambda: statistical_codes
+
+        get_response.raise_for_status = ValueError
         return get_response
 
     monkeypatch.setattr(requests, "get", mock_get)
@@ -94,11 +127,11 @@ items_recs = [
 
 items_tsv = [
     "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
-    "23456\t1\t1\t55678446243\tSAL3\tINPROCESS\tCOLDSTOR\tSTKS-MONO\t\t\t0\tLC\tTR640 .I34 1996\t\t0\tMARC\t0",
+    "23456\t1\t1\t55678446243\tSAL3\tINPROCESS\tCOLDSTOR\tSTKS-MONO\tDIGI-SENT\t\t0\tLC\tTR640 .I34 1996\t\t0\tMARC\t0",
     "9704208\t1\t1\t1233455\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tTR640 .I34 1996\t\t0\tMARC\t0",
-    "145623\t1\t1\t4614642357\tSAL3\tSPECB-S\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tRH640 .I34 1996\t\t0\tMARC\t0",
+    "145623\t1\t1\t4614642357\tSAL3\tSPECB-S\tINPROCESS\tSTKS-MONO\t\tFED-WEED\t0\tLC\tRH640 .I34 1996\t\t0\tMARC\t0",
     "262345\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t1\tLC\tYU40 .J4 2096\t\t0\tMARC\t0",  # ITEM SHADOW
-    "5559991\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t0\tLC\tEG640 .J4 1796\t\t1\tMARC\t0",  # CALL SHADOW
+    "5559991\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\tDIGI-SENT\tFED-WEED\t0\tLC\tEG640 .J4 1796\t\t1\tMARC\t0",  # CALL SHADOW
 ]
 
 
@@ -138,6 +171,14 @@ def setup_items_holdings(
             "SPECB-S"
         ], fo)
 
+    stat_codes_path = airflow_dir / "migration/mapping_files/statcodes.tsv"
+
+    with stat_codes_path.open("w+") as fo:
+        for row in ["ITEM_CATS\tfolio_code",
+                    "DIGI-SENT\tDIGI-SENT",
+                    "FED-WEED\tFED-WEED"]:
+            fo.write(f"{row}\n")
+
     data_prep = iteration_dir / "data_preparation/"
 
     data_prep.mkdir(parents=True)
@@ -150,7 +191,7 @@ def setup_items_holdings(
 
 
 def test_add_additional_info(
-    mock_file_system, mock_dag_run, mock_item_note_type  # noqa
+    mock_file_system, mock_dag_run, mock_okapi_items_endpoint  # noqa
 ):
     airflow_path = mock_file_system[0]
     iteration_dir = mock_file_system[2]
@@ -163,6 +204,7 @@ def test_add_additional_info(
     _add_additional_info(
         airflow=str(airflow_path),
         dag_run_id=mock_dag_run.run_id,
+        items_tsv="ckey_001_002.tsv",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
         folio_client=folio_client,
@@ -186,6 +228,11 @@ def test_add_additional_info(
         == "e9f6de86-e564-4095-a61a-38c9e0e6b2fc"
     )
 
+    assert (
+        new_items_recs[0]["statisticalCodeIds"][0]
+        == "8be8d577-1cd7-4b84-ae71-d9472fc4d2b1"
+    )
+
     assert new_items_recs[1]["notes"][0]["staffOnly"]
     assert (
         new_items_recs[1]["notes"][0]["itemNoteTypeId"]
@@ -195,10 +242,15 @@ def test_add_additional_info(
     assert "discoverySuppress" not in new_items_recs[1]
     assert new_items_recs[2]["discoverySuppress"] is True
     assert new_items_recs[3]["discoverySuppress"] is True
+    assert (
+        new_items_recs[-2]["statisticalCodeIds"]
+        == ["8be8d577-1cd7-4b84-ae71-d9472fc4d2b1",
+            "9c98fbcc-1728-41f5-9382-038d9fa45c0f"]
+    )
 
 
 def test_add_additional_info_missing_barcode(
-    mock_file_system, mock_dag_run, mock_item_note_type  # noqa
+    mock_file_system, mock_dag_run, mock_okapi_items_endpoint  # noqa
 ):
     global items_recs
     airflow_dir = mock_file_system[0]
@@ -221,6 +273,7 @@ def test_add_additional_info_missing_barcode(
     _add_additional_info(
         airflow=str(mock_file_system[0]),
         dag_run_id=mock_dag_run.run_id,
+        items_tsv="ckey_001_002.tsv",
         holdings_pattern="holdings_transformer-*.json",
         items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
@@ -237,7 +290,7 @@ def test_add_additional_info_missing_barcode(
     items_recs = items_recs_copy
 
 
-def test_add_additional_info_hoover(mock_file_system, mock_item_note_type):  # noqa
+def test_add_additional_info_hoover(mock_file_system, mock_okapi_items_endpoint):  # noqa
     pass
 
 
