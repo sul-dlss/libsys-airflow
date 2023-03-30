@@ -15,7 +15,6 @@ from plugins.folio.items import (
     run_items_transformer,
     _add_additional_info,
     _generate_item_notes,
-    _suppressed_conditions,
 )
 
 
@@ -149,7 +148,7 @@ def setup_items_holdings(
         for rec in holdings_recs:
             fo.write(f"{json.dumps(rec)}\n")
 
-    items_path = results_dir / "items_transformer-test_dag.json"
+    items_path = results_dir / "folio_items_transformer.json"
 
     with items_path.open("w+") as fo:
         for rec in items_recs:
@@ -205,7 +204,6 @@ def test_add_additional_info(
         airflow=str(airflow_path),
         dag_run_id=mock_dag_run.run_id,
         items_tsv="ckey_001_002.tsv",
-        items_pattern="items_transformer-*.json",
         tsv_notes_path=items_notes_path,
         folio_client=folio_client,
     )
@@ -300,11 +298,3 @@ def test_generate_item_notes_missing_barcode(caplog):  # noqa
     _generate_item_notes(item, tsv_notes_df, {})
 
     assert "Item missing barcode, cannot generate notes" in caplog.text
-
-
-def test_suppressed_conditions_missing_item_tsv(
-    mock_file_system, mock_dag_run, caplog  # noqa
-):
-    _suppressed_conditions(mock_file_system[0], mock_dag_run.run_id)
-
-    assert "No item tsv file found" in caplog.text
