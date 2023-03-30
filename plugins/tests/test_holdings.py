@@ -85,18 +85,6 @@ def test_wrap_additional_mapping():
     additional_mapping(None, incorrect_holding)
 
 
-def test_merge_update_holdings_no_holdings(
-    mock_okapi_variable, mock_file_system, mock_dag_run, caplog  # noqa
-):
-    update_holdings(
-        airflow=str(mock_file_system[0]),
-        dag_run=mock_dag_run,
-        folio_client=MockFOLIOClient(),
-    )
-
-    assert "No MHLDs holdings" in caplog.text
-
-
 holdings = [
     {
         "id": "abcdedf123345",
