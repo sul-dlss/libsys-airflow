@@ -15,6 +15,7 @@ from plugins.folio.items import (
     run_items_transformer,
     _add_additional_info,
     _generate_item_notes,
+    _remove_on_order_items
 )
 
 
@@ -298,3 +299,18 @@ def test_generate_item_notes_missing_barcode(caplog):  # noqa
     _generate_item_notes(item, tsv_notes_df, {})
 
     assert "Item missing barcode, cannot generate notes" in caplog.text
+
+
+def test_remove_on_order_items(tmp_path):
+    source_path = tmp_path / "test.tsv"
+    original_df = pd.DataFrame(
+        [
+            {"HOMELOCATION": "ON-ORDER", "CURRENTLOCATION": "GREEN"},
+            {"HOMELOCATION": "SAL3", "CURRENTLOCATION": "ON-ORDER"},
+            {"HOMELOCATION": "SAL3", "CURRENTLOCATION": "GREEN"}
+        ]
+    )
+    original_df.to_csv(source_path, sep="\t", index=False)
+    _remove_on_order_items(source_path)
+    filtered_df = pd.read_csv(source_path, sep="\t")
+    assert len(filtered_df) == 1

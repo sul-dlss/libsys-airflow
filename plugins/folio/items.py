@@ -156,6 +156,20 @@ def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
     return item_stat_codes
 
 
+def _remove_on_order_items(items_tsv_path):
+    """
+    Removes any Items from Item TSV for ON-ORDER value in either the CURRENTLOCATION
+    or HOMELOCATION columns
+    """
+    items_df = pd.read_csv(items_tsv_path, sep="\t")
+    start_size = len(items_df)
+    condition = (items_df["CURRENTLOCATION"] == "ON-ORDER") | (items_df["HOMELOCATION"] == "ON-ORDER")
+    filtered_items = items_df.loc[~condition]
+    filtered_items.to_csv(items_tsv_path, sep="\t", index=False)
+    finished_size = len(filtered_items)
+    logger.info(f"Removed {(start_size-finished_size):,} ON-ORDER items")
+
+
 def _retrieve_item_notes_ids(folio_client) -> dict:
     """Retrieves itemNoteTypes from Okapi"""
     note_types = dict()
@@ -267,7 +281,9 @@ def run_items_transformer(*args, **kwargs) -> bool:
     else:
         mapping_file = "item_mapping.json"
 
-    # _remove_on_order_items(items_tsv_path)
+    _remove_on_order_items(
+        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}")
+    )
 
     item_config = ItemsTransformer.TaskConfiguration(
         name="transformer",
