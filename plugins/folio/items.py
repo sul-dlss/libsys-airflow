@@ -15,6 +15,34 @@ from plugins.folio.helpers import post_to_okapi, setup_data_logging
 logger = logging.getLogger(__name__)
 
 
+def _determine_discovery_suppress(row: dict, suppressed_locations: dict) -> bool:
+    """
+    Determines discovery suppression for an Item
+    """
+    suppress_item = False
+    if row["CURRENTLOCATION"] in suppressed_locations:
+        suppress_item = True
+    if row["HOMELOCATION"] in suppressed_locations:
+        suppress_item = True
+    if row["ITEM_SHADOW"] == "1":
+        suppress_item = True
+    if row["CALL_SHADOW"] == "1":
+        suppress_item = True
+    return suppress_item
+
+
+def _determine_stat_codes(row: dict, stat_codes: dict) -> list:
+    """
+    Determines Stat Codes for an Item
+    """
+    codes = []
+    if len(row["ITEM_CAT1"]) > 0 and row["ITEM_CAT1"] in stat_codes:
+        codes.append(stat_codes[row["ITEM_CAT1"]])
+    if len(row["ITEM_CAT2"]) > 0 and row["ITEM_CAT2"] in stat_codes:
+        codes.append(stat_codes[row["ITEM_CAT2"]])
+    return codes
+
+
 def _generate_item_notes(
     item, tsv_note_df: pd.DataFrame, item_note_types: dict
 ) -> list:
@@ -63,25 +91,36 @@ def _generate_item_notes(
         item["notes"] = notes
 
 
-def _generate_item_statcode_lookup(items_tsv_path: pathlib.Path,
-                                   airflow: str,
-                                   folio_client: FolioClient):
+def _generate_items_lookups(
+    airflow: str, items_tsv_path: pathlib.Path, folio_client: FolioClient
+):
     """
-    Generates dict of item barcodes mapped to stat code ids
+    Creates lookup dictionary based on Item barcodes for statistical
+    codes and discovery suppressed records
     """
-    items_statcodes = {}
+    migration_dir = pathlib.Path(f"{airflow}/migration")
+
+    with (migration_dir / "mapping_files/items-suppressed-locations.json").open() as fo:
+        suppressed_locations = json.load(fo)
+
     stat_codes = _statistical_codes_lookup(airflow, folio_client)
+
+    items_lookup = {}
+
     with items_tsv_path.open() as fo:
-        items_reader = csv.DictReader(fo, delimiter='\t')
+        items_reader = csv.DictReader(fo, delimiter="\t")
         for row in items_reader:
-            codes = []
-            if len(row["ITEM_CAT1"]) > 0 and row["ITEM_CAT1"] in stat_codes:
-                codes.append(stat_codes[row["ITEM_CAT1"]])
-            if len(row["ITEM_CAT2"]) > 0 and row["ITEM_CAT2"] in stat_codes:
-                codes.append(stat_codes[row["ITEM_CAT2"]])
+            # Discovery Suppressed
+            items_lookup[row["BARCODE"]] = {
+                "suppress?": _determine_discovery_suppress(row, suppressed_locations)
+            }
+
+            # Statistical Codes
+            codes = _determine_stat_codes(row, stat_codes)
             if len(codes) > 0:
-                items_statcodes[row["BARCODE"]] = codes
-    return items_statcodes
+                items_lookup[row["BARCODE"]]["codes"] = codes
+
+    return items_lookup
 
 
 def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
@@ -91,27 +130,44 @@ def _statistical_codes_lookup(airflow: str, folio_client: FolioClient) -> dict:
     """
     item_code_type_result = requests.get(
         f"{folio_client.okapi_url}/statistical-code-types?query=name==Item&limit=200",
-        headers=folio_client.okapi_headers)
+        headers=folio_client.okapi_headers,
+    )
     item_code_type_result.raise_for_status()
-    item_code_type = item_code_type_result.json()['statisticalCodeTypes'][0]['id']
+    item_code_type = item_code_type_result.json()["statisticalCodeTypes"][0]["id"]
     item_stat_codes_result = requests.get(
         f"{folio_client.okapi_url}/statistical-codes?query=statisticalCodeTypeId=={item_code_type}&limit=200",
-        headers=folio_client.okapi_headers)
+        headers=folio_client.okapi_headers,
+    )
     item_stat_codes_result.raise_for_status()
     folio_code_ids = {}
-    for row in item_stat_codes_result.json()['statisticalCodes']:
-        folio_code_ids[row['code']] = row['id']
+    for row in item_stat_codes_result.json()["statisticalCodes"]:
+        folio_code_ids[row["code"]] = row["id"]
     enf_stat_result = requests.get(
         f"{folio_client.okapi_url}/statistical-codes?query=code=ENF",
-        headers=folio_client.okapi_headers)
+        headers=folio_client.okapi_headers,
+    )
     enf_stat_result.raise_for_status()
-    folio_code_ids["ENF"] = enf_stat_result.json()['statisticalCodes'][0]['id']
+    folio_code_ids["ENF"] = enf_stat_result.json()["statisticalCodes"][0]["id"]
     item_stat_codes = {}
     with open(f"{airflow}/migration/mapping_files/statcodes.tsv") as fo:
         stat_code_reader = csv.DictReader(fo, delimiter="\t")
         for row in stat_code_reader:
             item_stat_codes[row["ITEM_CATS"]] = folio_code_ids[row["folio_code"]]
     return item_stat_codes
+
+
+def _remove_on_order_items(items_tsv_path):
+    """
+    Removes any Items from Item TSV for ON-ORDER value in either the CURRENTLOCATION
+    or HOMELOCATION columns
+    """
+    items_df = pd.read_csv(items_tsv_path, sep="\t")
+    start_size = len(items_df)
+    condition = (items_df["CURRENTLOCATION"] == "ON-ORDER") | (items_df["HOMELOCATION"] == "ON-ORDER")
+    filtered_items = items_df.loc[~condition]
+    filtered_items.to_csv(items_tsv_path, sep="\t", index=False)
+    finished_size = len(filtered_items)
+    logger.info(f"Removed {(start_size-finished_size):,} ON-ORDER items")
 
 
 def _retrieve_item_notes_ids(folio_client) -> dict:
@@ -136,15 +192,16 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
 def _add_additional_info(**kwargs):
     """Generates notes from tsv files"""
     airflow: str = kwargs["airflow"]
-    items_pattern: str = kwargs["items_pattern"]
-    items_tsv_filename: str = kwargs["items_tsv"]
+    items_tsv: str = kwargs["items_tsv"]
     tsv_notes_path = kwargs["tsv_notes_path"]
     folio_client = kwargs["folio_client"]
     dag_run_id: str = kwargs["dag_run_id"]
 
-    barcode_lookup = _suppressed_conditions(airflow, dag_run_id)
+    iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}")
 
-    results_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/results")
+    items_file = iteration_dir / "results/folio_items_transformer.json"
+
+    items_tsv_path = iteration_dir / f"source_data/items/{items_tsv}"
 
     if tsv_notes_path is not None:
         tsv_notes_path = pathlib.Path(tsv_notes_path)
@@ -152,73 +209,35 @@ def _add_additional_info(**kwargs):
 
         item_note_types = _retrieve_item_notes_ids(folio_client)
 
-    items_stats_codes_lookup = _generate_item_statcode_lookup(
-        pathlib.Path(f"{airflow}/migration/iterations/{dag_run_id}/source_data/items/{items_tsv_filename}"),
-        airflow,
-        folio_client
+    items_lookup = _generate_items_lookups(
+        airflow, items_tsv_path, folio_client
     )
 
     items = []
 
-    for items_file in results_dir.glob(items_pattern):
-        logger.info(f"Processing {items_file}")
-        with items_file.open() as fo:
-            for line in fo.readlines():
-                item = json.loads(line)
-                item["_version"] = 1
-                if tsv_notes_path is not None:
-                    _generate_item_notes(item, tsv_notes_df, item_note_types)
-                _set_discovery_suppress(item, barcode_lookup)
-                if item.get("barcode", "") in items_stats_codes_lookup:
-                    item["statisticalCodeIds"] = items_stats_codes_lookup[item["barcode"]]
-                items.append(item)
+    logger.info(f"Processing {items_file}")
+    with items_file.open() as fo:
+        for line in fo.readlines():
+            item = json.loads(line)
+            item["_version"] = 1
+            if tsv_notes_path is not None:
+                _generate_item_notes(item, tsv_notes_df, item_note_types)
+            _set_discovery_suppress(item, items_lookup)
+            if "codes" in items_lookup.get(item.get("barcode"), {}):
+                item["statisticalCodeIds"] = items_lookup[item.get("barcode")]["codes"]
+            items.append(item)
 
-                if not len(items) % 1000:
-                    logger.info(f"Updated {len(items):,} item records")
+            if not len(items) % 1000:
+                logger.info(f"Updated {len(items):,} item records")
 
-        with open(items_file, "w+") as write_output:
-            for item in items:
-                write_output.write(f"{json.dumps(item)}\n")
+    with open(items_file, "w+") as write_output:
+        for item in items:
+            write_output.write(f"{json.dumps(item)}\n")
 
 
 def _set_discovery_suppress(item, barcode_lookup):
-    if barcode_lookup.get(item.get("barcode"), False):
+    if barcode_lookup.get(item.get("barcode"), {}).get("suppress?", False):
         item["discoverySuppress"] = True
-
-
-def _suppressed_conditions(airflow, dag_run_id):
-    """
-    Creates a lookup dictionary for barcodes that value is a boolean
-    """
-    migration_dir = pathlib.Path(f"{airflow}/migration")
-    source_dir = migration_dir / f"iterations/{dag_run_id}/source_data/items"
-    item_tsv = None
-    for tsv_file in source_dir.glob("*.tsv"):
-        if "electronic" in tsv_file.name or "notes" in tsv_file.name:
-            continue
-        item_tsv = tsv_file
-
-    if item_tsv is None:
-        logger.error(f"No item tsv file found in {source_dir}")
-        return {}
-
-    with (migration_dir / "mapping_files/items-suppressed-locations.json").open() as fo:
-        suppressed_locations = json.load(fo)
-
-    barcode_lookup = {}
-    with item_tsv.open() as fo:
-        item_reader = csv.DictReader(fo, delimiter="\t")
-        for row in item_reader:
-            barcode_lookup[row["BARCODE"]] = False
-            if row["CURRENTLOCATION"] in suppressed_locations:
-                barcode_lookup[row["BARCODE"]] = True
-            if row["HOMELOCATION"] in suppressed_locations:
-                barcode_lookup[row["BARCODE"]] = True
-            if row["ITEM_SHADOW"] == "1":
-                barcode_lookup[row["BARCODE"]] = True
-            if row["CALL_SHADOW"] == "1":
-                barcode_lookup[row["BARCODE"]] = True
-    return barcode_lookup
 
 
 def post_folio_items_records(**kwargs):
@@ -254,13 +273,17 @@ def run_items_transformer(*args, **kwargs) -> bool:
 
     library_config.iteration_identifier = dag.run_id
 
-    items_stem = kwargs['items_stem']
+    items_stem = kwargs["items_stem"]
     items_tsv = f"{items_stem}.tsv"
 
     if items_stem.startswith("ON-ORDER"):
         mapping_file = "item_mapping_on_order.json"
     else:
         mapping_file = "item_mapping.json"
+
+    _remove_on_order_items(
+        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}")
+    )
 
     item_config = ItemsTransformer.TaskConfiguration(
         name="transformer",
@@ -288,10 +311,9 @@ def run_items_transformer(*args, **kwargs) -> bool:
     _add_additional_info(
         airflow=airflow,
         dag_run_id=dag.run_id,
-        items_pattern="folio_items_*transformer.json",
         items_tsv=items_tsv,
         tsv_notes_path=instance.xcom_pull(
             task_ids="move-transform.symphony-tsv-processing", key="tsv-notes"
         ),
-        folio_client=items_transformer.folio_client
+        folio_client=items_transformer.folio_client,
     )
