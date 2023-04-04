@@ -2,6 +2,7 @@ argparse_prompt
 coverage
 coveralls
 flake8
+jsonpath_ng
 numpy
 objectpath
 pandas
