@@ -13,16 +13,14 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 > docker daemon, we recommend at least 5GB.
 
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
-2. Run `git submodule init` and then `git submodule update` to populated submodule.
-4. If it's commented out, uncomment the line `- ./dags:/opt/airflow/dags` in docker-compose.yaml (under `volumes`, under `x-airflow-common`).
-5. Start up docker locally.
-7. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values.
-8. Run `docker-compose build` to build the customized airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-9. Run `docker-compose up airflow-init` to initialize the Airflow the first time you deploy Airflow
-10. Bring up airflow, `docker-compose up` to run the containers in the
+2. Start up docker locally.
+3. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
+4. Run `docker-compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
+5. Run `docker-compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
+6. Bring up Airflow, `docker-compose up` to run the containers in the
    foreground, use `docker-compose up -d` to run as a daemon.
-1. Access Airflow locally at http://localhost
-1. Log into the worker container using `docker exec -it libsys-airflow_airflow-worker_1 /bin/bash` to view the raw work files.
+7. Access Airflow locally at http://localhost:3000. The default username and password are both `airflow`.
+8. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
 ### For FOLIO migration loads
 1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
@@ -89,9 +87,10 @@ The `optimistic_locking_management` DAG requires a Postgres Airflow
 database being used by Okapi.
 
 ## Testing
-- Activate python virtual environment: `source virtual-env/bin/activate`
-- Install the FOLIO-FSE tools: `pip install folio_migration_tools`
-- Install Airflow: `pip install apache-airflow apache-airflow-providers-postgres`
+1. If you haven't already, create a python virtual environment in the home directory: `python3 -m venv virtual-env`
+2. Activate the virtual environment: `source virtual-env/bin/activate`
+3. Install dependencies:  `pip install -r requirements.txt`
+4. Install Airflow: `pip install apache-airflow==2.5.3 apache-airflow-providers-postgres==5.4.0`
 
 Run the flake8 linter:
 `flake8 dags/ plugins/`
