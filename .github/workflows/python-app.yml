@@ -20,21 +20,18 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: "3.10"
-    - name: Install airflow dependencies
+    - name: Install Airflow + dependencies
       run: |
         pip install -r requirements.txt
-    - name: Install FOLIO-FSE tools
-      run: |
-        pip install folioclient folio-migration-tools folio-uuid
-    - name: Install Airflow
-      run: |
-        pip install apache-airflow apache-airflow-providers-postgres jsonpath_ng
+        poetry install
     - name: Lint with flake8
       run: |
-        flake8 --ignore=E225,E501,F401,F811,W503 dags/ plugins/
+        cd libsys_airflow
+        poetry run flake8 --ignore=E225,E501,F401,F811,W503 dags/ plugins/
     - name: Test with pytest
       run: |
-        airflow db init
-        coverage run -m pytest
-        coverage lcov
-        coveralls --service=github
+        cd libsys_airflow
+        poetry run airflow db init
+        poetry run coverage run -m pytest
+        poetry run coverage lcov
+        poetry run coveralls --service=github

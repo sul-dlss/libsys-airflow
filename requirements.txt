@@ -1,13 +1,1 @@
-argparse_prompt
-coverage
-coveralls
-flake8
-jsonpath_ng
-numpy
-objectpath
-pandas
-pydantic
-pymarc
-pytest
-pytest_mock
-folio_migration_tools == 1.7.8
+poetry

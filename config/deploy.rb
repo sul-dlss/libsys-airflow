@@ -6,7 +6,7 @@ set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
 
-# Default branch is :master
+# Default branch is :main
 ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
 
 # Default value for :log_level is :debug
@@ -56,7 +56,7 @@ namespace :airflow do
   desc 'install airflow dependencies'
   task :install do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt"
+      execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt && poetry build --format=wheel --no-interaction --no-ansi && pip3 install dist/*.whl"
       execute "cp #{release_path}/config/.env #{release_path}/."
       execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
       execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
