@@ -34,6 +34,7 @@ jobs:
         flake8 --ignore=E225,E501,F401,F811,W503 dags/ plugins/
     - name: Test with pytest
       run: |
+        airflow db init
         coverage run -m pytest
         coverage lcov
         coveralls --service=github
