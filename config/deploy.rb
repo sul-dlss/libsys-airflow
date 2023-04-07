@@ -27,7 +27,7 @@ before 'deploy:cleanup', 'fix_permissions'
 desc 'Change release directories ownership'
 task :fix_permissions do
   on roles(:app) do
-    within release_path do
+    within releases_path do
       execute :sudo, :chown, '-R', "#{fetch(:user)}:#{fetch(:user)}", '*'
     end
   end
@@ -130,7 +130,7 @@ namespace :airflow do
     on roles(:app) do
       execute "docker image prune -f"
       execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker-compose stop"
-      execute "docker rm $(docker ps --filter status=exited -q)"
+      execute "[[ $(docker ps -aq) ]] && docker ps -aq | xargs docker stop | xargs docker rm || echo 'no containers to stop'"
     end
   end
 

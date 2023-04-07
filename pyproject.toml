@@ -2,7 +2,7 @@
 name = "libsys-airflow"
 version = "0.1.0"
 description = "Airflow DAGS for migrating and managing ILS data into FOLIO along with other LibSys workflows"
-authors = ["Jeremy Nelson <jermnelson@gmail.com>", "Joshua Greben <jgreben@stanford.edu>", "Shelley Doljack", "Laura Wrubel", "Michael J. Giarlo <mjgiarlo@stanford.edu>"]
+authors = ["Jeremy Nelson <jpnelson@stanford.edu>", "Joshua Greben <jgreben@stanford.edu>", "Shelley Doljack", "Laura Wrubel", "Michael J. Giarlo <mjgiarlo@stanford.edu>"]
 license = "Apache 2.0"
 
 [tool.poetry.dependencies]
