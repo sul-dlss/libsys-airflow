@@ -22,10 +22,10 @@ from plugins.folio.circ_rules import (
 logger = logging.getLogger(__name__)
 
 folio_client = FolioClient(
-    Variable.get("OKAPI_URL"),
+    Variable.get("okapi_url"),
     "sul",
-    Variable.get("FOLIO_USER"),
-    Variable.get("FOLIO_PASSWORD"),
+    Variable.get("folio_user"),
+    Variable.get("folio_password"),
 )
 
 

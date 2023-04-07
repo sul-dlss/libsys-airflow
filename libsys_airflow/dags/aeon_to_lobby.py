@@ -73,7 +73,7 @@ with DAG(
     aeon_user_data = PythonOperator(
         task_id="get_user_transaction_data_from_aeon", python_callable=user_transaction_data,
         op_kwargs={
-            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_url": Variable.get("aeon_url"),
             "aeon_key": Variable.get("AEON_KEY"),
             "queue_id": Variable.get("SOURCE_QUEUE_ID")
         }
@@ -82,7 +82,7 @@ with DAG(
     filtered_user_data = PythonOperator(
         task_id="filter_aeon_user_data", python_callable=filtered_users,
         op_kwargs={
-            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_url": Variable.get("aeon_url"),
             "aeon_key": Variable.get("AEON_KEY")
         }
     )
@@ -98,7 +98,7 @@ with DAG(
     route_aeon_post = PythonOperator(
         task_id="route_aeon_post", python_callable=route_aeon_post,
         op_kwargs={
-            "aeon_url": Variable.get("AEON_URL"),
+            "aeon_url": Variable.get("aeon_url"),
             "aeon_key": Variable.get("AEON_KEY"),
             "queue_id": Variable.get("SOURCE_QUEUE_ID"),
             "final_queue": Variable.get("FINAL_QUEUE")
