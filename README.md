@@ -4,7 +4,9 @@
 Airflow DAGS for libsys processes and migrating ILS data into FOLIO
 
 ## Dependency Management and Packaging
-Run `pip install -r requirements.txt` to install the dependencies.
+To install the dependencies, run:
+* `pip install -r requirements.txt`
+* `poetry install`
 
 ## Running Locally with Docker
 Based on the documentation, [Running Airflow in Docker](https://airflow.apache.org/docs/apache-airflow/stable/start/docker.html).
@@ -30,8 +32,8 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ### Prerequisites
 1. Install `pip3` with `apt install python3-pip`
 1. Install python virtual enviroments: `apt install python3.8-venv`
-1. Create the virtual envirnment in the home directory: `python3 -m venv virtual-env`
-1. Install docker-compose in the virtual environment: `source virtual-env/bin/activate && pip3 install docker-compose`
+1. Install dependencies per `Dependency Management and Packaging` above
+1. Install docker-compose in the poetry virtual environment: `poetry shell && pip3 install docker-compose`
 
 ### Tasks
 1. List all the airflow tasks using `cap -AT airflow`
@@ -48,12 +50,9 @@ cap airflow:webserver      # restart webserver
 
 ### Do the first time you bring up Libsys-Airflow:
 1. Log into the server, `ksu` and install `apt install python3.8-venv libpq-dev`
-1. Exit `ksu` and install the pyton virtual environment under the libsys home directory:
-   1. `cd && mkdir virtual-env`
-   1. `python3 -m venv /home/libsys/virtual-env/`
 1. In your local environment do `cap ${stage} deploy`
 1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
-1. On the server `source /home/libsys/virtual-env && pip install docker-compose==1.29.2`
+1. On the server `poetry shell && pip3 install docker-compose==1.29.2`
 1. In your local environment do `cap ${stage} deploy:install`
 1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps.
 
@@ -87,10 +86,9 @@ The `optimistic_locking_management` DAG requires a Postgres Airflow
 database being used by Okapi.
 
 ## Testing
-1. If you haven't already, create a python virtual environment in the home directory: `python3 -m venv virtual-env`
-2. Activate the virtual environment: `source virtual-env/bin/activate`
-3. Install dependencies:  `pip install -r requirements.txt`
-4. Install Airflow: `pip install apache-airflow==2.5.3 apache-airflow-providers-postgres==5.4.0`
+1. Install dependencies per `Dependency Management and Packaging` above
+1. Change into the poetry build dir: `cd libsys_airflow`
+1. Drop into the poetry virtual environment: `poetry shell`
 
 Run the flake8 linter:
 `flake8 dags/ plugins/`

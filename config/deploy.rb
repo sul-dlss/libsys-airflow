@@ -6,7 +6,7 @@ set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
 
-# Default branch is :master
+# Default branch is :main
 ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
 
 # Default value for :log_level is :debug
@@ -27,7 +27,7 @@ before 'deploy:cleanup', 'fix_permissions'
 desc 'Change release directories ownership'
 task :fix_permissions do
   on roles(:app) do
-    within release_path do
+    within releases_path do
       execute :sudo, :chown, '-R', "#{fetch(:user)}:#{fetch(:user)}", '*'
     end
   end
@@ -56,7 +56,7 @@ namespace :airflow do
   desc 'install airflow dependencies'
   task :install do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt"
+      execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt && poetry build --format=wheel --no-interaction --no-ansi && pip3 install dist/*.whl"
       execute "cp #{release_path}/config/.env #{release_path}/."
       execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
       execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
@@ -130,7 +130,7 @@ namespace :airflow do
     on roles(:app) do
       execute "docker image prune -f"
       execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker-compose stop"
-      execute "docker rm $(docker ps --filter status=exited -q)"
+      execute "[[ $(docker ps -aq) ]] && docker ps -aq | xargs docker stop | xargs docker rm || echo 'no containers to stop'"
     end
   end
 

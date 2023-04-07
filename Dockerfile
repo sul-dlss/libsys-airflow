@@ -9,6 +9,9 @@ ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
 
 USER airflow
 
-COPY requirements.txt .
+COPY requirements.txt pyproject.toml poetry.lock .
+COPY libsys_airflow ./libsys_airflow
 
 RUN pip install -r requirements.txt
+RUN poetry build --format=wheel --no-interaction --no-ansi
+RUN pip install dist/*.whl

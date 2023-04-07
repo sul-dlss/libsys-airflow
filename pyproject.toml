@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "libsys-airflow"
+version = "0.1.0"
+description = "Airflow DAGS for migrating and managing ILS data into FOLIO along with other LibSys workflows"
+authors = ["Jeremy Nelson <jpnelson@stanford.edu>", "Joshua Greben <jgreben@stanford.edu>", "Shelley Doljack", "Laura Wrubel", "Michael J. Giarlo <mjgiarlo@stanford.edu>"]
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+argparse-prompt = "^0.0.5"
+jsonpath-ng = "^1.5.3"
+numpy = "^1.22.3"
+objectpath = "^0.6.1"
+pandas = "^1.4.1"
+pydantic = "^1.9.0"
+pymarc = "^4.1.3"
+folio-migration-tools = "1.7.8"
+pytest = "^7.1.1"
+pytest-mock = "^3.7.0"
+
+[tool.poetry.dev-dependencies]
+apache-airflow = "2.5.3"
+apache-airflow-providers-postgres = "5.4.0"
+coveralls = "~3.3.1"
+coverage = "~6.5.0"
+flake8 = "^6.0.0"
+folioclient = "^0.43.0"
+folio-uuid = "^0.2.8"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
