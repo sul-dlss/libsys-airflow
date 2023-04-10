@@ -1,6 +1,7 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 from plugins.folio.apps.circ_rules_tester_view import CircRulesTester
+from plugins.folio.apps.healthcheck_view import Healthcheck
 from plugins.folio.apps.folio_migration_view import FOLIOMigrationReports
 
 
@@ -28,6 +29,14 @@ circ_rules_tester_package = {
     "view": circ_rules_tester_view
 }
 
+# Healthcheck App
+healthcheck_view = Healthcheck()
+healthcheck_package = {
+    "name": "Healthcheck",
+    "category": "FOLIO",
+    "view": healthcheck_view
+}
+
 
 class FOLIOPlugin(AirflowPlugin):
     name = "FOLIOInformation"
@@ -36,5 +45,5 @@ class FOLIOPlugin(AirflowPlugin):
     hooks = []
     executors = []
     admin_views = []
-    appbuilder_views = [folio_appbuilder_package, circ_rules_tester_package]
+    appbuilder_views = [folio_appbuilder_package, circ_rules_tester_package, healthcheck_package]
     appbuilder_menu_items = []
