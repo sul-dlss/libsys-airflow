@@ -9,7 +9,7 @@ ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
 
 USER airflow
 
-COPY requirements.txt pyproject.toml poetry.lock .
+COPY airflow.cfg requirements.txt pyproject.toml poetry.lock .
 COPY libsys_airflow ./libsys_airflow
 
 RUN pip install -r requirements.txt
