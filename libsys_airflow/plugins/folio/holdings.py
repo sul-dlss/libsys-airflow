@@ -489,9 +489,10 @@ def boundwith_holdings(*args, **kwargs):
                         )
                     ),
                     "callNumber": row["BASE_CALL_NUMBER"],
-                    "callNumberTypeId": constants.call_number_codes[
-                        row["CALL_NUMBER_TYPE"]
-                    ],
+                    "callNumberTypeId": constants.call_number_codes.get(
+                        row["CALL_NUMBER_TYPE"],
+                        "Library of Congress classification"
+                    ),
                     "permanentLocationId": perm_loc_id,
                     "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
                 }
