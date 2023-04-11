@@ -2,14 +2,14 @@ import pandas as pd
 import pydantic
 import pytest
 
-from plugins.folio.helpers.tsv import (
+from libsys_airflow.plugins.folio.helpers.tsv import (
     _merge_notes,
     transform_move_tsvs,
 )
 
-import plugins.tests.mocks as mocks
+import tests.mocks as mocks
 
-from plugins.tests.mocks import mock_file_system, MockTaskInstance  # noqa
+from tests.mocks import mock_file_system, MockTaskInstance  # noqa
 from pytest_mock import MockerFixture  # noqa
 
 

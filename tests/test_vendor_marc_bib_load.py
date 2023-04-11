@@ -5,7 +5,7 @@ from airflow.models import DagBag
 
 @pytest.fixture()
 def dagbag():
-    return DagBag("dags")
+    return DagBag("libsys_airflow/dags")
 
 
 def test_dag_loaded(dagbag):

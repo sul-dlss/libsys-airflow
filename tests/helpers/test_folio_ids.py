@@ -2,15 +2,15 @@ import json
 
 import pydantic
 
-from plugins.folio.helpers.folio_ids import (
+from libsys_airflow.plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
     generate_item_identifiers,
 )
 
-from plugins.tests.test_holdings import holdings as mock_holding_records
-from plugins.tests.test_holdings import instances_holdings_items_map
+from tests.test_holdings import holdings as mock_holding_records
+from tests.test_holdings import instances_holdings_items_map
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system, mock_okapi_variable  # noqa
+from tests.mocks import mock_dag_run, mock_file_system, mock_okapi_variable  # noqa
 
 
 def test_generate_holdings_identifiers(

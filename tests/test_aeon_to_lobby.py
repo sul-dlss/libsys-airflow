@@ -111,7 +111,7 @@ def mock_aeon_post(monkeypatch, mocker: MockerFixture):
 
 
 def test_user_data(mock_queue_requests, mock_aeon_variable):
-    from plugins.aeon_to_lobby.aeon import user_transaction_data
+    from libsys_airflow.plugins.aeon_to_lobby.aeon import user_transaction_data
     user_data = user_transaction_data(
         aeon_url="https://aeon.example.us", aeon_key="123", queue_id="1"
     )
@@ -122,7 +122,7 @@ def test_user_data(mock_queue_requests, mock_aeon_variable):
 
 
 def test_filtered_user_data(mock_queue_requests, mock_aeon_variable):
-    from plugins.aeon_to_lobby.aeon import filtered_users
+    from libsys_airflow.plugins.aeon_to_lobby.aeon import filtered_users
     filtered_users = filtered_users(
         aeon_url="https://aeon.example.us", aeon_key="123", task_instance=MockTaskInstanceAeonUsers
     )
@@ -132,7 +132,7 @@ def test_filtered_user_data(mock_queue_requests, mock_aeon_variable):
 
 
 def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
-    from plugins.aeon_to_lobby.aeon import user_requests_in_queue
+    from libsys_airflow.plugins.aeon_to_lobby.aeon import user_requests_in_queue
     user_list = user_requests_in_queue(
         aeon_url="https://aeon.example.us", aeon_key="123", queue_id="1"
     )
@@ -141,7 +141,7 @@ def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
 
 
 def test_transform_data(mock_lobby_variable):
-    from dags.aeon_to_lobby import transform_data
+    from libsys_airflow.dags.aeon_to_lobby import transform_data
 
     lobby_users = transform_data(task_instance=MockTaskInstanceUserData)
 
@@ -152,7 +152,7 @@ def test_transform_data(mock_lobby_variable):
 
 
 def test_route_aeon_post(mock_queue_requests, mock_aeon_variable, mock_aeon_post, caplog):
-    from plugins.aeon_to_lobby.aeon import route_aeon_post
+    from libsys_airflow.plugins.aeon_to_lobby.aeon import route_aeon_post
     route_aeon_post(
         aeon_url="https://aeon.example.us",
         aeon_key="123",

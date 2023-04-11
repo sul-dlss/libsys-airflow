@@ -8,7 +8,7 @@ from airflow.operators.python import PythonOperator
 
 from folioclient import FolioClient
 
-from plugins.folio.helpers.bw import check_add_bw, discover_bw_parts_files
+from libsys_airflow.plugins.folio.helpers.bw import check_add_bw, discover_bw_parts_files
 
 logger = logging.getLogger(__name__)
 

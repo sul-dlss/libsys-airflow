@@ -5,10 +5,10 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
-from plugins.aeon_to_lobby.aeon import (
+from libsys_airflow.plugins.aeon_to_lobby.aeon import (
     user_transaction_data, route_aeon_post, filtered_users
 )
-from plugins.aeon_to_lobby.lobbytrack import lobby_post
+from libsys_airflow.plugins.aeon_to_lobby.lobbytrack import lobby_post
 
 
 default_args = {

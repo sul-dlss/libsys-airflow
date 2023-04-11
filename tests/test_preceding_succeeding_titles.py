@@ -2,9 +2,9 @@ import requests
 import pytest
 
 from pytest_mock import MockerFixture
-from dags.preceding_succeding_titles import post_to_folio
+from libsys_airflow.dags.preceding_succeding_titles import post_to_folio
 
-from plugins.tests.mocks import (  # noqa
+from tests.mocks import (  # noqa
     MockTaskInstance,
     mock_file_system,
     mock_dag_run,
@@ -41,7 +41,7 @@ def mock_get_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "dags.preceding_succeding_titles.get_current_context", mock_get_current_context
+        "libsys_airflow.dags.preceding_succeding_titles.get_current_context", mock_get_current_context
     )
 
 

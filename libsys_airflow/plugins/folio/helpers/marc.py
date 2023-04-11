@@ -13,8 +13,8 @@ import requests
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
-from plugins.folio.audit import AuditStatus, _add_audit_log
-from plugins.folio.remediate import _save_error
+from libsys_airflow.plugins.folio.audit import AuditStatus, _add_audit_log
+from libsys_airflow.plugins.folio.remediate import _save_error
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
 from folio_migration_tools.library_configuration import HridHandling
 
-from plugins.folio.helpers import post_to_okapi, setup_data_logging
+from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 

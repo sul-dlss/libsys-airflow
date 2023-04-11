@@ -23,8 +23,8 @@ from folio_migration_tools.marc_rules_transformation.rules_mapper_holdings impor
     RulesMapperHoldings,
 )
 
-from plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
-from plugins.folio.helpers.marc import filter_mhlds
+from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
+from libsys_airflow.plugins.folio.helpers.marc import filter_mhlds
 
 logger = logging.getLogger(__name__)
 

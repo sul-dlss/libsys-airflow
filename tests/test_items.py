@@ -7,10 +7,10 @@ import requests
 from copy import deepcopy
 
 from pytest_mock import MockerFixture
-from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
+from mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
 
-from plugins.folio.items import (
+from libsys_airflow.plugins.folio.items import (
     post_folio_items_records,
     run_items_transformer,
     _add_additional_info,

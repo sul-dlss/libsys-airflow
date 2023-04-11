@@ -10,7 +10,7 @@ from folioclient import FolioClient
 
 from folio_migration_tools.migration_tasks.items_transformer import ItemsTransformer
 
-from plugins.folio.helpers import post_to_okapi, setup_data_logging
+from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
 

@@ -11,9 +11,9 @@ import folio_migration_tools.migration_tasks.batch_poster as batch_poster
 from pytest_mock import MockerFixture
 from pymarc import Field, MARCWriter, Record
 
-from plugins.folio.audit import setup_audit_db
+from libsys_airflow.plugins.folio.audit import setup_audit_db
 
-from plugins.folio.helpers.marc import (
+from libsys_airflow.plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     discover_srs_files,
     _extract_e_holdings_fields,
@@ -26,9 +26,9 @@ from plugins.folio.helpers.marc import (
     post_marc_to_srs,
 )
 
-from plugins.folio.helpers.marc import process as process_marc
+from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
 
-from plugins.tests.mocks import (  # noqa
+from tests.mocks import (  # noqa
     mock_okapi_success,
     mock_dag_run,
     mock_file_system,
@@ -38,7 +38,7 @@ from plugins.tests.mocks import (  # noqa
     MockTaskInstance,
 )
 
-import plugins.tests.mocks as mocks
+import tests.mocks as mocks
 
 
 @pytest.fixture
@@ -309,7 +309,7 @@ def test_handle_srs_files(
     mocks.messages["find-srs-files"] = {"job-0": [str(mock_file_system[2])]}
 
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "folio/qa.sql"
+    db_init_file = current_file.parent.parent / "qa.sql"
     mock_db_init_file = airflow / "plugins/folio/qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 
