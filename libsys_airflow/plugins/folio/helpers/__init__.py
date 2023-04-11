@@ -96,7 +96,7 @@ def post_to_okapi(**kwargs) -> bool:
     payload_key = kwargs["payload_key"]
 
     tenant = "sul"
-    okapi_url = Variable.get("OKAPI_URL")
+    okapi_url = Variable.get("okapi_url")
 
     okapi_instance_url = f"{okapi_url}{endpoint}"
 
@@ -137,7 +137,7 @@ def put_to_okapi(**kwargs):
     payload_key = kwargs["payload_key"]
 
     tenant = "sul"
-    okapi_url = Variable.get("OKAPI_URL")
+    okapi_url = Variable.get("okapi_url")
 
     okapi_instance_url = f"{okapi_url}{endpoint}"
 

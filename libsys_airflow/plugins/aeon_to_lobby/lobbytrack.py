@@ -5,8 +5,8 @@ from airflow.models import Variable
 
 
 def lobby_post(**kwargs):
-    lobby_url=Variable.get("LOBBY_URL")
-    lobby_key=Variable.get("LOBBY_KEY")
+    lobby_url=Variable.get("lobby_url")
+    lobby_key=Variable.get("lobby_key")
 
     lobby_headers = {
         "Authorization": lobby_key,

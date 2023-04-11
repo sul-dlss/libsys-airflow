@@ -54,10 +54,10 @@ logger = logging.getLogger(__name__)
 
 
 sul_config = LibraryConfiguration(
-    okapi_url=Variable.get("OKAPI_URL"),
+    okapi_url=Variable.get("okapi_url"),
     tenant_id="sul",
-    okapi_username=Variable.get("FOLIO_USER"),
-    okapi_password=Variable.get("FOLIO_PASSWORD"),
+    okapi_username=Variable.get("folio_user"),
+    okapi_password=Variable.get("folio_password"),
     library_name="Stanford University Libraries",
     base_folder="/opt/airflow/migration",
     log_level_debug=True,

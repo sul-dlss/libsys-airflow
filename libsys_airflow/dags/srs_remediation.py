@@ -14,10 +14,10 @@ from plugins.folio.helpers.marc import discover_srs_files, handle_srs_files
 logger = logging.getLogger(__name__)
 
 FOLIO_CLIENT = FolioClient(
-    Variable.get("OKAPI_URL"),
+    Variable.get("okapi_url"),
     "sul",
-    Variable.get("FOLIO_USER"),
-    Variable.get("FOLIO_PASSWORD"),
+    Variable.get("folio_user"),
+    Variable.get("folio_password"),
 )
 
 parallel_posts = Variable.get("parallel_posts", 3)

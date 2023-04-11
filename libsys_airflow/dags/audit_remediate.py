@@ -14,10 +14,10 @@ from plugins.folio.audit import setup_audit_db, audit_instance_views
 from plugins.folio.remediate import add_missing_records, start_record_qa
 
 folio_client = FolioClient(
-    Variable.get("OKAPI_URL"),
+    Variable.get("okapi_url"),
     "sul",
-    Variable.get("FOLIO_USER"),
-    Variable.get("FOLIO_PASSWORD")
+    Variable.get("folio_user"),
+    Variable.get("folio_password")
 )
 
 default_args = {
