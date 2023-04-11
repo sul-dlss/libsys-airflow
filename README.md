@@ -64,7 +64,6 @@ cap airflow:webserver      # restart webserver
 1. Log into the server, `ksu` and install `apt install python3.8-venv libpq-dev`
 1. In your local environment do `cap ${stage} deploy`
 1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
-1. On the server `poetry shell && pip3 install docker-compose==1.29.2`
 1. In your local environment do `cap ${stage} deploy:install`
 1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps. See shared_configs for instructions on getting the airflow admin user's password from vault.
 
