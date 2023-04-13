@@ -9,8 +9,8 @@ import pydantic
 
 from airflow.models import Connection
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system  # noqa
-from plugins.folio.audit import _add_json_record, audit_instance_views, setup_audit_db
+from mocks import mock_dag_run, mock_file_system  # noqa
+from libsys_airflow.plugins.folio.audit import _add_json_record, audit_instance_views, setup_audit_db
 
 
 class MockCursor(object):
@@ -84,7 +84,7 @@ def test_audit_instance_views(
     results_dir = iterations_dir / "results"
 
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
+    db_init_file = current_file.parent / "qa.sql"
     mock_db_init_file = airflow / "plugins/folio/qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 
@@ -167,7 +167,7 @@ def test_audit_instance_views(
 
 def _init_mock_db(airflow):
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
+    db_init_file = current_file.parent / "qa.sql"
     mock_db_init_file = airflow / "plugins/folio/qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 

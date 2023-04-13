@@ -1,8 +1,8 @@
 import pytest  # noqa
 
-from plugins.tests.mocks import mock_file_system, mock_dag_run  # noqa
+from mocks import mock_file_system, mock_dag_run  # noqa
 
-from plugins.folio.apps.folio_migration_view import (
+from libsys_airflow.plugins.folio.apps.folio_migration_view import (
     _get_catkey_range,
     _get_folio_records,
     _get_reports_data_issues,

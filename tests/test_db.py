@@ -5,7 +5,7 @@ import pydantic
 from airflow.models import Connection
 
 
-from plugins.folio.db import add_inventory_triggers, drop_inventory_triggers
+from libsys_airflow.plugins.folio.db import add_inventory_triggers, drop_inventory_triggers
 
 
 class MockCursor(pydantic.BaseModel):

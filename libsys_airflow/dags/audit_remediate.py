@@ -10,8 +10,8 @@ from airflow.models import Variable
 from textwrap import dedent
 
 from folioclient import FolioClient
-from plugins.folio.audit import setup_audit_db, audit_instance_views
-from plugins.folio.remediate import add_missing_records, start_record_qa
+from libsys_airflow.plugins.folio.audit import setup_audit_db, audit_instance_views
+from libsys_airflow.plugins.folio.remediate import add_missing_records, start_record_qa
 
 folio_client = FolioClient(
     Variable.get("okapi_url"),

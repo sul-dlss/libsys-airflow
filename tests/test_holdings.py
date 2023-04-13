@@ -4,7 +4,7 @@ import pytest  # noqa
 import pydantic
 import pymarc
 
-from plugins.folio.holdings import (
+from libsys_airflow.plugins.folio.holdings import (
     electronic_holdings,
     post_folio_holding_records,
     update_holdings,
@@ -15,7 +15,7 @@ from plugins.folio.holdings import (
     _wrap_additional_mapping,
 )
 
-from plugins.tests.mocks import (  # noqa
+from tests.mocks import (  # noqa
     mock_okapi_success,
     mock_dag_run,
     mock_okapi_variable,
@@ -24,7 +24,7 @@ from plugins.tests.mocks import (  # noqa
     MockTaskInstance,
 )
 
-import plugins.tests.mocks as mocks
+import tests.mocks as mocks
 
 
 class MockMapper(pydantic.BaseModel):

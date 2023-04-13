@@ -7,7 +7,7 @@ import requests
 
 from airflow.operators.python import get_current_context
 from folioclient import FolioClient
-from plugins.folio.audit import AuditStatus
+from libsys_airflow.plugins.folio.audit import AuditStatus
 from folio_uuid.folio_uuid import FOLIONamespaces
 
 logger = logging.getLogger(__name__)

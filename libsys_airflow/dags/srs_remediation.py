@@ -9,7 +9,7 @@ from airflow.operators.python import PythonOperator
 
 from folioclient import FolioClient
 
-from plugins.folio.helpers.marc import discover_srs_files, handle_srs_files
+from libsys_airflow.plugins.folio.helpers.marc import discover_srs_files, handle_srs_files
 
 logger = logging.getLogger(__name__)
 

@@ -99,11 +99,13 @@ database being used by Okapi.
 
 ## Testing
 1. Install dependencies per `Dependency Management and Packaging` above
-1. Change into the poetry build dir: `cd libsys_airflow`
 1. Drop into the poetry virtual environment: `poetry shell`
 
 Run the flake8 linter:
 `flake8 dags/ plugins/`
+
+Install the test database (sqlite):
+`airflow db init`
 
 Then, to run the test suite, use [pytest](https://docs.pytest.org/).
 `pytest`

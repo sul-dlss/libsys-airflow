@@ -30,7 +30,6 @@ jobs:
         poetry run flake8 --ignore=E225,E501,F401,F811,W503 dags/ plugins/
     - name: Test with pytest
       run: |
-        cd libsys_airflow
         poetry run airflow db init
         poetry run coverage run -m pytest
         poetry run coverage lcov

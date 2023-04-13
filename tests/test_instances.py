@@ -6,14 +6,14 @@ import requests
 
 from pytest_mock import MockerFixture
 
-from plugins.folio.instances import (
+from libsys_airflow.plugins.folio.instances import (
     _adjust_records,
     _get_statistical_codes,
     post_folio_instance_records,
     run_bibs_transformer,
 )
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
+from mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
 instances = [{}, {}]
 

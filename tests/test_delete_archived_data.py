@@ -2,10 +2,10 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from dags.delete_archived_data import delete_archived_data
-from plugins.folio.helpers import archive_artifacts
+from libsys_airflow.dags.delete_archived_data import delete_archived_data
+from libsys_airflow.plugins.folio.helpers import archive_artifacts
 
-from plugins.tests.mocks import mock_dag_run, mock_file_system # noqa
+from mocks import mock_dag_run, mock_file_system # noqa
 
 
 def test_delete_archived_data(mock_dag_run, mock_file_system): # noqa

@@ -10,22 +10,22 @@ from folio_uuid.folio_uuid import FOLIONamespaces
 
 from pytest_mock import MockerFixture
 
-from plugins.tests.mocks import (  # noqa
+from mocks import (  # noqa
     mock_dag_run,
     mock_file_system,
     mock_okapi_success,
     MockFOLIOClient,
 )
 
-from plugins.folio.audit import setup_audit_db
-from plugins.folio.remediate import add_missing_records, _post_record, start_record_qa
+from libsys_airflow.plugins.folio.audit import setup_audit_db
+from libsys_airflow.plugins.folio.remediate import add_missing_records, _post_record, start_record_qa
 
 
 def mock_audit_database(mock_dag_run, mock_file_system):  # noqa
     airflow = mock_file_system[0]
 
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parents[2] / "plugins/folio/qa.sql"
+    db_init_file = current_file.parent / "qa.sql"
     mock_db_init_file = airflow / "plugins/folio/qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 
@@ -183,7 +183,7 @@ def mock_get_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "plugins.folio.remediate.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.remediate.get_current_context", mock_get_current_context
     )
 
 
@@ -200,7 +200,7 @@ def mock_get_current_context_no_iteration(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "plugins.folio.remediate.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.remediate.get_current_context", mock_get_current_context
     )
 
 

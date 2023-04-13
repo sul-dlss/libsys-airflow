@@ -3,16 +3,16 @@ import requests
 
 from pytest_mock import MockerFixture
 
-from plugins.tests.mocks import (  # noqa
+from mocks import (  # noqa
     mock_dag_run,
     mock_file_system,
     MockFOLIOClient,
     MockTaskInstance
 )
 
-import plugins.tests.mocks as mocks
+import mocks
 
-from plugins.folio.circ_rules import (
+from libsys_airflow.plugins.folio.circ_rules import (
     friendly_report,
     friendly_batch_report,
     generate_report,
@@ -141,7 +141,7 @@ def mock_valid_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
     )
 
 
@@ -158,7 +158,7 @@ def mock_missing_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
     )
 
 
@@ -175,7 +175,7 @@ def mock_batch_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
     )
 
 

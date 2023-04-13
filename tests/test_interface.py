@@ -1,7 +1,7 @@
 import pydantic
 import pytest  # noqa
 
-from plugins.folio.interface import (
+from libsys_airflow.plugins.folio.interface import (
     interface_info
 )
 

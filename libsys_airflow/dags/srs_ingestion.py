@@ -8,7 +8,7 @@ from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.helpers.marc import post_marc_to_srs
+from libsys_airflow.plugins.folio.helpers.marc import post_marc_to_srs
 
 logger = logging.getLogger(__name__)
 

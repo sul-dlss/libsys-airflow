@@ -17,22 +17,22 @@ from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from plugins.folio.helpers import get_bib_files, process_records, setup_dag_run_folders
+from libsys_airflow.plugins.folio.helpers import get_bib_files, process_records, setup_dag_run_folders
 
-from plugins.folio.helpers.marc import process as process_marc
-from plugins.folio.helpers.marc import (
+from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
+from libsys_airflow.plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
 )
 
-from plugins.folio.helpers.tsv import transform_move_tsvs, unwanted_item_cat1
+from libsys_airflow.plugins.folio.helpers.tsv import transform_move_tsvs, unwanted_item_cat1
 
-from plugins.folio.helpers.folio_ids import (
+from libsys_airflow.plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
     generate_item_identifiers,
 )
 
-from plugins.folio.holdings import (
+from libsys_airflow.plugins.folio.holdings import (
     electronic_holdings,
     update_holdings,
     post_folio_holding_records,
@@ -41,11 +41,11 @@ from plugins.folio.holdings import (
     boundwith_holdings,
 )
 
-from plugins.folio.login import folio_login
+from libsys_airflow.plugins.folio.login import folio_login
 
-from plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
+from libsys_airflow.plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
 
-from plugins.folio.items import (
+from libsys_airflow.plugins.folio.items import (
     post_folio_items_records,
     run_items_transformer,
 )

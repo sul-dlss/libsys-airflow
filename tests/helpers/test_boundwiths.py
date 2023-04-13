@@ -5,15 +5,15 @@ import requests
 
 from pytest_mock import MockerFixture
 
-from plugins.folio.helpers.bw import discover_bw_parts_files, check_add_bw
-from plugins.tests.mocks import (  # noqa
+from libsys_airflow.plugins.folio.helpers.bw import discover_bw_parts_files, check_add_bw
+from tests.mocks import (  # noqa
     mock_file_system,
     mock_dag_run,
     MockFOLIOClient,
     MockTaskInstance,
 )
 
-import plugins.tests.mocks as mocks
+import tests.mocks as mocks
 
 
 @pytest.fixture

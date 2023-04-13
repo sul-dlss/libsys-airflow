@@ -8,8 +8,8 @@ from airflow import DAG
 from airflow.operators.python import get_current_context
 from airflow.operators.python import PythonOperator
 
-from plugins.folio.login import folio_login
-from plugins.folio.helpers import post_to_okapi, put_to_okapi
+from libsys_airflow.plugins.folio.login import folio_login
+from libsys_airflow.plugins.folio.helpers import post_to_okapi, put_to_okapi
 
 
 logger = logging.getLogger(__name__)

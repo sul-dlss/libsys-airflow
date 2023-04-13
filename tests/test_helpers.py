@@ -7,7 +7,7 @@ import requests
 from airflow.models import Variable
 from pytest_mock import MockerFixture
 
-from plugins.folio.helpers import (
+from libsys_airflow.plugins.folio.helpers import (
     archive_artifacts,
     get_bib_files,
     post_to_okapi,
@@ -16,13 +16,13 @@ from plugins.folio.helpers import (
     setup_data_logging,
 )
 
-from plugins.tests.mocks import ( # noqa
+from mocks import ( # noqa
     mock_dag_run,
     mock_file_system,
     MockTaskInstance
 )
 
-import plugins.tests.mocks as mocks
+import mocks
 
 
 class MockDagRun(pydantic.BaseModel):
@@ -165,6 +165,7 @@ def test_get_bib_files():
     get_bib_files(task_instance=MockTaskInstance(task_id="bib-files-group"),
                   context=context)
 
+    # {'bib-files-group': {'marc-file': 'sample.mrc', 'tsv-files': ['sample.public.tsv', 'sample.circ.tsv'], 'tsv-base': 'sample.tsv', 'tsv-dates': 'sample.dates.tsv', 'mhld-file': None, 'bwchild-file': None}}
     assert mocks.messages["bib-files-group"]["marc-file"].startswith("sample.mrc")
     assert len(mocks.messages["bib-files-group"]["tsv-files"]) == 2
     assert mocks.messages["bib-files-group"]["tsv-base"].startswith("sample.tsv")

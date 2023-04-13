@@ -9,7 +9,7 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 
 from folioclient import FolioClient
-from plugins.folio.circ_rules import (
+from libsys_airflow.plugins.folio.circ_rules import (
     friendly_report,
     generate_report,
     generate_urls,
