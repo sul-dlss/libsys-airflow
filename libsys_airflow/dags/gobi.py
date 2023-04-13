@@ -12,13 +12,13 @@ from plugins.vendors import (
     zip_extraction
 )
 
+
 with DAG(
     "gobi",
     schedule_interval=None,
     start_date=datetime(2023, 4, 11),
     catchup=False,
 ) as dag:
-    
 
     handle_retrieved_file = PythonOperator(
         task_id="check-count-file",
@@ -31,19 +31,32 @@ with DAG(
 
     extract_zipfiles = PythonOperator(
         task_id="extract-zipfiles",
-        python_callable=zip_extraction
+        python_callable=zip_extraction,
+        op_kwargs={
+            "zipfile": "{{ ti.xcom_pull('check-count-file', key='zipfile') }}"
+        }
     )
 
     make_backups = PythonOperator(
         task_id="file-backups",
-        python_callable=backup_retrieved_files
+        python_callable=backup_retrieved_files,
+        op_kwargs={
+            "backup_files": ["{{ ti.xcom_pull('check-count-file', key='marc-brief-orders') }}",
+                             "{{ ti.xcom_pull('check-count-file', key='full-marc') }}"],
+            "zip_task_id": "extract-zipfiles"
+        }
     )
 
     rename_files = PythonOperator(
         task_id="rename-files",
-        python_callable=rename_vendor_files
+        python_callable=rename_vendor_files,
+        op_kwargs={
+            "files": [
+                "{{ ti.xcom_pull('check-count-file', key='marc-brief-orders') }}",
+                "{{ ti.xcom_pull('check-count-file', key='full-marc') }}"
+            ]
+        }
     )
-
 
     update_migration = EmptyOperator(
         task_id="marc-record-updates"
@@ -68,7 +81,6 @@ with DAG(
     send_bibs_to_backstage = EmptyOperator(
         task_id="send-bibs-to-backstage"
     )
-
 
     with TaskGroup(group_id="reporting") as reporting:
         start_reporting = EmptyOperator(
