@@ -4,5 +4,7 @@ __pycache__/
 .coveralls.yml
 .coverage
 coverage.lcov
+coverage.xml
 circ/
 dist/
+.python-version

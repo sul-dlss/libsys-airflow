@@ -98,10 +98,10 @@ database being used by Okapi.
 
 ## Testing
 1. Install dependencies per `Dependency Management and Packaging` above
-1. Drop into the poetry virtual environment: `poetry shell`
+1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
 
 Run the flake8 linter:
-`flake8 dags/ plugins/`
+`flake8 libsys_airflow/` (_Note_: As of 2023-04-13, the `--ignore=E225,E501,F401,F811,W503` option is given in CI; you may want to do similarly to see the lint warnings that'll actually fail CI.  See `Lint with flake8` `build` step in `.github/workflows/python-app.yml` for current invocation.)
 
 Install the test database (sqlite):
 `airflow db init`
@@ -111,9 +111,6 @@ Then, to run the test suite, use [pytest](https://docs.pytest.org/).
 
 To see stdout or stderr add the `-rP` flag:
 `pytest -rP`
-
-To run with code coverage:
-`coverage run -m pytest`
 
 ## Symphony Mount
 MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
