@@ -30,9 +30,11 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
     If not added, they will default to a blank string. These are usually applied to VMs by puppet. These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables).) A list of keys in vault, not prefixed by `AIRFLOW_VAR_`, is at: `vault kv list puppet/application/folio/dev/`.
 
-5. Run `docker-compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-6. Run `docker-compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
-7. Bring up Airflow, `docker-compose up` to run the containers in the foreground. Use `docker-compose up -d` to run as a daemon.
+    **NOTE** In order to connect to the OKAPI_URL you must be connected to the VPN or the on-campus network.
+
+5. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
+6. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
+7. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
 8. Access Airflow locally at http://localhost:3000. The default username and password are both `airflow`.
 9. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
@@ -50,8 +52,8 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ### Tasks
 1. List all the airflow tasks using `cap -AT airflow`
 ```
-cap airflow:build          # run docker-compose build for airflow
-cap airflow:init           # run docker-compose init for airflow
+cap airflow:build          # run docker compose build for airflow
+cap airflow:init           # run docker compose init for airflow
 cap airflow:ps             # show running docker processes
 cap airflow:restart        # restart airflow
 cap airflow:start          # start airflow
@@ -78,7 +80,7 @@ This will stop and remove the docker images for the previous release and start u
 ## FOLIO Plugin
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
-by running `cap {stage} airflow:webserver` or ssh into the server and run `docker-compose restart airflow-webserver`
+by running `cap {stage} airflow:webserver` or ssh into the server and run `docker compose restart airflow-webserver`
 to see changes in the running Airflow environment.
 
 ## Running the DAGs to load Folio Inventory
