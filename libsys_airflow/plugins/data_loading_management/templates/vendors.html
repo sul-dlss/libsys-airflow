@@ -1,0 +1,34 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<h1>Vendor Management</h1>
+<table class="table table-striped">
+    <thead>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Last Scheduled Job</th>
+    </thead>
+    <tbody>
+        {% for vendor in vendors.organizations %}
+        <tr>
+            <td>
+                {{ vendor.name }}<br>
+                ID: {{ vendor.id }}
+            </td>
+            <td>
+                {{ vendor.status }}
+            </td>
+            <td>
+                TBD
+            </td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-primary">Load Data</button>
+                    <button class="btn btn-danger">Disable</button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
