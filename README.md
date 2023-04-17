@@ -64,15 +64,15 @@ cap airflow:webserver      # restart webserver
 
 ### Do the first time you bring up Libsys-Airflow:
 1. Log into the server, and run:
-  1. `ksu`
-  1. `apt install python3.8-venv libpq-dev`
-  1. `python3.10 -m venv virtual-env`
-  1. `touch /home/libsys/libsys-airflow/shared/config/.env`
-  1. `vim /home/libsys/libsys-airflow/shared/config/.env` and add the following content:
-      ```
-      AIRFLOW_UID=214
-      AIRFLOW_GROUP=0
-      ```
+    1. `ksu`
+    1. `apt install python3.8-venv libpq-dev`
+    1. `python3.10 -m venv virtual-env`
+    1. `touch /home/libsys/libsys-airflow/shared/config/.env`
+    1. `vim /home/libsys/libsys-airflow/shared/config/.env` and add the following content:
+        ```
+        AIRFLOW_UID=214
+        AIRFLOW_GROUP=0
+        ```
 1. In your local environment do `cap ${env} deploy deploy:install`
 1. Visit https://sul-libsys-airflow-{env}.stanford.edu and complete the remaining steps. See shared_configs for instructions on getting the airflow admin user's password from vault.
 
