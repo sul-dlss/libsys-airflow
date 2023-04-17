@@ -4,6 +4,7 @@
 call_number_codes = {
     "0": "6caca63e-5651-4db6-9247-3205156e9699",
     "ALPHANUM": "28927d76-e097-4f63-8510-e56f2b7a3ad0",
+    "ASIS": "28927d76-e097-4f63-8510-e56f2b7a3ad0",
     "DEWEY": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
     "DEWEYPER": "03dd64d0-5626-4ecd-8ece-4531e0069f35",
     "LC": "95467209-6d7b-468b-94df-0f5d7ad2747d",
