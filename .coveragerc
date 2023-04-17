@@ -1,4 +1,3 @@
 [run]
 omit =
-    plugins/tests/*
-    *migration_tools/*
+    tests/*

@@ -31,6 +31,6 @@ jobs:
     - name: Test with pytest
       run: |
         poetry run airflow db init
-        poetry run coverage run -m pytest
+        poetry run pytest -rP
         poetry run coverage lcov
         poetry run coveralls --service=github

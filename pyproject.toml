@@ -23,6 +23,7 @@ coveralls = "~3.3.1"
 coverage = "~6.5.0"
 flake8 = "^6.0.0"
 pytest = "^7.1.1"
+pytest-cov = "^4.0.0"
 pytest-mock = "^3.7.0"
 # these are needed for running tests outside of the airflow docker container
 # the airflow version here should be kept in sync with the docker image
