@@ -17,7 +17,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
 2. Start up docker locally.
 3. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
-4. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.) 
+4. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
   * `AIRFLOW_VAR_AEON_URL`
   * `AIRFLOW_VAR_AEON_KEY`
   * `AIRFLOW_VAR_AEON_SOURCE_QUEUE_ID`
@@ -63,14 +63,21 @@ cap airflow:webserver      # restart webserver
 ```
 
 ### Do the first time you bring up Libsys-Airflow:
-1. Log into the server, `ksu` and install `apt install python3.8-venv libpq-dev`
-1. In your local environment do `cap ${stage} deploy`
-1. Follow the instructions for [shared_configs/libsys-airflow](https://github.com/sul-dlss/shared_configs/tree/libsys-airflow#readme)
-1. In your local environment do `cap ${stage} deploy:install`
-1. Visit https://sul-libsys-airflow-{stage}.stanford.edu and complete the remaining steps. See shared_configs for instructions on getting the airflow admin user's password from vault.
+1. Log into the server, and run:
+    1. `ksu`
+    1. `apt install python3.8-venv libpq-dev`
+    1. `python3.10 -m venv virtual-env`
+    1. `touch /home/libsys/libsys-airflow/shared/config/.env`
+    1. `vim /home/libsys/libsys-airflow/shared/config/.env` and add the following content:
+        ```
+        AIRFLOW_UID=214
+        AIRFLOW_GROUP=0
+        ```
+1. In your local environment do `cap ${env} deploy deploy:install`
+1. Visit https://sul-libsys-airflow-{env}.stanford.edu and complete the remaining steps. See shared_configs for instructions on getting the airflow admin user's password from vault.
 
 ## For subsequent deploys
-`cap ${stage} deploy deploy:restart`
+`cap ${env} deploy deploy:restart`
 
 This will stop and remove the docker images for the previous release and start up a new one.
 
@@ -80,7 +87,7 @@ This will stop and remove the docker images for the previous release and start u
 ## FOLIO Plugin
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
-by running `cap {stage} airflow:webserver` or ssh into the server and run `docker compose restart airflow-webserver`
+by running `cap {env} airflow:webserver` or ssh into the server and run `docker compose restart airflow-webserver`
 to see changes in the running Airflow environment.
 
 ## Running the DAGs to load Folio Inventory

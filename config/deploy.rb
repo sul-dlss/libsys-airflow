@@ -80,24 +80,24 @@ namespace :airflow do
     end
   end
 
-  desc 'run docker-compose build for airflow'
+  desc 'run docker compose build for airflow'
   task :build do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml build"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml build"
     end
   end
 
   desc 'stop and remove all running docker containers'
   task :stop do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml stop"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml stop"
     end
   end
 
-  desc 'run docker-compose init for airflow'
+  desc 'run docker compose init for airflow'
   task :init do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml up airflow-init"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml up airflow-init"
     end
   end
 
@@ -106,14 +106,14 @@ namespace :airflow do
     on roles(:app) do
       invoke 'airflow:build'
       invoke 'airflow:init'
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml up -d"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml up -d"
     end
   end
 
   desc 'restart webserver'
   task :webserver do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml restart airflow-webserver"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml restart airflow-webserver"
     end
   end
 
@@ -129,7 +129,7 @@ namespace :airflow do
   task :stop_release do
     on roles(:app) do
       execute "docker image prune -f"
-      execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker-compose -f docker-compose.prod.yaml stop"
+      execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml stop"
       execute "[[ $(docker ps -aq) ]] && docker ps -aq | xargs docker stop | xargs docker rm || echo 'no containers to stop'"
     end
   end
