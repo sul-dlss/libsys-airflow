@@ -14,7 +14,7 @@ from plugins.vendors import (
 
 
 with DAG(
-    "gobi",
+    dag_id="gobi",
     schedule_interval=None,
     start_date=datetime(2023, 4, 11),
     catchup=False,
