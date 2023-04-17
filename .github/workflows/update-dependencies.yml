@@ -1,0 +1,41 @@
+name: Update Dependencies
+
+#on:
+#  schedule:
+#    - cron: '0 3 * * 1'
+
+on:
+  push:
+    branches:
+      - t257-dep-updates
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - name: Update Poetry dependencies
+      run: |
+        git config user.name "dlss-infra-bot"
+        git config user.email "dlss-infrastructure-team-owner@lists.stanford.edu"
+        git checkout -b update-dependencies
+        pip install -r requirements.txt
+
+        # we update main only so as not to update apache-airflow which is a test 
+        # dependency but is managed by the Docker image
+        poetry update --only main
+
+        # if something was committed push it and create a pull request
+        git commit -m "Updated Python dependencies" poetry.lock
+        if [ $? -eq 0 ]; then
+          git push origin update-dependencies
+          gh pr create --base main --head update-dependencies --title "Updated Python dependencies" --body "Updated Poetry dependencies via Github Action"
+        else
+          echo "No Python dependencies need updating"
+        fi
