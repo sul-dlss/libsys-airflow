@@ -117,13 +117,13 @@ def mock_xcom_push(*args, **kwargs):
 
 def mock_xcom_pull(*args, **kwargs):
     task_id = kwargs["task_ids"]
-    key = kwargs.get("key")
+    key = kwargs.get("key", "return_value")
     if task_id in messages:
         if key in messages[task_id]:
             return messages[task_id][key]
     return "a0token"
 
-
+ 
 class MockFOLIOClient(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_headers: dict = {}

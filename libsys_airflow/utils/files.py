@@ -25,7 +25,7 @@ def check_retrieve_files(*args, **kwargs):
 
     # Connects
     logger.info(f"Connects to Vendor {interface_info}")
-    interface_path = "/opt/airflow/vendor_123/2023-04-13"
+    interface_path = "/opt/airflow/dataloader/gobi/2023-04-13"
     task_instance.xcom_push(key="marc-brief-orders", value=f"{interface_path}/sample.mrc")
     task_instance.xcom_push(key="zipfile", value=f"{interface_path}/sample.zip")
     task_instance.xcom_push(key="full-marc", value=f"{interface_path}/full-sample.mrc")
