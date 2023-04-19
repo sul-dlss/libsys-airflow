@@ -35,7 +35,7 @@ with DAG(
     default_args=default_args,
     start_date=datetime(2022, 3, 28),
     catchup=False,
-    max_active_runs=3,
+    max_active_runs=4,
     tags=["bib_import"],
 ) as dag:
     dag.doc = dedent("""# Audit and Remediation DAG""")
