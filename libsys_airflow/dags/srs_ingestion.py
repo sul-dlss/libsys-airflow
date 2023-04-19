@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "bib_import"],
-    max_active_runs=1,
+    max_active_runs=4,
 )
 def add_marc_to_srs():
     """

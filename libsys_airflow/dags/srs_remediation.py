@@ -20,7 +20,7 @@ FOLIO_CLIENT = FolioClient(
     Variable.get("folio_password"),
 )
 
-parallel_posts = Variable.get("parallel_posts", 3)
+parallel_posts = int(Variable.get("parallel_posts", 3))
 
 with DAG(
     "srs_audit_checks",
