@@ -1,0 +1,11 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>Example App</h2>
+    <p>Hello with a change of info: {{ info }}</p>
+
+    <p><a href="{{ url_for('.dag_info') }}">DAGS List</a></p>
+
+</div>
+{% endblock %}

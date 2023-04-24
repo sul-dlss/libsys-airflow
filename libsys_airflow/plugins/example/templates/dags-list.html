@@ -1,0 +1,19 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>DAGs List: ({{ entries }} total) </h2>
+      <p>Example data from API</p>
+    <ul>
+      {% for dag in dags_list %}
+        <li>{{ dag["dag_id"] }} - tags: {% for tag in dag["tags"] %}{{ tag["name"] }}{% endfor %}</li>
+      {% endfor %} 
+    </ul>
+    <h3>DAG Dependencies:</h3>
+      <p>Example data from orm query:</p>
+      <p>{{ dag_dependencies }}</p>
+    <h3>Alembic version:</h3>
+      <p>Example from direct SQL query</p>
+      <p>{{ alembic_v }}</p>
+</div>
+{% endblock %}
