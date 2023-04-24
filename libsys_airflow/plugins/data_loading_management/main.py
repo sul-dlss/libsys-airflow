@@ -2,7 +2,8 @@ from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 
 from plugins.data_loading_management.data_loading import DataManagementView
-from plugins.data_loading_management.vendors import VendorsView
+from plugins.data_loading_management.vendors import OrganizationView
+
 
 data_load_mgt_bp = Blueprint(
     "data_loading_management",
@@ -21,13 +22,12 @@ data_mg_view_package = {
 }
 
 # Vendor Management
-vendor_index_view = VendorsView()
+vendor_index_view = OrganizationView()
 vendor_index_view_package = {
     "name": "Vendor Management",
     "category": "Data Loading Management",
     "view": vendor_index_view,
 }
-
 
 
 class VendorDataManagementPlugin(AirflowPlugin):
