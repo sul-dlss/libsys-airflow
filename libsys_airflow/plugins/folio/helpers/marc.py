@@ -46,13 +46,18 @@ def _add_srs_audit_record(record: dict, connection, record_type):
         hrid = record["externalIdsHolder"]["holdingsHrid"]
     else:
         hrid = record["externalIdsHolder"]["instanceHrid"]
-    cur.execute(
-        """INSERT INTO Record (uuid, hrid, folio_type, current_version)
-           VALUES (?,?,?,?);""",
-        (record["id"], hrid, record_type, record["generation"]),
-    )
-    record_id = cur.lastrowid
-    connection.commit()
+    record_exists = cur.execute("SELECT id FROM Record WHERE uuid=?",
+                                (record['id'],)).fetchone()
+    if record_exists:
+        record_id = record_exists[0]
+    else:
+        cur.execute(
+            """INSERT INTO Record (uuid, hrid, folio_type, current_version)
+            VALUES (?,?,?,?);""",
+            (record["id"], hrid, record_type, record["generation"]),
+        )
+        record_id = cur.lastrowid
+        connection.commit()
     cur.close()
     return record_id
 
