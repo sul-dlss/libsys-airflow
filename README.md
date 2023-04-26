@@ -8,6 +8,10 @@ To install the dependencies, run:
 * `pip install -r requirements.txt`
 * `poetry install`
 
+### Adding new dependencies
+
+When adding a new dependency to the application, follow the `poetry add` documentation (https://python-poetry.org/docs/cli/#add) to ensure that the dependency is captured in `pyproject.toml`.
+
 ## Running Locally with Docker
 Based on the documentation, [Running Airflow in Docker](https://airflow.apache.org/docs/apache-airflow/stable/start/docker.html).
 
