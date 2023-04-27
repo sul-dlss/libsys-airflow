@@ -1,0 +1,28 @@
+# Inventory Audit/Remediation Report
+
+## Inventory Record Totals
+- **Instances**: {{ "{:,}".format(instances.total|default(0)) }}
+- **Holdings**: {{ "{:,}".format(holdings.total|default(0)) }}
+- **Items**: {{ "{:,}".format(items.total|default(0)) }}
+
+## Instance Records Statuses
+- **Exists**: {{ "{:,}".format(instances.exists|default(0)) }}
+- **Missing**: {{ "{:,}".format(instances.missing|default(0)) }}
+- **Errors**: {{ "{:,}".format(instances.errors|default(0)) }}
+- **Added (if missing)**: {{ "{:,}".format(instances.added|default(0)) }}
+
+## Holdings Records Statuses
+- **Exists**: {{ "{:,}".format(holdings.exists|default(0)) }}
+- **Missing**: {{ "{:,}".format(holdings.missing|default(0)) }}
+- **Errors**: {{"{:,}".format( holdings.errors|default(0)) }}
+- **Added (if missing)**: {{ "{:,}".format(holdings.added|default(0)) }}
+
+## Items Records Statuses
+- **Exists**: {{ "{:,}".format(items.exists|default(0)) }}
+- **Missing**: {{ "{:,}".format(items.missing|default(0)) }}
+- **Errors**: {{ "{:,}".format(items.errors|default(0)) }}
+- **Added (if missing)**: {{ "{:,}".format(items.added|default(0)) }}
+
+## Error Details
+
+{{ errors|safe }}

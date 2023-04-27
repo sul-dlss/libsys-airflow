@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
@@ -12,6 +12,7 @@ from textwrap import dedent
 from folioclient import FolioClient
 from libsys_airflow.plugins.folio.audit import setup_audit_db, audit_instance_views
 from libsys_airflow.plugins.folio.remediate import add_missing_records, start_record_qa
+from libsys_airflow.plugins.folio.reports import inventory_audit_report
 
 folio_client = FolioClient(
     Variable.get("okapi_url"),
@@ -69,8 +70,17 @@ with DAG(
         },
     )
 
-    finished = DummyOperator(task_id="finished-errors-handling")
+    generate_report = PythonOperator(
+        task_id="inventory-report",
+        python_callable=inventory_audit_report,
+        op_kwargs={
+            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}"
+        }
+    )
+
+    finished = EmptyOperator(task_id="finished-errors-handling")
 
     start_check_add >> init_audit_remediation_db
     init_audit_remediation_db >> instance_views_audit
-    instance_views_audit >> remediate_missing_records >> finished
+    instance_views_audit >> remediate_missing_records
+    remediate_missing_records >> generate_report >> finished

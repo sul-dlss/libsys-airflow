@@ -1,0 +1,16 @@
+# SRS Audit/Remediation Report
+
+## Totals SRS Records
+
+- **MHLD SRS Records**: {{"{:,}".format(total_mhld_srs_records|default(0))}}
+- **SRS BIBs Records**: {{"{:,}".format(total_bib_srs_records|default(0))}}
+
+## SRS MHLD Audit Status
+- **Exists**: {{"{:,}".format(exists_mhld|default(0))}}
+- **Missing**: {{"{:,}".format(missing_mhld|default(0))}}
+- **Errors**: {{"{:,}".format(error_mhld|default(0))}}
+
+## SRS BIBs Audit Status
+- **Exists**: {{"{:,}".format(exists_bibs|default(0))}}
+- **Missing**: {{"{:,}".format(missing_bibs|default(0))}}
+- **Errors**: {{"{:,}".format(error_bibs|default(0))}}

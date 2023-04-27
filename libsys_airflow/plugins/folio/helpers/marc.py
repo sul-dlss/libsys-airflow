@@ -13,7 +13,8 @@ import requests
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
-from libsys_airflow.plugins.folio.audit import AuditStatus, _add_audit_log
+from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
+from libsys_airflow.plugins.folio.reports import srs_audit_report
 from libsys_airflow.plugins.folio.remediate import _save_error
 
 logger = logging.getLogger(__name__)
@@ -79,11 +80,11 @@ def _check_add_srs_records(**kwargs):
 
     match check_record.status_code:
         case 200:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
             return
 
         case 404:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.MISSING.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.MISSING.value)
             srs_record["snapshotId"] = snapshot_id
             add_result = requests.post(
                 f"{folio_client.okapi_url}/source-storage/records",
@@ -97,7 +98,7 @@ def _check_add_srs_records(**kwargs):
                 )
 
         case _:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.ERROR.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.ERROR.value)
             _save_error(audit_connection, db_record_id, check_record)
             logger.error(
                 f"Failed to retrieve {srs_id}, {check_record.status_code} message {check_record.text}"
@@ -194,6 +195,7 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
+<<<<<<< HEAD
 def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
     """
     Generates a SRS Audit Report
@@ -249,6 +251,8 @@ AuditLog.status=?;"""
     report_path.write_text(audit_report)
 
 
+=======
+>>>>>>> 84fdc66 (Refactors for a report module using jinja templates)
 def _srs_check_add(**kwargs):
     """
     Runs audit/remediation for a single SRS file
@@ -320,7 +324,7 @@ def _handle_srs_iteration(**kwargs):
         srs_label="SRS MARC BIBs",
     )
 
-    _srs_audit_report(audit_connection, iteration)
+    srs_audit_report(audit_connection, iteration)
 
     audit_connection.close()
     total = mhld_count + bib_count
