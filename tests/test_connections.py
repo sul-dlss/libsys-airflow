@@ -38,17 +38,16 @@ def find_connection(conn_id, session):
 
 
 def test_connection_does_not_exist(db_session):
-    delete_connection("ftp-example.com", db_session)
-    conn_id = find_or_create_conn(
-        "ftp", "example.com", "user", "pass", "/opt/airflow/vendor-keys/example.com"
-    )
-    assert conn_id == "ftp-example.com"
+    delete_connection('ftp-example.com', db_session)
+    conn_id = find_or_create_conn('ftp', 'example.com', 'user', 'pass')
+    assert conn_id == 'ftp-example.com'
 
     conn = find_connection(conn_id, db_session)
     assert conn.conn_id == "ftp-example.com"
     assert conn.conn_type == "ftp"
     assert conn.host == "example.com"
     assert conn.login == "user"
+
 
 
 def test_connection_already_exists(db_session):
