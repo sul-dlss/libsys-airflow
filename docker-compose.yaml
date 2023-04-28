@@ -103,11 +103,12 @@ services:
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
+      POSTGRES_MULTIPLE_DATABASES: airflow,vendor_loads
     ports:
       - 5432:5432
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      - ./docker/init-multi-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multi-postgres-dbs.sh
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 5s
