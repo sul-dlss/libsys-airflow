@@ -309,8 +309,8 @@ def test_handle_srs_files(
     mocks.messages["find-srs-files"] = {"job-0": [str(mock_file_system[2])]}
 
     current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parent.parent / "qa.sql"
-    mock_db_init_file = airflow / "plugins/folio/qa.sql"
+    db_init_file = current_file.parent.parent.parent / "qa.sql"
+    mock_db_init_file = airflow / "qa.sql"
     mock_db_init_file.write_text(db_init_file.read_text())
 
     setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
