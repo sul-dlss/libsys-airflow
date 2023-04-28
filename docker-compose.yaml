@@ -69,6 +69,7 @@ x-airflow-common:
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE: 'true'
     AIRFLOW_VAR_AEON_URL: ${AIRFLOW_VAR_AEON_URL}
     AIRFLOW_VAR_AEON_KEY: ${AIRFLOW_VAR_AEON_KEY}
     AIRFLOW_VAR_AEON_SOURCE_QUEUE_ID: ${AIRFLOW_VAR_AEON_SOURCE_QUEUE_ID}
