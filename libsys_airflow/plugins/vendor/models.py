@@ -4,6 +4,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 Model = declarative_base()
 
+
 class Vendor(Model):
     __tablename__ = "vendors"
 
