@@ -109,6 +109,28 @@ The `optimistic_locking_management` DAG requires a Postgres Airflow
 [connection](https://airflow.apache.org/docs/apache-airflow/stable/concepts/connections.html) with the host, login, and password fields matching the
 database being used by Okapi.
 
+## Development
+
+### Vendor load plugin
+
+Using and developing the vendor load plug in requires it's own database. Ensure that the `vendor_laods` database exists in your local postgres and is owned by the airflow user.
+
+#### Database migrations
+
+Until a proper databse migration process is established changing models requires removing the existing tables so **data is lost on changes**. 
+
+1. Add a connection in airflow:
+  1. Connection Id: vendor_load
+  2. Host: postgres
+  3. Schema: vendor_loads
+  4. Login: airflow
+  5. Password: airflow
+  6. Port: 5432
+2. Enable the `vendor_load_db_init` DAG
+2. Run the `vendor_load_db_init` DAG from the airflow interface or command line with: `docker compose run --rm airflow-webserver airflow dags trigger vendor_load_db_init`
+
+**Note:** The docker compose method inconsistently reports that the DAG is not found. In that case, run the DAG manually in the UI.
+
 ## Testing
 1. Install dependencies per `Dependency Management and Packaging` above
 1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
