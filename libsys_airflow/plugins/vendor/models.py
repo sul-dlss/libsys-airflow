@@ -17,10 +17,7 @@ class Vendor(Model):
     last_folio_update = Column(DateTime, nullable=False)
 
     def __repr__(self) -> str:
-        return f"{self.name} - {self.uuid}"
+        return f"{self.display_name} - {self.folio_organization_uuid}"
 
 
-def dbinit():
-    pg_hook = PostgresHook("vendor_load")
-    Model.metadata.drop_all(pg_hook.get_sqlalchemy_engine())
-    Model.metadata.create_all(pg_hook.get_sqlalchemy_engine())
+
