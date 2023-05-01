@@ -1,3 +1,5 @@
 [run]
 omit =
     tests/*
+    vendor_loads_migration/*
+    

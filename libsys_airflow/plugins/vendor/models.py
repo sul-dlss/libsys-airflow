@@ -18,6 +18,3 @@ class Vendor(Model):
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_organization_uuid}"
-
-
-
