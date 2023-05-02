@@ -9,6 +9,20 @@
         <th>Acquisitions Unit</th>
     </thead>
     <tbody>
+        {% for vendor in vendors.organizations %}
+        <tr>
+            <td>
+                {{ vendor.name }}<br>
+                ID: {{ vendor.id }}
+            </td>
+            <td>
+                {{ vendor.code }}
+            </td>
+            <td>
+                {{ vendor.acqUnitIds[0] }}
+            </td>
+        </tr>
+        {% endfor %}
     </tbody>
 </table>
 {% endblock %}
