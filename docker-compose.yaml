@@ -90,6 +90,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/symphony:/opt/airflow/symphony
     - ${AIRFLOW_PROJ_DIR:-.}/migration:/opt/airflow/migration
     - ${AIRFLOW_PROJ_DIR:-.}/circ:/opt/airflow/circ
+    - ${AIRFLOW_PROJ_DIR:-.}/vendor-data:/opt/airflow/vendor-data
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on

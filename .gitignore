@@ -8,3 +8,5 @@ coverage.xml
 circ/
 dist/
 .python-version
+vendor-data/
+virtual-env/

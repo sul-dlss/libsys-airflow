@@ -25,8 +25,8 @@ def interface_info(**kwargs):
     interface_id = kwargs.get("interface_id")
 
     interface_info = {}
-    interface_info['uri'] = folio_client.folio_get(f"organization-storage/interfaces/{interface_id}", key='uri')
-    credential_response = folio_client.folio_get(f"organization-storage/interfaces/{interface_id}/credentials")
+    interface_info['uri'] = folio_client.folio_get(f"/organizations-storage/interfaces/{interface_id}", key='uri')
+    credential_response = folio_client.folio_get(f"/organizations-storage/interfaces/{interface_id}/credentials")
     interface_info['username'] = credential_response['username']
     interface_info['password'] = credential_response['password']
 
