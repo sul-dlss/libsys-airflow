@@ -113,7 +113,7 @@ database being used by Okapi.
 
 ### Vendor load plugin
 
-Using and developing the vendor load plug in requires it's own database. Ensure that the `vendor_laods` database exists in your local postgres and is owned by the airflow user.
+Using and developing the vendor load plugin requires a dedicated database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
 
 #### Database migrations
 
