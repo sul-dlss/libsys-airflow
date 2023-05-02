@@ -2,6 +2,7 @@ import logging
 import re
 import pathlib
 from typing import Union
+import os
 
 from airflow.decorators import task
 from airflow.providers.ftp.hooks.ftp import FTPHook, FTPSHook
@@ -55,14 +56,14 @@ def download(
     filtered_filenames = [
         f
         for f in filtered_filenames
-        if not pathlib.Path(_download_filepath(f, download_path)).is_file()
+        if not pathlib.Path(_download_filepath(download_path, f)).is_file()
     ]
     for filename in filtered_filenames:
-        download_filepath = _download_filepath(filename, download_path)
+        download_filepath = _download_filepath(download_path, filename)
         hook.retrieve_file(filename, download_filepath)
         logger.info(f"Downloaded {filename} to {download_filepath}")
     return list(filtered_filenames)
 
 
-def _download_filepath(filename: str, download_path: str) -> str:
-    return f"{download_path}/{filename}"
+def _download_filepath(download_path: str, filename: str) -> str:
+    return os.path.join(download_path, filename)
