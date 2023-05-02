@@ -117,7 +117,7 @@ Using and developing the vendor load plugin requires a dedicated database. Ensur
 
 #### Database migrations
 
-Until a proper databse migration process is established changing models requires removing the existing tables so **data is lost on changes**. 
+Until a proper database migration process is established, changing models requires removing the existing tables so **data is lost on changes**. 
 
 1. Add a connection in airflow:
   1. Connection Id: vendor_load
