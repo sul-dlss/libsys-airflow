@@ -2,18 +2,15 @@ import logging
 
 from airflow.models import Variable
 
-from folioclient import FolioClient
-
+from plugins.folio.folio_client import FolioClient
 
 logger = logging.getLogger(__name__)
 
 
-def interface_info(**kwargs):
+def interface_info(interface_id: str, folio_client=None) -> dict:
     """
     Retrieves the uri and credentials for an interface from the FOLIO API.
     """
-    folio_client = kwargs.get("folio_client")
-
     if folio_client is None:
         folio_client = FolioClient(
             Variable.get("OKAPI_URL"),
@@ -22,12 +19,14 @@ def interface_info(**kwargs):
             Variable.get("FOLIO_PASSWORD"),
         )
 
-    interface_id = kwargs.get("interface_id")
-
-    interface_info = {}
-    interface_info['uri'] = folio_client.folio_get(f"/organizations-storage/interfaces/{interface_id}", key='uri')
-    credential_response = folio_client.folio_get(f"/organizations-storage/interfaces/{interface_id}/credentials")
-    interface_info['username'] = credential_response['username']
-    interface_info['password'] = credential_response['password']
-
-    return interface_info
+    interface_resp = folio_client.get(
+        f"/organizations-storage/interfaces/{interface_id}"
+    )
+    credential_resp = folio_client.get(
+        f"/organizations-storage/interfaces/{interface_id}/credentials"
+    )
+    return {
+        "uri": interface_resp["uri"],
+        "username": credential_resp["username"],
+        "password": credential_resp["password"],
+    }
