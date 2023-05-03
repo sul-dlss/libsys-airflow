@@ -11,13 +11,11 @@ class MockFOLIOClient(pydantic.BaseModel):
     okapi_headers: dict = {}
     locations: list = []
 
-    def folio_get(self, path, key=None, query=""):
+    def get(self, path):
         if path.endswith("/credentials"):
-            assert key is None
             return credentials_response
         else:
-            assert key == "uri"
-            return "ftps://www.gobi3.com"
+            return interface_response
 
 
 credentials_response = {
@@ -25,6 +23,10 @@ credentials_response = {
     "username": "my_user",
     "password": "my_password",
     "interfaceId": "588b5c42-8634-4af7-bc9b-5e0116ed96b6"
+}
+
+interface_response = {
+    'uri': 'ftps://www.gobi3.com',
 }
 
 
