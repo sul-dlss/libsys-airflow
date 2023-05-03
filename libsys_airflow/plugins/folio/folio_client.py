@@ -36,20 +36,35 @@ class FolioClient:
         """Performs a GET and turns it into a json object"""
         url = self.okapi_url + path
         resp = requests.get(url, headers=self.okapi_headers, params=params)
-        resp.raise_for_status()
-
-        return resp.json()
+        return self._handle_response(resp)
 
     def put(self, path, payload):
         """Performs a PUT and turns it into a json object"""
         url = self.okapi_url + path
         resp = requests.put(url, headers=self.okapi_headers, json=payload)
-        resp.raise_for_status()
-        return resp.json()
+        return self._handle_response(resp)
 
     def post(self, path, payload):
         """Performs a POST and turns it into a json object"""
         url = self.okapi_url + path
         resp = requests.post(url, headers=self.okapi_headers, json=payload)
+        return self._handle_response(resp)
+
+    def post_file(self, path, filepath, content_type="application/octet-stream"):
+        """Performs a POST and returns the response object"""
+        url = self.okapi_url + path
+        with open(filepath, "rb") as f:
+            payload = f.read()
+
+        headers = self.okapi_headers.copy()
+        headers["Content-Type"] = content_type
+
+        resp = requests.post(url, headers=headers, data=payload)
+        return self._handle_response(resp)
+
+    def _handle_response(self, resp):
         resp.raise_for_status()
-        return resp.json()
+        if resp.status_code == 204:
+            return None
+        else:
+            return resp.json()

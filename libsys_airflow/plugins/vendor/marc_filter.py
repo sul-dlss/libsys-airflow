@@ -9,14 +9,20 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def filter_fields_task(marc_path: str, fields: list):
+def filter_fields_task(
+    download_path: str, filename: str, fields: list[str] = ["905", "920", "986"]
+):
     """
     Filters 905, 920, 986 from MARC records
     """
+    marc_path = pathlib.Path(download_path) / filename
+    if not is_marc(marc_path):
+        logger.info(f"Skipping filtering fields from {marc_path}")
+        return
     filter_fields(pathlib.Path(marc_path), ["905", "920", "986"])
 
 
-def filter_fields(marc_path: pathlib.Path, fields: list):
+def filter_fields(marc_path: pathlib.Path, fields: list[str]):
     """
     Filters specified fields from MARC records
     """
@@ -37,3 +43,7 @@ def filter_fields(marc_path: pathlib.Path, fields: list):
             marc_writer.write(record)
 
     logger.info(f"Finished filtering fields from {marc_path}")
+
+
+def is_marc(path: pathlib.Path):
+    return path.suffix == ".mrc" or path.suffix == ".ord"
