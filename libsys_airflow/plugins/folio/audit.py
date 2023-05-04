@@ -136,8 +136,11 @@ def _add_json_record(record, con, record_db_id):
             (record_db_id, json.dumps(record)),
         )
     except sqlite3.IntegrityError:
-        record = json.loads(record)
-        logger.error(f"{record['id']} already exists in JsonPayload table")
+        if isinstance(record, dict):
+            record_ident = record['id']
+        else:
+            record_ident = record_db_id
+        logger.error(f"{record_ident} already exists in JsonPayload table")
     cur.close()
 
 

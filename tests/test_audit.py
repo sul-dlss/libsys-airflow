@@ -228,7 +228,12 @@ def test_add_json_record_uniqueness(mock_dag_run, mock_file_system, caplog):  # 
     con.commit()
     cur.close()
 
-    _add_json_record(json.dumps(record), con, record_id)
+    _add_json_record(record, con, record_id)
 
     assert f"{record['id']} already exists in JsonPayload table" in caplog.text
+
+    # Test if record is a string and not a dict
+    _add_json_record(json.dumps(record), con, record_id)
+
+    assert f"{record_id} already exists in JsonPayload table" in caplog.text
     con.close()
