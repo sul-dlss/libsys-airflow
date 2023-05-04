@@ -9,17 +9,17 @@
         <th>Acquisitions Unit</th>
     </thead>
     <tbody>
-        {% for vendor in vendors.organizations %}
+        {% for vendor in vendors %}
         <tr>
             <td>
-                {{ vendor.name }}<br>
-                ID: {{ vendor.id }}
+                {{ vendor.display_name }}<br>
+                ID: {{ vendor.folio_organization_uuid }}
             </td>
             <td>
-                {{ vendor.code }}
+                {{ vendor.vendor_code_from_folio }}
             </td>
             <td>
-                {{ vendor.acqUnitIds[0] }}
+                {{ vendor.acquisitions_unit_from_folio }}
             </td>
         </tr>
         {% endfor %}
