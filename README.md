@@ -133,6 +133,13 @@ module and then run the following steps:
  1. From the root directory, run `poetry run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE:** not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
  1. After the migration script is created, run `poetry run alembic upgrade head` to apply your latest changes to the database.
 
+#### Seeding the database
+
+#### Seeding Vendors
+
+```
+PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_USER_PASSWORD> poetry run bin/seed_vendors
+```
 ## Testing
 1. Install dependencies per `Dependency Management and Packaging` above
 1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
