@@ -30,9 +30,15 @@ def filter_fields(marc_path: pathlib.Path, fields: list[str]):
     logger.info(f"Filtering fields from {marc_path}")
     filtered_records = []
     with marc_path.open("rb") as fo:
-        for record in _marc_reader(fo):
-            record.remove_fields(*fields)
-            filtered_records.append(record)
+        reader = _marc_reader(fo)
+        for record in reader:
+            if record is None:
+                logger.info(
+                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception} "
+                )
+            else:
+                record.remove_fields(*fields)
+                filtered_records.append(record)
 
     with marc_path.open("wb") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -74,12 +80,18 @@ def batch(download_path: str, filename: str, max_records: int) -> list[str]:
     index = 1
     batch_filenames = []
     with open(pathlib.Path(download_path) / filename, "rb") as fo:
-        for record in _marc_reader(fo):
-            records.append(record)
-            if len(records) == max_records:
-                records, index = _new_batch(
-                    download_path, filename, index, batch_filenames, records
+        reader = _marc_reader(fo)
+        for record in reader:
+            if record is None:
+                logger.info(
+                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception} "
                 )
+            else:
+                records.append(record)
+                if len(records) == max_records:
+                    records, index = _new_batch(
+                        download_path, filename, index, batch_filenames, records
+                    )
     if len(records) > 0:
         _new_batch(download_path, filename, index, batch_filenames, records)
     logger.info(f"Finished batching {filename} into {index} files")
