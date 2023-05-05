@@ -4,7 +4,7 @@ import os
 from airflow.models import Variable
 from airflow.decorators import task
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from plugins.folio.folio_client import FolioClient
 
 logger = logging.getLogger(__name__)
 
