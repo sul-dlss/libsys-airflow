@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+
+# A utility for getting a vendor records from FOLIO into the database
+
+import os
+import sys
+import logging
+import argparse
+import requests
+import json
+
+from folioclient import FolioClient
+from signal import signal, SIGPIPE, SIG_DFL  
+from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+
+class VendorLoader:
+  def __init__(self, url, username, password):
+      self.url = url
+      self.folio_user = username
+      self.folio_password = password
+      self.vendors = self._get_vendors()
+
+
+  @property
+  def _folio_client(self):
+      try:
+          return FolioClient(
+              os.getenv('AIRFLOW_VAR_OKAPI_URL'),
+              "sul",
+              os.getenv('AIRFLOW_VAR_FOLIO_USER'),
+              os.getenv('AIRFLOW_VAR_FOLIO_PASSWORD')
+          )
+      except ValueError as error:
+          logger.error(error)
+          raise
+
+  def _get_vendors(self):
+      """
+      Returns vendors from FOLIO
+      """
+      vendors = ["AMALIV-SUL", "CASALI-SUL", "COUTTS-SUL", "HARRAS-SUL", "SFX", "YANKEE-SUL"]
+      cql_query = f"({' or '.join(f'(code={vendor})' for vendor in vendors)})"
+      vendor_result = requests.get(
+          f"{self._folio_client.okapi_url}/organizations/organizations?query={cql_query}",
+          headers=self._folio_client.okapi_headers)
+      vendor_result.raise_for_status()
+      return vendor_result.json()
+
+  def get_vendor_interface(self, vendor_interface_id):
+      vendor_interface_result = requests.get(
+          f"{self._folio_client.okapi_url}/organizations-storage/interfaces/{vendor_interface_id}",
+          headers=self._folio_client.okapi_headers)
+      vendor_interface_result.raise_for_status()
+      return vendor_interface_result.json()
+
+def main(opts):
+    os.environ['AIRFLOW_VAR_OKAPI_URL'] = "https://okapi-test.stanford.edu"
+
+    engine = create_engine(
+        'postgresql+psycopg2://airflow:airflow@localhost:5432/vendor_loads',
+        echo=True
+    )
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    vendor_load = VendorLoader(os.getenv('AIRFLOW_VAR_OKAPI_URL'), os.getenv('AIRFLOW_VAR_FOLIO_USER'), os.getenv('AIRFLOW_VAR_FOLIO_PASSWORD'))
+    for organization in vendor_load.vendors["organizations"]:
+        vendor = session.query(Vendor).filter(Vendor.folio_organization_uuid == organization["id"]).first()
+        if vendor is None:
+            vendor = Vendor(
+                display_name=organization["name"],
+                folio_organization_uuid=organization["id"],
+                vendor_code_from_folio=organization["code"],
+                acquisitions_unit_from_folio=organization["acqUnitIds"][0],
+                last_folio_update=datetime.now(),
+            )
+            session.add(vendor)
+
+        for vendor_interface_uuid in organization["interfaces"]:
+            vendor_interface_data = vendor_load.get_vendor_interface(vendor_interface_uuid)
+            vendor_interface = session.query(VendorInterface).filter(VendorInterface.folio_interface_uuid == vendor_interface_uuid).first()
+
+            if vendor_interface is None:
+                vendor_interface = VendorInterface(
+                    vendor_id = vendor.id,
+                    display_name = vendor_interface_data["name"],
+                    folio_interface_uuid = vendor_interface_uuid
+                )
+                session.add(vendor_interface)
+    
+    session.commit()
+        
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Get vendor records from FOLIO Organizations")
+    parser.add_argument("--log", default="seed_vendors.log", help="A file path to write log messages")
+    opts = parser.parse_args()
+
+    logging.basicConfig(filename=opts.log, format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+
+    signal(SIGPIPE,SIG_DFL)
+
+    main(opts)

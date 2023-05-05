@@ -168,6 +168,11 @@ psql -U airflow
 \d+ vendor_interfaces # look at a specific table
 ```
 
+#### Seeding Vendors
+
+```
+PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_USER_PASSWORD> poetry run bin/seed_vendors
+```
 ## Testing
 
 1. Install dependencies per `Dependency Management and Packaging` above
