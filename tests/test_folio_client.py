@@ -56,6 +56,16 @@ def test_post(client, requests_mock):
     assert client.post("/foo", payload={"req_foo": "req_bar"}) == {"foo": "bar"}
 
 
+def test_post_no_content(client, requests_mock):
+    requests_mock.post(
+        "https://okapi-test.stanford.edu/foo",
+        request_headers={"x-okapi-tenant": "sul", "x-okapi-token": "abc123"},
+        status_code=204,
+        additional_matcher=match_request_json,
+    )
+    assert client.post("/foo", payload={"req_foo": "req_bar"}) is None
+
+
 def test_post_error(client, requests_mock):
     requests_mock.post(
         "https://okapi-test.stanford.edu/foo",
@@ -65,6 +75,17 @@ def test_post_error(client, requests_mock):
     )
     with pytest.raises(requests.exceptions.HTTPError):
         client.post("/foo", payload={"req_foo": "req_bar"})
+
+
+def test_post_file(client, requests_mock):
+    requests_mock.post(
+        "https://okapi-test.stanford.edu/foo",
+        request_headers={"x-okapi-tenant": "sul", "x-okapi-token": "abc123"},
+        status_code=201,
+        json={"foo": "bar"},
+        additional_matcher=match_request_file,
+    )
+    assert client.post_file("/foo", "tests/vendor/0720230118.mrc") == {"foo": "bar"}
 
 
 def test_put(client, requests_mock):
@@ -91,3 +112,7 @@ def test_put_error(client, requests_mock):
 
 def match_request_json(request):
     return request.json() == {"req_foo": "req_bar"}
+
+
+def match_request_file(request):
+    return b"Infinite criteria" in request.body
