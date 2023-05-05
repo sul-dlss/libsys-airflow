@@ -63,7 +63,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 ### Tasks
 
-1. List all the airflow tasks using `cap -AT airflow`
+List all the airflow tasks using `cap -AT airflow`
 
 ```
 cap airflow:build          # run docker compose build for airflow
@@ -74,6 +74,14 @@ cap airflow:start          # start airflow
 cap airflow:stop           # stop and remove all running docker containers
 cap airflow:stop_release   # stop old release and remove all old running docker containers
 cap airflow:webserver      # restart webserver
+```
+
+List all the Alembic database migration tasks (see `Database migrations` below for more) using `cap -AT alembic`:
+
+```
+cap alembic:current  # Show current Alembic database migration
+cap alembic:history  # Show Alembic database migration history
+cap alembic:migrate  # Run Alembic database migrations
 ```
 
 ### Do the first time you bring up Libsys-Airflow:

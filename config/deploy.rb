@@ -52,6 +52,45 @@ namespace :deploy do
   end
 end
 
+namespace :db do
+  desc 'Create needed databases'
+  task :create do
+    on roles(:app) do
+      execute :psql, <<~PSQL_ARGS
+        -v ON_ERROR_STOP=1 postgresql://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOSTNAME <<-SQL
+        SELECT 'CREATE DATABASE airflow' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'airflow')\\gexec
+        GRANT ALL PRIVILEGES ON DATABASE airflow TO $DATABASE_USERNAME;
+        SELECT 'CREATE DATABASE vendor_loads' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vendor_loads')\\gexec
+        GRANT ALL PRIVILEGES ON DATABASE vendor_loads TO $DATABASE_USERNAME;
+SQL
+     PSQL_ARGS
+    end
+  end
+end
+
+namespace :alembic do
+  desc 'Run Alembic database migrations'
+  task :migrate do
+    on roles(:app) do
+      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic upgrade head"
+    end
+  end
+
+  desc 'Show current Alembic database migration'
+  task :current do
+    on roles(:app) do
+      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic current"
+    end
+  end
+
+  desc 'Show Alembic database migration history'
+  task :history do
+    on roles(:app) do
+      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic history --verbose"
+    end
+  end
+end
+
 namespace :airflow do
   desc 'install airflow dependencies'
   task :install do
@@ -107,6 +146,8 @@ namespace :airflow do
       invoke 'airflow:build'
       invoke 'airflow:init'
       execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml up -d"
+      invoke 'db:create'
+      invoke 'alembic:migrate'
     end
   end
 
