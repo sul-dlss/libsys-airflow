@@ -7,7 +7,7 @@ from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 
-from plugins.vendor.marc_filter import filter_fields_task
+from plugins.vendor.marc import filter_fields_task, batch_task
 from plugins.vendor.paths import download_path
 from plugins.folio.data_import import data_import_task
 
@@ -64,4 +64,8 @@ with DAG(
     data_import = data_import_task(
         params["download_path"], params["filename"], params["dataload_profile_uuid"]
     )
+    batch_filenames = batch_task(params["download_path"], params["filename"])
+
+    filter_fields >> batch_filenames
+    # Once data import supports multiple files, it should be moved downstream of batch_task.
     filter_fields >> data_import
