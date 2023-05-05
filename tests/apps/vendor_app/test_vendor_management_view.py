@@ -2,7 +2,7 @@ import pytest
 from pytest_mock import MockerFixture
 import requests
 
-from plugins.vendor_app.vendors import VendorManagementView
+from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
 from tests.mocks import mock_okapi_variable, MockFOLIOClient
 
 

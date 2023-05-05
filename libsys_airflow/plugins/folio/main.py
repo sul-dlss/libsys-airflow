@@ -1,8 +1,8 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
-from plugins.folio.apps.circ_rules_tester_view import CircRulesTester
-from plugins.folio.apps.healthcheck_view import Healthcheck
-from plugins.folio.apps.folio_migration_view import FOLIOMigrationReports
+from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
+from libsys_airflow.plugins.folio.apps.healthcheck_view import Healthcheck
+from libsys_airflow.plugins.folio.apps.folio_migration_view import FOLIOMigrationReports
 
 
 bp = Blueprint(

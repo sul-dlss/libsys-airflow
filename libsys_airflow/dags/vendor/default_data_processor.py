@@ -7,9 +7,9 @@ from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 
-from plugins.vendor.marc import filter_fields_task, batch_task
-from plugins.vendor.paths import download_path
-from plugins.folio.data_import import data_import_task
+from libsys_airflow.plugins.vendor.marc import filter_fields_task, batch_task
+from libsys_airflow.plugins.vendor.paths import download_path
+from libsys_airflow.plugins.folio.data_import import data_import_task
 
 logger = logging.getLogger(__name__)
 

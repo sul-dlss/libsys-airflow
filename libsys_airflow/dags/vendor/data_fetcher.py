@@ -8,10 +8,10 @@ from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
-from plugins.airflow.connections import create_connection_task
-from plugins.vendor.download import ftp_download_task
-from plugins.vendor.archive import archive_task
-from plugins.vendor.paths import download_path, archive_path
+from libsys_airflow.plugins.airflow.connections import create_connection_task
+from libsys_airflow.plugins.vendor.download import ftp_download_task
+from libsys_airflow.plugins.vendor.archive import archive_task
+from libsys_airflow.plugins.vendor.paths import download_path, archive_path
 
 logger = logging.getLogger(__name__)
 
