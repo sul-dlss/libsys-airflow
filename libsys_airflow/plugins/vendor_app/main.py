@@ -1,7 +1,7 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 
-from plugins.vendor_app.vendors import VendorManagementView
+from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
 
 vendor_mgt_bp = Blueprint(
     "vendor_management",

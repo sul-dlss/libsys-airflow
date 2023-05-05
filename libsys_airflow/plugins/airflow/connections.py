@@ -5,7 +5,7 @@ from airflow.decorators import task
 from sqlalchemy.orm.session import Session
 from airflow.utils.session import NEW_SESSION, provide_session
 
-from plugins.folio.interface import interface_info
+from libsys_airflow.plugins.folio.interface import interface_info
 
 logger = logging.getLogger(__name__)
 
