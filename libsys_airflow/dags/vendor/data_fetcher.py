@@ -6,16 +6,17 @@ from airflow import DAG
 from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from plugins.airflow.connections import create_connection_task
 from plugins.vendor.download import ftp_download_task
 from plugins.vendor.archive import archive_task
-from plugins.vendor.paths import (download_path, archive_path)
+from plugins.vendor.paths import download_path, archive_path
 
 logger = logging.getLogger(__name__)
 
 # Run with:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
 
 default_args = {
     "owner": "folio",
@@ -41,7 +42,9 @@ with DAG(
         "vendor_interface_uuid": Param(
             "", type="string"
         ),  # '65d30c15-a560-4064-be92-f90e38eeb351',
-        # 'dataload_profile_id': 'TBD',  # uuid if this refers to folio
+        "dataload_profile_uuid": Param(
+            "", type="string"
+        ),  # f4144dbd-def7-4b77-842a-954c62faf319
         "remote_path": Param("", type="string"),  # 'oclc'
         "filename_regex": Param(None, type=["null", "string"]),  # '^\d+\.mrc$'
     },
@@ -51,8 +54,14 @@ with DAG(
     def setup():
         context = get_current_context()
         params = context["params"]
-        params["download_path"] = download_path(params['vendor_uuid'], params['vendor_interface_uuid'])
-        params["archive_path"] = archive_path(params['vendor_uuid'], params['vendor_interface_uuid'], context['execution_date'])
+        params["download_path"] = download_path(
+            params["vendor_uuid"], params["vendor_interface_uuid"]
+        )
+        params["archive_path"] = archive_path(
+            params["vendor_uuid"],
+            params["vendor_interface_uuid"],
+            context["execution_date"],
+        )
 
         logger.info(f"Params are {params}")
 
@@ -60,6 +69,28 @@ with DAG(
         os.makedirs(params["archive_path"], exist_ok=True)
 
         return params
+
+    @task
+    def generate_dag_run_conf(
+        downloaded_files: list,
+        vendor_uuid: str,
+        vendor_interface_uuid: str,
+        dataload_profile_uuid: str,
+    ) -> list[dict]:
+        """
+        Generate a DAG conf for each downloaded file.
+        """
+        confs = []
+        for filename in downloaded_files:
+            confs.append(
+                {
+                    "vendor_uuid": vendor_uuid,
+                    "vendor_interface_uuid": vendor_interface_uuid,
+                    "dataload_profile_uuid": dataload_profile_uuid,
+                    "filename": filename,
+                }
+            )
+        return confs
 
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
@@ -70,3 +101,13 @@ with DAG(
         params["filename_regex"],
     )
     archive_task(downloaded_files, params["download_path"], params["archive_path"])
+
+    dag_run_confs = generate_dag_run_conf(
+        downloaded_files,
+        params["vendor_uuid"],
+        params["vendor_interface_uuid"],
+        params["dataload_profile_uuid"],
+    )
+    TriggerDagRunOperator.partial(
+        task_id="process_file", trigger_dag_id="default_data_processor"
+    ).expand(conf=dag_run_confs)
