@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean
+import enum
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Enum
 from sqlalchemy.orm import declarative_base, relationship, Session
+
 
 Model = declarative_base()
 
@@ -36,3 +38,32 @@ class VendorInterface(Model):
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_interface_uuid}"
+
+
+class FileStatus(enum.Enum):
+    not_fetched = 'not_fetched'
+    fetching_error = 'fetching_error'
+    fetched = 'fetched'
+    loading = 'loading'
+    loading_error = 'loading_error'
+    loaded = 'loaded'
+
+
+class VendorFile(Model):
+    __tablename__ = "vendor_files"
+
+    id = Column(Integer, primary_key=True)
+    created = Column(DateTime, nullable=False)
+    updated = Column(DateTime, nullable=False)
+    vendor_interface_id = Column(Integer, ForeignKey('vendor_interfaces.id'))
+    vendor_filename = Column(String(250), unique=False, nullable=False)
+    filesize = Column(Integer, nullable=False)
+    vendor_timestamp = Column(DateTime, nullable=True)
+    loaded_timestamp = Column(DateTime, nullable=True)
+    status = Column(Enum(FileStatus),
+                    nullable=False,
+                    default=FileStatus.not_fetched,
+                    server_default=FileStatus.not_fetched.value)
+
+    def __repr__(self) -> str:
+        return f"{self.filename} - {self.vendor_timestamp}"
