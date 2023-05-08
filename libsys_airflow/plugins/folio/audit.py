@@ -128,16 +128,22 @@ def _add_record(record, con, record_type):
 
 def _add_json_record(record, con, record_db_id):
     """Add full record for later remediation"""
+    if isinstance(record, dict):
+        record_str = json.dumps(record)
+    elif isinstance(record, str):
+        record_str = record
+    else:
+        logger.error(f"Unknown record format {type(record)}")
+        return
     cur = con.cursor()
     try:
         cur.execute(
             """INSERT INTO JsonPayload (record_id, payload)
                         VALUES (?,?);""",
-            (record_db_id, json.dumps(record)),
+            (record_db_id, record_str),
         )
-    except sqlite3.IntegrityError:
-        record = json.loads(record)
-        logger.error(f"{record['id']} already exists in JsonPayload table")
+    except sqlite3.IntegrityError as err:
+        logger.error(f"{err} = {record_db_id}")
     cur.close()
 
 

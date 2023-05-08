@@ -226,9 +226,28 @@ def test_add_json_record_uniqueness(mock_dag_run, mock_file_system, caplog):  # 
         (record_id, json.dumps(record)),
     )
     con.commit()
+
+    # Test if record is string and not a dict
+    record_two = {"id": "a9420761-7a90-4245-ac95-e8545d65e07f"}
+    cur.execute(
+        "INSERT INTO Record (uuid, folio_type) VALUES (?,?);", (record_two["id"], 2)
+    )
+    con.commit()
+    record_two_id = cur.lastrowid
+    cur.execute(
+        "INSERT INTO JsonPayload (record_id, payload) VALUES (?,?)",
+        (record_two_id, json.dumps(record_two)),
+    )
     cur.close()
 
-    _add_json_record(json.dumps(record), con, record_id)
+    _add_json_record(record, con, record_id)
+    _add_json_record(json.dumps(record_two), con, record_two_id)
 
-    assert f"{record['id']} already exists in JsonPayload table" in caplog.text
+    # Test if record is list
+    _add_json_record([], con, 1)
+
+    assert f"UNIQUE constraint failed: JsonPayload.record_id = {record_id}" in caplog.text
+    assert f"UNIQUE constraint failed: JsonPayload.record_id = {record_two_id}" in caplog.text
+    assert "Unknown record format <class 'list'>" in caplog.text
+
     con.close()
