@@ -78,6 +78,7 @@ x-airflow-common:
     AIRFLOW_VAR_FOLIO_USER: ${AIRFLOW_VAR_FOLIO_USER}
     AIRFLOW_VAR_FOLIO_PASSWORD: ${AIRFLOW_VAR_FOLIO_PASSWORD}
     AIRFLOW_VAR_OKAPI_URL: ${AIRFLOW_VAR_OKAPI_URL}
+    AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/vendor_loads
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.

@@ -131,9 +131,18 @@ database being used by Okapi.
 
 Using and developing the vendor load plug in requires its own database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
 
-To access the database in development, install psql (e.g. `brew install postgresql`) and from your local terminal, run:
+To access the database in development, install 
+ (e.g. `brew install postgresql`) and from your local terminal, run:
 
-`psql -h localhost -U airflow`
+```
+psql -h localhost -U airflow
+```
+
+To use psql in the docker container:
+
+```
+docker exec -it libsys-airflow-postgres-1 psql -U airflow
+```
 
 #### Database migrations
 
@@ -153,20 +162,6 @@ module and then run the following steps:
 
 1.  From the root directory, run `poetry run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE:** not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
 1.  After the migration script is created, run `poetry run alembic upgrade head` to apply your latest changes to the database.
-
-To use psql in the docker container:
-
-```
-docker exec -it libsys-airflow-postgres-1 /bin/bash # get to bash in docker postgres container
-
-# go to psql with correct user for both the plugin and for airflow
-psql -U airflow
-
-# now you're in psql
-\c vendor_loads # switch to vendor_loads database
-\d # look at tables
-\d+ vendor_interfaces # look at a specific table
-```
 
 #### Seeding Vendors
 
