@@ -32,6 +32,7 @@ pytest-mock = "^3.7.0"
 apache-airflow = "2.5.3"
 apache-airflow-providers-postgres = "5.4.0"
 requests-mock = "^1.10.0"
+pytest-mock-resources = "^2.6.12"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

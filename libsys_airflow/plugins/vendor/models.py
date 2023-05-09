@@ -46,6 +46,7 @@ class VendorInterface(Model):
     processing_dag = Column(String(50), unique=False, nullable=True)
     processing_delay_in_days = Column(Integer, unique=False, nullable=True)
     active = Column(Boolean, nullable=False, default=False)
+    vendor_files = relationship("VendorFile", back_populates="vendor_interface")
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_interface_uuid}"
@@ -67,6 +68,7 @@ class VendorFile(Model):
     created = Column(DateTime, nullable=False)
     updated = Column(DateTime, nullable=False)
     vendor_interface_id = Column(Integer, ForeignKey("vendor_interfaces.id"))
+    vendor_interface = relationship("VendorInterface", back_populates="vendor_files")
     vendor_filename = Column(String(250), unique=False, nullable=False)
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)

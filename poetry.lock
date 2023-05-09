@@ -2781,6 +2781,33 @@ pytest = ">=5.0"
 dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
+name = "pytest-mock-resources"
+version = "2.6.12"
+description = "A pytest plugin for easily instantiating reproducible mock resources."
+category = "dev"
+optional = false
+python-versions = ">=3.7,<4"
+files = [
+    {file = "pytest_mock_resources-2.6.12-py3-none-any.whl", hash = "sha256:96e708df421dd933a82edc7388433b9e39b077cf187129dbe589ea55e36f72c8"},
+    {file = "pytest_mock_resources-2.6.12.tar.gz", hash = "sha256:7e5f27af608630db121a42b26f8bb707760a5ccf10f718c5d28c5f4860cda65a"},
+]
+
+[package.dependencies]
+pytest = ">=1.0"
+sqlalchemy = ">1.0,<1.4.0 || >1.4.0,<1.4.1 || >1.4.1,<1.4.2 || >1.4.2,<1.4.3 || >1.4.3,<1.4.4 || >1.4.4,<1.4.5 || >1.4.5,<1.4.6 || >1.4.6,<1.4.7 || >1.4.7,<1.4.8 || >1.4.8,<1.4.9 || >1.4.9,<1.4.10 || >1.4.10,<1.4.11 || >1.4.11,<1.4.12 || >1.4.12,<1.4.13 || >1.4.13,<1.4.14 || >1.4.14,<1.4.15 || >1.4.15,<1.4.16 || >1.4.16,<1.4.17 || >1.4.17,<1.4.18 || >1.4.18,<1.4.19 || >1.4.19,<1.4.20 || >1.4.20,<1.4.21 || >1.4.21,<1.4.22 || >1.4.22,<1.4.23 || >1.4.23"
+
+[package.extras]
+docker = ["filelock", "python-on-whales (>=0.22.0)"]
+mongo = ["filelock", "pymongo", "python-on-whales (>=0.22.0)"]
+moto = ["boto3", "filelock", "python-on-whales (>=0.22.0)"]
+mysql = ["filelock", "pymysql (>=1.0)", "python-on-whales (>=0.22.0)"]
+postgres = ["filelock", "psycopg2", "python-on-whales (>=0.22.0)"]
+postgres-async = ["asyncpg", "filelock", "python-on-whales (>=0.22.0)"]
+postgres-binary = ["filelock", "psycopg2-binary", "python-on-whales (>=0.22.0)"]
+redis = ["filelock", "python-on-whales (>=0.22.0)", "redis"]
+redshift = ["boto3", "filelock", "moto", "python-on-whales (>=0.22.0)", "sqlparse"]
+
+[[package]]
 name = "python-daemon"
 version = "3.0.1"
 description = "Library to implement a well-behaved Unix daemon process."
@@ -3612,4 +3639,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "7c68e194f47fdde31b911f4848d516ad78beee88677a282b47917764149a5d99"
+content-hash = "96db8b2029756180fa82de3494d1053b7239071848546c501f430287b647bae4"

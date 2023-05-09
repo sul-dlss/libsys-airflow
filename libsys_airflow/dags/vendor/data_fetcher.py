@@ -99,6 +99,7 @@ with DAG(
         params["remote_path"],
         params["download_path"],
         params["filename_regex"],
+        params["vendor_interface_uuid"]
     )
     archive_task(downloaded_files, params["download_path"], params["archive_path"])
 
