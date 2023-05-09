@@ -61,11 +61,9 @@ with DAG(
 
     params = setup()
     filter_fields = filter_fields_task(params["download_path"], params["filename"])
-    data_import = data_import_task(
-        params["download_path"], params["filename"], params["dataload_profile_uuid"]
-    )
     batch_filenames = batch_task(params["download_path"], params["filename"])
+    data_import = data_import_task(
+        params["download_path"], batch_filenames, params["dataload_profile_uuid"]
+    )
 
     filter_fields >> batch_filenames
-    # Once data import supports multiple files, it should be moved downstream of batch_task.
-    filter_fields >> data_import
