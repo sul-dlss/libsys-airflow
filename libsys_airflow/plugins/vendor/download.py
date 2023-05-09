@@ -1,8 +1,7 @@
 import logging
 import re
 import pathlib
-from typing import Union
-import os
+from typing import Union, Callable
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -29,11 +28,20 @@ def ftp_download_task(
     logger.info(f"Connection id is {conn_id}")
 
     hook = _create_hook(conn_id)
+    # Note that setting the filename regex to "CNT-ORD" triggers the Gobi order filter strategy.
+    if filename_regex == "CNT-ORD":
+        filter_strategy = _gobi_order_filter_strategy
+    elif filename_regex:
+        filter_strategy = _regex_filter_strategy(filename_regex)
+    else:
+        filter_strategy = _null_filter_strategy()
+
     return download(
         hook,
         remote_path,
         download_path,
         filename_regex,
+        filter_strategy,
         vendor_interface_uuid,
         expected_execution,
     )
@@ -56,7 +64,7 @@ def download(
     hook: Union[FTPHook, FTPSHook],
     remote_path: str,
     download_path: str,
-    filename_regex: str,
+    filter_strategy: Callable,
     vendor_interface_uuid: str,
     expected_execution: str,
 ) -> list[str]:
@@ -65,14 +73,7 @@ def download(
     """
     all_filenames = hook.list_directory(remote_path)
     logger.info(f"Found {len(all_filenames)} files in {remote_path}")
-    filtered_filenames = all_filenames
-    if filename_regex:
-        filtered_filenames = [
-            f for f in all_filenames if re.compile(filename_regex).match(f)
-        ]
-        logger.info(
-            f"Found {len(filtered_filenames)} files in {remote_path} with {filename_regex}"
-        )
+    filtered_filenames = filter_strategy(all_filenames)
     # Remove already downloaded files
     filtered_filenames = [
         f
@@ -110,7 +111,7 @@ def download(
 
 
 def _download_filepath(download_path: str, filename: str) -> str:
-    return os.path.join(download_path, filename)
+    return pathlib.Path(download_path) / filename
 
 
 def _record_vendor_file(
@@ -148,3 +149,31 @@ def _record_vendor_file(
         )
         session.add(new_vendor_file)
         session.commit()
+
+
+def _regex_filter_strategy(filename_regex: str) -> Callable:
+    def strategy(all_filenames: list[str]) -> list[str]:
+        return [f for f in all_filenames if re.compile(filename_regex).match(f)]
+
+    return strategy
+
+
+def _null_filter_strategy() -> Callable:
+    def strategy(all_filenames: list[str]) -> list[str]:
+        return all_filenames
+
+    return strategy
+
+
+def _gobi_order_filter_strategy() -> Callable:
+    def strategy(all_filenames: list[str]) -> list[str]:
+        cnt_basefilenames = [
+            pathlib.Path(f).stem for f in all_filenames if f.endswith(".cnt")
+        ]
+        ord_basefilenames = [
+            pathlib.Path(f).stem for f in all_filenames if f.endswith(".ord")
+        ]
+        basefilenames = list(set(cnt_basefilenames) & set(ord_basefilenames))
+        return [f"{f}.ord" for f in basefilenames]
+
+    return strategy
