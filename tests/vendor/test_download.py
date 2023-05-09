@@ -17,7 +17,7 @@ rows = Rows(
         display_name="Gobi - Full bibs",
         folio_interface_uuid="65d30c15-a560-4064-be92-f90e38eeb351",
         folio_data_import_profile_uuid="f4144dbd-def7-4b77-842a-954c62faf319",
-        file_pattern="^\d+\.mrc$",
+        file_pattern=r"^\d+\.mrc$",
         remote_path="oclc",
         active=True,
     ),
@@ -43,7 +43,7 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 @pytest.fixture
-def hook(mocker):
+def ftp_hook(mocker):
     mock_hook = mocker.patch("airflow.providers.ftp.hooks.ftp.FTPHook")
     mock_hook.list_directory.return_value = [
         "3820230411.mrc",
@@ -61,24 +61,24 @@ def download_path(tmp_path):
     return str(tmp_path)
 
 
-def test_download(hook, download_path, pg_hook):
+def test_download(ftp_hook, download_path, pg_hook):
     download(
-        hook,
+        ftp_hook,
         "oclc",
         download_path,
-        ".+\.mrc",
+        r".+\.mrc",
         "65d30c15-a560-4064-be92-f90e38eeb351",
         pg_hook=pg_hook,
     )
 
-    assert hook.list_directory.call_count == 1
-    assert hook.list_directory.called_with("oclc")
-    assert hook.get_size.call_count == 1
-    assert hook.get_size.called_with("3820230411.mrc")
-    assert hook.get_mod_time.call_count == 1
-    assert hook.get_mod_time.called_with("3820230411.mrc")
-    assert hook.retrieve_file.call_count == 1
-    assert hook.retrieve_file.called_with(
+    assert ftp_hook.list_directory.call_count == 1
+    assert ftp_hook.list_directory.called_with("oclc")
+    assert ftp_hook.get_size.call_count == 1
+    assert ftp_hook.get_size.called_with("3820230411.mrc")
+    assert ftp_hook.get_mod_time.call_count == 1
+    assert ftp_hook.get_mod_time.called_with("3820230411.mrc")
+    assert ftp_hook.retrieve_file.call_count == 1
+    assert ftp_hook.retrieve_file.called_with(
         "3820230411.mrc", f"{download_path}/3820230411.mrc"
     )
 
@@ -94,15 +94,15 @@ def test_download(hook, download_path, pg_hook):
         )
 
 
-def test_download_error(hook, download_path, pg_hook):
-    hook.retrieve_file.side_effect = Exception("Error")
+def test_download_error(ftp_hook, download_path, pg_hook):
+    ftp_hook.retrieve_file.side_effect = Exception("Error")
 
     with pytest.raises(Exception):
         download(
-            hook,
+            ftp_hook,
             "oclc",
             download_path,
-            ".+\.mrc",
+            r".+\.mrc",
             "65d30c15-a560-4064-be92-f90e38eeb351",
             pg_hook=pg_hook,
         )
