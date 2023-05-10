@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 
 from sqlalchemy.orm import Session
+from sqlalchemy import true
 
 from airflow import DAG
 from airflow.decorators import task
@@ -40,7 +41,7 @@ with DAG(
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
             for vendor_interface in (
                 session.query(VendorInterface)
-                .filter(VendorInterface.active is True)
+                .filter(VendorInterface.active == true())
                 .join(VendorInterface.vendor)
             ):
                 confs.append(
@@ -51,6 +52,8 @@ with DAG(
                         "dataload_profile_uuid": vendor_interface.folio_data_import_profile_uuid,
                         "remote_path": vendor_interface.remote_path,
                         "filename_regex": vendor_interface.file_pattern,
+                        "processing_delay": vendor_interface.processing_delay_in_days
+                        or 0,
                     }
                 )
         return confs

@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Run with:
 # docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
+# With processing delay:
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$", "processing_delay": 5}'
 
 default_args = {
     "owner": "folio",
@@ -46,7 +48,8 @@ with DAG(
             "", type="string"
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
         "remote_path": Param("", type="string"),  # 'oclc'
-        "filename_regex": Param(None, type=["null", "string"]),  # '^\d+\.mrc$'
+        "filename_regex": Param(None, type=["null", "string"]),  # '^\d+\.mrc$',
+        "processing_delay": Param(0, type="integer"),  # In days,
     },
 ) as dag:
 
@@ -71,7 +74,7 @@ with DAG(
         return params
 
     @task
-    def generate_dag_run_conf(
+    def setup_dag_run_conf(
         downloaded_files: list,
         vendor_uuid: str,
         vendor_interface_uuid: str,
@@ -92,6 +95,13 @@ with DAG(
             )
         return confs
 
+    @task
+    def setup_execution_date(processing_delay: int) -> list[str]:
+        """
+        Generate an execution date for the DAG run.
+        """
+        return [(datetime.now() + timedelta(days=processing_delay)).isoformat()]
+
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
     downloaded_files = ftp_download_task(
@@ -99,16 +109,22 @@ with DAG(
         params["remote_path"],
         params["download_path"],
         params["filename_regex"],
-        params["vendor_interface_uuid"]
+        params["vendor_interface_uuid"],
     )
     archive_task(downloaded_files, params["download_path"], params["archive_path"])
 
-    dag_run_confs = generate_dag_run_conf(
+    dag_run_confs = setup_dag_run_conf(
         downloaded_files,
         params["vendor_uuid"],
         params["vendor_interface_uuid"],
         params["dataload_profile_uuid"],
     )
+
+    dag_run_execution_date = setup_execution_date(params["processing_delay"])
+
+    # Don't determine execution date until after the files have been downloaded
+    downloaded_files >> dag_run_execution_date
+
     TriggerDagRunOperator.partial(
         task_id="process_file", trigger_dag_id="default_data_processor"
-    ).expand(conf=dag_run_confs)
+    ).expand(conf=dag_run_confs, execution_date=dag_run_execution_date)
