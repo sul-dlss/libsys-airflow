@@ -1,10 +1,55 @@
 import pytest  # noqa
+from datetime import datetime
 from unittest.mock import MagicMock
+from pytest_mock_resources import create_sqlite_fixture, Rows
 
 import os
 import shutil
 
-from libsys_airflow.plugins.folio.data_import import data_import
+from libsys_airflow.plugins.folio.data_import import (
+    data_import,
+    record_loading,
+    record_loaded,
+    record_loading_error,
+)
+from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+rows = Rows(
+    VendorInterface(
+        id=1,
+        display_name="Gobi - Full bibs",
+        folio_interface_uuid="65d30c15-a560-4064-be92-f90e38eeb351",
+        folio_data_import_profile_uuid="f4144dbd-def7-4b77-842a-954c62faf319",
+        file_pattern=r"^\d+\.mrc$",
+        remote_path="oclc",
+        active=True,
+    ),
+    VendorFile(
+        created=datetime.now(),
+        updated=datetime.now(),
+        vendor_interface_id=1,
+        vendor_filename="3820230411.mrc",
+        filesize=234,
+        status=FileStatus.not_fetched,
+        vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
+    ),
+)
+
+engine = create_sqlite_fixture(rows)
+
+
+@pytest.fixture
+def pg_hook(mocker, engine) -> PostgresHook:
+    mock_hook = mocker.patch(
+        "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
+    )
+    mock_hook.return_value = engine
+    return mock_hook
 
 
 @pytest.fixture
@@ -162,3 +207,43 @@ def test_data_import(download_path, folio_client):
         "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/processFiles",
         process_files_payload,
     )
+
+
+@pytest.fixture
+def context():
+    return {
+        "params": {
+            "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351",
+            "filename": "3820230411.mrc",
+        }
+    }
+
+
+def test_record_loading(context, pg_hook):
+    record_loading(context)
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
+        ).first()
+        assert vendor_file.status == FileStatus.loading
+
+
+def test_record_loaded(context, pg_hook):
+    record_loaded(context)
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
+        ).first()
+        assert vendor_file.status == FileStatus.loaded
+
+
+def test_record_loading_error(context, pg_hook):
+    record_loading_error(context)
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
+        ).first()
+        assert vendor_file.status == FileStatus.loading_error

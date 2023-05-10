@@ -3,13 +3,35 @@ import os
 
 from airflow.models import Variable
 from airflow.decorators import task
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
 
 logger = logging.getLogger(__name__)
 
 
-@task
+def record_loading(context):
+    _record_status(context, FileStatus.loading)
+
+
+def record_loaded(context):
+    _record_status(context, FileStatus.loaded)
+
+
+def record_loading_error(context):
+    _record_status(context, FileStatus.loading_error)
+
+
+@task(
+    on_execute_callback=record_loading,
+    on_success_callback=record_loaded,
+    on_failure_callback=record_loading_error,
+)
 def data_import_task(
     download_path: str, batch_filenames: list[str], dataload_profile_uuid: str
 ):
@@ -29,13 +51,13 @@ def data_import(
 
     upload_definition = None
     for filename, file_definition_id in file_definition_dict.items():
+        logger.info(f"Uploading {filename}")
         upload_definition = _upload_file(
             client,
             os.path.join(download_path, filename),
             upload_definition_id,
             file_definition_id,
         )
-
     _process_files(
         client, upload_definition_id, dataload_profile_uuid, upload_definition
     )
@@ -89,3 +111,25 @@ def _process_files(
     folio_client.post(
         f"/data-import/uploadDefinitions/{upload_definition_id}/processFiles", payload
     )
+
+
+def _record_status(context, status):
+    vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
+    filename = context["params"]["filename"]
+
+    logger.info(f"Recording {status} for filename")
+
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_interface = session.scalars(
+            select(VendorInterface).where(
+                VendorInterface.folio_interface_uuid == vendor_interface_uuid
+            )
+        ).first()
+        vendor_file = session.scalars(
+            select(VendorFile)
+            .where(VendorFile.vendor_filename == filename)
+            .where(VendorFile.vendor_interface_id == vendor_interface.id)
+        ).first()
+        vendor_file.status = status
+        session.commit()
