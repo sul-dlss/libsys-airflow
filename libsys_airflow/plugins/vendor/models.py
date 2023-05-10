@@ -9,7 +9,7 @@ from sqlalchemy import (
     Boolean,
     Enum,
 )
-from sqlalchemy.orm import declarative_base, relationship, Session
+from sqlalchemy.orm import declarative_base, relationship
 
 
 Model = declarative_base()
