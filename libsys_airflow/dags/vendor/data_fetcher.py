@@ -50,6 +50,7 @@ with DAG(
         "remote_path": Param("", type="string"),  # 'oclc'
         "filename_regex": Param(None, type=["null", "string"]),  # '^\d+\.mrc$',
         "processing_delay": Param(0, type="integer"),  # In days,
+        "processing_dag": Param("default_data_processor", type="string"),
     },
 ) as dag:
 
@@ -102,6 +103,10 @@ with DAG(
         """
         return [(datetime.now() + timedelta(days=processing_delay)).isoformat()]
 
+    @task
+    def setup_processing_dag(processing_dag: str) -> list[str]:
+        return [processing_dag]
+
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
     downloaded_files = ftp_download_task(
@@ -121,10 +126,13 @@ with DAG(
     )
 
     dag_run_execution_date = setup_execution_date(params["processing_delay"])
+    dag_run_trigger_dag_id = setup_processing_dag(params["processing_dag"])
 
     # Don't determine execution date until after the files have been downloaded
     downloaded_files >> dag_run_execution_date
 
-    TriggerDagRunOperator.partial(
-        task_id="process_file", trigger_dag_id="default_data_processor"
-    ).expand(conf=dag_run_confs, execution_date=dag_run_execution_date)
+    TriggerDagRunOperator.partial(task_id="process_file").expand(
+        conf=dag_run_confs,
+        execution_date=dag_run_execution_date,
+        trigger_dag_id=dag_run_trigger_dag_id,
+    )
