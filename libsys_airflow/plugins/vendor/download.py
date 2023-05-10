@@ -52,7 +52,6 @@ def download(
     download_path: str,
     filename_regex: str,
     vendor_interface_uuid: str,
-    pg_hook: PostgresHook = None,
 ) -> list[str]:
     """
     Downloads files from FTP/FTPS and returns a list of file paths
@@ -88,7 +87,6 @@ def download(
                 "fetching_error",
                 vendor_interface_uuid,
                 vendor_timestamp,
-                pg_hook=pg_hook,
             )
             raise
         else:
@@ -98,7 +96,6 @@ def download(
                 "fetched",
                 vendor_interface_uuid,
                 vendor_timestamp,
-                pg_hook=pg_hook,
             )
     return list(filtered_filenames)
 
@@ -113,9 +110,8 @@ def _record_vendor_file(
     status: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
-    pg_hook: PostgresHook = None,
 ):
-    pg_hook = pg_hook or PostgresHook("vendor_loads")
+    pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         vendor_interface = session.scalars(
             select(VendorInterface).where(
