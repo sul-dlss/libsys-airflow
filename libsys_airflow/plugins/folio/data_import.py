@@ -31,6 +31,7 @@ def record_loading_error(context):
     on_execute_callback=record_loading,
     on_success_callback=record_loaded,
     on_failure_callback=record_loading_error,
+    max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
 )
 def data_import_task(
     download_path: str, batch_filenames: list[str], dataload_profile_uuid: str

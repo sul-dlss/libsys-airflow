@@ -7,6 +7,8 @@ from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.models.dagrun import DagRun
+from airflow.utils.types import DagRunType
 
 from libsys_airflow.plugins.airflow.connections import create_connection_task
 from libsys_airflow.plugins.vendor.download import ftp_download_task
@@ -75,33 +77,33 @@ with DAG(
         return params
 
     @task
-    def setup_dag_run_conf(
-        downloaded_files: list,
+    def generate_dag_run_kwargs(
         vendor_uuid: str,
         vendor_interface_uuid: str,
         dataload_profile_uuid: str,
-    ) -> list[dict]:
+        processing_delay: int,
+        processing_dag: str,
+        filename: str,
+    ) -> dict:
         """
-        Generate a DAG conf for each downloaded file.
+        Generate a DAG conf for a file.
         """
-        confs = []
-        for filename in downloaded_files:
-            confs.append(
-                {
-                    "vendor_uuid": vendor_uuid,
-                    "vendor_interface_uuid": vendor_interface_uuid,
-                    "dataload_profile_uuid": dataload_profile_uuid,
-                    "filename": filename,
-                }
-            )
-        return confs
-
-    @task
-    def setup_execution_date(processing_delay: int) -> list[str]:
-        """
-        Generate an execution date for the DAG run.
-        """
-        return [(datetime.now() + timedelta(days=processing_delay)).isoformat()]
+        conf = {
+            "vendor_uuid": vendor_uuid,
+            "vendor_interface_uuid": vendor_interface_uuid,
+            "dataload_profile_uuid": dataload_profile_uuid,
+            "filename": filename,
+        }
+        execution_date = datetime.now() + timedelta(days=processing_delay)
+        dag_run_id = (
+            f"{DagRun.generate_run_id(DagRunType.MANUAL, execution_date)}-{filename}"
+        )
+        return {
+            "conf": conf,
+            "execution_date": execution_date.isoformat(),
+            "trigger_run_id": dag_run_id,
+            "trigger_dag_id": processing_dag,
+        }
 
     @task
     def setup_processing_dag(processing_dag: str) -> list[str]:
@@ -118,21 +120,12 @@ with DAG(
     )
     archive_task(downloaded_files, params["download_path"], params["archive_path"])
 
-    dag_run_confs = setup_dag_run_conf(
-        downloaded_files,
-        params["vendor_uuid"],
-        params["vendor_interface_uuid"],
-        params["dataload_profile_uuid"],
-    )
+    dag_run_kwargs = generate_dag_run_kwargs.partial(
+        vendor_uuid=params["vendor_uuid"],
+        vendor_interface_uuid=params["vendor_interface_uuid"],
+        dataload_profile_uuid=params["dataload_profile_uuid"],
+        processing_delay=params["processing_delay"],
+        processing_dag=params["processing_dag"],
+    ).expand(filename=downloaded_files)
 
-    dag_run_execution_date = setup_execution_date(params["processing_delay"])
-    dag_run_trigger_dag_id = setup_processing_dag(params["processing_dag"])
-
-    # Don't determine execution date until after the files have been downloaded
-    downloaded_files >> dag_run_execution_date
-
-    TriggerDagRunOperator.partial(task_id="process_file").expand(
-        conf=dag_run_confs,
-        execution_date=dag_run_execution_date,
-        trigger_dag_id=dag_run_trigger_dag_id,
-    )
+    TriggerDagRunOperator.partial(task_id="process_file").expand_kwargs(dag_run_kwargs)
