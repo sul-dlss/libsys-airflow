@@ -1,4 +1,4 @@
-FROM apache/airflow:2.5.3-python3.10
+FROM apache/airflow:2.6.0-python3.10
 
 USER root
 RUN usermod -u 214 airflow
