@@ -78,6 +78,31 @@ def find_directories(archive_directory: str, prior_days=90) -> list:
     return target_dirs
 
 
+def _process_vendor_file(vendor_file_info: dict, session: Session):
+    """
+    Iterates through a dictionary of vendors and interfaces and
+    updates matched VendorFile records
+    """
+    for interface_uuid, info in vendor_file_info.items():
+        vendor_interface = session.scalars(
+            select(VendorInterface).where(
+                VendorInterface.folio_interface_uuid == interface_uuid
+            )
+        ).first()
+        updated_date = datetime.strptime(info["date"], "%Y%m%d")
+        for filename in info["files"]:
+            vendor_file = session.scalars(
+                select(VendorFile).where(
+                    VendorFile.vendor_interface_id == vendor_interface.id
+                )
+                .where(VendorFile.vendor_filename == filename)
+                .where(VendorFile.expected_execution == updated_date.date())
+            ).first()
+            vendor_file.status = FileStatus.purged
+            vendor_file.updated = datetime.now()
+            session.commit()
+
+
 def remove_archived(archived_directories: list[str]) -> list[dict]:
     """
     Removes directories of archived vendor loads and returns a list of
@@ -98,20 +123,4 @@ def set_purge_status(vendor_files: list[dict]):
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         for row in vendor_files:
-            for interface_uuid, info in row.items():
-                vendor_interface = session.scalars(
-                    select(VendorInterface).where(
-                        VendorInterface.folio_interface_uuid == interface_uuid
-                    )
-                ).first()
-                updated_date = datetime.strptime(info["date"], "%Y%m%d")
-                for filename in info["files"]:
-                    vendor_file = session.scalars(
-                        select(VendorFile).where(
-                            VendorFile.vendor_interface_id == vendor_interface.id
-                        )
-                        .where(VendorFile.vendor_filename == filename)
-                        .where(VendorFile.updated >= updated_date)
-                    ).first()
-                    vendor_file.status = FileStatus.purged
-                    session.commit()
+            _process_vendor_file(row, session)

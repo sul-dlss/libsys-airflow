@@ -24,12 +24,13 @@ def ftp_download_task(
     download_path: str,
     filename_regex: str,
     vendor_interface_uuid: str,
+    expected_execution: str,
 ) -> list[str]:
     logger.info(f"Connection id is {conn_id}")
 
     hook = _create_hook(conn_id)
     return download(
-        hook, remote_path, download_path, filename_regex, vendor_interface_uuid
+        hook, remote_path, download_path, filename_regex, vendor_interface_uuid, expected_execution
     )
 
 
@@ -52,6 +53,7 @@ def download(
     download_path: str,
     filename_regex: str,
     vendor_interface_uuid: str,
+    expected_execution: str,
 ) -> list[str]:
     """
     Downloads files from FTP/FTPS and returns a list of file paths
@@ -87,6 +89,7 @@ def download(
                 "fetching_error",
                 vendor_interface_uuid,
                 vendor_timestamp,
+                expected_execution,
             )
             raise
         else:
@@ -96,6 +99,7 @@ def download(
                 "fetched",
                 vendor_interface_uuid,
                 vendor_timestamp,
+                expected_execution
             )
     return list(filtered_filenames)
 
@@ -110,8 +114,10 @@ def _record_vendor_file(
     status: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
+    expected_execution: str,
 ):
     pg_hook = PostgresHook("vendor_loads")
+    expected_execution_date = datetime.fromisoformat(expected_execution)
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         vendor_interface = session.scalars(
             select(VendorInterface).where(
@@ -133,6 +139,7 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
+            expected_execution=expected_execution_date.date()
         )
         session.add(new_vendor_file)
         session.commit()

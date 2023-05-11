@@ -5,6 +5,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     DateTime,
+    Date,
     Text,
     Boolean,
     Enum,
@@ -74,6 +75,7 @@ class VendorFile(Model):
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)
+    expected_execution = Column(Date, nullable=False)
     status = Column(
         Enum(FileStatus),
         nullable=False,
@@ -82,7 +84,7 @@ class VendorFile(Model):
     )
 
     def __repr__(self) -> str:
-        return f"{self.filename} - {self.vendor_timestamp}"
+        return f"{self.vendor_filename} - {self.vendor_timestamp}"
 
 
 class DataLoadStatus(enum.Enum):

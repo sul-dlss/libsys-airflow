@@ -50,17 +50,19 @@ rows = Rows(
     ),
     VendorFile(
         id=1,
-        created=datetime.utcnow(),
-        updated=datetime.utcnow(),
+        created=datetime.utcnow() - timedelta(days=91),
+        updated=datetime.utcnow() - timedelta(days=90),
         vendor_interface_id=1,
         vendor_filename="ec1234.mrc",
         filesize=337,
         status=FileStatus.not_fetched,
+        expected_execution=datetime.utcnow() - timedelta(days=90),
         vendor_timestamp=datetime.fromisoformat("2023-05-10T00:21:47"),
     )
 )
 
 engine = create_sqlite_fixture(rows)
+
 
 @pytest.fixture
 def archive_basepath(tmp_path):
@@ -128,6 +130,7 @@ def test_remove_archived(archive_basepath):
     first_interface = result[0]["88d39c9c-fa8c-46ee-921d-71f725afb719"]
     assert first_interface["date"] == prior_90.strftime("%Y%m%d")
     assert first_interface["files"][0] == "ec1234.mrc"
+
 
 def test_set_purge_status(pg_hook):
     today = datetime.utcnow()

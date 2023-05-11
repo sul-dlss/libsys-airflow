@@ -26,9 +26,10 @@ rows = Rows(
         updated=datetime.now(),
         vendor_interface_id=1,
         vendor_filename="3820230411.mrc",
-        filesize=234,
+        filesize=123,
         status=FileStatus.not_fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
+        expected_execution=datetime.now().date()
     ),
 )
 
@@ -70,6 +71,7 @@ def test_download(ftp_hook, download_path, pg_hook):
         download_path,
         r".+\.mrc",
         "65d30c15-a560-4064-be92-f90e38eeb351",
+        "2023-01-01T00:05:23",
     )
 
     assert ftp_hook.list_directory.call_count == 1
@@ -105,6 +107,7 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             download_path,
             r".+\.mrc",
             "65d30c15-a560-4064-be92-f90e38eeb351",
+            "2023-01-01T00:05:23",
         )
 
     with Session(pg_hook()) as session:
