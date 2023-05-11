@@ -188,3 +188,8 @@ To see stdout or stderr add the `-rP` flag:
 ## Symphony Mount
 
 MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
+
+## Connections
+
+### SFTP
+SFTP connections may have a password or a key file. The key files should be named with the hostname (e.g., `sftp.amalivre.fr`) and placed in `vendor-keys/` directory.

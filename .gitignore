@@ -10,3 +10,4 @@ dist/
 .python-version
 vendor-data/
 virtual-env/
+vendor-keys/
