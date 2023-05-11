@@ -72,7 +72,7 @@ def find_directories(archive_directory: str, prior_days=90) -> list:
     archive_directory = pathlib.Path(archive_directory)
     for directory in sorted(archive_directory.iterdir()):
         if directory.stem <= prior_90_days:
-            target_dirs.append(directory)
+            target_dirs.append(str(directory))
     if len(target_dirs) < 1:
         logger.info("No directories available for purging")
     return target_dirs
@@ -98,8 +98,12 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
                 .where(VendorFile.vendor_filename == filename)
                 .where(VendorFile.expected_execution == updated_date.date())
             ).first()
+            if vendor_file is None:
+                logger.error(f"{filename} for interface {vendor_interface} not found")
+                continue
             vendor_file.status = FileStatus.purged
             vendor_file.updated = datetime.now()
+            logger.info(f"Updated {vendor_file}")
             session.commit()
 
 
@@ -112,6 +116,7 @@ def remove_archived(archived_directories: list[str]) -> list[dict]:
     for directory in archived_directories:
         vendor_interfaces.append(_extract_uuids(directory))
         shutil.rmtree(directory)
+        logger.info(f"Removed {directory}")
     return vendor_interfaces
 
 

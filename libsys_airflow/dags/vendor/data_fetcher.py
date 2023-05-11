@@ -69,7 +69,6 @@ with DAG(
             context["execution_date"],
         )
         params["execution_date"] = context["execution_date"]
-        
 
         logger.info(f"Params are {params}")
 
