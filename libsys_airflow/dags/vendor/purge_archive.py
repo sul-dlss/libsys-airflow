@@ -33,7 +33,3 @@ with DAG(
     vendor_interfaces = remove_records_task(target_directories)
 
     set_status_task(vendor_interfaces)
-
-    # finished_task = EmptyOperator(task_id="archive-completed")
-
-    # remove_records_task >> finished_task
