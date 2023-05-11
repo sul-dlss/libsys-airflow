@@ -39,7 +39,7 @@ class VendorInterface(Model):
     vendor = relationship("Vendor", back_populates="vendor_interfaces")
     display_name = Column(String(50), unique=False, nullable=False)
     folio_interface_uuid = Column(String(36), unique=True, nullable=False)
-    folio_data_import_profile_uuid = Column(String(36), unique=True, nullable=True)
+    folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_processing_name = Column(String(50), unique=False, nullable=True)
     file_pattern = Column(String(250), unique=False, nullable=True)
     remote_path = Column(String(250), unique=False, nullable=True)
