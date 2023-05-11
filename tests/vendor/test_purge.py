@@ -2,8 +2,24 @@ from datetime import datetime, timedelta
 
 import pytest  # noqa
 
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from pytest_mock_resources import create_sqlite_fixture, Rows
 
-from libsys_airflow.plugins.vendor.purge import find_directories, remove_archived
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from libsys_airflow.plugins.vendor.models import (
+    FileStatus,
+    VendorInterface,
+    VendorFile
+)
+
+from libsys_airflow.plugins.vendor.purge import (
+    find_directories,
+    remove_archived,
+    set_purge_status
+)
+
 
 vendor_interfaces = [
     {
@@ -22,12 +38,42 @@ vendor_interfaces = [
     }
 ]
 
+rows = Rows(
+    VendorInterface(
+        id=1,
+        display_name="Marcit - Update",
+        folio_interface_uuid="88d39c9c-fa8c-46ee-921d-71f725afb719",
+        folio_data_import_profile_uuid="f4144dbd-def7-4b77-842a-954c62faf319",
+        file_pattern=r"^\d+\.mrc$",
+        remote_path="oclc",
+        active=True,
+    ),
+    VendorFile(
+        id=1,
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
+        vendor_interface_id=1,
+        vendor_filename="ec1234.mrc",
+        filesize=337,
+        status=FileStatus.not_fetched,
+        vendor_timestamp=datetime.fromisoformat("2023-05-10T00:21:47"),
+    )
+)
+
+engine = create_sqlite_fixture(rows)
 
 @pytest.fixture
 def archive_basepath(tmp_path):
     path = tmp_path / "archive"
     path.mkdir(parents=True)
     return path
+
+
+@pytest.fixture
+def pg_hook(mocker, engine) -> PostgresHook:
+    mock_hook = mocker.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine")
+    mock_hook.return_value = engine
+    return mock_hook
 
 
 def test_find_directories(archive_basepath):
@@ -78,9 +124,32 @@ def test_remove_archived(archive_basepath):
     result = remove_archived(target_directories)
 
     assert target_directory.exists() is False
-    assert len(result[0]) == 2
-    first_vendor = result[0]["8a8dc6dd-8be6-4bd9-80cd-e00409b37dc6"]
-    assert first_vendor["date"] == prior_90.strftime("%Y%m%d")
-    assert len(first_vendor["interfaces"]) == 2
-    interface_marc_file = first_vendor["interfaces"]["88d39c9c-fa8c-46ee-921d-71f725afb719"]
-    assert interface_marc_file.startswith("ec1234.mrc")
+    assert len(result[0]) == 4
+    first_interface = result[0]["88d39c9c-fa8c-46ee-921d-71f725afb719"]
+    assert first_interface["date"] == prior_90.strftime("%Y%m%d")
+    assert first_interface["files"][0] == "ec1234.mrc"
+
+def test_set_purge_status(pg_hook):
+    today = datetime.utcnow()
+    prior_90 = today - timedelta(days=90)
+
+    set_purge_status(
+        [
+            {
+                "88d39c9c-fa8c-46ee-921d-71f725afb719": {
+                    "date": prior_90.strftime("%Y%m%d"),
+                    "files": [
+                        "ec1234.mrc"
+                    ]
+                }
+            }
+        ]
+    )
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalar(
+            select(VendorFile).where(
+                VendorFile.id == 1
+            )
+        )
+        assert vendor_file.status == FileStatus.purged

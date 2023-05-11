@@ -59,6 +59,7 @@ class FileStatus(enum.Enum):
     loading = "loading"
     loading_error = "loading_error"
     loaded = "loaded"
+    purged = "purged"
 
 
 class VendorFile(Model):

@@ -4,9 +4,17 @@ import pathlib
 import shutil
 
 from airflow.decorators import task
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.paths import archive_basepath
-from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.models import (
+    FileStatus,
+    VendorFile,
+    VendorInterface
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +41,24 @@ def set_status_task(vendor_interfaces: list):
     """
     Sets purge status for Files
     """
+    set_purge_status(vendor_interfaces)
+
+
+def _extract_uuids(directory: str):
+    """
+    Extracts Vendor, VendorInterface, and Filename from Archive Directory
+    """
+    dir_path = pathlib.Path(directory)
+    output = {}
+    for vendor_path in dir_path.iterdir():
+        for interface_path in vendor_path.iterdir():
+            output[interface_path.stem] = {
+                "date": dir_path.stem,
+                "files": []
+            }
+            for file in interface_path.iterdir():
+                output[interface_path.stem]["files"].append(file.name)
+    return output
 
 
 def find_directories(archive_directory: str, prior_days=90) -> list:
@@ -64,18 +90,28 @@ def remove_archived(archived_directories: list[str]) -> list[dict]:
     return vendor_interfaces
 
 
-def _extract_uuids(directory: str):
+def set_purge_status(vendor_files: list[dict]):
     """
-    Extracts Vendor, VendorInterface, and Filename from Archive Directory
+    Finds matching VendorFile from the database and sets status to
+    purge
     """
-    dir_path = pathlib.Path(directory)
-    output = {}
-    for vendor_path in dir_path.iterdir():
-        output[vendor_path.stem] = {
-            "date": dir_path.stem,
-            "interfaces": {}
-        }
-        for interface_path in vendor_path.iterdir():
-            for file in interface_path.iterdir():
-                output[vendor_path.stem]["interfaces"][interface_path.stem] = file.name
-    return output
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        for row in vendor_files:
+            for interface_uuid, info in row.items():
+                vendor_interface = session.scalars(
+                    select(VendorInterface).where(
+                        VendorInterface.folio_interface_uuid == interface_uuid
+                    )
+                ).first()
+                updated_date = datetime.strptime(info["date"], "%Y%m%d")
+                for filename in info["files"]:
+                    vendor_file = session.scalars(
+                        select(VendorFile).where(
+                            VendorFile.vendor_interface_id == vendor_interface.id
+                        )
+                        .where(VendorFile.vendor_filename == filename)
+                        .where(VendorFile.updated >= updated_date)
+                    ).first()
+                    vendor_file.status = FileStatus.purged
+                    session.commit()
