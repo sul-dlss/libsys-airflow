@@ -174,8 +174,21 @@ PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_U
 1. Install dependencies per `Dependency Management and Packaging` above
 1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
 
-Run the black formatter:
-`black .`
+### Black (Python formatter)
+
+The github action has been configured to fail if there are any violations (see `pyproject.toml`)
+
+To run the black formatter to show violations and their details:
+`black .` # if in the poetry shell
+`poetry run black .`
+
+Note that the builds merged to main will fail if there are black violations due to the lint github action.
+
+To use black to address formatting violations:
+`black --config blackupdate.toml .` # if in the poetry shell
+`poetry run black --config blackupdate.toml .`
+
+### Flake8 (Python linter)
 
 Run the flake8 linter:
 `flake8 libsys_airflow/` (_Note_: As of 2023-04-13, the `--ignore=E225,E501,F401,F811,W503` option is given in CI; you may want to do similarly to see the lint warnings that'll actually fail CI. See `Lint with flake8` `build` step in `.github/workflows/python-app.yml` for current invocation.)

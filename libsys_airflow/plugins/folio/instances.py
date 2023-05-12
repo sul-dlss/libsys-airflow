@@ -159,7 +159,7 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i: i + batch_size]
+        instance_batch = instance_records[i : i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
