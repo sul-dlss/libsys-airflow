@@ -44,7 +44,6 @@ with DAG(
     catchup=False,
     tags=["remove_archived"],
 ) as dag:
-
     archive_files = PythonOperator(
         task_id="remove_archived_migration_files", python_callable=delete_archived_data
     )

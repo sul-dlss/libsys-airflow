@@ -1,9 +1,7 @@
 import pydantic
 import pytest  # noqa
 
-from libsys_airflow.plugins.folio.interface import (
-    interface_info
-)
+from libsys_airflow.plugins.folio.interface import interface_info
 
 
 class MockFOLIOClient(pydantic.BaseModel):
@@ -22,7 +20,7 @@ credentials_response = {
     "id": "2552dadb-aa4e-4d58-ad99-f09384a53018",
     "username": "my_user",
     "password": "my_password",
-    "interfaceId": "588b5c42-8634-4af7-bc9b-5e0116ed96b6"
+    "interfaceId": "588b5c42-8634-4af7-bc9b-5e0116ed96b6",
 }
 
 interface_response = {

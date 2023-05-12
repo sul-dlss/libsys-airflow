@@ -16,11 +16,7 @@ from libsys_airflow.plugins.folio.helpers import (
     setup_data_logging,
 )
 
-from mocks import ( # noqa
-    mock_dag_run,
-    mock_file_system,
-    MockTaskInstance
-)
+from mocks import mock_dag_run, mock_file_system, MockTaskInstance  # noqa
 
 import mocks
 
@@ -88,7 +84,6 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
 def test_post_to_okapi(
     mock_okapi_success, mock_okapi_variable, mock_dag_run, mock_records, caplog  # noqa
 ):
-
     post_to_okapi(
         token="2345asdf",
         dag_run=mock_dag_run(),
@@ -142,9 +137,7 @@ def test_post_to_okapi_failures(
         airflow=airflow_path,
     )
 
-    error_file = (
-        migration_results / "errors-instance-storage-422.json"  # noqa
-    )
+    error_file = migration_results / "errors-instance-storage-422.json"  # noqa
     assert error_file.exists()
 
 
@@ -162,8 +155,9 @@ def test_get_bib_files():
 
     mocks.messages = {}
 
-    get_bib_files(task_instance=MockTaskInstance(task_id="bib-files-group"),
-                  context=context)
+    get_bib_files(
+        task_instance=MockTaskInstance(task_id="bib-files-group"), context=context
+    )
 
     # {'bib-files-group': {'marc-file': 'sample.mrc', 'tsv-files': ['sample.public.tsv', 'sample.circ.tsv'], 'tsv-base': 'sample.tsv', 'tsv-dates': 'sample.dates.tsv', 'mhld-file': None, 'bwchild-file': None}}
     assert mocks.messages["bib-files-group"]["marc-file"].startswith("sample.mrc")
@@ -199,6 +193,7 @@ def mock_logger_file_handler(monkeypatch, mocker: MockerFixture):
         return file_handler
 
     monkeypatch.setattr(logging, "FileHandler", mock_file_handler)
+
 
 def test_process_records(mock_dag_run, mock_file_system):  # noqa
     airflow_path = mock_file_system[0]

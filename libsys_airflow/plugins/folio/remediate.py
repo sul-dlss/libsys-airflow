@@ -144,8 +144,7 @@ def add_missing_records(*args, **kwargs):
     # Determine number of missing records in FOLIO
     cur = con.cursor()
     cur.execute(
-        "SELECT count(id) FROM AuditLog WHERE status=?;",
-        (AuditStatus.MISSING.value,)
+        "SELECT count(id) FROM AuditLog WHERE status=?;", (AuditStatus.MISSING.value,)
     )
     count_result = cur.fetchone()
     cur.close()

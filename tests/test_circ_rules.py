@@ -7,7 +7,7 @@ from mocks import (  # noqa
     mock_dag_run,
     mock_file_system,
     MockFOLIOClient,
-    MockTaskInstance
+    MockTaskInstance,
 )
 
 import mocks
@@ -141,7 +141,8 @@ def mock_valid_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context",
+        mock_get_current_context,
     )
 
 
@@ -158,7 +159,8 @@ def mock_missing_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context",
+        mock_get_current_context,
     )
 
 
@@ -175,7 +177,8 @@ def mock_batch_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.plugins.folio.circ_rules.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.circ_rules.get_current_context",
+        mock_get_current_context,
     )
 
 
@@ -361,7 +364,6 @@ def test_retrieve_policies(mock_requests):
 
 
 def test_retrieve_batch_policies(mock_requests, caplog):
-
     mocks.messages = setup_batch_circ_rules.copy()
     task_id = "retrieve-policies-group.overdue-fine-get-policies"
 
@@ -394,7 +396,9 @@ def test_setup_rules(mock_valid_current_context):
     )
 
     assert len(mocks.messages[task_id]) == 4
-    assert mocks.messages[task_id]["location_id"] == "fcd64ce1-6995-48f0-840e-89ffa2288371"
+    assert (
+        mocks.messages[task_id]["location_id"] == "fcd64ce1-6995-48f0-840e-89ffa2288371"
+    )
 
     mocks.messages = {}
 

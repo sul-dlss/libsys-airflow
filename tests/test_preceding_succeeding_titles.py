@@ -41,7 +41,8 @@ def mock_get_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.dags.preceding_succeding_titles.get_current_context", mock_get_current_context
+        "libsys_airflow.dags.preceding_succeding_titles.get_current_context",
+        mock_get_current_context,
     )
 
 

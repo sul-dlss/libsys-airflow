@@ -37,13 +37,11 @@ with DAG(
     tags=["folio", "circ-rules"],
     max_active_runs=1,
 ) as dag:
-
     setup = PythonOperator(
         task_id="setup-circ-rules", python_callable=setup_batch_rules
     )
 
     with TaskGroup(group_id="retrieve-policies-group") as retrieve_policies_group:
-
         start_policy = DummyOperator(task_id="start-policies-retrieval")
 
         end_policy = DummyOperator(task_id="end-policies-retrieval")
@@ -64,7 +62,6 @@ with DAG(
             start_policy >> rule_type_urls >> retrieve_circ_policies >> end_policy
 
     with TaskGroup(group_id="friendly-report-group") as report_group:
-
         friendly_labels = PythonOperator(
             task_id="friendly-report",
             python_callable=friendly_batch_report,

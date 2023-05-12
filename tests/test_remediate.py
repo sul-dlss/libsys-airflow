@@ -18,7 +18,11 @@ from mocks import (  # noqa
 )
 
 from libsys_airflow.plugins.folio.audit import setup_audit_db
-from libsys_airflow.plugins.folio.remediate import add_missing_records, _post_record, start_record_qa
+from libsys_airflow.plugins.folio.remediate import (
+    add_missing_records,
+    _post_record,
+    start_record_qa,
+)
 
 
 def mock_audit_database(mock_dag_run, mock_file_system):  # noqa
@@ -40,7 +44,6 @@ class MockFolioClient(pydantic.BaseModel):
 
 
 def test_with_no_missing_records(mock_dag_run, mock_file_system, caplog):  # noqa
-
     mock_audit_database(mock_dag_run, mock_file_system)
 
     add_missing_records(
@@ -183,7 +186,8 @@ def mock_get_current_context(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.plugins.folio.remediate.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.remediate.get_current_context",
+        mock_get_current_context,
     )
 
 
@@ -200,11 +204,11 @@ def mock_get_current_context_no_iteration(monkeypatch, mocker: MockerFixture):
         return context
 
     monkeypatch.setattr(
-        "libsys_airflow.plugins.folio.remediate.get_current_context", mock_get_current_context
+        "libsys_airflow.plugins.folio.remediate.get_current_context",
+        mock_get_current_context,
     )
 
 
 def test_start_record_qa_raise_error(mock_get_current_context_no_iteration):
-
     with pytest.raises(ValueError, match="Iteration ID cannot be None"):
         start_record_qa()

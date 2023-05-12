@@ -39,7 +39,7 @@ def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
             else:
                 record_lookups[catkey] = {
                     "stat_codes": stat_codes,
-                    "suppress": discovery_suppress
+                    "suppress": discovery_suppress,
                 }
     return record_lookups
 
@@ -57,9 +57,7 @@ def _set_cataloged_date(instance: dict, dates_df: pd.DataFrame, instance_status:
     ckey = instance["hrid"].removeprefix("a")
     matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
     if matched_row["CATALOGED_DATE"].values[0] != "0":
-        date_cat = datetime.strptime(
-            matched_row["CATALOGED_DATE"].values[0], "%Y%m%d"
-        )
+        date_cat = datetime.strptime(matched_row["CATALOGED_DATE"].values[0], "%Y%m%d")
         instance["catalogedDate"] = date_cat.strftime("%Y-%m-%d")
         instance["statusId"] = instance_status["Cataloged"]
     else:
@@ -123,18 +121,20 @@ def _get_statistical_codes(folio_client: FolioClient) -> dict:
     Retrieve statistical codes for instances and saves for lookups
     """
     # Get Instance stat code type
-    stat_code_type_result = requests.get(f"{folio_client.okapi_url}/statistical-code-types?query=name==Instance&limit=200",
-                                         headers=folio_client.okapi_headers)
+    stat_code_type_result = requests.get(
+        f"{folio_client.okapi_url}/statistical-code-types?query=name==Instance&limit=200",
+        headers=folio_client.okapi_headers,
+    )
     stat_code_type_result.raise_for_status()
     instance_code_type = stat_code_type_result.json()['statisticalCodeTypes'][0]['id']
     instance_stat_codes_result = requests.get(
         f"{folio_client.okapi_url}/statistical-codes?query=statisticalCodeTypeId=={instance_code_type}&limit=200",
-        headers=folio_client.okapi_headers)
+        headers=folio_client.okapi_headers,
+    )
     instance_stat_codes_result.raise_for_status()
     stat_code_lookup = {}
     for row in instance_stat_codes_result.json()['statisticalCodes']:
         match row['code']:
-
             case "E-THESIS":
                 stat_code_lookup["E-THESIS"] = row["id"]
 
@@ -159,7 +159,7 @@ def post_folio_instance_records(**kwargs):
         instance_records = json.load(fo)
 
     for i in range(0, len(instance_records), batch_size):
-        instance_batch = instance_records[i:i + batch_size]
+        instance_batch = instance_records[i: i + batch_size]
         logger.info(f"Posting {len(instance_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -222,9 +222,7 @@ def run_bibs_transformer(*args, **kwargs):
 
     instance_statuses = _get_instance_status(folio_client)
 
-    base_tsv_path = (
-        iteration_dir / f"source_data/items/{marc_stem}.tsv"
-    )
+    base_tsv_path = iteration_dir / f"source_data/items/{marc_stem}.tsv"
     logger.error(f"Base tsv path {base_tsv_path} {base_tsv_path.exists()}")
 
     stat_codes = _get_statistical_codes(folio_client)
@@ -235,7 +233,7 @@ def run_bibs_transformer(*args, **kwargs):
         tsv_dates=tsv_dates,
         instance_statuses=instance_statuses,
         base_tsv=base_tsv_path,
-        stat_codes=stat_codes
+        stat_codes=stat_codes,
     )
 
     bibs_transformer.wrap_up()

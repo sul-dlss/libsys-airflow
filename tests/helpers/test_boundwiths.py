@@ -5,7 +5,10 @@ import requests
 
 from pytest_mock import MockerFixture
 
-from libsys_airflow.plugins.folio.helpers.bw import discover_bw_parts_files, check_add_bw
+from libsys_airflow.plugins.folio.helpers.bw import (
+    discover_bw_parts_files,
+    check_add_bw,
+)
 from tests.mocks import (  # noqa
     mock_file_system,
     mock_dag_run,
@@ -41,7 +44,6 @@ def mock_okapi_boundwith(monkeypatch, mocker: MockerFixture):
 
 
 def test_check_add_bw(mock_file_system, mock_okapi_boundwith, caplog):  # noqa
-
     results_dir = mock_file_system[3]
 
     boundwith_file = results_dir / "boundwith_parts.json"
@@ -94,7 +96,8 @@ def test_discover_bw_parts_files(mock_file_system, caplog):  # noqa
     discover_bw_parts_files(
         airflow=airflow,
         jobs=2,
-        task_instance=MockTaskInstance(task_id="discovery-bw-parts"))
+        task_instance=MockTaskInstance(task_id="discovery-bw-parts"),
+    )
     assert len(mocks.messages["discovery-bw-parts"]["job-0"]) == 0
     assert mocks.messages["discovery-bw-parts"]["job-1"] == [str(boundwith_file)]
 

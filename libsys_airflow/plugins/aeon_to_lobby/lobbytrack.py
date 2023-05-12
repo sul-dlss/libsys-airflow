@@ -5,8 +5,8 @@ from airflow.models import Variable
 
 
 def lobby_post(**kwargs):
-    lobby_url=Variable.get("lobby_url")
-    lobby_key=Variable.get("lobby_key")
+    lobby_url = Variable.get("lobby_url")
+    lobby_key = Variable.get("lobby_key")
 
     lobby_headers = {
         "Authorization": lobby_key,
@@ -23,7 +23,8 @@ def lobby_post(**kwargs):
 
         if response.status_code != 200:
             logging.error(
-                "lobbytrack api rsponded with:" f"{response.status_code}, {response.text}"
+                "lobbytrack api rsponded with:"
+                f"{response.status_code}, {response.text}"
             )
             response.raise_for_status()
 

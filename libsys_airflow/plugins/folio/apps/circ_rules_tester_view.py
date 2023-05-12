@@ -96,7 +96,9 @@ class CircRulesTester(AppBuilderBaseView):
         return Response(
             report.to_csv(),
             mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"},
+            headers={
+                "Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"
+            },
         )
 
     @expose("/report/<dag_run>")

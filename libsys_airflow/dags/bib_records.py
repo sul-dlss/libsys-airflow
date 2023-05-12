@@ -17,7 +17,11 @@ from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
 
-from libsys_airflow.plugins.folio.helpers import get_bib_files, process_records, setup_dag_run_folders
+from libsys_airflow.plugins.folio.helpers import (
+    get_bib_files,
+    process_records,
+    setup_dag_run_folders,
+)
 
 from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
 from libsys_airflow.plugins.folio.helpers.marc import (
@@ -25,7 +29,10 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     move_marc_files,
 )
 
-from libsys_airflow.plugins.folio.helpers.tsv import transform_move_tsvs, unwanted_item_cat1
+from libsys_airflow.plugins.folio.helpers.tsv import (
+    transform_move_tsvs,
+    unwanted_item_cat1,
+)
 
 from libsys_airflow.plugins.folio.helpers.folio_ids import (
     generate_holdings_identifiers,
@@ -43,7 +50,10 @@ from libsys_airflow.plugins.folio.holdings import (
 
 from libsys_airflow.plugins.folio.login import folio_login
 
-from libsys_airflow.plugins.folio.instances import post_folio_instance_records, run_bibs_transformer
+from libsys_airflow.plugins.folio.instances import (
+    post_folio_instance_records,
+    run_bibs_transformer,
+)
 
 from libsys_airflow.plugins.folio.items import (
     post_folio_items_records,
@@ -87,7 +97,6 @@ with DAG(
     tags=["bib_import"],
     max_active_runs=int(Variable.get("IMPORT_MAX_RUNS", 3)),
 ) as dag:
-
     dag.doc_md = dedent(
         """
     # Import Symphony MARC Records to FOLIO
@@ -106,7 +115,6 @@ with DAG(
     )
 
     with TaskGroup(group_id="move-transform") as move_transform_process:
-
         move_marc_to_instances = PythonOperator(
             task_id="move-marc-files",
             python_callable=move_marc_files,
@@ -147,7 +155,6 @@ with DAG(
         symphony_tsv_processing >> finished_move_transform
 
     with TaskGroup(group_id="marc21-and-tsv-to-folio") as marc_to_folio:
-
         convert_marc_to_folio_instances = PythonOperator(
             task_id="convert_marc_to_folio_instances",
             python_callable=run_bibs_transformer,
@@ -187,7 +194,6 @@ with DAG(
         convert_tsv_to_folio_items >> finish_conversion
 
     with TaskGroup(group_id="additional-holdings") as additional_holdings:
-
         start_additional_holdings = EmptyOperator(
             task_id="start-mhlds-electronic-holdings",
             trigger_rule="none_failed_or_skipped",
@@ -228,7 +234,6 @@ with DAG(
         )
 
     with TaskGroup(group_id="update-hrids-identifiers") as update_hrids:
-
         update_holdings_hrids = PythonOperator(
             task_id="update-holdings-idents",
             python_callable=generate_holdings_identifiers,
@@ -249,7 +254,6 @@ with DAG(
         update_items >> finish_hrid_updates
 
     with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
-
         start_records_to_valid_json = EmptyOperator(task_id="start-recs-to-valid-json")
 
         convert_instances_valid_json = PythonOperator(
@@ -295,7 +299,6 @@ with DAG(
         )
 
     with TaskGroup(group_id="post-to-folio") as post_to_folio:
-
         login = PythonOperator(
             task_id="folio_login", python_callable=folio_login
         )  # noqa

@@ -12,7 +12,6 @@ from libsys_airflow.plugins.folio.apps.folio_migration_view import (
 
 
 def test_get_catkey_range_existing_mrc(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     marc_file = iteration_dir / "source_data/instances/ckeys_00350000_00399999.mrc"
@@ -25,7 +24,6 @@ def test_get_catkey_range_existing_mrc(mock_file_system):  # noqa
 
 
 def test_get_catkey_range_nonexistant_mrc(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     start, end = _get_catkey_range(iteration_dir)
@@ -35,7 +33,6 @@ def test_get_catkey_range_nonexistant_mrc(mock_file_system):  # noqa
 
 
 def test_get_catkey_range_nonstandard_name(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     marc_file = iteration_dir / "source_data/instances/ON-ORDER.law.01.mrc"
@@ -48,7 +45,6 @@ def test_get_catkey_range_nonstandard_name(mock_file_system):  # noqa
 
 
 def test_get_folio_records(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     (iteration_dir / "results/folio_instances_bibs-transformer.json").write_text(
@@ -75,7 +71,6 @@ def test_get_folio_records(mock_file_system):  # noqa
 
 
 def test_get_reports_data_issues(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     (iteration_dir / "reports/report_bibs-transformer.md").write_text("# A Report")
@@ -91,7 +86,6 @@ def test_get_reports_data_issues(mock_file_system):  # noqa
 
 
 def test_get_source_data(mock_file_system):  # noqa
-
     iteration_dir = mock_file_system[2]
 
     (iteration_dir / "source_data/instances/ckey_003000_005000.mrc").write_text(

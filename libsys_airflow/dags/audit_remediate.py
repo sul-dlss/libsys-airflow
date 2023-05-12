@@ -17,7 +17,7 @@ folio_client = FolioClient(
     Variable.get("okapi_url"),
     "sul",
     Variable.get("folio_user"),
-    Variable.get("folio_password")
+    Variable.get("folio_password"),
 )
 
 default_args = {
@@ -41,8 +41,7 @@ with DAG(
     dag.doc = dedent("""# Audit and Remediation DAG""")
 
     start_check_add = PythonOperator(
-        task_id="start-check-add",
-        python_callable=start_record_qa
+        task_id="start-check-add", python_callable=start_record_qa
     )
 
     init_audit_remediation_db = PythonOperator(
@@ -50,7 +49,7 @@ with DAG(
         python_callable=setup_audit_db,
         op_kwargs={
             "iteration_id": "{{ task_instance.xcom_pull(task_ids='start-check-add')}}"
-        }
+        },
     )
 
     instance_views_audit = PythonOperator(
@@ -58,7 +57,7 @@ with DAG(
         python_callable=audit_instance_views,
         op_kwargs={
             "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}",
-        }
+        },
     )
 
     remediate_missing_records = PythonOperator(
@@ -66,8 +65,8 @@ with DAG(
         python_callable=add_missing_records,
         op_kwargs={
             "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}",
-            "folio_client": folio_client
-        }
+            "folio_client": folio_client,
+        },
     )
 
     finished = DummyOperator(task_id="finished-errors-handling")

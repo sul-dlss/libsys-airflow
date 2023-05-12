@@ -23,19 +23,12 @@ with DAG(
     default_args=default_args,
     schedule="0 0 * * *",
     catchup=False,
-    start_date=datetime(2023, 1, 1)
+    start_date=datetime(2023, 1, 1),
 ) as dag:
+    get_vendor_data = EmptyOperator(task_id="get_vendor_data")
 
-    get_vendor_data = EmptyOperator(
-        task_id="get_vendor_data"
-    )
+    get_vendor_connection = EmptyOperator(task_id="get_vendor_connection")
 
-    get_vendor_connection = EmptyOperator(
-        task_id="get_vendor_connection"
-    )
-
-    trigger_vendor_dag = EmptyOperator(
-        task_id="trigger_vendor_dag"
-    )
+    trigger_vendor_dag = EmptyOperator(task_id="trigger_vendor_dag")
 
     get_vendor_data >> get_vendor_connection >> trigger_vendor_dag
