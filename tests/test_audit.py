@@ -10,7 +10,11 @@ import pydantic
 from airflow.models import Connection
 
 from mocks import mock_dag_run, mock_file_system  # noqa
-from libsys_airflow.plugins.folio.audit import _add_json_record, audit_instance_views, setup_audit_db
+from libsys_airflow.plugins.folio.audit import (
+    _add_json_record,
+    audit_instance_views,
+    setup_audit_db,
+)
 
 
 class MockCursor(object):
@@ -246,8 +250,13 @@ def test_add_json_record_uniqueness(mock_dag_run, mock_file_system, caplog):  # 
     # Test if record is list
     _add_json_record([], con, 1)
 
-    assert f"UNIQUE constraint failed: JsonPayload.record_id = {record_id}" in caplog.text
-    assert f"UNIQUE constraint failed: JsonPayload.record_id = {record_two_id}" in caplog.text
+    assert (
+        f"UNIQUE constraint failed: JsonPayload.record_id = {record_id}" in caplog.text
+    )
+    assert (
+        f"UNIQUE constraint failed: JsonPayload.record_id = {record_two_id}"
+        in caplog.text
+    )
     assert "Unknown record format <class 'list'>" in caplog.text
 
     con.close()

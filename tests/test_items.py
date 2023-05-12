@@ -15,7 +15,7 @@ from libsys_airflow.plugins.folio.items import (
     run_items_transformer,
     _add_additional_info,
     _generate_item_notes,
-    _remove_on_order_items
+    _remove_on_order_items,
 )
 
 
@@ -38,23 +38,14 @@ item_note_types = {
 
 statistical_code_types = {
     'statisticalCodeTypes': [
-        {
-            'id': '6c126b3a-3859-451c-8576-15b26b205d43',
-            'name': 'Item'
-        }
+        {'id': '6c126b3a-3859-451c-8576-15b26b205d43', 'name': 'Item'}
     ]
 }
 
 statistical_codes = {
     'statisticalCodes': [
-        {
-            'id': '8be8d577-1cd7-4b84-ae71-d9472fc4d2b1',
-            'code': 'DIGI-SENT'
-        },
-        {
-            'id': '9c98fbcc-1728-41f5-9382-038d9fa45c0f',
-            'code': 'FED-WEED'
-        }
+        {'id': '8be8d577-1cd7-4b84-ae71-d9472fc4d2b1', 'code': 'DIGI-SENT'},
+        {'id': '9c98fbcc-1728-41f5-9382-038d9fa45c0f', 'code': 'FED-WEED'},
     ]
 }
 
@@ -163,20 +154,21 @@ def setup_items_holdings(
 
     (item_tsv_source_dir / "ckey_001_002.electronic.tsv").touch()
 
-    suppressed_locations_path = airflow_dir / "migration/mapping_files/items-suppressed-locations.json"
+    suppressed_locations_path = (
+        airflow_dir / "migration/mapping_files/items-suppressed-locations.json"
+    )
 
     with suppressed_locations_path.open("w+") as fo:
-        json.dump([
-            "COLDSTOR",
-            "SPECB-S"
-        ], fo)
+        json.dump(["COLDSTOR", "SPECB-S"], fo)
 
     stat_codes_path = airflow_dir / "migration/mapping_files/statcodes.tsv"
 
     with stat_codes_path.open("w+") as fo:
-        for row in ["ITEM_CATS\tfolio_code",
-                    "DIGI-SENT\tDIGI-SENT",
-                    "FED-WEED\tFED-WEED"]:
+        for row in [
+            "ITEM_CATS\tfolio_code",
+            "DIGI-SENT\tDIGI-SENT",
+            "FED-WEED\tFED-WEED",
+        ]:
             fo.write(f"{row}\n")
 
     data_prep = iteration_dir / "data_preparation/"
@@ -197,7 +189,9 @@ def test_add_additional_info(
     iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]
 
-    items_path, items_notes_path = setup_items_holdings(airflow_path, results_dir, iteration_dir)
+    items_path, items_notes_path = setup_items_holdings(
+        airflow_path, results_dir, iteration_dir
+    )
 
     folio_client = MockFOLIOClient()
 
@@ -241,11 +235,10 @@ def test_add_additional_info(
     assert "discoverySuppress" not in new_items_recs[1]
     assert new_items_recs[2]["discoverySuppress"] is True
     assert new_items_recs[3]["discoverySuppress"] is True
-    assert (
-        new_items_recs[-2]["statisticalCodeIds"]
-        == ["8be8d577-1cd7-4b84-ae71-d9472fc4d2b1",
-            "9c98fbcc-1728-41f5-9382-038d9fa45c0f"]
-    )
+    assert new_items_recs[-2]["statisticalCodeIds"] == [
+        "8be8d577-1cd7-4b84-ae71-d9472fc4d2b1",
+        "9c98fbcc-1728-41f5-9382-038d9fa45c0f",
+    ]
 
 
 def test_add_additional_info_missing_barcode(
@@ -261,10 +254,7 @@ def test_add_additional_info_missing_barcode(
     items_recs[0].pop("barcode")
 
     items_path, items_notes_path = setup_items_holdings(
-        airflow_dir,
-        results_dir,
-        iteration_dir,
-        items_recs
+        airflow_dir, results_dir, iteration_dir, items_recs
     )
 
     folio_client = MockFOLIOClient()
@@ -289,7 +279,9 @@ def test_add_additional_info_missing_barcode(
     items_recs = items_recs_copy
 
 
-def test_add_additional_info_hoover(mock_file_system, mock_okapi_items_endpoint):  # noqa
+def test_add_additional_info_hoover(
+    mock_file_system, mock_okapi_items_endpoint
+):  # noqa
     pass
 
 
@@ -307,7 +299,7 @@ def test_remove_on_order_items(tmp_path):
         [
             {"HOMELOCATION": "ON-ORDER", "CURRENTLOCATION": "GREEN"},
             {"HOMELOCATION": "SAL3", "CURRENTLOCATION": "ON-ORDER"},
-            {"HOMELOCATION": "SAL3", "CURRENTLOCATION": "GREEN"}
+            {"HOMELOCATION": "SAL3", "CURRENTLOCATION": "GREEN"},
         ]
     )
     original_df.to_csv(source_path, sep="\t", index=False)

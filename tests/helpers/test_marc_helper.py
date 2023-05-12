@@ -350,26 +350,23 @@ def test_handle_srs_files(
 
 
 def test_filter_mhlds(tmp_path, caplog):
-
     mhld_mock = tmp_path / "mock-mhld.mrc"
 
     record_one = Record()
     record_one.add_field(
-        Field(tag="852",
-              indicators=[" ", " "],
-              subfields=['a', 'CSt'])
+        Field(tag="852", indicators=[" ", " "], subfields=['a', 'CSt'])
     )
     record_two = Record()
     record_two.add_field(
-        Field(tag="852",
-              indicators=[" ", " "],
-              subfields=['a', '**REQUIRED Field**'])
+        Field(tag="852", indicators=[" ", " "], subfields=['a', '**REQUIRED Field**'])
     )
     record_three = Record()
     record_three.add_field(
-        Field(tag="852",
-              indicators=[" ", " "],
-              subfields=['z', 'All holdings transferred to CSt'])
+        Field(
+            tag="852",
+            indicators=[" ", " "],
+            subfields=['z', 'All holdings transferred to CSt'],
+        )
     )
 
     with mhld_mock.open("wb+") as fo:
@@ -550,7 +547,6 @@ def test_post_marc_to_srs(
 def test_missing_file_post_marc_to_srs(
     srs_file, mock_dag_run, mock_file_system, caplog  # noqa  # noqa
 ):
-
     airflow = mock_file_system[0]
 
     base_folder = airflow / "migration"

@@ -37,7 +37,9 @@ engine = create_sqlite_fixture(rows)
 
 @pytest.fixture
 def pg_hook(mocker, engine) -> PostgresHook:
-    mock_hook = mocker.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine")
+    mock_hook = mocker.patch(
+        "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
+    )
     mock_hook.return_value = engine
     return mock_hook
 
@@ -102,7 +104,7 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             "oclc",
             download_path,
             r".+\.mrc",
-            "65d30c15-a560-4064-be92-f90e38eeb351"
+            "65d30c15-a560-4064-be92-f90e38eeb351",
         )
 
     with Session(pg_hook()) as session:

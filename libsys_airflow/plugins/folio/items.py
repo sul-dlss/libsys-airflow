@@ -163,7 +163,9 @@ def _remove_on_order_items(items_tsv_path):
     """
     items_df = pd.read_csv(items_tsv_path, sep="\t")
     start_size = len(items_df)
-    condition = (items_df["CURRENTLOCATION"] == "ON-ORDER") | (items_df["HOMELOCATION"] == "ON-ORDER")
+    condition = (items_df["CURRENTLOCATION"] == "ON-ORDER") | (
+        items_df["HOMELOCATION"] == "ON-ORDER"
+    )
     filtered_items = items_df.loc[~condition]
     filtered_items.to_csv(items_tsv_path, sep="\t", index=False)
     finished_size = len(filtered_items)
@@ -209,9 +211,7 @@ def _add_additional_info(**kwargs):
 
         item_note_types = _retrieve_item_notes_ids(folio_client)
 
-    items_lookup = _generate_items_lookups(
-        airflow, items_tsv_path, folio_client
-    )
+    items_lookup = _generate_items_lookups(airflow, items_tsv_path, folio_client)
 
     items = []
 
@@ -251,7 +251,7 @@ def post_folio_items_records(**kwargs):
         items_records = json.load(fo)
 
     for i in range(0, len(items_records), batch_size):
-        items_batch = items_records[i:i + batch_size]
+        items_batch = items_records[i: i + batch_size]
         logger.info(f"Posting {len(items_batch)} in batch {i/batch_size}")
         post_to_okapi(
             token=kwargs["task_instance"].xcom_pull(
@@ -282,7 +282,9 @@ def run_items_transformer(*args, **kwargs) -> bool:
         mapping_file = "item_mapping.json"
 
     _remove_on_order_items(
-        pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}")
+        pathlib.Path(
+            f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}"
+        )
     )
 
     item_config = ItemsTransformer.TaskConfiguration(

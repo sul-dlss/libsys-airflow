@@ -272,7 +272,6 @@ def test_update_holdings(
 def test_post_folio_holding_records(
     mock_okapi_success, mock_dag_run, mock_okapi_variable, tmp_path, caplog  # noqa
 ):
-
     dag = mock_dag_run
 
     holdings_json = tmp_path / f"holdings-{dag.run_id}-1.json"

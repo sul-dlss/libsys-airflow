@@ -21,7 +21,7 @@ def _audit_record(**kwargs):
     """Audits FOLIO Record by looking up id from the FOLIO Database"""
     record = kwargs["record"]
     record_type = int(kwargs["record_type"])
-    audit_con= kwargs["audit_con"]
+    audit_con = kwargs["audit_con"]
     pg_cursor = kwargs["pg_cursor"]
     sql = kwargs["sql"]
 

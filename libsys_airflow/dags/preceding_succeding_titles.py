@@ -30,7 +30,10 @@ def post_to_folio(*args, **kwargs):
     iteration_id = params["iteration_id"]
     task_instance = kwargs["task_instance"]
     jwt = task_instance.xcom_pull(task_ids="folio_login")
-    extra_data_path = Path(airflow) / f"migration/iterations/{iteration_id}/results/extradata_bibs-transformer.extradata"
+    extra_data_path = (
+        Path(airflow)
+        / f"migration/iterations/{iteration_id}/results/extradata_bibs-transformer.extradata"
+    )
 
     if not extra_data_path.exists():
         logger.info(f"{extra_data_path} does not exist.")
@@ -40,7 +43,10 @@ def post_to_folio(*args, **kwargs):
     with extra_data_path.open() as fo:
         for row in fo.readlines():
             object_type, obj = row.split("\t")
-            if not (object_type.startswith("succeedingTitles") or object_type.startswith("precedingTitles")):
+            if not (
+                object_type.startswith("succeedingTitles")
+                or object_type.startswith("precedingTitles")
+            ):
                 continue
             obj = json.loads(obj)
 
@@ -80,7 +86,6 @@ with DAG(
     tags=["folio", "preceding_succeeding_titles"],
     max_active_runs=3,
 ) as dag:
-
     login = PythonOperator(task_id="folio_login", python_callable=folio_login)  # noqa
 
     preceding_succeeding_titles = PythonOperator(

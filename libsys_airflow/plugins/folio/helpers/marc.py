@@ -73,7 +73,6 @@ def _check_add_srs_records(**kwargs):
     )
 
     match check_record.status_code:
-
         case 200:
             _add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
             return
@@ -114,7 +113,7 @@ def _extract_e_holdings_fields(**kwargs) -> list:
             "HOMELOCATION": "INTERNET",
             "LIBRARY": library,
             "COPY": i,
-            "MAT_SPEC": None
+            "MAT_SPEC": None,
         }
         row["CATKEY"] = catkey
         uri = "".join(marc_field.get_subfields("u"))
@@ -172,7 +171,6 @@ def _get_snapshot_id(folio_client):
 
 
 def _move_001_to_035(record: pymarc.Record) -> str:
-
     all001 = record.get_fields("001")
 
     if len(all001) < 1:
@@ -196,9 +194,7 @@ def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
     Generates a SRS Audit Report
     """
     report_path = pathlib.Path(iteration) / "reports/report_srs-audit.md"
-    audit_report = (
-        """# SRS Audit/Remediation Report\n"""
-    )
+    audit_report = """# SRS Audit/Remediation Report\n"""
     cur = db_connection.cursor()
     srs_total_sql = """SELECT count(id) FROM Record where folio_type=?;"""
     srs_status_sql = """SELECT count(AuditLog.id) FROM AuditLog, Record
@@ -276,7 +272,7 @@ def _srs_check_add(**kwargs):
                 snapshot_id=snapshot_id,
                 audit_connection=audit_connection,
                 record_type=srs_type,
-                folio_client=folio_client
+                folio_client=folio_client,
             )
             if not srs_count % 1_000:
                 logger.info(f"Checked/Added {srs_count:,} SRS records")
@@ -380,7 +376,9 @@ def filter_mhlds(mhld_path: pathlib.Path):
         for record in filtered_records:
             marc_writer.write(record)
 
-    logger.info(f"Finished filtering MHLD, start {start_total:,} removed {start_total - len(filtered_records):,} records")
+    logger.info(
+        f"Finished filtering MHLD, start {start_total:,} removed {start_total - len(filtered_records):,} records"
+    )
 
 
 def handle_srs_files(*args, **kwargs):

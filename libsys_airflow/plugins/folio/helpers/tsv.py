@@ -105,8 +105,7 @@ unwanted_item_cat1 = [
     "PC-FALLSEM",
     "PC-FQTR",
     "PC-F-SPSEM",
-    "PC-FWSQTRS"
-    "PC-PERM",
+    "PC-FWSQTRS" "PC-PERM",
     "PC-SPQTR",
     "PC-SPSEM",
     "PC-SUQTR",
@@ -114,7 +113,7 @@ unwanted_item_cat1 = [
     "RECYCLE",
     "SALPROB1",
     "SALPROB2",
-    "TEAMS"
+    "TEAMS",
 ]
 
 

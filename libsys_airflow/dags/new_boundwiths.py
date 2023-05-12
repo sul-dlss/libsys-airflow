@@ -8,7 +8,10 @@ from airflow.operators.python import PythonOperator
 
 from folioclient import FolioClient
 
-from libsys_airflow.plugins.folio.helpers.bw import check_add_bw, discover_bw_parts_files
+from libsys_airflow.plugins.folio.helpers.bw import (
+    check_add_bw,
+    discover_bw_parts_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,6 @@ with DAG(
     tags=["bib_import", "folio"],
     max_active_runs=1,
 ) as dag:
-
     discovery_bw_files = PythonOperator(
         task_id="discovery-bw-parts",
         python_callable=discover_bw_parts_files,
@@ -54,7 +56,7 @@ with DAG(
         check_add_relationships = PythonOperator(
             task_id=f"check-add-{i}",
             python_callable=check_add_bw,
-            op_kwargs={"job": i, "folio_client": folio_client}
+            op_kwargs={"job": i, "folio_client": folio_client},
         )
 
         start_checks_add >> check_add_relationships >> finished_checks_add

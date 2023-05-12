@@ -131,8 +131,8 @@ database being used by Okapi.
 
 Using and developing the vendor load plug in requires its own database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
 
-To access the database in development, install 
- (e.g. `brew install postgresql`) and from your local terminal, run:
+To access the database in development, install
+(e.g. `brew install postgresql`) and from your local terminal, run:
 
 ```
 psql -h localhost -U airflow
@@ -168,10 +168,14 @@ module and then run the following steps:
 ```
 PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_USER_PASSWORD> poetry run bin/seed_vendors
 ```
+
 ## Testing
 
 1. Install dependencies per `Dependency Management and Packaging` above
 1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
+
+Run the black formatter:
+`black .`
 
 Run the flake8 linter:
 `flake8 libsys_airflow/` (_Note_: As of 2023-04-13, the `--ignore=E225,E501,F401,F811,W503` option is given in CI; you may want to do similarly to see the lint warnings that'll actually fail CI. See `Lint with flake8` `build` step in `.github/workflows/python-app.yml` for current invocation.)
@@ -192,4 +196,5 @@ MARC data to be converted will be mounted on the sul-libsys-airflow server under
 ## Connections
 
 ### SFTP
+
 SFTP connections may have a password or a key file. The key files should be named with the hostname (e.g., `sftp.amalivre.fr`) and placed in `vendor-keys/` directory.

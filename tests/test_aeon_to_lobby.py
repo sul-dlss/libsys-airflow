@@ -40,7 +40,7 @@ def mock_aeon_queue_data():
             "transactionNumber": 2,
             "creationDate": today,
             "username": "aeonuser2@gmail.com",
-        }
+        },
     ]
 
 
@@ -71,7 +71,11 @@ def mock_xcom_pull_aeon_users(**kwargs):
 
 
 def mock_xcom_pull_aeon_users_transactions(**kwargs):
-    return [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ['aesonuser2@gmail.com', 2]]
+    return [
+        ['aeonuser1@stanford.edu', 0],
+        ['aeonuser1@stanford.edu', 1],
+        ['aesonuser2@gmail.com', 2],
+    ]
 
 
 class MockTaskInstanceUserData(pydantic.BaseModel):
@@ -112,6 +116,7 @@ def mock_aeon_post(monkeypatch, mocker: MockerFixture):
 
 def test_user_data(mock_queue_requests, mock_aeon_variable):
     from libsys_airflow.plugins.aeon_to_lobby.aeon import user_transaction_data
+
     user_data = user_transaction_data(
         aeon_url="https://aeon.example.us", aeon_key="123", queue_id="1"
     )
@@ -123,8 +128,11 @@ def test_user_data(mock_queue_requests, mock_aeon_variable):
 
 def test_filtered_user_data(mock_queue_requests, mock_aeon_variable):
     from libsys_airflow.plugins.aeon_to_lobby.aeon import filtered_users
+
     filtered_users = filtered_users(
-        aeon_url="https://aeon.example.us", aeon_key="123", task_instance=MockTaskInstanceAeonUsers
+        aeon_url="https://aeon.example.us",
+        aeon_key="123",
+        task_instance=MockTaskInstanceAeonUsers,
     )
 
     for user in filtered_users:
@@ -133,11 +141,16 @@ def test_filtered_user_data(mock_queue_requests, mock_aeon_variable):
 
 def test_find_user_from_request_queue(mock_queue_requests, mock_aeon_variable):
     from libsys_airflow.plugins.aeon_to_lobby.aeon import user_requests_in_queue
+
     user_list = user_requests_in_queue(
         aeon_url="https://aeon.example.us", aeon_key="123", queue_id="1"
     )
 
-    assert user_list == [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ['aeonuser2@gmail.com', 2]]
+    assert user_list == [
+        ['aeonuser1@stanford.edu', 0],
+        ['aeonuser1@stanford.edu', 1],
+        ['aeonuser2@gmail.com', 2],
+    ]
 
 
 def test_transform_data(mock_lobby_variable):
@@ -151,14 +164,17 @@ def test_transform_data(mock_lobby_variable):
     assert lobby_users[0]['CustomFields'][0]['Value'] == "123 Charm St, Apt A"
 
 
-def test_route_aeon_post(mock_queue_requests, mock_aeon_variable, mock_aeon_post, caplog):
+def test_route_aeon_post(
+    mock_queue_requests, mock_aeon_variable, mock_aeon_post, caplog
+):
     from libsys_airflow.plugins.aeon_to_lobby.aeon import route_aeon_post
+
     route_aeon_post(
         aeon_url="https://aeon.example.us",
         aeon_key="123",
         queue_id="1",
         final_queue="Awaiting Request Processing",
-        task_instance=MockTaskInstanceAeonUsersTransactions
+        task_instance=MockTaskInstanceAeonUsersTransactions,
     )
 
     assert "{'newStatus': {'Awaiting Request Processing'}}" in caplog.text

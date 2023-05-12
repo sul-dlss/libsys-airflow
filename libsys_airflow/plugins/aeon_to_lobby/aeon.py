@@ -7,7 +7,11 @@ import requests
 def user_transaction_data(**kwargs):
     users = []
     queue_users = user_requests_in_queue(**kwargs)
-    for user_transaction in queue_users:  # [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ["aesonuser2@gmail.com", 2]]
+    for (
+        user_transaction
+    ) in (
+        queue_users
+    ):  # [['aeonuser1@stanford.edu', 0], ['aeonuser1@stanford.edu', 1], ["aesonuser2@gmail.com", 2]]
         users.append(user_transaction)
 
     return users
@@ -48,10 +52,16 @@ def route_aeon_post(**kwargs):
         logging.info(f"Routing transactionNumber {id} : {aeon_url}/Requests/{id}/route")
         logging.info({"newStatus": {queue}})
 
-        response = requests.post(f"{aeon_url}/Requests/{id}/route", headers=aeon_headers, json={"newStatus": queue})
+        response = requests.post(
+            f"{aeon_url}/Requests/{id}/route",
+            headers=aeon_headers,
+            json={"newStatus": queue},
+        )
 
         if response.status_code != 200:
-            logging.error(f"aeon rsponded with: {response.status_code}, {response.text}")
+            logging.error(
+                f"aeon rsponded with: {response.status_code}, {response.text}"
+            )
             return None
 
         responses.append(response.json())

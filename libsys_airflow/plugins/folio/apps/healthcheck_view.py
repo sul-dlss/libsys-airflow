@@ -17,14 +17,15 @@ class Healthcheck(AppBuilderBaseView):
     def home(self):
         statuses = self._statuses
         http_status = 200 if all(statuses.values()) else 500
-        return make_response(self.render_template("healthcheck/index.html", statuses=statuses), http_status)
+        return make_response(
+            self.render_template("healthcheck/index.html", statuses=statuses),
+            http_status,
+        )
 
     @property
     def _statuses(self):
         if not self._check_folio_login():
-            return {
-                "Folio login": False
-            }
+            return {"Folio login": False}
 
         return {
             "Folio login": True,
@@ -51,7 +52,12 @@ class Healthcheck(AppBuilderBaseView):
     def _check_holdings_custom_mappings(self):
         mapping_rules = self._folio_client.folio_get("/mapping-rules/marc-holdings")
         entities = mapping_rules['852'][0]['entity']
-        matching_entities = [entity for entity in entities if entity['target'] == 'permanentLocationId' and entity['subfield'] == ['b', 'c']]
+        matching_entities = [
+            entity
+            for entity in entities
+            if entity['target'] == 'permanentLocationId'
+            and entity['subfield'] == ['b', 'c']
+        ]
         return len(matching_entities) > 0
 
     def _check_bib_custom_mappings(self):

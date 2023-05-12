@@ -6,7 +6,10 @@ from datetime import datetime
 from airflow.decorators import dag, task
 from airflow.models.dagrun import DagRun
 
-from libsys_airflow.plugins.folio.db import add_inventory_triggers, drop_inventory_triggers
+from libsys_airflow.plugins.folio.db import (
+    add_inventory_triggers,
+    drop_inventory_triggers,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -38,7 +38,6 @@ def test_merge_notes_empty(mock_file_system, caplog):  # noqa
 
 
 def test_merge_notes_circnotes(mock_file_system):  # noqa
-
     circ_path = mock_file_system[1] / "test.sample2.circnote.tsv"
 
     circ_notes_df = pd.DataFrame(
@@ -157,10 +156,7 @@ def test_transform_move_tsvs(mock_file_system, mock_dag_run):  # noqa
     with open(sample_tsv, "r") as f:
         sample_lines = f.readlines()
 
-    assert (
-        sample_lines[1]
-        == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC\n"
-    )
+    assert sample_lines[1] == "a123456\tMARC\tLC 12345\t45677\tHOOVER\tNONCIRC\n"
     mocks.messages = {}
 
 

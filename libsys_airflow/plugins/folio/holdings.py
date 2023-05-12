@@ -23,7 +23,11 @@ from folio_migration_tools.marc_rules_transformation.rules_mapper_holdings impor
     RulesMapperHoldings,
 )
 
-from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_logging, constants
+from libsys_airflow.plugins.folio.helpers import (
+    post_to_okapi,
+    setup_data_logging,
+    constants,
+)
 from libsys_airflow.plugins.folio.helpers.marc import filter_mhlds
 
 logger = logging.getLogger(__name__)
@@ -79,7 +83,7 @@ def _wrap_additional_mapping(func):
         "callNumberPrefix",
         "shelvingTitle",
         "callNumberSuffix",
-        "copyNumber"
+        "copyNumber",
     }
 
     def wrapper(*args, **kwargs):
@@ -94,6 +98,7 @@ def _wrap_additional_mapping(func):
         if len(filtered_holdings) > 0:
             holdings_record["holdingsStatements"] = filtered_holdings
         func(*args, **kwargs)
+
     return wrapper
 
 
@@ -185,7 +190,6 @@ def _update_srs_ids(
 
 
 def update_holdings(**kwargs):
-
     folio_client = kwargs.get("folio_client")
 
     if folio_client is None:
@@ -214,7 +218,6 @@ def update_holdings(**kwargs):
         locations_lookup[location["id"]] = location["code"]
 
     if mhld_holdings_path.exists() and srs_path.exists():
-
         with mhld_holdings_path.open() as fo:
             mhld_holdings = [json.loads(line) for line in fo.readlines()]
 
@@ -490,8 +493,7 @@ def boundwith_holdings(*args, **kwargs):
                     ),
                     "callNumber": row["BASE_CALL_NUMBER"],
                     "callNumberTypeId": constants.call_number_codes.get(
-                        row["CALL_NUMBER_TYPE"],
-                        "Library of Congress classification"
+                        row["CALL_NUMBER_TYPE"], "Library of Congress classification"
                     ),
                     "permanentLocationId": perm_loc_id,
                     "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",

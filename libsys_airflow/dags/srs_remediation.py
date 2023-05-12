@@ -9,7 +9,10 @@ from airflow.operators.python import PythonOperator
 
 from folioclient import FolioClient
 
-from libsys_airflow.plugins.folio.helpers.marc import discover_srs_files, handle_srs_files
+from libsys_airflow.plugins.folio.helpers.marc import (
+    discover_srs_files,
+    handle_srs_files,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,6 @@ with DAG(
     tags=["bib_import", "folio"],
     max_active_runs=1,
 ) as dag:
-
     discovery_srs = PythonOperator(
         task_id="find-srs-files",
         python_callable=discover_srs_files,

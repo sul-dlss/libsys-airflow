@@ -60,7 +60,6 @@ def archive_artifacts(*args, **kwargs):
             logger.info(f"Cannot remove {tmp_file}: {err}")
 
     for artifact in airflow_results.glob("*.json"):
-
         target = archive_directory / artifact.name
 
         shutil.move(artifact, target)
@@ -122,7 +121,7 @@ def post_to_okapi(**kwargs) -> bool:
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         if iteration_id is None:
-            kwargs["iteration_id"]= kwargs.get("dag_run").run_id
+            kwargs["iteration_id"] = kwargs.get("dag_run").run_id
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
     if len(new_record_result.text) < 1:

@@ -235,7 +235,7 @@ def generate_urls(**kwargs):
             "location_id": instance.xcom_pull(
                 task_ids="setup-circ-rules", key=f"location_id{row_count}"
             ),
-            "limit": 2_000  # Should be plenty
+            "limit": 2_000,  # Should be plenty
         }
     )
     base = f"{folio_client.okapi_url}/circulation/rules/{policy_type}-policy"
@@ -359,7 +359,9 @@ def retrieve_policies(**kwargs):
             key=f"single-policy{row_count}", value=single_policy_result.text
         )
     else:
-        logger.error(f"Cannot retrieve {single_policy_url}\n{single_policy_result.text}")
+        logger.error(
+            f"Cannot retrieve {single_policy_url}\n{single_policy_result.text}"
+        )
 
     all_policies_result = requests.get(
         all_policies_url, headers=folio_client.okapi_headers

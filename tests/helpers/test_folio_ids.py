@@ -69,7 +69,6 @@ class MockTaskInstance(pydantic.BaseModel):
 def test_generate_item_identifiers(
     mock_file_system, mock_dag_run, mock_okapi_variable, caplog  # noqa
 ):
-
     airflow = mock_file_system[0]
     iteration_dir = mock_file_system[2]
     results_dir = mock_file_system[3]

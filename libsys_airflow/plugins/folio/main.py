@@ -26,7 +26,7 @@ circ_rules_tester_view = CircRulesTester()
 circ_rules_tester_package = {
     "name": "Circ Rules Tester",
     "category": "FOLIO",
-    "view": circ_rules_tester_view
+    "view": circ_rules_tester_view,
 }
 
 # Healthcheck App
@@ -34,7 +34,7 @@ healthcheck_view = Healthcheck()
 healthcheck_package = {
     "name": "Healthcheck",
     "category": "FOLIO",
-    "view": healthcheck_view
+    "view": healthcheck_view,
 }
 
 
@@ -45,5 +45,9 @@ class FOLIOPlugin(AirflowPlugin):
     hooks = []
     executors = []
     admin_views = []
-    appbuilder_views = [folio_appbuilder_package, circ_rules_tester_package, healthcheck_package]
+    appbuilder_views = [
+        folio_appbuilder_package,
+        circ_rules_tester_package,
+        healthcheck_package,
+    ]
     appbuilder_menu_items = []
