@@ -95,7 +95,8 @@ def test_find_directories(archive_basepath):
     target_directories = find_directories(archive_basepath)
 
     assert len(target_directories) == 2
-    assert target_directories == directories[0:2]
+    assert target_directories[0] == str(directories[0])
+    assert target_directories[1] == str(directories[1])
 
 
 def test_find_empty_directory(archive_basepath, caplog):
