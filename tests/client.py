@@ -3,16 +3,16 @@ import pathlib
 import pytest
 from airflow.www import app as application
 
+from conftest import root_directory
 from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
 
 
 @pytest.fixture
-def test_client():
+def test_airflow_client():
     """
-    Start up the Airflow test app with the Vendor Management plugin, and return
-    a client for it.
+    A test fixture to start up the Airflow test app with the Vendor Management plugin, and return
+    a client for it for interacting with the application at the HTTP level.
     """
-    root_directory = pathlib.Path(__file__).parent.parent
     templates_folder = f"{root_directory}/libsys_airflow/plugins/vendor_app/templates"
 
     app = application.create_app(testing=True)

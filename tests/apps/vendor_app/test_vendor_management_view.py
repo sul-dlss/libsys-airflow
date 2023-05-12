@@ -4,6 +4,7 @@ import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
 from libsys_airflow.plugins.vendor.models import Vendor
+from tests.client import test_airflow_client
 
 
 rows = Rows(
@@ -35,8 +36,8 @@ def mock_db(mocker, engine):
     mock_hook.return_value = engine
     yield mock_hook
 
-def test_vendor_views(test_client, mock_db):
-    response = test_client.get('/vendors/')
+def test_vendor_views(test_airflow_client, mock_db):
+    response = test_airflow_client.get('/vendors/')
     assert response.status_code == 200
     assert "Vendors" in response.text
     assert "ACME" in response.text
