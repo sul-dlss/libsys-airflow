@@ -25,4 +25,4 @@ class VendorManagementView(AppBuilderBaseView):
     @expose("/")
     def vendors_index(self):
         vendors = self._get_vendors()
-        return self.render_template("index.html", vendors=vendors)
+        return self.render_template("vendors/index.html", vendors=vendors)

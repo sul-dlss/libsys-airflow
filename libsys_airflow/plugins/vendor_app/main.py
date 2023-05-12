@@ -3,6 +3,7 @@ from flask import Blueprint
 
 from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
 
+
 vendor_mgt_bp = Blueprint(
     "vendor_management",
     __name__,
