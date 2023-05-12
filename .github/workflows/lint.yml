@@ -1,6 +1,12 @@
+# github action workflow to run black formatter check and linting checks for our python code
+
 name: Lint
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
