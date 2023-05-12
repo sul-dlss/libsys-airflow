@@ -258,6 +258,20 @@ To run the black formatter to fix any violations:
 
 `poetry run black .`
 
+### Mypy (Python type checker)
+
+[Mypy](https://github.com/python/mypy) is a static type checker.  Configuration is in `pyproject.toml`.
+
+To run the mypy type checker on the codebase: `poetry run mypy libsys_airflow tests`.
+
+The type checker will complain if assignments, return types, parameter types, etc are inconsistently used, e.g. if an int is provided for a string param, a function doesn't return the type it claims to, etc (helpful for documenting function signatures correctly, and for sussing out issues like inconsistent types for variable assignment or function return, which can be confusing at best, and bug prone at worst).
+
+Type declarations are only used in testing and type checking, and do not affect runtime behavior.
+
+If you run into something where the type checker complains and you're sure that the usage is ok, you can comment the line with `# type: ignore` to quiet the type checker for that line.  As with linting, use your best judgement as to whether an exception is preferable to mollifying the checker.
+
+The type checker is not currently wired up in CI, but you may still find it useful for catching lurking consistency issues.
+
 ## Symphony Mount
 
 MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
