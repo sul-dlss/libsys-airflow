@@ -21,6 +21,7 @@ pyyaml = "^6.0"
 apache-airflow-client = "2.6.0"
 
 [tool.poetry.group.test.dependencies]
+black = "~23.3.0"
 coveralls = "~3.3.1"
 coverage = "~6.5.0"
 flake8 = "^6.0.0"
@@ -37,3 +38,10 @@ pytest-mock-resources = "^2.6.12"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = 'vendor_loads_migration'
+skip-string-normalization = true
