@@ -1,5 +1,3 @@
-import pathlib
-
 from airflow.www import app as application
 from bs4 import BeautifulSoup
 from flask.wrappers import Response

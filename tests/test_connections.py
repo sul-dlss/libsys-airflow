@@ -94,6 +94,8 @@ def test_create_connection_ftp(mocker):
     )
 
 
+"""
+UNUSED per flake8 F811
 def test_create_connection_sftp(mocker):
     mock_find_or_create_conn = mocker.patch(
         "libsys_airflow.plugins.airflow.connections.find_or_create_conn",
@@ -112,6 +114,7 @@ def test_create_connection_sftp(mocker):
     mock_find_or_create_conn.assert_called_once_with(
         "sftp", "66.151.8.124", "user", "pass", 10006, None
     )
+"""
 
 
 def test_create_connection_sftp_with_keyfile(mocker):
