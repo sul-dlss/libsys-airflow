@@ -1,7 +1,0 @@
-# these options for black will address any violations found
-[tool.black]
-line-length = 88
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = 'vendor_loads_migration'
-skip-string-normalization = true
