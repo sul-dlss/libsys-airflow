@@ -280,7 +280,7 @@ def test_add_additional_info_missing_barcode(
 
 
 def test_add_additional_info_hoover(
-    mock_file_system, mock_okapi_items_endpoint
+    mock_file_system, mock_okapi_items_endpoint  # noqa F811
 ):  # noqa
     pass
 

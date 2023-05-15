@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 import logging
 
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.vendor.purge import (
     discover_task,

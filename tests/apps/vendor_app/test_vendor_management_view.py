@@ -4,7 +4,7 @@ import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
-from tests.airflow_client import test_airflow_client
+from tests.airflow_client import test_airflow_client  # noqa: F401
 
 
 rows = Rows(
@@ -64,7 +64,7 @@ def mock_db(mocker, engine):
     yield mock_hook
 
 
-def test_vendor_views(test_airflow_client, mock_db):
+def test_vendor_views(test_airflow_client, mock_db):  # noqa: F811
     response = test_airflow_client.get('/vendors/')
     assert response.status_code == 200
     assert response.html.h1.text == "Vendors"
@@ -81,7 +81,7 @@ def test_vendor_views(test_airflow_client, mock_db):
     assert link["href"] == "/vendors/2"
 
 
-def test_vendor_view(test_airflow_client, mock_db):
+def test_vendor_view(test_airflow_client, mock_db):  # noqa: F811
     response = test_airflow_client.get('/vendors/1')
     assert response.status_code == 200
     assert response.html.h1.text == "Vendor: Acme"
