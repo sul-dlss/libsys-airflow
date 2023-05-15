@@ -176,17 +176,11 @@ PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_U
 
 ### Black (Python formatter)
 
-The github action has been configured to fail if there are any violations (see `pyproject.toml`)
+The Github action has been configured to fail if there are any violations (see `pyproject.toml`)
 
-To run the black formatter to show violations and their details:
-`black .` # if in the poetry shell
+To run the black formatter to fix any violations:
+
 `poetry run black .`
-
-Note that the builds merged to main will fail if there are black violations due to the lint github action.
-
-To use black to address formatting violations:
-`black --config blackupdate.toml .` # if in the poetry shell
-`poetry run black --config blackupdate.toml .`
 
 ### Flake8 (Python linter)
 
