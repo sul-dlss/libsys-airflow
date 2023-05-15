@@ -19,6 +19,7 @@ requests = "^2.28.2"
 pyyaml = "^6.0"
 # this should ideally be kept in sync with the airflow version but client releases run behind server releases
 apache-airflow-client = "2.6.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
