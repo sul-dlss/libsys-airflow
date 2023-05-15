@@ -49,7 +49,6 @@ def test_connection_does_not_exist(db_session):
     assert conn.login == "user"
 
 
-
 def test_connection_already_exists(db_session):
     delete_connection("ftp-example.com", db_session)
     prev_conn = Connection(

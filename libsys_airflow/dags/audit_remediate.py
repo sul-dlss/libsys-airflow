@@ -73,9 +73,7 @@ with DAG(
     generate_report = PythonOperator(
         task_id="inventory-report",
         python_callable=inventory_audit_report,
-        op_kwargs={
-            "iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}"
-        }
+        op_kwargs={"iteration_id": "{{ ti.xcom_pull(task_ids='start-check-add') }}"},
     )
 
     finished = EmptyOperator(task_id="finished-errors-handling")

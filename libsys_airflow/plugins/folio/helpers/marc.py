@@ -47,8 +47,9 @@ def _add_srs_audit_record(record: dict, connection, record_type):
         hrid = record["externalIdsHolder"]["holdingsHrid"]
     else:
         hrid = record["externalIdsHolder"]["instanceHrid"]
-    record_exists = cur.execute("SELECT id FROM Record WHERE uuid=?",
-                                (record['id'],)).fetchone()
+    record_exists = cur.execute(
+        "SELECT id FROM Record WHERE uuid=?", (record['id'],)
+    ).fetchone()
     if record_exists:
         record_id = record_exists[0]
     else:
@@ -195,64 +196,6 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
-<<<<<<< HEAD
-def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
-    """
-    Generates a SRS Audit Report
-    """
-    report_path = pathlib.Path(iteration) / "reports/report_srs-audit.md"
-    audit_report = """# SRS Audit/Remediation Report\n"""
-    cur = db_connection.cursor()
-    srs_total_sql = """SELECT count(id) FROM Record where folio_type=?;"""
-    srs_status_sql = """SELECT count(AuditLog.id) FROM AuditLog, Record
-WHERE AuditLog.record_id = Record.id AND
-Record.folio_type=? AND
-AuditLog.status=?;"""
-    total_mhld_srs_records = cur.execute(
-        srs_total_sql, (FOLIONamespaces.srs_records_holdingsrecord.value,)
-    ).fetchone()[0]
-    audit_report += (
-        f"## Totals SRS Records\n- **MHLD SRS Records**: {total_mhld_srs_records}\n"
-    )
-    total_bib_srs_records = cur.execute(
-        srs_total_sql, (FOLIONamespaces.srs_records_bib.value,)
-    ).fetchone()[0]
-    audit_report += f"- **SRS BIBs Records**: {total_bib_srs_records}\n"
-    exists_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.EXISTS.value),
-    ).fetchone()[0]
-    audit_report += f"## SRS MHLD Audit Status\n- **Exists**: {exists_mhld:,}\n"
-    missing_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.MISSING.value),
-    ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_mhld:,}\n"
-    error_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.ERROR.value),
-    ).fetchone()[0]
-    audit_report += f"- **Errors**: {error_mhld:,}\n"
-    exists_bibs = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_bib.value, AuditStatus.EXISTS.value),
-    ).fetchone()[0]
-    audit_report += f"## SRS BIBs Audit Status\n- **Exists**: {exists_bibs:,}\n"
-    missing_bibs = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_bib.value, AuditStatus.MISSING.value),
-    ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_bibs:,}\n"
-    error_bibs = cur.execute(
-        srs_status_sql, (FOLIONamespaces.srs_records_bib.value, AuditStatus.ERROR.value)
-    ).fetchone()[0]
-    audit_report += f"- **Errors**: {error_bibs}"
-    cur.close()
-    report_path.write_text(audit_report)
-
-
-=======
->>>>>>> 84fdc66 (Refactors for a report module using jinja templates)
 def _srs_check_add(**kwargs):
     """
     Runs audit/remediation for a single SRS file
