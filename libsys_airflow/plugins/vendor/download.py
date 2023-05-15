@@ -8,12 +8,56 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from airflow.decorators import task
-from airflow.providers.ftp.hooks.ftp import FTPHook, FTPSHook
+from airflow.providers.ftp.hooks.ftp import FTPHook
+from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.models import VendorFile, VendorInterface
 
 logger = logging.getLogger(__name__)
+
+# Interfaces of FTPHook and SFTPHook are similar, but not identical.
+# Using adapters to make them compatible.
+
+
+class FTPAdapter:
+    def __init__(self, hook: FTPHook, remote_path: str):
+        self.hook = hook
+        self.remote_path = remote_path
+        self._filenames = hook.list_directory(remote_path)
+
+    def list_directory(self) -> list[str]:
+        return self._filenames
+
+    def get_mod_time(self, filename: str) -> datetime:
+        return self.hook.get_mod_time(filename)
+
+    def get_size(self, filename: str) -> int:
+        return self.hook.get_size(filename)
+
+    def retrieve_file(self, filename: str, download_filepath: str):
+        self.hook.retrieve_file(filename, download_filepath)
+
+
+class SFTPAdapter:
+    def __init__(self, hook: SFTPHook, remote_path: str):
+        self.hook = hook
+        self.remote_path = remote_path
+        self._file_descriptions = hook.describe_directory(remote_path)
+
+    def list_directory(self) -> list[str]:
+        return self._file_descriptions.keys()
+
+    def get_mod_time(self, filename: str) -> datetime:
+        mod_time_str = self._file_descriptions[filename]["modify"]
+        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
+
+    def get_size(self, filename: str) -> int:
+        return self._file_descriptions[filename]["size"]
+
+    def retrieve_file(self, filename: str, download_filepath: str):
+        remote_filepath = pathlib.Path(self.remote_path) / filename
+        self.hook.retrieve_file(remote_filepath, download_filepath)
 
 
 @task
@@ -40,17 +84,18 @@ def ftp_download_task(
         hook,
         remote_path,
         download_path,
-        filename_regex,
         filter_strategy,
         vendor_interface_uuid,
         expected_execution,
     )
 
 
-# Currently this only creates an FTPHook, but could be extended for SFTP and FTPS.
-def _create_hook(conn_id: str) -> FTPHook:
-    """Returns an FTPHook for the given connection id."""
-    hook = FTPHook(ftp_conn_id=conn_id)
+def _create_hook(conn_id: str) -> Union[FTPHook, SFTPHook]:
+    """Returns an FTPHook or SFTPHook for the given connection id."""
+    if conn_id.startswith("sftp-"):
+        hook = SFTPHook(ftp_conn_id=conn_id)
+    else:
+        hook = FTPHook(ftp_conn_id=conn_id)
     [success, msg] = hook.test_connection()
     if success:
         return hook
@@ -59,9 +104,8 @@ def _create_hook(conn_id: str) -> FTPHook:
         raise Exception(msg)
 
 
-# In theory this can also be used for SFTP, but will require testing.
 def download(
-    hook: Union[FTPHook, FTPSHook],
+    hook: Union[FTPHook, SFTPHook],
     remote_path: str,
     download_path: str,
     filter_strategy: Callable,
@@ -69,11 +113,12 @@ def download(
     expected_execution: str,
 ) -> list[str]:
     """
-    Downloads files from FTP/FTPS and returns a list of file paths
+    Downloads files from FTP/SFTP and returns a list of file paths
     """
-    all_filenames = hook.list_directory(remote_path)
-    logger.info(f"Found {len(all_filenames)} files in {remote_path}")
-    filtered_filenames = filter_strategy(all_filenames)
+    adapter = _create_adapter(hook, remote_path)
+
+    filtered_filenames = filtered_filenames = filter_strategy(adapter.list_directory())
+    logger.info(f"Found {len(filtered_filenames)} files in {remote_path}")
     # Remove already downloaded files
     filtered_filenames = [
         f
@@ -82,29 +127,27 @@ def download(
     ]
     for filename in filtered_filenames:
         download_filepath = _download_filepath(download_path, filename)
-        filesize = hook.get_size(filename)
-        vendor_timestamp = hook.get_mod_time(filename)
         try:
-            hook.retrieve_file(filename, download_filepath)
-            logger.info(f"Downloaded {filename} to {download_filepath}")
+            logger.info(f"Downloading {filename} to {download_filepath}")
+            adapter.retrieve_file(filename, download_filepath)
         except Exception:
             logger.error(f"Failed to download {filename} to {download_filepath}")
             _record_vendor_file(
                 filename,
-                filesize,
+                adapter.get_size(filename),
                 "fetching_error",
                 vendor_interface_uuid,
-                vendor_timestamp,
+                adapter.get_mod_time(filename),
                 expected_execution,
             )
             raise
         else:
             _record_vendor_file(
                 filename,
-                filesize,
+                adapter.get_size(filename),
                 "fetched",
                 vendor_interface_uuid,
-                vendor_timestamp,
+                adapter.get_mod_time(filename),
                 expected_execution,
             )
     return list(filtered_filenames)
@@ -177,3 +220,11 @@ def _gobi_order_filter_strategy() -> Callable:
         return [f"{f}.ord" for f in basefilenames]
 
     return strategy
+
+
+def _create_adapter(
+    hook: Union[FTPHook, SFTPHook], remote_path: str
+) -> Union[FTPAdapter, SFTPAdapter]:
+    if isinstance(hook, SFTPHook):
+        return SFTPAdapter(hook, remote_path)
+    return FTPAdapter(hook, remote_path)
