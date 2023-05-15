@@ -25,4 +25,4 @@ jobs:
           poetry install
       - name: Format with black
         run: |
-          poetry run black .
+          poetry run black --check --diff .
