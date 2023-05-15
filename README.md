@@ -174,19 +174,6 @@ PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_U
 1. Install dependencies per `Dependency Management and Packaging` above
 1. Drop into the poetry virtual environment: `poetry shell` (alternatively, if you don't want to drop into `poetry shell`, you can run commands using `poetry run my_cmd`, akin to `bundle exec my_cmd`)
 
-### Black (Python formatter)
-
-The Github action has been configured to fail if there are any violations (see `pyproject.toml`)
-
-To run the black formatter to fix any violations:
-
-`poetry run black .`
-
-### Flake8 (Python linter)
-
-Run the flake8 linter:
-`flake8 libsys_airflow/` (_Note_: As of 2023-04-13, the `--ignore=E225,E501,F401,F811,W503` option is given in CI; you may want to do similarly to see the lint warnings that'll actually fail CI. See `Lint with flake8` `build` step in `.github/workflows/python-app.yml` for current invocation.)
-
 Install the test database (sqlite):
 `airflow db init`
 
@@ -195,6 +182,24 @@ Then, to run the test suite, use [pytest](https://docs.pytest.org/).
 
 To see stdout or stderr add the `-rP` flag:
 `pytest -rP`
+
+### Flake8 (Python linter)
+
+Flake8 configuration is in `setup.cfg` (flake8 cannot be configured with `pyproject.toml`).
+
+For CI, see the `Lint with flake8` step in `.github/workflows/lint.yml`.
+
+To run the flake8 linter: `poetry run flake8`
+
+### Black (Python formatter)
+
+Black configuration is in `pyproject.toml`.
+
+For CI, see the `Format with black` step in `.github/workflows/lint.yml` github action. It has been configured to fail if there are any violations.
+
+To run the black formatter to fix any violations:
+
+`poetry run black .`
 
 ## Symphony Mount
 
