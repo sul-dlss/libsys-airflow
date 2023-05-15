@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class VendorManagementView(BaseView):
-    default_view = "vendors_index"
+    default_view = "index"
     route_base = "/vendors"
 
     @expose("/")
