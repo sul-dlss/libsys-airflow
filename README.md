@@ -165,8 +165,10 @@ module and then run the following steps:
 
 #### Seeding Vendors
 
+Assuming that you have put Folio related environment variables in your `.env` file you can:
+
 ```
-PYTHONPATH=. AIRFLOW_VAR_FOLIO_USER=<APP_USER> AIRFLOW_VAR_FOLIO_PASSWORD=<APP_USER_PASSWORD> poetry run bin/seed_vendors
+poetry run bin/seed_vendors
 ```
 
 ## Testing
