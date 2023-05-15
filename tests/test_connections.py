@@ -93,25 +93,28 @@ def test_create_connection_ftp(mocker):
         "ftp", "example.com", "user", "pass", None, None
     )
 
-# UNUSED per flake8 F811
-# def test_create_connection_sftp(mocker):
-#     mock_find_or_create_conn = mocker.patch(
-#         "libsys_airflow.plugins.airflow.connections.find_or_create_conn",
-#         return_value="sftp-66.151.8.124",
-#     )
-#     mocker.patch(
-#         "libsys_airflow.plugins.airflow.connections.interface_info",
-#         return_value={
-#             "uri": "sftp://66.151.8.124:10006",
-#             "username": "user",
-#             "password": "pass",
-#         },
-#     )
-#     conn_id = create_connection("1234")
-#     assert conn_id == "sftp-66.151.8.124"
-#     mock_find_or_create_conn.assert_called_once_with(
-#         "sftp", "66.151.8.124", "user", "pass", 10006, None
-#     )
+
+"""
+UNUSED per flake8 F811
+def test_create_connection_sftp(mocker):
+    mock_find_or_create_conn = mocker.patch(
+        "libsys_airflow.plugins.airflow.connections.find_or_create_conn",
+        return_value="sftp-66.151.8.124",
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.airflow.connections.interface_info",
+        return_value={
+            "uri": "sftp://66.151.8.124:10006",
+            "username": "user",
+            "password": "pass",
+        },
+    )
+    conn_id = create_connection("1234")
+    assert conn_id == "sftp-66.151.8.124"
+    mock_find_or_create_conn.assert_called_once_with(
+        "sftp", "66.151.8.124", "user", "pass", 10006, None
+    )
+"""
 
 
 def test_create_connection_sftp_with_keyfile(mocker):
