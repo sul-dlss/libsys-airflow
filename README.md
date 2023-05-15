@@ -212,3 +212,9 @@ MARC data to be converted will be mounted on the sul-libsys-airflow server under
 ### SFTP
 
 SFTP connections may have a password or a key file. The key files should be named with the hostname (e.g., `sftp.amalivre.fr`) and placed in `vendor-keys/` directory.
+
+## DAGs
+
+### data_fetcher
+
+Use the `filename_regex` value `CNT-ORD` for special Gobi file filtering (filter .ord files that don't have a corresponding .cnt file).

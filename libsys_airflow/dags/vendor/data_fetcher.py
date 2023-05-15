@@ -50,7 +50,9 @@ with DAG(
             "", type="string"
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
         "remote_path": Param("", type="string"),  # 'oclc'
-        "filename_regex": Param(None, type=["null", "string"]),  # '^\d+\.mrc$',
+        "filename_regex": Param(
+            None, type=["null", "string"]
+        ),  # '^\d+\.mrc$' or CNT-ORD for special Gobi file filtering.
         "processing_delay": Param(0, type="integer"),  # In days,
         "processing_dag": Param("default_data_processor", type="string"),
     },
