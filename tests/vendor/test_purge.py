@@ -8,16 +8,12 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from libsys_airflow.plugins.vendor.models import (
-    FileStatus,
-    VendorInterface,
-    VendorFile
-)
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorInterface, VendorFile
 
 from libsys_airflow.plugins.vendor.purge import (
     find_directories,
     remove_archived,
-    set_purge_status
+    set_purge_status,
 )
 
 
@@ -26,16 +22,16 @@ vendor_interfaces = [
         "vendor": "8a8dc6dd-8be6-4bd9-80cd-e00409b37dc6",
         "interfaces": {
             "88d39c9c-fa8c-46ee-921d-71f725afb719": "ec1234.mrc",
-            "9666e9af-a203-4c38-8708-bda60af8f235": "abcd56679.mrc"
-        }
+            "9666e9af-a203-4c38-8708-bda60af8f235": "abcd56679.mrc",
+        },
     },
     {
         "vendor": "9cce436e-1858-4c37-9c7f-9374a36576ff",
         "interfaces": {
             "35a42dbe-399f-4292-b2d5-14dd9e0a5e39": "klio71923.mrc",
-            "65d30c15-a560-4064-be92-f90e38eeb351": "rt231.mrc"
-        }
-    }
+            "65d30c15-a560-4064-be92-f90e38eeb351": "rt231.mrc",
+        },
+    },
 ]
 
 rows = Rows(
@@ -58,7 +54,7 @@ rows = Rows(
         status=FileStatus.not_fetched,
         expected_execution=datetime.utcnow() - timedelta(days=90),
         vendor_timestamp=datetime.fromisoformat("2023-05-10T00:21:47"),
-    )
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -73,7 +69,9 @@ def archive_basepath(tmp_path):
 
 @pytest.fixture
 def pg_hook(mocker, engine) -> PostgresHook:
-    mock_hook = mocker.patch("airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine")
+    mock_hook = mocker.patch(
+        "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
+    )
     mock_hook.return_value = engine
     return mock_hook
 
@@ -142,18 +140,12 @@ def test_set_purge_status(pg_hook):
             {
                 "88d39c9c-fa8c-46ee-921d-71f725afb719": {
                     "date": prior_90.strftime("%Y%m%d"),
-                    "files": [
-                        "ec1234.mrc"
-                    ]
+                    "files": ["ec1234.mrc"],
                 }
             }
         ]
     )
 
     with Session(pg_hook()) as session:
-        vendor_file = session.scalar(
-            select(VendorFile).where(
-                VendorFile.id == 1
-            )
-        )
+        vendor_file = session.scalar(select(VendorFile).where(VendorFile.id == 1))
         assert vendor_file.status == FileStatus.purged

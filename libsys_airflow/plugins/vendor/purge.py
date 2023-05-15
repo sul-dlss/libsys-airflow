@@ -10,11 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.paths import archive_basepath
-from libsys_airflow.plugins.vendor.models import (
-    FileStatus,
-    VendorFile,
-    VendorInterface
-)
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +48,7 @@ def _extract_uuids(directory: str):
     output = {}
     for vendor_path in dir_path.iterdir():
         for interface_path in vendor_path.iterdir():
-            output[interface_path.stem] = {
-                "date": dir_path.stem,
-                "files": []
-            }
+            output[interface_path.stem] = {"date": dir_path.stem, "files": []}
             for file in interface_path.iterdir():
                 output[interface_path.stem]["files"].append(file.name)
     return output
@@ -92,9 +85,8 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
         updated_date = datetime.strptime(info["date"], "%Y%m%d")
         for filename in info["files"]:
             vendor_file = session.scalars(
-                select(VendorFile).where(
-                    VendorFile.vendor_interface_id == vendor_interface.id
-                )
+                select(VendorFile)
+                .where(VendorFile.vendor_interface_id == vendor_interface.id)
                 .where(VendorFile.vendor_filename == filename)
                 .where(VendorFile.expected_execution == updated_date.date())
             ).first()

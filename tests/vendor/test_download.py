@@ -29,7 +29,7 @@ rows = Rows(
         filesize=123,
         status=FileStatus.not_fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
-        expected_execution=datetime.now().date()
+        expected_execution=datetime.now().date(),
     ),
 )
 

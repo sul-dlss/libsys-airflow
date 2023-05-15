@@ -30,7 +30,12 @@ def ftp_download_task(
 
     hook = _create_hook(conn_id)
     return download(
-        hook, remote_path, download_path, filename_regex, vendor_interface_uuid, expected_execution
+        hook,
+        remote_path,
+        download_path,
+        filename_regex,
+        vendor_interface_uuid,
+        expected_execution,
     )
 
 
@@ -99,7 +104,7 @@ def download(
                 "fetched",
                 vendor_interface_uuid,
                 vendor_timestamp,
-                expected_execution
+                expected_execution,
             )
     return list(filtered_filenames)
 
@@ -139,7 +144,7 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
-            expected_execution=expected_execution_date.date()
+            expected_execution=expected_execution_date.date(),
         )
         session.add(new_vendor_file)
         session.commit()
