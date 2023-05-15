@@ -17,6 +17,7 @@
     {% for interface in vendor.vendor_interfaces %}
     <tr>
         <td>{{ interface.display_name }}</td>
+        <td>{{ interface.folio_data_import_processing_name }}</td>
         <td>{{ interface.file_pattern }}</td>
         <td>{{ interface.remote_path }}</td>
         <td>{{ interface.processing_delay }}</td>
