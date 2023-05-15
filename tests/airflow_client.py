@@ -1,7 +1,9 @@
 import pathlib
 
-import pytest
 from airflow.www import app as application
+from bs4 import BeautifulSoup
+from flask.wrappers import Response
+import pytest
 
 from conftest import root_directory
 from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
@@ -20,6 +22,13 @@ def test_airflow_client():
         VendorManagementView, "Vendors", category="Vendor Management"
     )
     app.blueprints['VendorManagementView'].template_folder = templates_folder
+    app.response_class = HTMLResponse
 
     with app.test_client() as client:
         yield client
+
+
+class HTMLResponse(Response):
+    @property
+    def html(self):
+        return BeautifulSoup(self.get_data(), "html.parser")

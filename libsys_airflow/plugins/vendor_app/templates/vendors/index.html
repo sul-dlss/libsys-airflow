@@ -12,7 +12,7 @@
         {% for vendor in vendors %}
         <tr>
             <td>
-                {{ vendor.display_name }}<br>
+              <a href="{{ url_for('VendorManagementView.vendor', vendor_id=vendor.id) }}">{{ vendor.display_name }}</a><br>
                 ID: {{ vendor.folio_organization_uuid }}
             </td>
             <td>

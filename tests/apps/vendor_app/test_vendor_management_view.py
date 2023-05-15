@@ -3,8 +3,8 @@ from datetime import datetime
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
-from libsys_airflow.plugins.vendor.models import Vendor
-from tests.client import test_airflow_client
+from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
+from tests.airflow_client import test_airflow_client
 
 
 rows = Rows(
@@ -26,6 +26,30 @@ rows = Rows(
         has_active_vendor_interfaces=False,
         last_folio_update=datetime.now(),
     ),
+    VendorInterface(
+        id=1,
+        display_name="Acme FTP",
+        vendor_id=1,
+        folio_interface_uuid="140530EB-EE54-4302-81EE-D83B9DAC9B6E",
+        folio_data_import_processing_name="Acme Profile 1",
+        file_pattern="*.mrc",
+        remote_path="stanford/outgoing/data",
+        processing_dag="acme-pull",
+        processing_delay_in_days=3,
+        active=False,
+    ),
+    VendorInterface(
+        id=2,
+        display_name="Acme API",
+        vendor_id=1,
+        folio_interface_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
+        folio_data_import_processing_name="Acme Profile 2",
+        file_pattern="*.mrc",
+        remote_path="stanford/outgoing/data",
+        processing_dag="acme-pull",
+        processing_delay_in_days=3,
+        active=False,
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -43,6 +67,27 @@ def mock_db(mocker, engine):
 def test_vendor_views(test_airflow_client, mock_db):
     response = test_airflow_client.get('/vendors/')
     assert response.status_code == 200
-    assert "Vendors" in response.text
-    assert "ACME" in response.text
-    assert "Cocina Tacos" in response.text
+    assert response.html.h1.text == "Vendors"
+
+    rows = response.html.find_all('tr')
+    assert len(rows) == 2
+
+    link = rows[0].find_all('td')[0].a
+    assert link.text == "Acme"
+    assert link["href"] == "/vendors/1"
+
+    link = rows[1].find_all('td')[0].a
+    assert link.text == "Cocina Tacos"
+    assert link["href"] == "/vendors/2"
+
+
+def test_vendor_view(test_airflow_client, mock_db):
+    response = test_airflow_client.get('/vendors/1')
+    assert response.status_code == 200
+    assert response.html.h1.text == "Vendor: Acme"
+
+    rows = response.html.find_all('tr')
+    assert len(rows) == 2
+
+    assert 'Acme FTP' in rows[0].text
+    assert 'Acme API' in rows[1].text
