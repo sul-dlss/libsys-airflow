@@ -12,6 +12,7 @@ USER airflow
 COPY airflow.cfg requirements.txt pyproject.toml qa.sql poetry.lock ./
 
 COPY libsys_airflow ./libsys_airflow
+COPY bin ./bin
 
 RUN pip install -r requirements.txt
 RUN poetry build --format=wheel --no-interaction --no-ansi
