@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.sftp.hooks.sftp import SFTPHook
 
 
 rows = Rows(
@@ -65,12 +66,24 @@ def ftp_hook(mocker):
 
 
 @pytest.fixture
+def sftp_hook(mocker):
+    mock_hook = mocker.patch("airflow.providers.sftp.hooks.sftp.SFTPHook")
+    mock_hook.describe_directory.return_value = {
+        "3820230411.mrc": {"size": 123, "modify": "20230101000523"},
+        "3820230412.mrc": {},
+        "3820230412.xxx": {},
+    }
+    mock_hook.__class__ = SFTPHook
+    return mock_hook
+
+
+@pytest.fixture
 def download_path(tmp_path):
     pathlib.Path(f"{tmp_path}/3820230412.mrc").touch()
     return str(tmp_path)
 
 
-def test_download(ftp_hook, download_path, pg_hook):
+def test_ftp_download(ftp_hook, download_path, pg_hook):
     download(
         ftp_hook,
         "oclc",
@@ -89,6 +102,35 @@ def test_download(ftp_hook, download_path, pg_hook):
     assert ftp_hook.retrieve_file.call_count == 1
     assert ftp_hook.retrieve_file.called_with(
         "3820230411.mrc", f"{download_path}/3820230411.mrc"
+    )
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
+        ).first()
+        assert vendor_file.vendor_interface_id == 1
+        assert vendor_file.filesize == 123
+        assert vendor_file.status == FileStatus.fetched
+        assert vendor_file.vendor_timestamp == datetime.fromisoformat(
+            "2023-01-01T00:05:23"
+        )
+
+
+def test_sftp_download(sftp_hook, download_path, pg_hook):
+    download(
+        sftp_hook,
+        "oclc",
+        download_path,
+        _regex_filter_strategy(r".+\.mrc"),
+        "65d30c15-a560-4064-be92-f90e38eeb351",
+        "2023-01-01T00:05:23",
+    )
+
+    assert sftp_hook.describe_directory.call_count == 1
+    assert sftp_hook.describe_directory.called_with("oclc")
+    assert sftp_hook.retrieve_file.call_count == 1
+    assert sftp_hook.retrieve_file.called_with(
+        "oclc/3820230411.mrc", f"{download_path}/3820230411.mrc"
     )
 
     with Session(pg_hook()) as session:

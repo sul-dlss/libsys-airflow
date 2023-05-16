@@ -35,6 +35,7 @@ pytest-mock = "^3.7.0"
 # the airflow version here should be kept in sync with the docker image
 apache-airflow = "2.6.0"
 apache-airflow-providers-postgres = "5.4.0"
+apache-airflow-providers-sftp = "^4.2.4"
 requests-mock = "^1.10.0"
 pytest-mock-resources = "^2.6.12"
 beautifulsoup4 = "^4.12.2"
