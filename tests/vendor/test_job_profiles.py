@@ -10,7 +10,7 @@ def folio_client():
         'jobProfiles': [
             {
                 'id': '6409dcff-71fa-433a-bc6a-e70ad38a9604',
-                'name': 'A job profile',
+                'name': 'Some job profile',
                 'description': 'This job profile is used to create a new SRS MARC Bib record',
                 'dataType': 'MARC',
                 'deleted': False,
@@ -32,7 +32,7 @@ def folio_client():
             {
                 'id': '6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3',
                 'name': 'Example for loading MARC',
-                'description': 'Default job profile for creating MARC.',
+                'description': 'Another job profile for MARC.',
                 'dataType': 'MARC',
                 'tags': {'tagList': []},
                 'deleted': False,
@@ -61,9 +61,9 @@ def folio_client():
 
 def test_job_profiles(folio_client):
     assert job_profiles(folio_client=folio_client) == [
-        {'id': '6409dcff-71fa-433a-bc6a-e70ad38a9604', 'name': 'A job profile'},
         {
             'id': '6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3',
             'name': 'Example for loading MARC',
         },
+        {'id': '6409dcff-71fa-433a-bc6a-e70ad38a9604', 'name': 'Some job profile'},
     ]
