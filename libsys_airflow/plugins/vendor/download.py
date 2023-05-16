@@ -1,13 +1,14 @@
 import logging
 import re
 import pathlib
-from typing import Union, Callable
-from datetime import datetime
+from typing import Union, Callable, Optional
+from datetime import datetime, timedelta, date
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from airflow.decorators import task
+from airflow.models import Variable
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -80,13 +81,19 @@ def ftp_download_task(
     else:
         filter_strategy = _null_filter_strategy()
 
+    download_days_ago = Variable.get("download_days_ago")
+    mod_date_after = None
+    if download_days_ago:
+        mod_date_after = datetime.now() - timedelta(days=int(download_days_ago))
+
     return download(
         hook,
         remote_path,
         download_path,
         filter_strategy,
         vendor_interface_uuid,
-        expected_execution,
+        datetime.fromisoformat(expected_execution).date(),
+        mod_date_after,
     )
 
 
@@ -110,25 +117,26 @@ def download(
     download_path: str,
     filter_strategy: Callable,
     vendor_interface_uuid: str,
-    expected_execution: str,
+    expected_execution: date,
+    mod_date_after: Optional[datetime],
 ) -> list[str]:
     """
     Downloads files from FTP/SFTP and returns a list of file paths
     """
     adapter = _create_adapter(hook, remote_path)
+    pg_hook = PostgresHook("vendor_loads")
 
-    filtered_filenames = filtered_filenames = filter_strategy(adapter.list_directory())
-    logger.info(f"Found {len(filtered_filenames)} files in {remote_path}")
-    # Remove already downloaded files
-    filtered_filenames = [
-        f
-        for f in filtered_filenames
-        if not pathlib.Path(_download_filepath(download_path, f)).is_file()
-    ]
+    filtered_filenames = filter_strategy(adapter.list_directory())
+    filtered_filenames = _filter_mod_date(filtered_filenames, adapter, mod_date_after)
+    filtered_filenames = _filter_already_downloaded(
+        filtered_filenames, vendor_interface_uuid, pg_hook
+    )
+    logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
     for filename in filtered_filenames:
         download_filepath = _download_filepath(download_path, filename)
+        mod_time = adapter.get_mod_time(filename)
         try:
-            logger.info(f"Downloading {filename} to {download_filepath}")
+            logger.info(f"Downloading {filename} ({mod_time}) to {download_filepath}")
             adapter.retrieve_file(filename, download_filepath)
         except Exception:
             logger.error(f"Failed to download {filename} to {download_filepath}")
@@ -137,8 +145,9 @@ def download(
                 adapter.get_size(filename),
                 "fetching_error",
                 vendor_interface_uuid,
-                adapter.get_mod_time(filename),
+                mod_time,
                 expected_execution,
+                pg_hook,
             )
             raise
         else:
@@ -147,14 +156,15 @@ def download(
                 adapter.get_size(filename),
                 "fetched",
                 vendor_interface_uuid,
-                adapter.get_mod_time(filename),
+                mod_time,
                 expected_execution,
+                pg_hook,
             )
     return list(filtered_filenames)
 
 
 def _download_filepath(download_path: str, filename: str) -> str:
-    return pathlib.Path(download_path) / filename
+    return str(pathlib.Path(download_path) / filename)
 
 
 def _record_vendor_file(
@@ -163,10 +173,9 @@ def _record_vendor_file(
     status: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
-    expected_execution: str,
+    expected_execution: date,
+    pg_hook: PostgresHook,
 ):
-    pg_hook = PostgresHook("vendor_loads")
-    expected_execution_date = datetime.fromisoformat(expected_execution)
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         vendor_interface = session.scalars(
             select(VendorInterface).where(
@@ -188,7 +197,7 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
-            expected_execution=expected_execution_date.date(),
+            expected_execution=expected_execution,
         )
         session.add(new_vendor_file)
         session.commit()
@@ -228,3 +237,42 @@ def _create_adapter(
     if isinstance(hook, SFTPHook):
         return SFTPAdapter(hook, remote_path)
     return FTPAdapter(hook, remote_path)
+
+
+def _vendor_interface_id(vendor_interface_uuid: str, pg_hook: PostgresHook) -> int:
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_interface = session.scalars(
+            select(VendorInterface).where(
+                VendorInterface.folio_interface_uuid == vendor_interface_uuid
+            )
+        ).first()
+        return vendor_interface.id
+
+
+def _is_fetched(filename: str, vendor_interface_id: int, pg_hook: PostgresHook) -> bool:
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        return session.query(
+            select(VendorFile)
+            .where(VendorFile.vendor_filename == filename)
+            .where(VendorFile.vendor_interface_id == vendor_interface_id)
+            .where(VendorFile.status.not_in(("not_fetched", "fetching_error")))
+            .exists()
+        ).scalar()
+
+
+def _filter_already_downloaded(
+    filenames: list[str], vendor_interface_uuid: str, pg_hook: PostgresHook
+) -> list[str]:
+    vendor_interface_id = _vendor_interface_id(vendor_interface_uuid, pg_hook)
+    return [f for f in filenames if not _is_fetched(f, vendor_interface_id, pg_hook)]
+
+
+def _filter_mod_date(
+    filenames: list[str],
+    adapter: Union[FTPAdapter, SFTPAdapter],
+    mod_date_after: Optional[datetime],
+) -> list[str]:
+    if mod_date_after is None:
+        return filenames
+    logger.info(f"Filtering files modified after {mod_date_after}")
+    return [f for f in filenames if adapter.get_mod_time(f) > mod_date_after]

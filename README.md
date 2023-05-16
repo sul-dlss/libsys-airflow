@@ -225,4 +225,5 @@ SFTP connections may have a password or a key file. The key files should be name
 
 ### data_fetcher
 
-Use the `filename_regex` value `CNT-ORD` for special Gobi file filtering (filter .ord files that don't have a corresponding .cnt file).
+* Use the `filename_regex` value `CNT-ORD` for special Gobi file filtering (filter .ord files that don't have a corresponding .cnt file).
+* Set the `download_days_ago` airflow variable (`AIRFLOW_VAR_DOWNLOAD_DAYS_AGO` env variable) to limit downloads to a specific time period.
