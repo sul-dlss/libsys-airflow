@@ -110,6 +110,7 @@ class FileDataLoad(Model):
         server_default=DataLoadStatus.not_loaded.value,
     )
     additional_info = Column(Text, nullable=True)
+    folio_job_execution_uuid = Column(String(36), unique=False, nullable=True)
 
     def __repr__(self) -> str:
         return f"{self.id} - {self.vendor_file_id} - {self.dag_run_id}"
