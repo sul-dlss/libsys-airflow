@@ -70,7 +70,7 @@ with DAG(
             params["vendor_interface_uuid"],
             context["execution_date"],
         )
-        params["execution_date"] = context["execution_date"]
+        params["execution_date"] = context["execution_date"].isoformat()
 
         logger.info(f"Params are {params}")
 
