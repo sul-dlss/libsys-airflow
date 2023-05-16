@@ -118,3 +118,42 @@ def _write_records(records, download_path, filename):
         for record in records:
             record.force_utf8 = True
             marc_writer.write(record)
+
+
+def move_fields(marc_path: pathlib.Path, change_fields: list[dict]):
+    """
+    Moves MARC fields within each record in a file.
+    """
+    if not all(change.keys() == {"from", "to"} for change in change_fields):
+        logger.error(
+            f"Changes {change_fields} must all include 'from' and 'to'. Not moving fields."
+        )
+        return
+
+    logger.info(f"Moving fields in {marc_path}")
+    updated_records = []
+    with marc_path.open("rb") as fo:
+        reader = _marc_reader(fo)
+        for record in reader:
+            if record is None:
+                logger.info(
+                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception} "
+                )
+            else:
+                updated_record = _change_fields(record, change_fields)
+                updated_records.append(updated_record)
+
+    with marc_path.open("wb") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in updated_records:
+            record.force_utf8 = True
+            marc_writer.write(record)
+
+    logger.info(f"Finished moving fields in {marc_path}")
+
+
+def _change_fields(record, change_fields):
+    for change in change_fields:
+        for field in record.get_fields(change["from"]):
+            field.tag = change["to"]
+    return record
