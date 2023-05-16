@@ -103,11 +103,10 @@ def _process_files(
     upload_definition_id,
     job_profile_uuid,
     upload_definition,
-    data_type="MARC",
 ):
     payload = {
         "uploadDefinition": upload_definition,
-        "jobProfileInfo": {"id": job_profile_uuid, "dataType": data_type},
+        "jobProfileInfo": {"id": job_profile_uuid},
     }
     folio_client.post(
         f"/data-import/uploadDefinitions/{upload_definition_id}/processFiles", payload
