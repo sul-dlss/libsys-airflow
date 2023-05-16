@@ -1,6 +1,5 @@
 import pytest  # noqa
-import pathlib
-from datetime import datetime
+from datetime import datetime, date
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
 
@@ -38,6 +37,16 @@ rows = Rows(
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
         expected_execution=datetime.now().date(),
     ),
+    VendorFile(
+        created=datetime.now(),
+        updated=datetime.now(),
+        vendor_interface_id=1,
+        vendor_filename="3820230412.mrc",
+        filesize=456,
+        status=FileStatus.fetched,
+        vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
+        expected_execution=datetime.now().date(),
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -58,10 +67,16 @@ def ftp_hook(mocker):
     mock_hook.list_directory.return_value = [
         "3820230411.mrc",
         "3820230412.mrc",
+        "3820230413.mrc",
         "3820230412.xxx",
     ]
-    mock_hook.get_size.return_value = 123
-    mock_hook.get_mod_time.return_value = datetime.fromisoformat("2023-01-01T00:05:23")
+    mock_hook.get_size.side_effect = [123, 678]
+    mock_hook.get_mod_time.side_effect = [
+        datetime.fromisoformat("2023-01-01T00:05:23"),
+        datetime.fromisoformat("2023-01-01T00:05:23"),
+        datetime.fromisoformat("2013-01-01T00:05:23"),
+        datetime.fromisoformat("2023-01-01T00:05:23"),
+    ]
     return mock_hook
 
 
@@ -70,7 +85,8 @@ def sftp_hook(mocker):
     mock_hook = mocker.patch("airflow.providers.sftp.hooks.sftp.SFTPHook")
     mock_hook.describe_directory.return_value = {
         "3820230411.mrc": {"size": 123, "modify": "20230101000523"},
-        "3820230412.mrc": {},
+        "3820230412.mrc": {"size": 456, "modify": "20230101000523"},
+        "3820230413.mrc": {"size": 678, "modify": "20130101000523"},
         "3820230412.xxx": {},
     }
     mock_hook.__class__ = SFTPHook
@@ -79,7 +95,6 @@ def sftp_hook(mocker):
 
 @pytest.fixture
 def download_path(tmp_path):
-    pathlib.Path(f"{tmp_path}/3820230412.mrc").touch()
     return str(tmp_path)
 
 
@@ -90,14 +105,15 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
         download_path,
         _regex_filter_strategy(r".+\.mrc"),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        "2023-01-01T00:05:23",
+        date.fromisoformat("2023-01-01"),
+        datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 
     assert ftp_hook.list_directory.call_count == 1
     assert ftp_hook.list_directory.called_with("oclc")
     assert ftp_hook.get_size.call_count == 1
     assert ftp_hook.get_size.called_with("3820230411.mrc")
-    assert ftp_hook.get_mod_time.call_count == 1
+    assert ftp_hook.get_mod_time.call_count == 4
     assert ftp_hook.get_mod_time.called_with("3820230411.mrc")
     assert ftp_hook.retrieve_file.call_count == 1
     assert ftp_hook.retrieve_file.called_with(
@@ -123,7 +139,8 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
         download_path,
         _regex_filter_strategy(r".+\.mrc"),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        "2023-01-01T00:05:23",
+        date.fromisoformat("2023-01-01"),
+        datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 
     assert sftp_hook.describe_directory.call_count == 1
@@ -155,7 +172,8 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             download_path,
             _regex_filter_strategy(r".+\.mrc"),
             "65d30c15-a560-4064-be92-f90e38eeb351",
-            "2023-01-01T00:05:23",
+            date.fromisoformat("2023-01-01"),
+            datetime.fromisoformat("2020-01-01T00:05:23"),
         )
 
     with Session(pg_hook()) as session:
@@ -184,14 +202,15 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
         download_path,
         _gobi_order_filter_strategy(),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        "2023-01-01T00:05:23",
+        date.fromisoformat("2023-01-01"),
+        datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 
     assert ftp_hook.list_directory.call_count == 1
     assert ftp_hook.list_directory.called_with("orders")
     assert ftp_hook.get_size.call_count == 1
     assert ftp_hook.get_size.called_with("3820230411.ord")
-    assert ftp_hook.get_mod_time.call_count == 1
+    assert ftp_hook.get_mod_time.call_count == 2
     assert ftp_hook.get_mod_time.called_with("3820230411.ord")
     assert ftp_hook.retrieve_file.call_count == 1
     assert ftp_hook.retrieve_file.called_with(
