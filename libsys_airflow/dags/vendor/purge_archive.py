@@ -2,10 +2,12 @@ from datetime import datetime, timedelta
 import logging
 
 from airflow import DAG
+from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.vendor.purge import (
     discover_task,
-    remove_records_task,
+    remove_archives_task,
+    remove_downloads_task,
     set_status_task,
 )
 
@@ -20,14 +22,22 @@ default_args = {
     "retry_delay": timedelta(minutes=5),
 }
 
+
 with DAG(
     dag_id="purge_archived_files",
     default_args=default_args,
     start_date=datetime(2023, 5, 9),
     schedule_interval="0 9 * * *",  # Runs Daily at 2 am PT
 ) as dag:
-    target_directories = discover_task()
+    finish_task = EmptyOperator(task_id="finished-purge")
 
-    vendor_interfaces = remove_records_task(target_directories)
+    targets = discover_task()
 
-    set_status_task(vendor_interfaces)
+    delete_files = remove_downloads_task(targets["downloads"])
+
+    vendor_interfaces = remove_archives_task(targets["archive"])
+
+    purged_status = set_status_task(vendor_interfaces)
+
+    delete_files >> finish_task
+    purged_status >> finish_task
