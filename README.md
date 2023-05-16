@@ -179,6 +179,12 @@ Assuming that you have put Folio related environment variables in your `.env` fi
 poetry run bin/seed_vendors
 ```
 
+In a deployed environment, this can be run this:
+```
+docker exec -it 20230516183735-airflow-webserver-1 bin/seed_vendors
+```
+where `20230516183735-airflow-webserver-1` is the container id.
+
 ## Testing
 
 1. Install dependencies per `Dependency Management and Packaging` above
