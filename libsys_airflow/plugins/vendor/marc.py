@@ -1,5 +1,6 @@
 import logging
 import pathlib
+from typing import Optional
 
 import pymarc
 import magic
@@ -121,9 +122,28 @@ def _write_records(records, download_path, filename):
             marc_writer.write(record)
 
 
+@task
+def move_fields_task(
+    download_path: str, filename: str, change_fields: Optional[list[dict]] = None
+):
+    """
+    Task to move MARC fields within each record in a file.
+    """
+    if not change_fields:
+        logger.info(f"No fields to move for {filename}")
+        return
+    marc_path = pathlib.Path(download_path) / filename
+    if not is_marc(marc_path):
+        logger.info(f"Skipping moving fields for {marc_path}")
+        return
+    move_fields(pathlib.Path(marc_path), change_fields)
+
+
 def move_fields(marc_path: pathlib.Path, change_fields: list[dict]):
     """
     Moves MARC fields within each record in a file.
+
+    change_fields example: [{ from: "520" to: "920" }, { from: "528" to: "928" }]
     """
     if not all(change.keys() == {"from", "to"} for change in change_fields):
         logger.error(
@@ -131,7 +151,7 @@ def move_fields(marc_path: pathlib.Path, change_fields: list[dict]):
         )
         return
 
-    logger.info(f"Moving fields in {marc_path}")
+    logger.info(f"Moving fields in {marc_path}: {change_fields}")
     updated_records = []
     with marc_path.open("rb") as fo:
         reader = _marc_reader(fo)

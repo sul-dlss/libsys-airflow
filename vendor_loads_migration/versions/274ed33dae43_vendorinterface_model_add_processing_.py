@@ -1,7 +1,7 @@
 """VendorInterface model: add processing_options
 
 Revision ID: 274ed33dae43
-Revises: 325a951f65c7
+Revises: 991306da2f56
 Create Date: 2023-05-17 09:58:01.771048
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '274ed33dae43'
-down_revision = '325a951f65c7'
+down_revision = '991306da2f56'
 branch_labels = None
 depends_on = None
 
