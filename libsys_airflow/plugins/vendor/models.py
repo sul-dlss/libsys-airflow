@@ -1,14 +1,15 @@
 import enum
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    DateTime,
-    Date,
-    Text,
     Boolean,
+    Column,
     Enum,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -45,6 +46,7 @@ class VendorInterface(Model):
     file_pattern = Column(String(250), unique=False, nullable=True)
     remote_path = Column(String(250), unique=False, nullable=True)
     processing_dag = Column(String(50), unique=False, nullable=True)
+    processing_options = Column(JSON, nullable=True)
     processing_delay_in_days = Column(Integer, unique=False, nullable=True)
     active = Column(Boolean, nullable=False, default=False)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
