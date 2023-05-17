@@ -49,21 +49,20 @@ def find_or_create_conn(
     session: Session = NEW_SESSION,
 ) -> str:
     conn_id = f"{conn_type}-{host}"
-    conn = Connection(
-        conn_id=conn_id, conn_type=conn_type, host=host, login=login, port=port
-    )
+
+    conn = session.query(Connection).filter_by(conn_id=conn_id).first()
+    if not conn:
+        conn = Connection(conn_id=conn_id)
+    conn.conn_type = conn_type
+    conn.host = host
+    conn.login = login
+    conn.port = port
+
     if pwd:
         conn.set_password(pwd)
     if key_file:
         conn.set_extra(json.dumps({"key_file": key_file}))
 
-    existing_conn = (
-        session.query(conn.__class__).filter_by(conn_id=conn.conn_id).first()
-    )
-
-    if existing_conn:
-        session.delete(existing_conn)
-        session.commit()
     session.add(conn)
     session.commit()
 
