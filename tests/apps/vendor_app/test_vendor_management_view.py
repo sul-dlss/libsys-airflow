@@ -84,7 +84,7 @@ def test_vendor_views(test_airflow_client, mock_db):  # noqa: F811
 def test_vendor_view(test_airflow_client, mock_db):  # noqa: F811
     response = test_airflow_client.get('/vendors/1')
     assert response.status_code == 200
-    assert response.html.h1.text == "Vendor: Acme"
+    assert response.html.h1.text == "Acme"
 
     rows = response.html.find_all('tr')
     assert len(rows) == 2
