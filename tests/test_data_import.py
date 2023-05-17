@@ -200,6 +200,7 @@ def test_data_import(download_path, folio_client):
         },
         "jobProfileInfo": {
             "id": "f4144dbd-def7-4b77-842a-954c62faf319",
+            "dataType": "MARC",
         },
     }
 
