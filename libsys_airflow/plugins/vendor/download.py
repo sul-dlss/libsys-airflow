@@ -130,12 +130,20 @@ def download(
     logger.info(f"All filenames: {all_filenames}")
     filtered_filenames = filter_strategy(all_filenames)
     logger.info(f"Filtered by strategy filenames: {filtered_filenames}")
-    filtered_filenames = _filter_mod_date(filtered_filenames, adapter, mod_date_after)
-    logger.info(f"Filtered by mod filenames: {filtered_filenames}")
     filtered_filenames = _filter_already_downloaded(
         filtered_filenames, vendor_interface_uuid, pg_hook
     )
     logger.info(f"Filtered by already downloaded filenames: {filtered_filenames}")
+    # Also creates skipped VendorFile for files that are outside download window.
+    filtered_filenames = _filter_mod_date(
+        filtered_filenames,
+        adapter,
+        mod_date_after,
+        vendor_interface_uuid,
+        expected_execution,
+        pg_hook,
+    )
+    logger.info(f"Filtered by mod filenames: {filtered_filenames}")
     logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
     for filename in filtered_filenames:
         download_filepath = _download_filepath(download_path, filename)
@@ -280,8 +288,26 @@ def _filter_mod_date(
     filenames: list[str],
     adapter: Union[FTPAdapter, SFTPAdapter],
     mod_date_after: Optional[datetime],
+    vendor_interface_uuid: str,
+    expected_execution: date,
+    pg_hook: PostgresHook,
 ) -> list[str]:
     if mod_date_after is None:
         return filenames
     logger.info(f"Filtering files modified after {mod_date_after}")
-    return [f for f in filenames if adapter.get_mod_time(f) > mod_date_after]
+    filtered_filenames = []
+    for filename in filenames:
+        mod_time = adapter.get_mod_time(filename)
+        if mod_time > mod_date_after:
+            filtered_filenames.append(filename)
+        else:
+            _record_vendor_file(
+                filename,
+                adapter.get_size(filename),
+                "skipped",
+                vendor_interface_uuid,
+                mod_time,
+                expected_execution,
+                pg_hook,
+            )
+    return filtered_filenames

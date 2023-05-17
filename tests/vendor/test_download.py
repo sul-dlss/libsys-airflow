@@ -65,14 +65,13 @@ def pg_hook(mocker, engine) -> PostgresHook:
 def ftp_hook(mocker):
     mock_hook = mocker.patch("airflow.providers.ftp.hooks.ftp.FTPHook")
     mock_hook.list_directory.return_value = [
-        "3820230411.mrc",
-        "3820230412.mrc",
-        "3820230413.mrc",
-        "3820230412.xxx",
+        "3820230411.mrc",  # Downloaded
+        "3820230412.mrc",  # Already fetched
+        "3820230413.mrc",  # Outside download window
+        "3820230412.xxx",  # Does not match regex
     ]
     mock_hook.get_size.side_effect = [123, 678]
     mock_hook.get_mod_time.side_effect = [
-        datetime.fromisoformat("2023-01-01T00:05:23"),
         datetime.fromisoformat("2023-01-01T00:05:23"),
         datetime.fromisoformat("2013-01-01T00:05:23"),
         datetime.fromisoformat("2023-01-01T00:05:23"),
@@ -111,9 +110,9 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
 
     assert ftp_hook.list_directory.call_count == 1
     assert ftp_hook.list_directory.called_with("oclc")
-    assert ftp_hook.get_size.call_count == 1
+    assert ftp_hook.get_size.call_count == 2
     assert ftp_hook.get_size.called_with("3820230411.mrc")
-    assert ftp_hook.get_mod_time.call_count == 4
+    assert ftp_hook.get_mod_time.call_count == 3
     assert ftp_hook.get_mod_time.called_with("3820230411.mrc")
     assert ftp_hook.retrieve_file.call_count == 1
     assert ftp_hook.retrieve_file.called_with(
@@ -125,11 +124,15 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.vendor_interface_id == 1
-        assert vendor_file.filesize == 123
+        assert vendor_file.filesize == 678
         assert vendor_file.status == FileStatus.fetched
         assert vendor_file.vendor_timestamp == datetime.fromisoformat(
             "2023-01-01T00:05:23"
         )
+        skipped_vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230413.mrc")
+        ).first()
+        assert skipped_vendor_file.status == FileStatus.skipped
 
 
 def test_sftp_download(sftp_hook, download_path, pg_hook):
@@ -181,7 +184,7 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.vendor_interface_id == 1
-        assert vendor_file.filesize == 123
+        assert vendor_file.filesize == 678
         assert vendor_file.status == FileStatus.fetching_error
         assert vendor_file.vendor_timestamp == datetime.fromisoformat(
             "2023-01-01T00:05:23"

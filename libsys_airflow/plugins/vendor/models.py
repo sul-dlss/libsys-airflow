@@ -61,6 +61,7 @@ class FileStatus(enum.Enum):
     loading_error = "loading_error"
     loaded = "loaded"
     purged = "purged"
+    skipped = "skipped"  # Files on the FTP server that are not fetched because they are before the download window.
 
 
 class VendorFile(Model):
