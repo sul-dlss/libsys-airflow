@@ -7,7 +7,7 @@ import requests
 
 from airflow.operators.python import get_current_context
 from folioclient import FolioClient
-from libsys_airflow.plugins.folio.audit import AuditStatus
+from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
 from folio_uuid.folio_uuid import FOLIONamespaces
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,8 @@ def _post_record(**kwargs):
     post_result = requests.post(post_url, data=record, headers=okapi_headers)
     if post_result.status_code != 201:
         _save_error(con, db_id, post_result)
+    else:
+        add_audit_log(db_id, con, AuditStatus.ADDED.value)
 
 
 def _retrieve_missing_records(con: sqlite3.Connection, record_type: int) -> list:

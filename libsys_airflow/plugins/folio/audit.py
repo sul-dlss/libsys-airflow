@@ -15,6 +15,7 @@ class AuditStatus(Enum):
     EXISTS = 1
     MISSING = 2
     ERROR = 3
+    ADDED = 4
 
 
 def _audit_record(**kwargs):
@@ -35,7 +36,7 @@ def _audit_record(**kwargs):
         _add_json_record(record, audit_con, record_db_id)
         status = AuditStatus.MISSING.value
 
-    _add_audit_log(record_db_id, audit_con, status)
+    add_audit_log(record_db_id, audit_con, status)
 
 
 def _audit_instances(
@@ -147,7 +148,7 @@ def _add_json_record(record, con, record_db_id):
     cur.close()
 
 
-def _add_audit_log(record_id, con, status_id):
+def add_audit_log(record_id, con, status_id):
     cur = con.cursor()
     cur.execute(
         """INSERT INTO AuditLog (record_id, status)
@@ -155,6 +156,7 @@ def _add_audit_log(record_id, con, status_id):
         (record_id, status_id),
     )
     log_id = cur.lastrowid
+    con.commit()
     cur.close()
     return log_id
 

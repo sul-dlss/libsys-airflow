@@ -13,7 +13,8 @@ import requests
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
-from libsys_airflow.plugins.folio.audit import AuditStatus, _add_audit_log
+from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
+from libsys_airflow.plugins.folio.reports import srs_audit_report
 from libsys_airflow.plugins.folio.remediate import _save_error
 
 logger = logging.getLogger(__name__)
@@ -46,13 +47,19 @@ def _add_srs_audit_record(record: dict, connection, record_type):
         hrid = record["externalIdsHolder"]["holdingsHrid"]
     else:
         hrid = record["externalIdsHolder"]["instanceHrid"]
-    cur.execute(
-        """INSERT INTO Record (uuid, hrid, folio_type, current_version)
-           VALUES (?,?,?,?);""",
-        (record["id"], hrid, record_type, record["generation"]),
-    )
-    record_id = cur.lastrowid
-    connection.commit()
+    record_exists = cur.execute(
+        "SELECT id FROM Record WHERE uuid=?", (record['id'],)
+    ).fetchone()
+    if record_exists:
+        record_id = record_exists[0]
+    else:
+        cur.execute(
+            """INSERT INTO Record (uuid, hrid, folio_type, current_version)
+            VALUES (?,?,?,?);""",
+            (record["id"], hrid, record_type, record["generation"]),
+        )
+        record_id = cur.lastrowid
+        connection.commit()
     cur.close()
     return record_id
 
@@ -74,11 +81,11 @@ def _check_add_srs_records(**kwargs):
 
     match check_record.status_code:
         case 200:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
             return
 
         case 404:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.MISSING.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.MISSING.value)
             srs_record["snapshotId"] = snapshot_id
             add_result = requests.post(
                 f"{folio_client.okapi_url}/source-storage/records",
@@ -92,7 +99,7 @@ def _check_add_srs_records(**kwargs):
                 )
 
         case _:
-            _add_audit_log(db_record_id, audit_connection, AuditStatus.ERROR.value)
+            add_audit_log(db_record_id, audit_connection, AuditStatus.ERROR.value)
             _save_error(audit_connection, db_record_id, check_record)
             logger.error(
                 f"Failed to retrieve {srs_id}, {check_record.status_code} message {check_record.text}"
@@ -189,61 +196,6 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
-def _srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
-    """
-    Generates a SRS Audit Report
-    """
-    report_path = pathlib.Path(iteration) / "reports/report_srs-audit.md"
-    audit_report = """# SRS Audit/Remediation Report\n"""
-    cur = db_connection.cursor()
-    srs_total_sql = """SELECT count(id) FROM Record where folio_type=?;"""
-    srs_status_sql = """SELECT count(AuditLog.id) FROM AuditLog, Record
-WHERE AuditLog.record_id = Record.id AND
-Record.folio_type=? AND
-AuditLog.status=?;"""
-    total_mhld_srs_records = cur.execute(
-        srs_total_sql, (FOLIONamespaces.srs_records_holdingsrecord.value,)
-    ).fetchone()[0]
-    audit_report += (
-        f"## Totals SRS Records\n- **MHLD SRS Records**: {total_mhld_srs_records}\n"
-    )
-    total_bib_srs_records = cur.execute(
-        srs_total_sql, (FOLIONamespaces.srs_records_bib.value,)
-    ).fetchone()[0]
-    audit_report += f"- **SRS BIBs Records**: {total_bib_srs_records}\n"
-    exists_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.EXISTS.value),
-    ).fetchone()[0]
-    audit_report += f"## SRS MHLD Audit Status\n- **Exists**: {exists_mhld:,}\n"
-    missing_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.MISSING.value),
-    ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_mhld:,}\n"
-    error_mhld = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_holdingsrecord.value, AuditStatus.ERROR.value),
-    ).fetchone()[0]
-    audit_report += f"- **Errors**: {error_mhld:,}\n"
-    exists_bibs = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_bib.value, AuditStatus.EXISTS.value),
-    ).fetchone()[0]
-    audit_report += f"## SRS BIBs Audit Status\n- **Exists**: {exists_bibs:,}\n"
-    missing_bibs = cur.execute(
-        srs_status_sql,
-        (FOLIONamespaces.srs_records_bib.value, AuditStatus.MISSING.value),
-    ).fetchone()[0]
-    audit_report += f"- **Missing**: {missing_bibs:,}\n"
-    error_bibs = cur.execute(
-        srs_status_sql, (FOLIONamespaces.srs_records_bib.value, AuditStatus.ERROR.value)
-    ).fetchone()[0]
-    audit_report += f"- **Errors**: {error_bibs}"
-    cur.close()
-    report_path.write_text(audit_report)
-
-
 def _srs_check_add(**kwargs):
     """
     Runs audit/remediation for a single SRS file
@@ -315,7 +267,7 @@ def _handle_srs_iteration(**kwargs):
         srs_label="SRS MARC BIBs",
     )
 
-    _srs_audit_report(audit_connection, iteration)
+    srs_audit_report(audit_connection, iteration)
 
     audit_connection.close()
     total = mhld_count + bib_count

@@ -53,3 +53,4 @@ INSERT INTO FolioType (id, name) VALUES (16, "SRS Holdings Record");
 INSERT INTO Status (name) VALUES ("Exists");
 INSERT INTO Status (name) VALUES ("Missing");
 INSERT INTO Status (name) VALUES ("Error");
+INSERT INTO Status (name) VALUES ("Added");
