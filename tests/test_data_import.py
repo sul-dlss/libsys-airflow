@@ -11,6 +11,7 @@ from libsys_airflow.plugins.folio.data_import import (
     record_loading,
     record_loaded,
     record_loading_error,
+    _data_type,
 )
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
 
@@ -134,6 +135,10 @@ def download_path(tmp_path):
     for filename in FILENAMES:
         dest_filepath = os.path.join(tmp_path, filename)
         shutil.copyfile("tests/vendor/0720230118.mrc", dest_filepath)
+    shutil.copyfile(
+        'tests/vendor/AuxamInvoice220324676717.EDI',
+        os.path.join(tmp_path, 'AuxamInvoice220324676717.EDI'),
+    )
     return str(tmp_path)
 
 
@@ -248,3 +253,11 @@ def test_record_loading_error(context, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.status == FileStatus.loading_error
+
+
+def test_marc_datatype(download_path):
+    assert _data_type(download_path, '0720230118_1.mrc') == "MARC"
+
+
+def test_edifact_datatype(download_path):
+    assert _data_type(download_path, 'AuxamInvoice220324676717.EDI') == "EDIFACT"

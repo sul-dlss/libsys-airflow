@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 import pymarc
+import magic
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -50,7 +51,7 @@ def filter_fields(marc_path: pathlib.Path, fields: list[str]):
 
 
 def is_marc(path: pathlib.Path):
-    return path.suffix == ".mrc" or path.suffix == ".ord"
+    return magic.from_file(str(path), mime=True) == "application/marc"
 
 
 def _marc_reader(file):
