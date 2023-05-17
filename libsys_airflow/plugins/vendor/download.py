@@ -126,11 +126,16 @@ def download(
     adapter = _create_adapter(hook, remote_path)
     pg_hook = PostgresHook("vendor_loads")
 
-    filtered_filenames = filter_strategy(adapter.list_directory())
+    all_filenames = adapter.list_directory()
+    logger.info(f"All filenames: {all_filenames}")
+    filtered_filenames = filter_strategy(all_filenames)
+    logger.info(f"Filtered by strategy filenames: {filtered_filenames}")
     filtered_filenames = _filter_mod_date(filtered_filenames, adapter, mod_date_after)
+    logger.info(f"Filtered by mod filenames: {filtered_filenames}")
     filtered_filenames = _filter_already_downloaded(
         filtered_filenames, vendor_interface_uuid, pg_hook
     )
+    logger.info(f"Filtered by already downloaded filenames: {filtered_filenames}")
     logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
     for filename in filtered_filenames:
         download_filepath = _download_filepath(download_path, filename)
