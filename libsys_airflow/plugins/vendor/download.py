@@ -57,7 +57,7 @@ class SFTPAdapter:
         return self._file_descriptions[filename]["size"]
 
     def retrieve_file(self, filename: str, download_filepath: str):
-        remote_filepath = pathlib.Path(self.remote_path) / filename
+        remote_filepath = str(pathlib.Path(self.remote_path) / filename)
         self.hook.retrieve_file(remote_filepath, download_filepath)
 
 
@@ -210,7 +210,11 @@ def _record_vendor_file(
 
 def _regex_filter_strategy(filename_regex: str) -> Callable:
     def strategy(all_filenames: list[str]) -> list[str]:
-        return [f for f in all_filenames if re.compile(filename_regex, flags=re.IGNORECASE).match(f)]
+        return [
+            f
+            for f in all_filenames
+            if re.compile(filename_regex, flags=re.IGNORECASE).match(f)
+        ]
 
     return strategy
 
