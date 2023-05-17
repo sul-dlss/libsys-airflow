@@ -22,6 +22,7 @@ apache-airflow-client = "2.6.0"
 python-dotenv = "^1.0.0"
 alembic = "^1.10.4"
 psycopg2-binary = "^2.9.6"
+python-magic = "^0.4.27"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"

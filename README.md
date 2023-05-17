@@ -10,6 +10,7 @@ To install the dependencies, run:
 
 - `pip install -r requirements.txt`
 - `poetry install`
+- `brew install libmagic`, `sudo apt-get install -y libmagic-dev`, or equivalent
 
 ### Adding new dependencies
 

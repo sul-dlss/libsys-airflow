@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 
 from airflow.models import Variable
 from airflow.decorators import task
@@ -7,6 +8,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
+from libsys_airflow.plugins.vendor.marc import is_marc
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -59,8 +61,14 @@ def data_import(
             upload_definition_id,
             file_definition_id,
         )
+    data_type = _data_type(download_path, batch_filenames[0])
+    logger.info(f"Data type: {data_type}")
     _process_files(
-        client, upload_definition_id, dataload_profile_uuid, upload_definition
+        client,
+        upload_definition_id,
+        dataload_profile_uuid,
+        upload_definition,
+        data_type,
     )
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
@@ -103,7 +111,7 @@ def _process_files(
     upload_definition_id,
     job_profile_uuid,
     upload_definition,
-    data_type="MARC",
+    data_type,
 ):
     payload = {
         "uploadDefinition": upload_definition,
@@ -134,3 +142,10 @@ def _record_status(context, status):
         ).first()
         vendor_file.status = status
         session.commit()
+
+
+def _data_type(download_path, filename):
+    if is_marc(pathlib.Path(download_path) / filename):
+        return "MARC"
+    else:
+        return "EDIFACT"

@@ -2,7 +2,7 @@ FROM apache/airflow:2.6.0-python3.10
 
 USER root
 RUN usermod -u 214 airflow
-RUN apt-get update && apt-get install -y gcc git
+RUN apt-get update && apt-get install -y gcc git libmagic-dev
 
 ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/"
 ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
