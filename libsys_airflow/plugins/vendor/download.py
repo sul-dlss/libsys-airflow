@@ -210,7 +210,7 @@ def _record_vendor_file(
 
 def _regex_filter_strategy(filename_regex: str) -> Callable:
     def strategy(all_filenames: list[str]) -> list[str]:
-        return [f for f in all_filenames if re.compile(filename_regex).match(f)]
+        return [f for f in all_filenames if re.compile(filename_regex, flags=re.IGNORECASE).match(f)]
 
     return strategy
 
