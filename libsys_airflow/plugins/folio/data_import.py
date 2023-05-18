@@ -141,6 +141,9 @@ def _record_status(context, status):
             .where(VendorFile.vendor_interface_id == vendor_interface.id)
         ).first()
         vendor_file.status = status
+
+        # add here an update to the FileDataLoads record, with status and folio_job_execution_uuid
+        
         session.commit()
 
 
