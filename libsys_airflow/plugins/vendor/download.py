@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, date
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.engine import Engine
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -124,14 +125,14 @@ def download(
     Downloads files from FTP/SFTP and returns a list of file paths
     """
     adapter = _create_adapter(hook, remote_path)
-    pg_hook = PostgresHook("vendor_loads")
+    engine = PostgresHook("vendor_loads").get_sqlalchemy_engine()
 
     all_filenames = adapter.list_directory()
     logger.info(f"All filenames: {all_filenames}")
     filtered_filenames = filter_strategy(all_filenames)
     logger.info(f"Filtered by strategy filenames: {filtered_filenames}")
     filtered_filenames = _filter_already_downloaded(
-        filtered_filenames, vendor_interface_uuid, pg_hook
+        filtered_filenames, vendor_interface_uuid, engine
     )
     logger.info(f"Filtered by already downloaded filenames: {filtered_filenames}")
     # Also creates skipped VendorFile for files that are outside download window.
@@ -141,7 +142,7 @@ def download(
         mod_date_after,
         vendor_interface_uuid,
         expected_execution,
-        pg_hook,
+        engine,
     )
     logger.info(f"Filtered by mod filenames: {filtered_filenames}")
     logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
@@ -160,7 +161,7 @@ def download(
                 vendor_interface_uuid,
                 mod_time,
                 expected_execution,
-                pg_hook,
+                engine,
             )
             raise
         else:
@@ -171,7 +172,7 @@ def download(
                 vendor_interface_uuid,
                 mod_time,
                 expected_execution,
-                pg_hook,
+                engine,
             )
     return list(filtered_filenames)
 
@@ -187,9 +188,9 @@ def _record_vendor_file(
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
     expected_execution: date,
-    pg_hook: PostgresHook,
+    engine: Engine,
 ):
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+    with Session(engine) as session:
         vendor_interface = session.scalars(
             select(VendorInterface).where(
                 VendorInterface.folio_interface_uuid == vendor_interface_uuid
@@ -256,8 +257,8 @@ def _create_adapter(
     return FTPAdapter(hook, remote_path)
 
 
-def _vendor_interface_id(vendor_interface_uuid: str, pg_hook: PostgresHook) -> int:
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+def _vendor_interface_id(vendor_interface_uuid: str, engine: Engine) -> int:
+    with Session(engine) as session:
         vendor_interface = session.scalars(
             select(VendorInterface).where(
                 VendorInterface.folio_interface_uuid == vendor_interface_uuid
@@ -266,8 +267,8 @@ def _vendor_interface_id(vendor_interface_uuid: str, pg_hook: PostgresHook) -> i
         return vendor_interface.id
 
 
-def _is_fetched(filename: str, vendor_interface_id: int, pg_hook: PostgresHook) -> bool:
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+def _is_fetched(filename: str, vendor_interface_id: int, engine: Engine) -> bool:
+    with Session(engine) as session:
         return session.query(
             select(VendorFile)
             .where(VendorFile.vendor_filename == filename)
@@ -278,10 +279,10 @@ def _is_fetched(filename: str, vendor_interface_id: int, pg_hook: PostgresHook) 
 
 
 def _filter_already_downloaded(
-    filenames: list[str], vendor_interface_uuid: str, pg_hook: PostgresHook
+    filenames: list[str], vendor_interface_uuid: str, engine: Engine
 ) -> list[str]:
-    vendor_interface_id = _vendor_interface_id(vendor_interface_uuid, pg_hook)
-    return [f for f in filenames if not _is_fetched(f, vendor_interface_id, pg_hook)]
+    vendor_interface_id = _vendor_interface_id(vendor_interface_uuid, engine)
+    return [f for f in filenames if not _is_fetched(f, vendor_interface_id, engine)]
 
 
 def _filter_mod_date(
@@ -290,7 +291,7 @@ def _filter_mod_date(
     mod_date_after: Optional[datetime],
     vendor_interface_uuid: str,
     expected_execution: date,
-    pg_hook: PostgresHook,
+    engine: Engine,
 ) -> list[str]:
     if mod_date_after is None:
         return filenames
@@ -308,6 +309,6 @@ def _filter_mod_date(
                 vendor_interface_uuid,
                 mod_time,
                 expected_execution,
-                pg_hook,
+                engine,
             )
     return filtered_filenames
