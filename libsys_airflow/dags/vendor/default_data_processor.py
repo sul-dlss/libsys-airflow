@@ -6,10 +6,19 @@ from airflow import DAG
 from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.marc import filter_fields_task, batch_task
+from libsys_airflow.plugins.vendor.marc import (
+    filter_fields_task,
+    batch_task,
+    move_fields_task,
+)
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import data_import_task
+from libsys_airflow.plugins.vendor.models import VendorInterface
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +62,17 @@ with DAG(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
 
+        pg_hook = PostgresHook("vendor_loads")
+        with Session(pg_hook.get_sqlalchemy_engine()) as session:
+            vendor_interface = session.scalars(
+                select(VendorInterface).where(
+                    VendorInterface.folio_interface_uuid
+                    == params["vendor_interface_uuid"]
+                )
+            ).first()
+            processing_options = vendor_interface.processing_options or {}
+            params["change_fields"] = processing_options.get("change_fields")
+
         logger.info(f"Params are {params}")
 
         assert os.path.exists(os.path.join(params["download_path"], params["filename"]))
@@ -61,9 +81,12 @@ with DAG(
 
     params = setup()
     filter_fields = filter_fields_task(params["download_path"], params["filename"])
+    move_fields = move_fields_task(
+        params["download_path"], params["filename"], params["change_fields"]
+    )
     batch_filenames = batch_task(params["download_path"], params["filename"])
     data_import = data_import_task(
         params["download_path"], batch_filenames, params["dataload_profile_uuid"]
     )
 
-    filter_fields >> batch_filenames
+    filter_fields >> move_fields >> batch_filenames
