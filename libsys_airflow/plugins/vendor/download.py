@@ -62,7 +62,7 @@ class SFTPAdapter:
         self.hook.retrieve_file(remote_filepath, download_filepath)
 
 
-@task
+@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", default_var=2))
 def ftp_download_task(
     conn_id: str,
     remote_path: str,
@@ -71,7 +71,9 @@ def ftp_download_task(
     vendor_interface_uuid: str,
     expected_execution: str,
 ) -> list[str]:
-    logger.info(f"Connection id is {conn_id}")
+    logger.info(
+        f"Downloading for interface {vendor_interface_uuid} from {remote_path} with {conn_id}"
+    )
 
     hook = _create_hook(conn_id)
     # Note that setting the filename regex to "CNT-ORD" triggers the Gobi order filter strategy.
