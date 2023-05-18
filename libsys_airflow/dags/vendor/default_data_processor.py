@@ -53,7 +53,6 @@ with DAG(
     @task(multiple_outputs=True)
     def setup():
         context = get_current_context()
-        logger.info(f"Context has dag run_id {context['run_id']}")
         params = context["params"]
         params["download_path"] = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
@@ -71,7 +70,7 @@ with DAG(
                     VendorInterface.folio_interface_uuid == params["vendor_interface_uuid"]
                 )
             ).first()
-            logger.info(f"vendor_interface is {vendor_interface}")
+            logger.info(f"vendor_interface is {vendor_interface} with id {vendor_interface.id}")
             vendor_file = session.scalars(
                 select(VendorFile)
                 .where(VendorFile.vendor_filename == params["filename"])
@@ -79,12 +78,12 @@ with DAG(
             ).first()
             logger.info(f"vendor_file is {vendor_file}")
             new_file_data_load = FileDataLoad(
-            created=datetime.now(),
-            updated=datetime.now(),
-            vendor_file_id=vendor_file.id,
-            dag_run_id=context["run_id"], 
+                created=datetime.now(),
+                updated=datetime.now(),
+                vendor_file_id=vendor_file.id,
+                dag_run_id=context["run_id"], 
             )
-
+            logger.info(f"new_file_data_load is {new_file_data_load}")
             session.add(new_file_data_load)
             session.commit()
 

@@ -5,9 +5,10 @@ import pathlib
 from airflow.models import Variable
 from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
-from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface, FileDataLoad
 from libsys_airflow.plugins.vendor.marc import is_marc
 
 from sqlalchemy.orm import Session
@@ -36,7 +37,7 @@ def record_loading_error(context):
     max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
 )
 def data_import_task(
-    download_path: str, batch_filenames: list[str], dataload_profile_uuid: str
+   download_path: str, batch_filenames: list[str], dataload_profile_uuid: str
 ):
     """
     Imports a file into Folio using Data Import API
@@ -73,6 +74,9 @@ def data_import(
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )
+    context = get_current_context()
+    context["params"]["job_execution_id"] = job_execution_id
+    logger.info(f"context params are {context['params'].keys()}")
 
 
 def _folio_client():
@@ -141,9 +145,21 @@ def _record_status(context, status):
             .where(VendorFile.vendor_interface_id == vendor_interface.id)
         ).first()
         vendor_file.status = status
-
-        # add here an update to the FileDataLoads record, with status and folio_job_execution_uuid
+        logger.info(f"vendor_file is {vendor_file} {vendor_file.id}")
+        # update the FileDataLoad record with status and folio_job_execution_uuid
+        logger.info(f"Recording {status} for filedataload")
+        file_data_load = session.scalars(
+            select(FileDataLoad)
+            .where(FileDataLoad.vendor_file_id == vendor_file.id)
+            .where(FileDataLoad.dag_run_id == context["run_id"])
+        )
+        file_data_load.status = status
         
+        
+        # where to get this folio_job_execution_id?
+        file_data_load.folio_job_execution_uuid = context["params"]["job_execution_id"]
+        #file_data_load.dag_run_starttime = ??
+        #file_data_load.dag_run_endtime = ??
         session.commit()
 
 
