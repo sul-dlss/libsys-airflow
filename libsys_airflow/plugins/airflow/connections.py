@@ -48,7 +48,7 @@ def find_or_create_conn(
     key_file: Optional[str] = None,
     session: Session = NEW_SESSION,
 ) -> str:
-    conn_id = f"{conn_type}-{host}"
+    conn_id = f"{conn_type}-{host}-{login}"
 
     conn = session.query(Connection).filter_by(conn_id=conn_id).first()
     if not conn:
