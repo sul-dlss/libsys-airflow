@@ -9,7 +9,6 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
-    Text,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -85,6 +84,7 @@ class VendorFile(Model):
         default=FileStatus.not_fetched,
         server_default=FileStatus.not_fetched.value,
     )
+    dag_run_id = Column(String(36), unique=True, nullable=True)
 
     def __repr__(self) -> str:
         return f"{self.vendor_filename} - {self.vendor_timestamp}"
@@ -94,26 +94,3 @@ class DataLoadStatus(enum.Enum):
     not_loaded = "not_loaded"
     loading_error = "loading_error"
     loaded = "loaded"
-
-
-class FileDataLoad(Model):
-    __tablename__ = "file_data_loads"
-
-    id = Column(Integer, primary_key=True)
-    created = Column(DateTime, nullable=False)
-    updated = Column(DateTime, nullable=False)
-    vendor_file_id = Column(Integer, ForeignKey("vendor_files.id"))
-    dag_run_id = Column(String(36), unique=True, nullable=False)
-    dag_run_starttime = Column(DateTime, nullable=True)
-    dag_run_endtime = Column(DateTime, nullable=True)
-    status = Column(
-        Enum(DataLoadStatus),
-        nullable=False,
-        default=DataLoadStatus.not_loaded,
-        server_default=DataLoadStatus.not_loaded.value,
-    )
-    additional_info = Column(Text, nullable=True)
-    folio_job_execution_uuid = Column(String(36), unique=False, nullable=True)
-
-    def __repr__(self) -> str:
-        return f"{self.id} - {self.vendor_file_id} - {self.dag_run_id}"

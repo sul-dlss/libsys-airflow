@@ -15,7 +15,7 @@ from libsys_airflow.plugins.vendor.marc import (
 )
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import data_import_task
-from libsys_airflow.plugins.vendor.models import VendorInterface
+from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -72,9 +72,16 @@ with DAG(
             ).first()
             processing_options = vendor_interface.processing_options or {}
             params["change_fields"] = processing_options.get("change_fields")
+            vendor_file = session.scalars(
+                select(VendorFile)
+                .where(VendorFile.vendor_filename == params["filename"])
+                .where(VendorFile.vendor_interface_id == vendor_interface.id)
+            ).first()
+            logger.info(f"vendor_file is {vendor_file}")
+            vendor_file.dag_run_id = context["run_id"]
+            session.commit()
 
         logger.info(f"Params are {params}")
-
         assert os.path.exists(os.path.join(params["download_path"], params["filename"]))
 
         return params
