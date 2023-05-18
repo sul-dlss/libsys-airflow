@@ -1,0 +1,73 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<h1><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a> / {{ interface.display_name }}</h1>
+
+<dl class="dl-horizontal">
+  <dt>Interface ID</dt>
+  <dd>{{ interface.folio_interface_uuid }}</dd>
+  <dt>Import Profile</dt>
+  <dd>{{ interface.folio_data_import_profile_uuid }}</dd>
+  <dt>Processing Name</dt>
+  <dd>{{ interface.folio_data_import_processing_name }}</dd>
+  <dt>File Pattern</dt>
+  <dd>{{ interface.file_pattern }}</dd>
+  <dt>Remote Path</dt>
+  <dd>{{ interface.remote_path }}</dd>
+  <dt>Processing DAG</dt>
+  <dd>{{ interface.processing_dag }}</dd>
+  <dt>Delay (Days)</dt>
+  <dd>{{ interface.processing_delay_in_days }}</dd>
+  <dt>Active</dt>
+  <dd>{{ interface.active }}</dd>
+</dl>
+
+<h2>Pending Loads</h2>
+
+<table id="pending-files" class="table table-striped">
+  <thead>
+    <td>Created</td>
+    <td>Updated</td>
+    <td>Filename</td>
+    <td>File Size</td>
+    <td>Timestamp</td>
+    <td>Expected Load</td>
+  </thead>
+  {% for file in interface.pending_files %}
+  <tr>
+    <td>{{ file.created }}</td>
+    <td>{{ file.updated }}</td>
+    <td>{{ file.vendor_filename }}</td>
+    <td>{{ file.filesize }}</td>
+    <td>{{ file.vendor_timestamp }}</td>
+    <td>{{ file.expected_execution }}</td>
+  </tr>
+   {% endfor %}
+</table>
+
+<h2>Completed Loads</h2>
+
+<table id="loaded-files" class="table table-striped">
+  <thead>
+    <td>Created</td>
+    <td>Updated</td>
+    <td>Filename</td>
+    <td>File Size</td>
+    <td>Timestamp</td>
+    <td>Loaded</td>
+    <td>Status</td>
+  </thead>
+  {% for file in interface.processed_files %}
+  <tr>
+    <td>{{ file.created }}</td>
+    <td>{{ file.updated }}</td>
+    <td>{{ file.vendor_filename }}</td>
+    <td>{{ file.filesize }}</td>
+    <td>{{ file.vendor_timestamp }}</td>
+    <td>{{ file.loaded_timestamp }}</td>
+    <td>{{ file.status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

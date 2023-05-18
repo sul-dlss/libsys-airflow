@@ -9,8 +9,9 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    select,
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship, Session
 
 
 Model = declarative_base()
@@ -50,6 +51,28 @@ class VendorInterface(Model):
     active = Column(Boolean, nullable=False, default=False)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
 
+    @property
+    def pending_files(self):
+        """Returns a list of VendorFile objects that have not been loaded yet."""
+        session = Session.object_session(self)
+        return session.scalars(
+            select(VendorFile)
+            .filter(VendorFile.vendor_interface_id == self.id)
+            .filter(VendorFile.dag_run_id.is_(None))
+            .order_by(VendorFile.created.desc())
+        ).all()
+
+    @property
+    def processed_files(self):
+        """Returns a list of VendorFile objects that have been loaded yet."""
+        session = Session.object_session(self)
+        return session.scalars(
+            select(VendorFile)
+            .filter(VendorFile.vendor_interface_id == self.id)
+            .filter(VendorFile.dag_run_id.is_not(None))
+            .order_by(VendorFile.loaded_timestamp.desc())
+        ).all()
+
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_interface_uuid}"
 
@@ -88,9 +111,3 @@ class VendorFile(Model):
 
     def __repr__(self) -> str:
         return f"{self.vendor_filename} - {self.vendor_timestamp}"
-
-
-class DataLoadStatus(enum.Enum):
-    not_loaded = "not_loaded"
-    loading_error = "loading_error"
-    loaded = "loaded"
