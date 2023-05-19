@@ -9,25 +9,36 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from libsys_airflow.plugins.vendor.paths import archive_basepath
+from libsys_airflow.plugins.vendor.paths import archive_basepath, downloads_basepath
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
 
 logger = logging.getLogger(__name__)
 
 
-@task
-def discover_task() -> list[str]:
+@task(multiple_outputs=True)
+def discover_task() -> dict[list]:
     """
-    Task for discovering archived directories of vendor file loads to
-    be deleted
+    Task for discovering 90-day old active files and archived directories
+    of vendor file loads to be deleted
     """
-    return find_directories(archive_basepath())
+    return {
+        "archive": find_directories(archive_basepath()),
+        "downloads": find_files(downloads_basepath()),
+    }
 
 
 @task
-def remove_records_task(target_directories: list) -> list:
+def remove_downloads_task(target_files: list) -> list:
     """
-    Task take a list of paths and attempts to delete
+    Task takes a list of paths and attempts to delete
+    """
+    return remove_files(target_files)
+
+
+@task
+def remove_archives_task(target_directories: list) -> list:
+    """
+    Task takes a list of files and attempts to delete
     """
     return remove_archived(target_directories)
 
@@ -71,6 +82,21 @@ def find_directories(archive_directory: str, prior_days=90) -> list:
     return target_dirs
 
 
+def find_files(downloads_directory: str, prior_days=90):
+    """
+    Iterates through downloads directory determing what files to
+    delete based on the file's age
+    """
+    prior_timestamp = (datetime.utcnow() - timedelta(days=prior_days)).timestamp()
+    downloads_path = pathlib.Path(downloads_directory)
+    files = []
+    for file_path in downloads_path.glob("**/*"):
+        if file_path.is_file() and file_path.stat().st_mtime <= prior_timestamp:
+            logger.info(f"Found {file_path}")
+            files.append(str(file_path.absolute()))
+    return files
+
+
 def _process_vendor_file(vendor_file_info: dict, session: Session):
     """
     Iterates through a dictionary of vendors and interfaces and
@@ -91,7 +117,7 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
                 .where(VendorFile.expected_execution == updated_date.date())
             ).first()
             if vendor_file is None:
-                logger.error(f"{filename} for interface {vendor_interface} not found")
+                logger.error(f"{filename} for {vendor_interface} not found")
                 continue
             vendor_file.status = FileStatus.purged
             vendor_file.updated = datetime.now()
@@ -112,7 +138,19 @@ def remove_archived(archived_directories: list[str]) -> list[dict]:
     return vendor_interfaces
 
 
-def set_purge_status(vendor_files: list[dict]):
+def remove_files(target_files: list[str]) -> bool:
+    """
+    Removes files and logs result
+    """
+    for file in target_files:
+        file_path = pathlib.Path(file)
+        if file_path.exists():
+            file_path.unlink()
+            logger.info(f"Removed {file}")
+    return True
+
+
+def set_purge_status(vendor_files: list[dict]) -> bool:
     """
     Finds matching VendorFile from the database and sets status to
     purge
@@ -121,3 +159,4 @@ def set_purge_status(vendor_files: list[dict]):
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         for row in vendor_files:
             _process_vendor_file(row, session)
+    return True
