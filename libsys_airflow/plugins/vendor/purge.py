@@ -91,9 +91,6 @@ def find_files(downloads_directory: str, prior_days=90):
     downloads_path = pathlib.Path(downloads_directory)
     files = []
     for file_path in downloads_path.glob("**/*"):
-        logger.error(
-            f"{file_path} - {file_path.stat().st_mtime <= prior_timestamp} prior timestamp {prior_timestamp}"
-        )
         if file_path.is_file() and file_path.stat().st_mtime <= prior_timestamp:
             logger.info(f"Found {file_path}")
             files.append(str(file_path.absolute()))
@@ -120,7 +117,7 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
                 .where(VendorFile.expected_execution == updated_date.date())
             ).first()
             if vendor_file is None:
-                logger.error(f"{filename} for interface {vendor_interface} not found")
+                logger.error(f"{filename} for {vendor_interface} not found")
                 continue
             vendor_file.status = FileStatus.purged
             vendor_file.updated = datetime.now()

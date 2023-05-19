@@ -1,3 +1,5 @@
+import os
+
 from datetime import datetime, timedelta
 
 import pytest  # noqa
@@ -12,7 +14,9 @@ from libsys_airflow.plugins.vendor.models import FileStatus, VendorInterface, Ve
 
 from libsys_airflow.plugins.vendor.purge import (
     find_directories,
+    find_files,
     remove_archived,
+    remove_files,
     set_purge_status,
 )
 
@@ -68,6 +72,13 @@ def archive_basepath(tmp_path):
 
 
 @pytest.fixture
+def downloads_basepath(tmp_path):
+    path = tmp_path / "downloads"
+    path.mkdir(parents=True)
+    return path
+
+
+@pytest.fixture
 def pg_hook(mocker, engine) -> PostgresHook:
     mock_hook = mocker.patch(
         "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
@@ -95,6 +106,23 @@ def test_find_directories(archive_basepath):
     assert len(target_directories) == 2
     assert target_directories[0] == str(directories[0])
     assert target_directories[1] == str(directories[1])
+
+
+def test_find_files(downloads_basepath):
+    # Create mock directories and files
+    today = datetime.utcnow()
+    prior_91 = today - timedelta(days=91)
+    for vendor in vendor_interfaces:
+        for interface, file_name in vendor["interfaces"].items():
+            parent_dir = downloads_basepath / vendor["vendor"] / interface
+            parent_dir.mkdir(parents=True)
+            file_path = parent_dir / file_name
+            file_path.touch()
+            os.utime(str(file_path), (prior_91.timestamp(), prior_91.timestamp()))
+
+    target_files = find_files(downloads_basepath)
+
+    assert len(target_files) == 4
 
 
 def test_find_empty_directory(archive_basepath, caplog):
@@ -131,7 +159,16 @@ def test_remove_archived(archive_basepath):
     assert first_interface["files"][0] == "ec1234.mrc"
 
 
-def test_set_purge_status(pg_hook):
+def test_remove_files(downloads_basepath):
+    file_one = downloads_basepath / "file-one.mrc"
+    file_one.touch()
+    file_two = downloads_basepath / "file-two.edi"
+    target_files = [file_one, file_two]
+    assert remove_files(target_files)
+    assert file_one.exists() is False
+
+
+def test_set_purge_status(pg_hook, caplog):
     today = datetime.utcnow()
     prior_90 = today - timedelta(days=90)
 
@@ -142,10 +179,21 @@ def test_set_purge_status(pg_hook):
                     "date": prior_90.strftime("%Y%m%d"),
                     "files": ["ec1234.mrc"],
                 }
-            }
+            },
+            {
+                "88d39c9c-fa8c-46ee-921d-71f725afb719": {
+                    "date": prior_90.strftime("%Y%m%d"),
+                    "files": ["abcde.edi"],
+                }
+            },
         ]
     )
 
     with Session(pg_hook()) as session:
         vendor_file = session.scalar(select(VendorFile).where(VendorFile.id == 1))
         assert vendor_file.status == FileStatus.purged
+
+    assert (
+        "abcde.edi for Marcit - Update - 88d39c9c-fa8c-46ee-921d-71f725afb719 not found"
+        in caplog.text
+    )
