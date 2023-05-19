@@ -15,6 +15,7 @@ from libsys_airflow.plugins.vendor.marc import (
 )
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import data_import_task
+from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
 
 from sqlalchemy.orm import Session
@@ -72,6 +73,8 @@ with DAG(
             ).first()
             processing_options = vendor_interface.processing_options or {}
             params["change_fields"] = processing_options.get("change_fields")
+            params["archive_regex"] = processing_options.get("archive_regex")
+
             vendor_file = session.scalars(
                 select(VendorFile)
                 .where(VendorFile.vendor_filename == params["filename"])
@@ -87,11 +90,14 @@ with DAG(
         return params
 
     params = setup()
-    filter_fields = filter_fields_task(params["download_path"], params["filename"])
-    move_fields = move_fields_task(
-        params["download_path"], params["filename"], params["change_fields"]
+    filename = extract_task(
+        params["download_path"], params["filename"], params["archive_regex"]
     )
-    batch_filenames = batch_task(params["download_path"], params["filename"])
+    filter_fields = filter_fields_task(params["download_path"], filename)
+    move_fields = move_fields_task(
+        params["download_path"], filename, params["change_fields"]
+    )
+    batch_filenames = batch_task(params["download_path"], filename)
     data_import = data_import_task(
         params["download_path"], batch_filenames, params["dataload_profile_uuid"]
     )
