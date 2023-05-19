@@ -8,11 +8,7 @@ from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.marc import (
-    filter_fields_task,
-    batch_task,
-    move_fields_task,
-)
+from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import data_import_task
 from libsys_airflow.plugins.vendor.extract import extract_task
@@ -24,7 +20,7 @@ from sqlalchemy import select
 logger = logging.getLogger(__name__)
 
 # Run with:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger default_data_processor -c '{"vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "F4144dbd-def7-4b77-842a-954c62faf319", "filename": "0720230403.mrc"}'
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger default_data_processor -c '{"vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "filename": "0720230403.mrc"}'
 
 default_args = {
     "owner": "folio",
@@ -73,6 +69,9 @@ with DAG(
             ).first()
             processing_options = vendor_interface.processing_options or {}
             params["change_fields"] = processing_options.get("change_fields")
+            params["remove_fields"] = processing_options.get(
+                "remove_fields", ["905", "920", "986"]
+            )
             params["archive_regex"] = processing_options.get("archive_regex")
 
             vendor_file = session.scalars(
@@ -93,13 +92,15 @@ with DAG(
     filename = extract_task(
         params["download_path"], params["filename"], params["archive_regex"]
     )
-    filter_fields = filter_fields_task(params["download_path"], filename)
-    move_fields = move_fields_task(
-        params["download_path"], filename, params["change_fields"]
+    process_marc = process_marc_task(
+        params["download_path"],
+        filename,
+        params["remove_fields"],
+        params["change_fields"],
     )
     batch_filenames = batch_task(params["download_path"], filename)
     data_import = data_import_task(
         params["download_path"], batch_filenames, params["dataload_profile_uuid"]
     )
 
-    filter_fields >> move_fields >> batch_filenames
+    process_marc >> batch_filenames

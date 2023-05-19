@@ -12,43 +12,48 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def filter_fields_task(
-    download_path: str, filename: str, fields: list[str] = ["905", "920", "986"]
+def process_marc_task(
+    download_path: str,
+    filename: str,
+    remove_fields: Optional[list[str]] = None,
+    change_fields: Optional[list[dict]] = None,
 ):
     """
-    Filters 905, 920, 986 from MARC records
+    Applies changes to MARC records.
     """
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
         logger.info(f"Skipping filtering fields from {marc_path}")
         return
-    filter_fields(pathlib.Path(marc_path), fields)
+    if change_fields:
+        _check_change_fields(change_fields)
+    process_marc(pathlib.Path(marc_path), remove_fields, change_fields)
 
 
-def filter_fields(marc_path: pathlib.Path, fields: list[str]):
-    """
-    Filters specified fields from MARC records
-    """
-    logger.info(f"Filtering fields from {marc_path}")
-    filtered_records = []
+def process_marc(
+    marc_path: pathlib.Path,
+    remove_fields: Optional[list[str]] = None,
+    change_fields: Optional[list[dict]] = None,
+):
+    logger.info(f"Processing from {marc_path}")
+    records = []
     with marc_path.open("rb") as fo:
         reader = _marc_reader(fo)
         for record in reader:
             if record is None:
                 logger.info(
-                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception} "
+                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception}"
                 )
             else:
-                record.remove_fields(*fields)
-                filtered_records.append(record)
+                if remove_fields:
+                    record.remove_fields(*remove_fields)
+                if change_fields:
+                    _change_fields(record, change_fields)
+                records.append(record)
 
-    with marc_path.open("wb") as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for record in filtered_records:
-            record.force_utf8 = True
-            marc_writer.write(record)
+    _write_records(records, marc_path)
 
-    logger.info(f"Finished filtering fields from {marc_path}")
+    logger.info(f"Finished processing from {marc_path}")
 
 
 def is_marc(path: pathlib.Path):
@@ -103,7 +108,7 @@ def batch(download_path: str, filename: str, max_records: int) -> list[str]:
 def _new_batch(download_path, filename, index, batch_filenames, records):
     batch_filename = _batch_filename(filename, index)
     batch_filenames.append(batch_filename)
-    _write_records(records, download_path, batch_filename)
+    _write_records(records, pathlib.Path(download_path) / batch_filename)
     return [], index + 1
 
 
@@ -112,8 +117,7 @@ def _batch_filename(filename, index):
     return f"{file_path.stem}_{index}{file_path.suffix}"
 
 
-def _write_records(records, download_path, filename):
-    marc_path = pathlib.Path(download_path) / filename
+def _write_records(records, marc_path):
     logger.info(f"Writing {len(records)} records to {marc_path}")
     with marc_path.open("wb") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -122,59 +126,12 @@ def _write_records(records, download_path, filename):
             marc_writer.write(record)
 
 
-@task
-def move_fields_task(
-    download_path: str, filename: str, change_fields: Optional[list[dict]] = None
-):
-    """
-    Task to move MARC fields within each record in a file.
-    """
-    if not change_fields:
-        logger.info(f"No fields to move for {filename}")
-        return
-    marc_path = pathlib.Path(download_path) / filename
-    if not is_marc(marc_path):
-        logger.info(f"Skipping moving fields for {marc_path}")
-        return
-    move_fields(pathlib.Path(marc_path), change_fields)
-
-
-def move_fields(marc_path: pathlib.Path, change_fields: list[dict]):
-    """
-    Moves MARC fields within each record in a file.
-
-    change_fields example: [{ from: "520" to: "920" }, { from: "528" to: "928" }]
-    """
+def _check_change_fields(change_fields):
     if not all(change.keys() == {"from", "to"} for change in change_fields):
-        logger.error(
-            f"Changes {change_fields} must all include 'from' and 'to'. Not moving fields."
-        )
-        return
-
-    logger.info(f"Moving fields in {marc_path}: {change_fields}")
-    updated_records = []
-    with marc_path.open("rb") as fo:
-        reader = _marc_reader(fo)
-        for record in reader:
-            if record is None:
-                logger.info(
-                    f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception} "
-                )
-            else:
-                updated_record = _change_fields(record, change_fields)
-                updated_records.append(updated_record)
-
-    with marc_path.open("wb") as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for record in updated_records:
-            record.force_utf8 = True
-            marc_writer.write(record)
-
-    logger.info(f"Finished moving fields in {marc_path}")
+        raise KeyError(f"Changes {change_fields} must all include 'from' and 'to'.")
 
 
 def _change_fields(record, change_fields):
     for change in change_fields:
         for field in record.get_fields(change["from"]):
             field.tag = change["to"]
-    return record

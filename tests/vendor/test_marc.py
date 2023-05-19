@@ -2,12 +2,10 @@ import pytest  # noqa
 import shutil
 import os
 import pathlib
-import logging
-import filecmp
 
 import pymarc
 
-from libsys_airflow.plugins.vendor.marc import filter_fields, batch, move_fields
+from libsys_airflow.plugins.vendor.marc import process_marc, batch, _check_change_fields
 
 
 @pytest.fixture
@@ -17,9 +15,8 @@ def marc_path(tmp_path):
     return pathlib.Path(dest_filepath)
 
 
-def test_filter_fields(marc_path, caplog):
-    caplog.set_level(logging.INFO)
-    filter_fields(marc_path, ["981", "983"])
+def test_filter_fields(marc_path):
+    process_marc(marc_path, ["981", "983"])
 
     with marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -54,7 +51,7 @@ def bad_change_list():
 
 
 def test_move_fields(marc_path, change_list):
-    move_fields(marc_path, change_list)
+    process_marc(marc_path, change_fields=change_list)
 
     with marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -69,10 +66,10 @@ def test_move_fields(marc_path, change_list):
                 assert record.get_fields("904")
 
 
-def test_move_fields_bad_changes(marc_path, bad_change_list, caplog, tmp_path):
-    caplog.set_level(logging.INFO)
-    original_file = shutil.copyfile(marc_path, os.path.join(tmp_path, "original.mrc"))
-    move_fields(marc_path, bad_change_list)
+def test_bad_check_fields(bad_change_list):
+    with pytest.raises(KeyError):
+        _check_change_fields(bad_change_list)
 
-    assert "Not moving fields." in caplog.text
-    assert filecmp.cmp(marc_path, original_file)
+
+def test_check_fields(change_list):
+    _check_change_fields(change_list)
