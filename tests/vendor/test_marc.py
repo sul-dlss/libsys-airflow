@@ -4,8 +4,14 @@ import os
 import pathlib
 
 import pymarc
+from pydantic import ValidationError
 
-from libsys_airflow.plugins.vendor.marc import process_marc, batch, _check_change_fields
+from libsys_airflow.plugins.vendor.marc import (
+    process_marc,
+    batch,
+    _to_change_fields_models,
+    _to_add_fields_models,
+)
 
 
 @pytest.fixture
@@ -40,17 +46,10 @@ def test_batch(tmp_path, marc_path):
     assert count == 10
 
 
-@pytest.fixture
-def change_list():
-    return [{"from": "520", "to": "920"}, {"from": "504", "to": "904"}]
-
-
-@pytest.fixture
-def bad_change_list():
-    return [{"from": "520"}, {"from": "504", "to": "904"}]
-
-
-def test_move_fields(marc_path, change_list):
+def test_move_fields(marc_path):
+    change_list = _to_change_fields_models(
+        [{"from": "520", "to": "920"}, {"from": "504", "to": "904"}]
+    )
     process_marc(marc_path, change_fields=change_list)
 
     with marc_path.open("rb") as fo:
@@ -66,10 +65,28 @@ def test_move_fields(marc_path, change_list):
                 assert record.get_fields("904")
 
 
-def test_bad_check_fields(bad_change_list):
-    with pytest.raises(KeyError):
-        _check_change_fields(bad_change_list)
+def test_add_fields(marc_path):
+    add_list = _to_add_fields_models(
+        [
+            {
+                "tag": "910",
+                "indicator2": 'x',
+                "subfields": [{"code": "a", "value": "MarcIt"}],
+            }
+        ]
+    )
+    process_marc(marc_path, add_fields=add_list)
+
+    with marc_path.open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record["910"]
+            print(field)
+            assert field
+            assert field.indicators == [' ', 'x']
+            assert field["a"] == "MarcIt"
 
 
-def test_check_fields(change_list):
-    _check_change_fields(change_list)
+def test_bad_check_fields():
+    with pytest.raises(ValidationError):
+        _to_change_fields_models([{"from": "520"}, {"from": "504", "to": "904"}])
