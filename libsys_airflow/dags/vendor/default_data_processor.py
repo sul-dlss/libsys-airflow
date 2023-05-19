@@ -72,6 +72,7 @@ with DAG(
             params["remove_fields"] = processing_options.get(
                 "remove_fields", ["905", "920", "986"]
             )
+            params["add_fields"] = processing_options.get("add_fields")
             params["archive_regex"] = processing_options.get("archive_regex")
 
             vendor_file = session.scalars(
@@ -97,6 +98,7 @@ with DAG(
         filename,
         params["remove_fields"],
         params["change_fields"],
+        params["add_fields"],
     )
     batch_filenames = batch_task(params["download_path"], filename)
     data_import = data_import_task(

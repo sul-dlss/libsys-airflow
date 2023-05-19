@@ -4,11 +4,29 @@ from typing import Optional
 
 import pymarc
 import magic
+from pydantic import BaseModel, Field
 
 from airflow.decorators import task
 from airflow.models import Variable
 
 logger = logging.getLogger(__name__)
+
+
+class ChangeField(BaseModel):
+    from_: str = Field(alias='from')
+    to: str
+
+
+class AddSubfield(BaseModel):
+    code: str
+    value: str
+
+
+class AddField(BaseModel):
+    tag: str
+    indicator1: Optional[str] = ' '
+    indicator2: Optional[str] = ' '
+    subfields: list[AddSubfield]
 
 
 @task
@@ -17,23 +35,34 @@ def process_marc_task(
     filename: str,
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[dict]] = None,
+    add_fields: Optional[list[dict]] = None,
 ):
     """
     Applies changes to MARC records.
+
+    change_fields example: [{ from: "520" to: "920" }, { from: "528" to: "928" }]
+    add_fields example: [{ tag: "910", indicator1: '2', subfields: [{code: "a", value: "MarcIt"}] }]
     """
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
         logger.info(f"Skipping filtering fields from {marc_path}")
         return
+    change_fields_models = None
     if change_fields:
-        _check_change_fields(change_fields)
-    process_marc(pathlib.Path(marc_path), remove_fields, change_fields)
+        change_fields_models = _to_change_fields_models(change_fields)
+    add_fields_models = None
+    if add_fields:
+        add_fields_models = _to_add_fields_models(add_fields)
+    process_marc(
+        pathlib.Path(marc_path), remove_fields, change_fields_models, add_fields_models
+    )
 
 
 def process_marc(
     marc_path: pathlib.Path,
     remove_fields: Optional[list[str]] = None,
-    change_fields: Optional[list[dict]] = None,
+    change_fields: Optional[list[ChangeField]] = None,
+    add_fields: Optional[list[AddField]] = None,
 ):
     logger.info(f"Processing from {marc_path}")
     records = []
@@ -49,6 +78,8 @@ def process_marc(
                     record.remove_fields(*remove_fields)
                 if change_fields:
                     _change_fields(record, change_fields)
+                if add_fields:
+                    _add_fields(record, add_fields)
                 records.append(record)
 
     _write_records(records, marc_path)
@@ -126,12 +157,25 @@ def _write_records(records, marc_path):
             marc_writer.write(record)
 
 
-def _check_change_fields(change_fields):
-    if not all(change.keys() == {"from", "to"} for change in change_fields):
-        raise KeyError(f"Changes {change_fields} must all include 'from' and 'to'.")
+def _to_change_fields_models(change_fields):
+    return [ChangeField(**change) for change in change_fields]
+
+
+def _to_add_fields_models(add_fields):
+    return [AddField(**add) for add in add_fields]
 
 
 def _change_fields(record, change_fields):
     for change in change_fields:
-        for field in record.get_fields(change["from"]):
-            field.tag = change["to"]
+        for field in record.get_fields(change.from_):
+            field.tag = change.to
+
+
+def _add_fields(record, add_fields):
+    for add_field in add_fields:
+        field = pymarc.field.Field(
+            tag=add_field.tag, indicators=[add_field.indicator1, add_field.indicator2]
+        )
+        for subfield in add_field.subfields:
+            field.add_subfield(subfield.code, subfield.value)
+        record.add_field(field)
