@@ -368,22 +368,6 @@ yandex = ["apache-airflow-providers-yandex"]
 zendesk = ["apache-airflow-providers-zendesk"]
 
 [[package]]
-name = "apache-airflow-client"
-version = "2.6.0"
-description = "Apache Airflow API (Stable)"
-category = "main"
-optional = false
-python-versions = "~=3.7"
-files = [
-    {file = "apache-airflow-client-2.6.0.tar.gz", hash = "sha256:c8dc9a5d26eeaa4a5ce0c3991f1f9cd296fcd39f02795b40520422a563b8551c"},
-    {file = "apache_airflow_client-2.6.0-py3-none-any.whl", hash = "sha256:70546e21a9c59734aee32d1ed326ed2504c86a6bb608c1c9c636000066458f62"},
-]
-
-[package.dependencies]
-python-dateutil = "*"
-urllib3 = ">=1.25.3"
-
-[[package]]
 name = "apache-airflow-providers-common-sql"
 version = "1.4.0"
 description = "Provider for Apache Airflow. Implements apache-airflow-providers-common-sql package"
@@ -4011,4 +3995,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "dbbb1701245534cc9a29055692f56c81e2ee2095b8fdde7f84b3550fd683f42b"
+content-hash = "987b924a3a15d28a17845ed1e3722e22c421ad2e7be62066cf31ef3df7d26ef6"
