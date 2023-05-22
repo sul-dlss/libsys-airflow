@@ -80,7 +80,7 @@ def finish():
 
 with DAG(
     "process_preceding_succeeding_titles",
-    schedule_interval=None,
+    schedule=None,
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "preceding_succeeding_titles"],

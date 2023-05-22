@@ -32,7 +32,7 @@ default_args = {
 
 with DAG(
     "audit_fix_record_loads",
-    schedule_interval=None,
+    schedule=None,
     default_args=default_args,
     start_date=datetime(2022, 3, 28),
     catchup=False,
