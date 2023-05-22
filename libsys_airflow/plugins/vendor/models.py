@@ -76,6 +76,27 @@ class VendorInterface(Model):
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_interface_uuid}"
 
+    @property
+    def package_name(self):
+        if self.processing_options is not None:
+            return self.processing_options.get('package_name')
+        else:
+            return None
+
+    @property
+    def delete_marc(self):
+        if self.processing_options is not None:
+            return self.processing_options.get('delete_marc', [])
+        else:
+            return []
+
+    @property
+    def change_marc(self):
+        if self.processing_options is not None:
+            return self.processing_options.get('change_marc', [])
+        else:
+            return []
+
 
 class FileStatus(enum.Enum):
     not_fetched = "not_fetched"

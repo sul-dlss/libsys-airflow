@@ -1,0 +1,219 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+{{ super() }}
+
+<h1>Edit Vendor Interface</h1>
+
+<form class="form-horizontal" method="post" action="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <div class="form-group">
+    <label for="vendor" class="col-sm-2 col-form-label">Vendor:</label>
+    <div class="col-sm-8" id="vendor">
+      <a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">
+        {{ interface.vendor.display_name }}
+      </a>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="interface" class="col-sm-2 col-form-label">Interface:</label>
+    <div class="col-sm-8" id="interface">
+      <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
+        {{ interface.display_name }}
+      </a>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="folio-data-import-profile-uuid" class="col-sm-2 col-form-label">Data Input Profile</label>
+    <div class="col-sm-8">
+      <select class="form-control" id="folio-data-import-profile-uuid" name="folio-data-import-profile-uuid">
+        {% for job_profile in job_profiles %}
+        <option {% if job_profile['id'] == interface.folio_data_import_profile_uuid %}selected{% endif %} value="{{ job_profile['id'] }}">
+          {{ job_profile['name'] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="folio-data-import-processing-name" class="col-sm-2 col-form-label">Processing Workflow</label>
+    <div class="col-sm-8">
+      <select class="form-control" id="folio-data-import-processing-name" name="folio-data-import-processing-name">
+        <option value="default-data-processor">default-data-processor</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="processing-delay-in-days" class="col-sm-2 col-form-label">Processing Delay (Days)</label>
+    <div class="col-sm-8">
+      <input type="number" class="form-control" id="processing-delay-in-days" name="processing-delay-in-days" placeholder="1" value="{{ interface.processing_delay_in_days }}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="remote-path" class="col-sm-2 col-form-label">Remote Path</label>
+    <div class="col-sm-8">
+      <input type="text" class="form-control" id="remote-path" name="remote-path" placeholder="" value="{{ interface.remote_path }}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="file-pattern" class="col-sm-2 col-form-label">File Pattern</label>
+    <div class="col-sm-8">
+      <input type="text" class="form-control" id="file-pattern" name="file-pattern" placeholder="" value="{{ interface.file_pattern }}">
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>MARC Processing Rules</h3>
+
+  <div class="form-group">
+    <label for="package-name" class="col-sm-2 col-form-label">Package Name:</label>
+    <div class="col-sm-8">
+      <input type="text" class="form-control" id="package-name" name="package-name" placeholder="" value="{{ interface.package_name }}">
+    </div>
+  </div>
+
+  <section id="remove-fields">
+
+  <div class="form-group" style="margin-top: 40px;">
+    <div class="col-sm-2">
+      <strong>Remove Fields</strong>
+    </div>
+    <div class="col-sm-1">
+      <button class="btn btn-primary col-sm-offset-1"
+        onclick="newRemoveFieldRule(); return false;">Add Rule</button>
+    </div>
+  </div>
+
+  </section>
+
+  <section id="move-fields">
+
+  <div class="form-group" style="margin-top: 40px">
+    <div class="col-sm-2">
+      <strong>Move Fields</strong>
+    </div>
+    <div class="col-sm-1">
+      <button class="btn btn-primary col-sm-offset-1" onclick="newMoveFieldRule(); return false;">Add Rule</button>
+    </div>
+  </div>
+
+  </section>
+
+  <hr>
+
+  <div class="form-group">
+    <div class="col-sm-1">
+      <button class="btn btn-success">Save</button>
+    </div>
+    <div class="col-sm-1">
+      <a class="btn btn-default" href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">Cancel</a>
+    </div>
+  </div>
+</form>
+
+<style>
+  hr {
+    margin-top: 30px;
+    margin-bottom: 30px;
+  }
+  .rule-label {
+    margin-right: 10px;
+  }
+</style>
+
+<script>
+
+   // Note: some of this feels like it might be bending over backwards to avoid pulling
+   // in something like React or Vue for managing the state of this form?
+
+  /**
+   * A function to create an HTML element with a given name, attributes and text.
+   */
+  function element(name, attributes={}, text="") {
+    const el = document.createElement(name);
+    for (const [name, value] of Object.entries(attributes)) {
+      el.setAttribute(name, value);
+    }
+    el.innerText = text;
+    return el
+  }
+
+  /**
+   * Creates a form element for a new Remove Field Rule and adds it to the form.
+   */
+  function newRemoveFieldRule(marcField='') {
+    const removeFields = document.getElementById("remove-fields");
+    const id = getId("remove-field");
+
+    const formGroup = element("div", {"class": "form-group remove-field"});
+    removeFields.append(formGroup);
+
+    formGroup.appendChild(element("label", {"for": id, "class": "col-sm-2 col-form-label"}, "Field"));
+
+    const inputDiv = element("div", {"class": "col-sm-2"});
+    inputDiv.appendChild(element("input", {"class": "form-control", "type": "text", "id": id, "name": id, "value": marcField}));
+    formGroup.appendChild(inputDiv);
+
+    formGroup.appendChild(removeButton());
+  }
+
+  /**
+   * Creates a Move Field Rule element and adds it to the form.
+   */
+  function newMoveFieldRule(fromField='', toField='') {
+    const moveFields = document.getElementById("move-fields");
+    const formGroup = element("div", {"class": "form-group move-field"});
+    moveFields.append(formGroup);
+
+    const fromDiv = element("div", {"class": "col-sm-2"});
+    const fromId = getId("move-field-from");
+    formGroup.append(fromDiv);
+    fromDiv.appendChild(element("label", {"class": "rule-label", "for": fromId}, "From:"));
+    fromDiv.appendChild(element("input", {"minlength": 3, "maxlength": 3, "type": "text", "id": fromId, "name": fromId, "placeholder": "520", "value": fromField}));
+
+    const toDiv = element("div", {"class": "col-sm-2"});
+    // use the fromId to create toId so that the unique ID part is the same
+    const toId = fromId.replace('move-field-from', 'move-field-to');
+    formGroup.append(toDiv);
+    toDiv.appendChild(element("label", {"class": "rule-label", "for": toId}, "To:"));
+    toDiv.appendChild(element("input", {"minlength": 3, "maxlength": 3, "type": "text", "id": toId, "name": toId, "placeholder": "920", "value": toField}));
+
+    formGroup.appendChild(removeButton());
+  }
+
+  function removeButton() {
+    const div = element("div", {"class": "col-sm-2"});
+    const button = element("button", {"class": "btn btn-danger", "onclick": "removeRule(event); return false;"}, "Remove Rule");
+    div.appendChild(button);
+    return div;
+  }
+
+  function removeRule(event) {
+    const el = event.target;
+    const rule = el.parentNode;
+    const field = rule.parentNode;
+    const form = field.parentNode;
+    form.removeChild(field);
+  }
+
+  function getId(name) {
+    const epoch = new Date().getTime();
+    return `${name}-${epoch}`;
+  }
+
+  function main() {
+    {% for delete_marc in interface.delete_marc %}
+      newRemoveFieldRule("{{ delete_marc }}");
+    {% endfor %}
+
+    {% for change_marc in interface.change_marc %}
+      newMoveFieldRule("{{ change_marc['from'] }}", "{{ change_marc['to'] }}");
+    {% endfor %}
+  }
+
+  addEventListener("load", main);
+  
+</script>
+
+{% endblock %}

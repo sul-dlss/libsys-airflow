@@ -1,8 +1,10 @@
+import os
 from datetime import datetime, timedelta
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 from libsys_airflow.plugins.vendor.models import (
     Vendor,
@@ -12,6 +14,7 @@ from libsys_airflow.plugins.vendor.models import (
 )
 from tests.airflow_client import test_airflow_client  # noqa: F401
 
+load_dotenv()
 now = datetime.now()
 
 rows = Rows(
@@ -157,3 +160,11 @@ def test_interface_view(test_airflow_client, mock_db):  # noqa: F811
     loaded = response.html.find(id='loaded-files')
     assert loaded
     assert len(loaded.find_all('tr')) == 2
+
+
+@pytest.mark.skipif(
+    os.environ.get("AIRFLOW_VAR_OKAPI_URL") is None, reason="No Folio Environment"
+)
+def test_interface_edit_view(test_airflow_client, mock_db):  # noqa: F811
+    response = test_airflow_client.get('/vendors/interface/1/edit')
+    assert response.status_code == 200
