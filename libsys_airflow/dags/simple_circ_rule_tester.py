@@ -3,7 +3,7 @@ import logging
 
 
 from airflow import DAG
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
@@ -42,9 +42,9 @@ with DAG(
     )
 
     with TaskGroup(group_id="retrieve-policies-group") as retrieve_policies_group:
-        start_policy = DummyOperator(task_id="start-policies-retrieval")
+        start_policy = EmptyOperator(task_id="start-policies-retrieval")
 
-        end_policy = DummyOperator(task_id="end-policies-retrieval")
+        end_policy = EmptyOperator(task_id="end-policies-retrieval")
 
         for policy_type in policy_types:
             rule_type_urls = PythonOperator(
@@ -62,7 +62,7 @@ with DAG(
             start_policy >> rule_type_urls >> retrieve_circ_policies >> end_policy
 
     with TaskGroup(group_id="friendly-report-group") as report_group:
-        finish_reports = DummyOperator(task_id="end-reporting")
+        finish_reports = EmptyOperator(task_id="end-reporting")
 
         friendly_labels = PythonOperator(
             task_id="friendly-report",
@@ -79,7 +79,7 @@ with DAG(
 
             friendly_labels >> policy_test >> finish_reports
 
-    finish_circ_rules_test = DummyOperator(task_id="finished-circ-rules")
+    finish_circ_rules_test = EmptyOperator(task_id="finished-circ-rules")
 
     generate_circ_test_report = PythonOperator(
         task_id="generate-final-report", python_callable=generate_report
