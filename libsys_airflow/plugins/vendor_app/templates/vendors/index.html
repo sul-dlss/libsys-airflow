@@ -2,12 +2,12 @@
 
 {% block head_css %}
     {{ super() }}
-    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
 {% endblock %}
 
 {% block head_js %}
     {{ super() }}
-    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 {% endblock %}
 
 {% block content %}
@@ -42,5 +42,9 @@
         searchable: true,
         fixedHeight: true
     });
+    let vendorTableSelect = document.querySelector(".datatable-selector");
+    vendorTableSelect.classList.add("form-control");
+    let vendorSearchInput = document.querySelector(".datatable-input");
+    vendorSearchInput.classList.add("form-control");
 </script>
 {% endblock %}
