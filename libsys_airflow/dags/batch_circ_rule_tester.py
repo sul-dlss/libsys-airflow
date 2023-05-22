@@ -3,7 +3,7 @@ import logging
 
 
 from airflow import DAG
-from airflow.operators.dummy import DummyOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
@@ -42,9 +42,9 @@ with DAG(
     )
 
     with TaskGroup(group_id="retrieve-policies-group") as retrieve_policies_group:
-        start_policy = DummyOperator(task_id="start-policies-retrieval")
+        start_policy = EmptyOperator(task_id="start-policies-retrieval")
 
-        end_policy = DummyOperator(task_id="end-policies-retrieval")
+        end_policy = EmptyOperator(task_id="end-policies-retrieval")
 
         for policy_type in policy_types:
             rule_type_urls = PythonOperator(
@@ -68,7 +68,7 @@ with DAG(
             op_kwargs={"folio_client": folio_client},
         )
 
-        finish_reports = DummyOperator(task_id="end-reporting")
+        finish_reports = EmptyOperator(task_id="end-reporting")
 
         for policy_type in policy_types:
             policy_tests = PythonOperator(
@@ -83,7 +83,7 @@ with DAG(
         task_id="generate-final-report", python_callable=generate_batch_report
     )
 
-    finished_batch_report = DummyOperator(task_id="finished-test-batch")
+    finished_batch_report = EmptyOperator(task_id="finished-test-batch")
 
     setup >> retrieve_policies_group >> report_group
     report_group >> generate_circ_test_report >> finished_batch_report
