@@ -11,6 +11,9 @@ from libsys_airflow.plugins.vendor.marc import (
     batch,
     _to_change_fields_models,
     _to_add_fields_models,
+    _has_matching_field,
+    MarcField,
+    MarcSubfield,
 )
 
 
@@ -19,6 +22,20 @@ def marc_path(tmp_path):
     dest_filepath = os.path.join(tmp_path, "3820230411.mrc")
     shutil.copyfile("tests/vendor/0720230118.mrc", dest_filepath)
     return pathlib.Path(dest_filepath)
+
+
+@pytest.fixture
+def marcit_path(tmp_path):
+    dest_filepath = os.path.join(tmp_path, "marcit_sample_n.mrc")
+    shutil.copyfile("tests/vendor/marcit_sample_n.mrc", dest_filepath)
+    return pathlib.Path(dest_filepath)
+
+
+@pytest.fixture
+def marc_record():
+    with pathlib.Path("tests/vendor/0720230118.mrc").open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        return next(marc_reader)
 
 
 def test_filter_fields(marc_path):
@@ -81,12 +98,100 @@ def test_add_fields(marc_path):
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             field = record["910"]
-            print(field)
             assert field
             assert field.indicators == [' ', 'x']
             assert field["a"] == "MarcIt"
 
 
+def test_add_fields_with_unless(marcit_path):
+    add_list = _to_add_fields_models(
+        [
+            {
+                "tag": "590",
+                "subfields": [{"code": "a", "value": "MARCit brief record"}],
+                "unless": {
+                    "tag": "035",
+                    "subfields": [{"code": "a", "value": "OCoLC"}],
+                },
+            }
+        ]
+    )
+    process_marc(marcit_path, add_fields=add_list)
+
+    with marcit_path.open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field035 = record["035"]
+            field590 = record["590"]
+            assert field035 or field590
+            if field035 and field035["a"] == "OCoLC":
+                assert not field590
+            if not field035 or field035["a"] != "OCoLC":
+                assert field590
+            if field590:
+                assert field590["a"] == "MARCit brief record"
+
+
 def test_bad_check_fields():
     with pytest.raises(ValidationError):
         _to_change_fields_models([{"from": "520"}, {"from": "504", "to": "904"}])
+
+
+def test_has_no_matching_field(marc_record):
+    marcField = MarcField(tag="246", subfields=[])
+    assert not _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(tag="245", indicator1="x", subfields=[])
+    assert not _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(tag="245", indicator1="1", indicator2="x", subfields=[])
+    assert not _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(
+        tag="245",
+        indicator1="1",
+        indicator2="0",
+        subfields=[MarcSubfield(code="a", value="xDiminuendo /")],
+    )
+    assert not _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(
+        tag="245",
+        indicator1="1",
+        indicator2="0",
+        subfields=[
+            MarcSubfield(code="a", value="Diminuendo /"),
+            MarcSubfield(code="b", value="test"),
+        ],
+    )
+    assert not _has_matching_field(marc_record, marcField)
+
+
+def test_has_matching_field(marc_record):
+    marcField = MarcField(tag="245", subfields=[])
+    assert _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(tag="245", indicator1="1", subfields=[])
+    assert _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(tag="245", indicator1="1", indicator2="0", subfields=[])
+    assert _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(
+        tag="245",
+        indicator1="1",
+        indicator2="0",
+        subfields=[MarcSubfield(code="a", value="Diminuendo /")],
+    )
+    assert _has_matching_field(marc_record, marcField)
+
+    marcField = MarcField(
+        tag="245",
+        indicator1="1",
+        indicator2="0",
+        subfields=[
+            MarcSubfield(code="a", value="Diminuendo /"),
+            MarcSubfield(code="c", value="Katrinka Moore."),
+        ],
+    )
+    assert _has_matching_field(marc_record, marcField)

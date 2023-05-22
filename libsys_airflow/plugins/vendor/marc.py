@@ -17,16 +17,20 @@ class ChangeField(BaseModel):
     to: str
 
 
-class AddSubfield(BaseModel):
+class MarcSubfield(BaseModel):
     code: str
     value: str
 
 
-class AddField(BaseModel):
+class MarcField(BaseModel):
     tag: str
-    indicator1: Optional[str] = ' '
-    indicator2: Optional[str] = ' '
-    subfields: list[AddSubfield]
+    indicator1: Optional[str] = None
+    indicator2: Optional[str] = None
+    subfields: list[MarcSubfield]
+
+
+class AddField(MarcField):
+    unless: Optional[MarcField]
 
 
 @task
@@ -41,7 +45,10 @@ def process_marc_task(
     Applies changes to MARC records.
 
     change_fields example: [{ from: "520" to: "920" }, { from: "528" to: "928" }]
-    add_fields example: [{ tag: "910", indicator1: '2', subfields: [{code: "a", value: "MarcIt"}] }]
+    add_fields example: [
+            { tag: "910", indicator1: '2', subfields: [{code: "a", value: "MARCit"}] },
+            { tag: "590", subfields: [{code: "a", value: "MARCit brief record"}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
+        ]
     """
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
@@ -173,9 +180,37 @@ def _change_fields(record, change_fields):
 
 def _add_fields(record, add_fields):
     for add_field in add_fields:
+        if _skip(record, add_field.unless):
+            continue
         field = pymarc.field.Field(
-            tag=add_field.tag, indicators=[add_field.indicator1, add_field.indicator2]
+            tag=add_field.tag,
+            indicators=[add_field.indicator1 or ' ', add_field.indicator2 or ' '],
         )
         for subfield in add_field.subfields:
             field.add_subfield(subfield.code, subfield.value)
         record.add_field(field)
+
+
+def _skip(record, unless):
+    if unless and _has_matching_field(record, unless):
+        return True
+    return False
+
+
+def _has_matching_field(record: pymarc.Record, field: MarcField):
+    for check_field in record.get_fields(field.tag):
+        if _field_match(field, check_field):
+            return True
+    return False
+
+
+def _field_match(field: MarcField, check_field: pymarc.Field):
+    if field.indicator1 and check_field.indicators[0] != field.indicator1:
+        return False
+    if field.indicator2 and check_field.indicators[1] != field.indicator2:
+        return False
+    for subfield in field.subfields:
+        check_subfield_value = check_field[subfield.code]
+        if not check_subfield_value or check_subfield_value != subfield.value:
+            return False
+    return True
