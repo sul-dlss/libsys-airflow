@@ -36,7 +36,7 @@ parallel_posts = Variable.get("parallel_posts", 3)
 with DAG(
     "boundwith_relationships",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     start_date=datetime(2023, 2, 22),
     catchup=False,
     tags=["bib_import", "folio"],

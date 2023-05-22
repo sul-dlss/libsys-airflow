@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @dag(
-    schedule_interval=None,
+    schedule=None,
     start_date=datetime(2022, 7, 19),
     catchup=False,
     max_active_runs=1,

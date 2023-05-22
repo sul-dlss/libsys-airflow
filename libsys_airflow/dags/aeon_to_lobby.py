@@ -66,7 +66,7 @@ def transform_data(*args, **kwargs):
 with DAG(
     "aeon_to_lobbytrack_visitor",
     default_args=default_args,
-    schedule_interval=timedelta(hours=12),
+    schedule=timedelta(hours=12),
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["aeon_to_lobbytrack"],

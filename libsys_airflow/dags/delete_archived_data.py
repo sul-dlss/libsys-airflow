@@ -39,7 +39,7 @@ def delete_archived_data(*args, **kwargs):
 with DAG(
     "remove_archived_migration_files",
     default_args=default_args,
-    schedule_interval=timedelta(days=1),
+    schedule=timedelta(days=1),
     start_date=datetime(2022, 1, 3),
     catchup=False,
     tags=["remove_archived"],

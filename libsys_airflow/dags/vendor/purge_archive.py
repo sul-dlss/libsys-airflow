@@ -27,7 +27,7 @@ with DAG(
     dag_id="purge_archived_files",
     default_args=default_args,
     start_date=datetime(2023, 5, 9),
-    schedule_interval="0 9 * * *",  # Runs Daily at 2 am PT
+    schedule="0 9 * * *",  # Runs Daily at 2 am PT
 ) as dag:
     finish_task = EmptyOperator(task_id="finished-purge")
 

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @dag(
-    schedule_interval=None,
+    schedule=None,
     start_date=datetime(2022, 6, 23),
     catchup=False,
     tags=["folio", "bib_import"],

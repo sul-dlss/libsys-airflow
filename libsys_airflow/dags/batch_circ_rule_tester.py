@@ -31,7 +31,7 @@ folio_client = FolioClient(
 
 with DAG(
     "circ_rules_batch_tests",
-    schedule_interval=None,
+    schedule=None,
     start_date=datetime.datetime(2022, 12, 1),
     catchup=False,
     tags=["folio", "circ-rules"],
