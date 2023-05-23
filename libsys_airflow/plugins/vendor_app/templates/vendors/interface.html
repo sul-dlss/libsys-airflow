@@ -1,9 +1,11 @@
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
-<h1><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a> / {{ interface.display_name }}</h1>
+<h1>Interface: {{ interface.display_name }}</h1>
 
 <dl class="dl-horizontal">
+  <dt>Vendor</dt>
+  <dd><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></dd>
   <dt>Interface ID</dt>
   <dd>{{ interface.folio_interface_uuid }}</dd>
   <dt>Import Profile</dt>
@@ -21,6 +23,10 @@
   <dt>Active</dt>
   <dd>{{ interface.active }}</dd>
 </dl>
+
+<a href="{{ url_for("VendorManagementView.interface_edit", interface_id=interface.id) }}">
+  <button class="btn btn-default">Edit</button>
+</a>
 
 <h2>Pending Loads</h2>
 
