@@ -1,8 +1,18 @@
 {% extends "appbuilder/base.html" %}
 
+{% block head_css %}
+    {{ super() }}
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block head_js %}
+    {{ super() }}
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+{% endblock %}
+
 {% block content %}
 <h1>Vendors</h1>
-<table class="table table-striped">
+<table class="table table-striped" id="vendorTable">
     <thead>
         <th>Name</th>
         <th>Code</th>
@@ -25,4 +35,16 @@
         {% endfor %}
     </tbody>
 </table>
+
+<script type="text/javascript">
+    let vendorTable = document.querySelector("#vendorTable");
+    let dataTable = new simpleDatatables.DataTable(vendorTable, {
+        searchable: true,
+        fixedHeight: true
+    });
+    let vendorTableSelect = document.querySelector(".datatable-selector");
+    vendorTableSelect.classList.add("form-control");
+    let vendorSearchInput = document.querySelector(".datatable-input");
+    vendorSearchInput.classList.add("form-control");
+</script>
 {% endblock %}
