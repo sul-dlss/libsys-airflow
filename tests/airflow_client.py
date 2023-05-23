@@ -16,6 +16,7 @@ def test_airflow_client():
     templates_folder = f"{root_directory}/libsys_airflow/plugins/vendor_app/templates"
 
     app = application.create_app(testing=True)
+    app.config['WTF_CSRF_ENABLED'] = False
     app.appbuilder.add_view(
         VendorManagementView, "Vendors", category="Vendor Management"
     )

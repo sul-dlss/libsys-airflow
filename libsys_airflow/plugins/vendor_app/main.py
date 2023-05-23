@@ -2,7 +2,7 @@ from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 
 from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
-
+from libsys_airflow.plugins.vendor_app.database import Session
 
 vendor_mgt_bp = Blueprint(
     "vendor_management",
@@ -30,3 +30,8 @@ class VendorManagementPlugin(AirflowPlugin):
     admin_views = []
     appbuilder_views = [vendor_index_view_package]
     appbuilder_menu_items = []
+
+
+@vendor_mgt_bp.teardown_request
+def shutdown_session(exception=None):
+    Session().remove()

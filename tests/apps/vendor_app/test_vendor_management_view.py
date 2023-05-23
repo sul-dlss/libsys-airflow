@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
+from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
 from tests.airflow_client import test_airflow_client  # noqa: F401
@@ -64,30 +65,38 @@ def mock_db(mocker, engine):
     yield mock_hook
 
 
-def test_vendor_views(test_airflow_client, mock_db):  # noqa: F811
-    response = test_airflow_client.get('/vendors/')
-    assert response.status_code == 200
-    assert response.html.h1.text == "Vendors"
+def test_vendor_views(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.get('/vendors/')
+        assert response.status_code == 200
+        assert response.html.h1.text == "Vendors"
 
-    rows = response.html.find_all('tr')
-    assert len(rows) == 2
+        rows = response.html.find_all('tr')
+        assert len(rows) == 2
 
-    link = rows[0].find_all('td')[0].a
-    assert link.text == "Acme"
-    assert link["href"] == "/vendors/1"
+        link = rows[0].find_all('td')[0].a
+        assert link.text == "Acme"
+        assert link["href"] == "/vendors/1"
 
-    link = rows[1].find_all('td')[0].a
-    assert link.text == "Cocina Tacos"
-    assert link["href"] == "/vendors/2"
+        link = rows[1].find_all('td')[0].a
+        assert link.text == "Cocina Tacos"
+        assert link["href"] == "/vendors/2"
 
 
-def test_vendor_view(test_airflow_client, mock_db):  # noqa: F811
-    response = test_airflow_client.get('/vendors/1')
-    assert response.status_code == 200
-    assert response.html.h1.text == "Acme"
+def test_vendor_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.get('/vendors/1')
+        assert response.status_code == 200
+        assert response.html.h1.text == "Acme"
 
-    rows = response.html.find_all('tr')
-    assert len(rows) == 2
+        rows = response.html.find_all('tr')
+        assert len(rows) == 2
 
-    assert 'Acme FTP' in rows[0].text
-    assert 'Acme API' in rows[1].text
+        assert 'Acme FTP' in rows[0].text
+        assert 'Acme API' in rows[1].text

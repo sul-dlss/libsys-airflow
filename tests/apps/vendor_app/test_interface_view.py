@@ -34,6 +34,7 @@ rows = Rows(
         vendor_id=1,
         folio_interface_uuid="140530EB-EE54-4302-81EE-D83B9DAC9B6E",
         folio_data_import_processing_name="Acme Profile 1",
+        folio_data_import_profile_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
         file_pattern="*.mrc",
         remote_path="stanford/outgoing/data",
         processing_dag="acme-pull",
@@ -118,53 +119,88 @@ def mock_db(mocker, engine):
         "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
     )
     mock_hook.return_value = engine
-    yield mock_hook
+    return mock_hook
 
 
-def test_vendor_files(mock_db):  # noqa: F811
-    session = Session(mock_db())
-    interface = session.get(VendorInterface, 1)
-    assert len(interface.vendor_files) == 5
+def test_vendor_files(engine):  # noqa: F811
+    with Session(engine) as session:
+        interface = session.get(VendorInterface, 1)
+        assert len(interface.vendor_files) == 5
 
 
-def test_pending_files(mock_db):
-    session = Session(mock_db())
-    interface = session.get(VendorInterface, 1)
-    pending = interface.pending_files
-    assert len(pending) == 3
-    assert [v.vendor_filename for v in pending] == [
-        "acme-extra-strength-marc.dat",
-        "acme-lite-marc.dat",
-        "acme-ftp-broken-marc.dat",
-    ]
+def test_pending_files(engine):
+    with Session(engine) as session:
+        interface = session.get(VendorInterface, 1)
+        pending = interface.pending_files
+        assert len(pending) == 3
+        assert [v.vendor_filename for v in pending] == [
+            "acme-extra-strength-marc.dat",
+            "acme-lite-marc.dat",
+            "acme-ftp-broken-marc.dat",
+        ]
 
 
-def test_processed_files(mock_db):
-    session = Session(mock_db())
-    interface = session.get(VendorInterface, 1)
-    processed = interface.processed_files
-    assert len(processed) == 2
-    assert [v.vendor_filename for v in processed] == [
-        "acme-marc.dat",
-        "acme-bad-marc.dat",
-    ]
+def test_processed_files(engine):
+    with Session(engine) as session:
+        interface = session.get(VendorInterface, 1)
+        processed = interface.processed_files
+        assert len(processed) == 2
+        assert [v.vendor_filename for v in processed] == [
+            "acme-marc.dat",
+            "acme-bad-marc.dat",
+        ]
 
 
-def test_interface_view(test_airflow_client, mock_db):  # noqa: F811
-    response = test_airflow_client.get('/vendors/interface/1')
-    assert response.status_code == 200
-    pending = response.html.find(id='pending-files')
-    assert pending
-    assert len(pending.find_all('tr')) == 3
+def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
 
-    loaded = response.html.find(id='loaded-files')
-    assert loaded
-    assert len(loaded.find_all('tr')) == 2
+        response = test_airflow_client.get('/vendors/interface/1')
+        assert response.status_code == 200
+        pending = response.html.find(id='pending-files')
+        assert pending
+        assert len(pending.find_all('tr')) == 3
+
+        loaded = response.html.find(id='loaded-files')
+        assert loaded
+        assert len(loaded.find_all('tr')) == 2
 
 
 @pytest.mark.skipif(
     os.environ.get("AIRFLOW_VAR_OKAPI_URL") is None, reason="No Folio Environment"
 )
-def test_interface_edit_view(test_airflow_client, mock_db):  # noqa: F811
-    response = test_airflow_client.get('/vendors/interface/1/edit')
-    assert response.status_code == 200
+def test_interface_edit_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.get('/vendors/interface/1/edit')
+        assert response.status_code == 200
+
+
+def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
+    mock_trigger_dag = mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendors.trigger_dag'
+    )
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.post('/vendors/file/1/load')
+        assert response.status_code == 302
+
+    with Session(mock_db()) as session:
+        vendor_file = session.get(VendorFile, 1)
+        assert vendor_file.status == FileStatus.loading
+
+    mock_trigger_dag.assert_called_once_with(
+        'default_data_processor',
+        conf={
+            "filename": 'acme-marc.dat',
+            "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+            "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
+            "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
+        },
+    )
