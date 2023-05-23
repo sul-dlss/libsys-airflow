@@ -1,4 +1,4 @@
-{% extends "appbuilder/base.html" %}
+{% extends "airflow/main.html" %}
 
 {% block content %}
 <h1>Interface: {{ interface.display_name }}</h1>
@@ -30,14 +30,15 @@
 
 <h2>Pending Loads</h2>
 
-<table id="pending-files" class="table table-striped">
+<table id="pending-files" class="table table-striped table-condensed">
   <thead>
     <td>Created</td>
     <td>Updated</td>
     <td>Filename</td>
     <td>File Size</td>
-    <td>Timestamp</td>
+    <td>File Timestamp</td>
     <td>Expected Load</td>
+    <td>Status</td>
   </thead>
   {% for file in interface.pending_files %}
   <tr>
@@ -47,21 +48,22 @@
     <td>{{ file.filesize }}</td>
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.expected_execution }}</td>
+    <td>{{ file.status.value}}</td>
   </tr>
    {% endfor %}
 </table>
 
 <h2>Completed Loads</h2>
 
-<table id="loaded-files" class="table table-striped">
+<table id="loaded-files" class="table table-striped table-condensed">
   <thead>
     <td>Created</td>
     <td>Updated</td>
     <td>Filename</td>
     <td>File Size</td>
-    <td>Timestamp</td>
+    <td>File Timestamp</td>
     <td>Loaded</td>
-    <td>Status</td>
+    <td>Actions</td>
   </thead>
   {% for file in interface.processed_files %}
   <tr>
@@ -71,7 +73,12 @@
     <td>{{ file.filesize }}</td>
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.loaded_timestamp }}</td>
-    <td>{{ file.status }}</td>
+    <td>
+      <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input class="btn btn-link" type="submit" value="Reload" style="padding: 0px;">
+      </form>
+    </td>
   </tr>
   {% endfor %}
 </table>

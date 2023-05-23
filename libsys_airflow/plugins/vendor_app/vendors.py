@@ -1,14 +1,18 @@
 import re
 import logging
 
-from airflow.providers.postgres.hooks.postgres import PostgresHook
-from flask import request, redirect, url_for
+from airflow.api.common.trigger_dag import trigger_dag
 from flask_appbuilder import expose, BaseView
-from sqlalchemy.orm import Session
+from flask import request, redirect, url_for, flash
 
-from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
 from libsys_airflow.plugins.vendor.job_profiles import job_profiles
-
+from libsys_airflow.plugins.vendor.models import (
+    Vendor,
+    VendorInterface,
+    VendorFile,
+    FileStatus,
+)
+from libsys_airflow.plugins.vendor_app.database import Session
 
 logger = logging.getLogger(__name__)
 
@@ -19,25 +23,22 @@ class VendorManagementView(BaseView):
 
     @expose("/")
     def index(self):
-        session = self._get_session()
-        vendors = session.query(Vendor).order_by(Vendor.display_name)
+        vendors = Session().query(Vendor).order_by(Vendor.display_name)
         return self.render_template("vendors/index.html", vendors=vendors)
 
     @expose("/<int:vendor_id>")
     def vendor(self, vendor_id):
-        session = self._get_session()
-        vendor = session.query(Vendor).get(vendor_id)
+        vendor = Session().query(Vendor).get(vendor_id)
         return self.render_template("vendors/vendor.html", vendor=vendor)
 
     @expose("/interface/<int:interface_id>")
     def interface(self, interface_id):
-        session = self._get_session()
-        interface = session.query(VendorInterface).get(interface_id)
+        interface = Session().query(VendorInterface).get(interface_id)
         return self.render_template("vendors/interface.html", interface=interface)
 
     @expose("/interface/<int:interface_id>/edit", methods=['GET', 'POST'])
     def interface_edit(self, interface_id):
-        session = self._get_session()
+        session = Session()
         interface = session.query(VendorInterface).get(interface_id)
 
         if request.method == 'GET':
@@ -52,10 +53,6 @@ class VendorManagementView(BaseView):
             return redirect(
                 url_for('VendorManagementView.interface', interface_id=interface.id)
             )
-
-    def _get_session(self):
-        pg_hook = PostgresHook("vendor_loads")
-        return Session(pg_hook.get_sqlalchemy_engine())
 
     def _update_vendor_interface_form(self, interface, form):
         """
@@ -104,3 +101,28 @@ class VendorManagementView(BaseView):
             interface.processing_options = processing_options
 
         return interface
+
+    @expose("/file/<int:file_id>/load", methods=["POST"])
+    def load_file(self, file_id):
+        session = Session()
+        file = session.query(VendorFile).get(file_id)
+
+        file.status = FileStatus.loading
+        session.commit()
+        dag = trigger_dag(
+            'default_data_processor',
+            conf={
+                "filename": file.vendor_filename,
+                "vendor_uuid": file.vendor_interface.vendor.folio_organization_uuid,
+                "vendor_interface_uuid": file.vendor_interface.folio_interface_uuid,
+                "dataload_profile_uuid": file.vendor_interface.folio_data_import_profile_uuid,
+            },
+        )
+        logger.info(f"Triggered DAG {dag} for {file.vendor_filename}")
+        flash(f"Requested reload of {file.vendor_filename}")
+
+        return redirect(
+            url_for(
+                "VendorManagementView.interface", interface_id=file.vendor_interface_id
+            )
+        )

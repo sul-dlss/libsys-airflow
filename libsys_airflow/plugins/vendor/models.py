@@ -53,23 +53,34 @@ class VendorInterface(Model):
 
     @property
     def pending_files(self):
-        """Returns a list of VendorFile objects that have not been loaded yet."""
+        """Returns a list of VendorFile objects that are not_fetched, fetching_error, fetched, or loading."""
         session = Session.object_session(self)
         return session.scalars(
             select(VendorFile)
             .filter(VendorFile.vendor_interface_id == self.id)
-            .filter(VendorFile.dag_run_id.is_(None))
+            .filter(
+                VendorFile.status.in_(
+                    [
+                        FileStatus.not_fetched,
+                        FileStatus.fetching_error,
+                        FileStatus.fetched,
+                        FileStatus.loading,
+                    ]
+                )
+            )
             .order_by(VendorFile.created.desc())
         ).all()
 
     @property
     def processed_files(self):
-        """Returns a list of VendorFile objects that have been loaded yet."""
+        """Returns a list of VendorFile objects that are loaded or loading_error."""
         session = Session.object_session(self)
         return session.scalars(
             select(VendorFile)
             .filter(VendorFile.vendor_interface_id == self.id)
-            .filter(VendorFile.dag_run_id.is_not(None))
+            .filter(
+                VendorFile.status.in_([FileStatus.loaded, FileStatus.loading_error])
+            )
             .order_by(VendorFile.loaded_timestamp.desc())
         ).all()
 
