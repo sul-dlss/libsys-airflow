@@ -63,26 +63,29 @@ class VendorManagementView(BaseView):
         VendorInterface object.
         """
 
-        if form['folio-data-import-profile-uuid']:
+        if 'folio-data-import-profile-uuid' in form.keys():
             interface.folio_data_import_profile_uuid = form[
                 'folio-data-import-profile-uuid'
             ]
 
-        if form['folio-data-import-processing-name']:
+        if 'folio-data-import-processing-name' in form.keys():
             interface.folio_data_import_processing_name = form[
                 'folio-data-import-processing-name'
             ]
 
-        if form['processing-delay-in-days']:
+        if 'processing-delay-in-days' in form.keys():
             interface.processing_delay_in_days = int(form['processing-delay-in-days'])
 
-        if form['remote-path']:
+        if 'remote-path' in form.keys():
             interface.remote_path = form['remote-path']
 
-        if form['file-pattern']:
+        if 'file-pattern' in form.keys():
             interface.file_pattern = form['file-pattern']
 
-        if form['package-name']:
+        if 'active' in form.keys():
+            interface.active = form['active'] == 'true'
+
+        if 'package-name' in form.keys():
             processing_options = {}
             processing_options['package_name'] = form['package-name']
             processing_options['change_marc'] = []

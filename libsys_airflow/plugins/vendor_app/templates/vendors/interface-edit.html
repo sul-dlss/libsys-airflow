@@ -61,6 +61,17 @@
       <input type="text" class="form-control" id="file-pattern" name="file-pattern" placeholder="" value="{{ interface.file_pattern }}">
     </div>
   </div>
+  <div class="form-group">
+    <label for="active" class="col-sm-2 col-form-label">Active</label>
+    <div class="col-sm-8">
+      <label class="radio-inline">
+        <input type="radio" id="true" name="active" value="true" {% if interface.active %}checked{% endif %}> True
+      </label>
+      <label class="radio-inline">
+        <input type="radio" id="false" name="active" value="false" {% if not interface.active %}checked{% endif %}> False
+      </label>
+    </div>
+  </div>
 
   <hr>
 
@@ -213,7 +224,7 @@
   }
 
   addEventListener("load", main);
-  
+
 </script>
 
 {% endblock %}
