@@ -24,9 +24,16 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 > docker daemon, we recommend at least 5GB.
 
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
-2. Start up docker locally.
-3. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
-4. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
+2. Set-up the [migration](https://github.com/sul-dlss/folio_migration) submodule with these commands:
+   ```
+   $ git submodule init
+   $ git submodule update
+   $ chmod +x migration/create_folder_structure.sh 
+   $ ./migration/create_folder_structure.sh
+   ```
+3. Start up docker locally.
+4. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
+5. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
 
 - `AIRFLOW_VAR_AEON_URL`
 - `AIRFLOW_VAR_AEON_KEY`
@@ -42,11 +49,11 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
   **NOTE** In order to connect to the OKAPI_URL you must be connected to the VPN or the on-campus network.
 
-5. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-6. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
-7. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
-8. Access Airflow locally at http://localhost:3000. The default username and password are both `airflow`.
-9. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
+6. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
+7. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
+8. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
+9. Access Airflow locally at http://localhost:3000. The default username and password are both `airflow`.
+10. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
 ### For FOLIO migration loads
 
