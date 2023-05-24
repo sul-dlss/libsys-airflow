@@ -67,6 +67,14 @@ class VendorLoader:
         )
         vendor_interface_result.raise_for_status()
         return vendor_interface_result.json()
+    
+    def get_acquisitions_unit_name(self, acq_id):
+        acq_name_result = requests.get(
+            f"{self._folio_client.okapi_url}/acquisitions-units/units/{acq_id}",
+            headers=self._folio_client.okapi_headers,
+        )
+        acq_name_result.raise_for_status()
+        return acq_name_result.json()["name"]
 
 
 def main(opts):
@@ -95,6 +103,7 @@ def main(opts):
                 folio_organization_uuid=organization["id"],
                 vendor_code_from_folio=organization["code"],
                 acquisitions_unit_from_folio=organization["acqUnitIds"][0],
+                acquisitions_unit_name_from_folio=vendor_load.get_acquisitions_unit_name(organization["acqUnitIds"][0]),
                 last_folio_update=datetime.now(),
             )
             session.add(vendor)

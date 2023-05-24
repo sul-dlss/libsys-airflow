@@ -187,9 +187,24 @@ Assuming that you have put Folio related environment variables in your `.env` fi
 poetry run bin/seed_vendors
 ```
 
-In a deployed environment, this can be run this:
+In a deployed environment, this can be run as:
 ```
 docker exec -it 20230516183735-airflow-webserver-1 bin/seed_vendors
+```
+where `20230516183735-airflow-webserver-1` is the container id.
+
+#### Refreshing Vendor Data
+
+Assuming that you have put Folio related environment variables in your `.env` file you can look up acquisitions unit names in Folio and populate the database:
+```
+poetry run bin/refresh_vendors
+```
+
+This can be run as a dry run with `-d` or `--dry`.
+
+In a deployed environment, this can be run as:
+```
+docker exec -it 20230516183735-airflow-webserver-1 bin/refresh_vendors
 ```
 where `20230516183735-airflow-webserver-1` is the container id.
 
