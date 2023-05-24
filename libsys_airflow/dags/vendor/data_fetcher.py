@@ -75,7 +75,6 @@ with DAG(
         logger.info(f"Params are {params}")
 
         os.makedirs(params["download_path"], exist_ok=True)
-        os.makedirs(params["archive_path"], exist_ok=True)
 
         return params
 

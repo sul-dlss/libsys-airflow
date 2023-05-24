@@ -7,8 +7,9 @@ from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
-from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile
 from libsys_airflow.plugins.vendor.marc import is_marc
+from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -130,11 +131,7 @@ def _record_status(context, status):
 
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_interface = session.scalars(
-            select(VendorInterface).where(
-                VendorInterface.folio_interface_uuid == vendor_interface_uuid
-            )
-        ).first()
+        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
         vendor_file = session.scalars(
             select(VendorFile)
             .where(VendorFile.vendor_filename == filename)

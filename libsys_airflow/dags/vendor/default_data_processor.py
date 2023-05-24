@@ -12,7 +12,8 @@ from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import data_import_task
 from libsys_airflow.plugins.vendor.extract import extract_task
-from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
+from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -61,12 +62,9 @@ with DAG(
 
         pg_hook = PostgresHook("vendor_loads")
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
-            vendor_interface = session.scalars(
-                select(VendorInterface).where(
-                    VendorInterface.folio_interface_uuid
-                    == params["vendor_interface_uuid"]
-                )
-            ).first()
+            vendor_interface = load_vendor_interface(
+                params["vendor_interface_uuid"], session
+            )
             processing_options = vendor_interface.processing_options or {}
             params["change_fields"] = processing_options.get("change_fields")
             params["remove_fields"] = processing_options.get(
