@@ -27,7 +27,9 @@ class Vendor(Model):
     acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=False)
     has_active_vendor_interfaces = Column(Boolean, nullable=False, default=False)
     last_folio_update = Column(DateTime, nullable=False)
-    vendor_interfaces = relationship("VendorInterface", back_populates="vendor")
+    vendor_interfaces = relationship(
+        "VendorInterface", back_populates="vendor", order_by='VendorInterface.id'
+    )
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_organization_uuid}"
