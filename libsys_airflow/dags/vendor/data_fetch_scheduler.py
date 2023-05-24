@@ -42,6 +42,7 @@ with DAG(
             for vendor_interface in (
                 session.query(VendorInterface)
                 .filter(VendorInterface.active == true())
+                .filter(VendorInterface.folio_interface_uuid.isnot(None))
                 .join(VendorInterface.vendor)
             ):
                 confs.append(
