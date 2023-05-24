@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+# A utility for refreshing vendor records with current FOLIO data
+
+import os
+import logging
+import argparse
+from datetime import datetime
+
+from dotenv import load_dotenv
+from signal import signal, SIGPIPE, SIG_DFL
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from libsys_airflow.plugins.vendor.models import Vendor
+from libsys_airflow.plugins.folio.folio_client import FolioClient
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+
+def main(opts):
+    folio_client = FolioClient(
+        os.getenv('AIRFLOW_VAR_OKAPI_URL'),
+        "sul",
+        os.getenv('AIRFLOW_VAR_FOLIO_USER'),
+        os.getenv('AIRFLOW_VAR_FOLIO_PASSWORD'),
+    )
+    db_url = os.getenv(
+        'AIRFLOW_CONN_VENDOR_LOADS',
+        'postgresql+psycopg2://airflow:airflow@localhost:5432/vendor_loads',
+    )
+    engine = create_engine(db_url, echo=True)
+    Session = sessionmaker(bind=engine)
+
+    with Session() as session:
+        for vendor in session.query(Vendor):
+            # look up each acquisitions unit UUID in Folio and get the acq unit name
+            acq_name_result = folio_client.get(
+                f"/acquisitions-units/units/{vendor.acquisitions_unit_from_folio}"
+            )
+            if opts.dry:
+                logger.info(
+                    f"Would update vendor {vendor.id} with acq unit name {acq_name_result['name']}"
+                )
+            else:
+                vendor.acquisitions_unit_name_from_folio = acq_name_result["name"]
+                vendor.last_folio_update = datetime.now()
+                logger.info(
+                    f"Updated vendor {vendor.id} with acq unit name {acq_name_result['name']}"
+                )
+        session.commit()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Refresh data from FOLIO Organizations in vendor records"
+    )
+    parser.add_argument(
+        "--log", default="refresh_vendors.log", help="A file path to write log messages"
+    )
+    parser.add_argument(
+        "-d",
+        "--dry",
+        help="Run without updating vendor records",
+        action="store_true",
+    )
+    opts = parser.parse_args()
+
+    logging.basicConfig(
+        filename=opts.log,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
+    )
+
+    signal(SIGPIPE, SIG_DFL)
+
+    main(opts)

@@ -25,6 +25,7 @@ class Vendor(Model):
     folio_organization_uuid = Column(String(36), unique=True, nullable=False)
     vendor_code_from_folio = Column(String(36), unique=True, nullable=False)
     acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=False)
+    acquisitions_unit_name_from_folio = Column(String(36), unique=False, nullable=True)
     has_active_vendor_interfaces = Column(Boolean, nullable=False, default=False)
     last_folio_update = Column(DateTime, nullable=False)
     vendor_interfaces = relationship(
