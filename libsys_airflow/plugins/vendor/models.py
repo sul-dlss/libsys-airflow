@@ -40,7 +40,8 @@ class VendorInterface(Model):
     vendor_id = Column(Integer, ForeignKey("vendors.id"))
     vendor = relationship("Vendor", back_populates="vendor_interfaces")
     display_name = Column(String(50), unique=False, nullable=False)
-    folio_interface_uuid = Column(String(36), unique=True, nullable=False)
+    # A null folio_interface_uuid indicates that upload only.
+    folio_interface_uuid = Column(String(36), unique=True, nullable=True)
     folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_processing_name = Column(String(50), unique=False, nullable=True)
     file_pattern = Column(String(250), unique=False, nullable=True)
@@ -107,6 +108,10 @@ class VendorInterface(Model):
             return self.processing_options.get('change_marc', [])
         else:
             return []
+
+    @property
+    def upload_only(self):
+        return self.folio_interface_uuid is None
 
 
 class FileStatus(enum.Enum):

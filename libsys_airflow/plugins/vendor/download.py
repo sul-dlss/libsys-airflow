@@ -91,7 +91,7 @@ def ftp_download_task(
 
     return download(
         hook,
-        remote_path,
+        remote_path or "",
         download_path,
         filter_strategy,
         vendor_interface_uuid,
