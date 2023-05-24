@@ -56,7 +56,7 @@ class VendorInterface(Model):
 
     @property
     def pending_files(self):
-        """Returns a list of VendorFile objects that are not_fetched, fetching_error, fetched, or loading."""
+        """Returns a list of VendorFile objects that are not_fetched, fetching_error, fetched, uploaded, or loading."""
         session = Session.object_session(self)
         return session.scalars(
             select(VendorFile)
@@ -68,6 +68,7 @@ class VendorInterface(Model):
                         FileStatus.fetching_error,
                         FileStatus.fetched,
                         FileStatus.loading,
+                        FileStatus.uploaded,
                     ]
                 )
             )
@@ -87,8 +88,13 @@ class VendorInterface(Model):
             .order_by(VendorFile.loaded_timestamp.desc())
         ).all()
 
+    @property
+    def interface_uuid(self) -> str:
+        # This accounts for upload only interfaces, which don't have a folio_interface_uuid.
+        return self.folio_interface_uuid or f"upload_only-{self.id}"
+
     def __repr__(self) -> str:
-        return f"{self.display_name} - {self.folio_interface_uuid}"
+        return f"{self.display_name} - {self.interface_uuid}"
 
     @property
     def package_name(self):
@@ -120,6 +126,7 @@ class FileStatus(enum.Enum):
     not_fetched = "not_fetched"
     fetching_error = "fetching_error"
     fetched = "fetched"
+    uploaded = "uploaded"
     loading = "loading"
     loading_error = "loading_error"
     loaded = "loaded"

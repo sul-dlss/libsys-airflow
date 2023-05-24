@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from dotenv import load_dotenv
 
 from libsys_airflow.plugins.vendor.models import (
@@ -204,3 +205,62 @@ def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
             "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
         },
     )
+
+
+def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F811
+    mock_trigger_dag = mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendors.trigger_dag'
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
+        return_value=str(tmp_path),
+    )
+    mock_datetime = mocker.patch('libsys_airflow.plugins.vendor_app.vendors.datetime')
+    mock_datetime.now.return_value = datetime(2021, 1, 1, 0, 0, 0, 0)
+
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.post(
+            '/vendors/interface/1/file',
+            data={
+                'file-upload': (
+                    open('tests/vendor/0720230118.mrc', 'rb'),
+                    '0720230118.mrc',
+                    'application/octet-stream',
+                )
+            },
+        )
+        assert response.status_code == 302
+
+        assert os.path.exists(
+            os.path.join(
+                tmp_path,
+                'downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/0720230118.mrc',
+            )
+        )
+        assert os.path.exists(
+            os.path.join(
+                tmp_path,
+                'archive/20210101/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/0720230118.mrc',
+            )
+        )
+
+        vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == '0720230118.mrc')
+        ).first()
+        assert vendor_file
+        assert vendor_file.vendor_interface_id == 1
+        assert vendor_file.filesize == 35981
+        assert vendor_file.status == FileStatus.uploaded
+
+        mock_trigger_dag.assert_called_once_with(
+            'default_data_processor',
+            conf={
+                "filename": '0720230118.mrc',
+                "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+                "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
+                "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
+            },
+        )

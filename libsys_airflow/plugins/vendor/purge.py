@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.paths import archive_basepath, downloads_basepath
-from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile
+from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +104,7 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
     updates matched VendorFile records
     """
     for interface_uuid, info in vendor_file_info.items():
-        vendor_interface = session.scalars(
-            select(VendorInterface).where(
-                VendorInterface.folio_interface_uuid == interface_uuid
-            )
-        ).first()
+        vendor_interface = load_vendor_interface(interface_uuid, session)
         updated_date = datetime.strptime(info["date"], "%Y%m%d")
         for filename in info["files"]:
             vendor_file = session.scalars(

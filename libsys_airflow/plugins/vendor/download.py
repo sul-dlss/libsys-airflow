@@ -14,7 +14,8 @@ from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.models import VendorFile, VendorInterface
+from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
 
 logger = logging.getLogger(__name__)
 
@@ -193,11 +194,7 @@ def _record_vendor_file(
     engine: Engine,
 ):
     with Session(engine) as session:
-        vendor_interface = session.scalars(
-            select(VendorInterface).where(
-                VendorInterface.folio_interface_uuid == vendor_interface_uuid
-            )
-        ).first()
+        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
         existing_vendor_file = session.scalars(
             select(VendorFile)
             .where(VendorFile.vendor_filename == filename)
@@ -261,11 +258,7 @@ def _create_adapter(
 
 def _vendor_interface_id(vendor_interface_uuid: str, engine: Engine) -> int:
     with Session(engine) as session:
-        vendor_interface = session.scalars(
-            select(VendorInterface).where(
-                VendorInterface.folio_interface_uuid == vendor_interface_uuid
-            )
-        ).first()
+        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
         return vendor_interface.id
 
 

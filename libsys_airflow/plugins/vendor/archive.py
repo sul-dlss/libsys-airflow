@@ -16,7 +16,7 @@ def archive(downloaded_files: list[str], download_path: str, archive_path: str):
     if len(downloaded_files) == 0:
         logger.info("No files to archive")
         return
-
+    os.makedirs(archive_path, exist_ok=True)
     for filename in downloaded_files:
         download_filepath = _filepath(download_path, filename)
         archive_filepath = _filepath(archive_path, filename)
