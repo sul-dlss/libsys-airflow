@@ -13,11 +13,11 @@ vendor_mgt_bp = Blueprint(
 )
 
 # Vendor Management
-vendor_index_view = VendorManagementView()
-vendor_index_view_package = {
-    "name": "Vendors",
+vendor_management_view = VendorManagementView()
+vendor_management_view_package = {
+    "name": "Dashboard",
     "category": "Vendor Management",
-    "view": vendor_index_view,
+    "view": vendor_management_view,
 }
 
 
@@ -28,7 +28,7 @@ class VendorManagementPlugin(AirflowPlugin):
     hooks = []
     executors = []
     admin_views = []
-    appbuilder_views = [vendor_index_view_package]
+    appbuilder_views = [vendor_management_view_package]
     appbuilder_menu_items = []
 
 

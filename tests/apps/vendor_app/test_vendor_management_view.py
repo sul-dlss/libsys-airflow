@@ -65,12 +65,22 @@ def mock_db(mocker, engine):
     yield mock_hook
 
 
-def test_vendor_views(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_vendors_dashboard_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
-        response = test_airflow_client.get('/vendors/')
+        response = test_airflow_client.get('/vendor_management/')
+        assert response.status_code == 200
+        assert response.html.h1.text == "Vendor Management"
+
+
+def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+        response = test_airflow_client.get('/vendor_management/vendors')
         assert response.status_code == 200
         assert response.html.h1.text == "Vendors"
 
@@ -79,19 +89,19 @@ def test_vendor_views(test_airflow_client, mock_db, mocker):  # noqa: F811
 
         link = rows[0].find_all('td')[0].a
         assert link.text == "Acme"
-        assert link["href"] == "/vendors/1"
+        assert link["href"] == "/vendor_management/vendors/1"
 
         link = rows[1].find_all('td')[0].a
         assert link.text == "Cocina Tacos"
-        assert link["href"] == "/vendors/2"
+        assert link["href"] == "/vendor_management/vendors/2"
 
 
-def test_vendor_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_vendor_show_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
-        response = test_airflow_client.get('/vendors/1')
+        response = test_airflow_client.get('/vendor_management/vendors/1')
         assert response.status_code == 200
         assert response.html.h1.text == "Acme"
 
