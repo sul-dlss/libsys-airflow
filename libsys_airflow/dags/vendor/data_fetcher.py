@@ -6,9 +6,6 @@ from airflow import DAG
 from airflow.decorators import task
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.models.dagrun import DagRun
-from airflow.utils.types import DagRunType
 
 from libsys_airflow.plugins.airflow.connections import create_connection_task
 from libsys_airflow.plugins.vendor.download import ftp_download_task
@@ -73,41 +70,9 @@ with DAG(
 
         return params
 
-    @task
-    def generate_dag_run_kwargs(
-        vendor_uuid: str,
-        vendor_interface_uuid: str,
-        dataload_profile_uuid: str,
-        processing_delay: int,
-        processing_dag: str,
-        filename: str,
-    ) -> dict:
-        """
-        Generate a DAG conf for a file.
-        """
-        conf = {
-            "vendor_uuid": vendor_uuid,
-            "vendor_interface_uuid": vendor_interface_uuid,
-            "dataload_profile_uuid": dataload_profile_uuid,
-            "filename": filename,
-        }
-        execution_date = datetime.now() + timedelta(days=processing_delay)
-        dag_run_id = (
-            f"{DagRun.generate_run_id(DagRunType.MANUAL, execution_date)}-{filename}"
-        )
-        return {
-            "conf": conf,
-            "execution_date": execution_date.isoformat(),
-            "trigger_run_id": dag_run_id,
-            "trigger_dag_id": processing_dag,
-        }
-
-    @task
-    def setup_processing_dag(processing_dag: str) -> list[str]:
-        return [processing_dag]
-
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
+
     downloaded_files = ftp_download_task(
         conn_id,
         params["remote_path"],
@@ -115,6 +80,7 @@ with DAG(
         params["filename_regex"],
         params["vendor_interface_uuid"],
     )
+
     archive_task(
         downloaded_files,
         params["download_path"],
@@ -122,19 +88,9 @@ with DAG(
         params["vendor_interface_uuid"],
     )
 
-    dag_run_kwargs = generate_dag_run_kwargs.partial(
-        vendor_uuid=params["vendor_uuid"],
-        vendor_interface_uuid=params["vendor_interface_uuid"],
-        dataload_profile_uuid=params["dataload_profile_uuid"],
-        processing_delay=params["processing_delay"],
-        processing_dag=params["processing_dag"],
-    ).expand(filename=downloaded_files)
-
     files_fetched_email_task(
         params["vendor_name"],
         params["vendor_code"],
         params["vendor_interface_uuid"],
         downloaded_files,
     )
-
-    TriggerDagRunOperator.partial(task_id="process_file").expand_kwargs(dag_run_kwargs)

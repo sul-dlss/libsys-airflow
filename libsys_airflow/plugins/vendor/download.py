@@ -87,7 +87,7 @@ def ftp_download_task(
     download_days_ago = Variable.get("download_days_ago")
     mod_date_after = None
     if download_days_ago:
-        mod_date_after = datetime.now() - timedelta(days=int(download_days_ago))
+        mod_date_after = datetime.utcnow() - timedelta(days=int(download_days_ago))
 
     return download(
         hook,
@@ -191,16 +191,29 @@ def _record_vendor_file(
         existing_vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
+
         if existing_vendor_file:
             session.delete(existing_vendor_file)
+
+        # vendor interfaces with no import profile do not get an expected load time
+        if vendor_interface.folio_data_import_profile_uuid:
+            expected_load_time = datetime.utcnow()
+            if vendor_interface.processing_delay_in_days:
+                expected_load_time += timedelta(
+                    days=vendor_interface.processing_delay_in_days
+                )
+        else:
+            expected_load_time = None
+
         new_vendor_file = VendorFile(
-            created=datetime.now(),
-            updated=datetime.now(),
+            created=datetime.utcnow(),
+            updated=datetime.utcnow(),
             vendor_interface_id=vendor_interface.id,
             vendor_filename=filename,
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
+            expected_load_time=expected_load_time,
         )
         session.add(new_vendor_file)
         session.commit()

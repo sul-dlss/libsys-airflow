@@ -21,7 +21,7 @@ rows = Rows(
         vendor_code_from_folio="ACME",
         acquisitions_unit_from_folio="ACMEUNIT",
         has_active_vendor_interfaces=False,
-        last_folio_update=datetime.now(),
+        last_folio_update=datetime.utcnow(),
     ),
     VendorInterface(
         id=1,

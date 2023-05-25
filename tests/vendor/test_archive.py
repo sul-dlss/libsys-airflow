@@ -27,7 +27,7 @@ rows = Rows(
         vendor_code_from_folio="Gobi",
         acquisitions_unit_from_folio="ACMEUNIT",
         has_active_vendor_interfaces=False,
-        last_folio_update=datetime.now(),
+        last_folio_update=datetime.utcnow(),
     ),
     VendorInterface(
         id=1,
@@ -40,8 +40,8 @@ rows = Rows(
         active=True,
     ),
     VendorFile(
-        created=datetime.now(),
-        updated=datetime.now(),
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
         vendor_interface_id=1,
         vendor_filename="0720230118.mrc",
         filesize=123,

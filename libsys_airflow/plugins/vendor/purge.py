@@ -116,7 +116,7 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
                 logger.error(f"{filename} for {vendor_interface} not found")
                 continue
             vendor_file.status = FileStatus.purged
-            vendor_file.updated = datetime.now()
+            vendor_file.updated = datetime.utcnow()
             logger.info(f"Updated {vendor_file}")
             session.commit()
 

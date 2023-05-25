@@ -48,13 +48,14 @@ def files_fetched_email_task(
 def send_files_fetched_email(
     vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
 ):
-    send_email(
-        os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
-        _html_content(
-            vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
-        ),
-    )
+    if _email_enabled():
+        send_email(
+            os.getenv('VENDOR_LOADS_TO_EMAIL'),
+            f"{vendor_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
+            _html_content(
+                vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
+            ),
+        )
 
 
 def _email_enabled() -> bool:
