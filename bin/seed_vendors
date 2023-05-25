@@ -47,6 +47,7 @@ class VendorLoader:
         vendors = [
             "AMALIV-SUL",
             "CASALI-SUL",
+            "CIBTC-SUL",  # adding to check processing when parens in file name
             "COUTTS-SUL",
             "HARRAS-SUL",
             "SFX",
@@ -67,7 +68,7 @@ class VendorLoader:
         )
         vendor_interface_result.raise_for_status()
         return vendor_interface_result.json()
-    
+
     def get_acquisitions_unit_name(self, acq_id):
         acq_name_result = requests.get(
             f"{self._folio_client.okapi_url}/acquisitions-units/units/{acq_id}",
