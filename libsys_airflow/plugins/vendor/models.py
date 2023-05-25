@@ -12,7 +12,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
-
+import re
 
 Model = declarative_base()
 
@@ -122,6 +122,17 @@ class VendorInterface(Model):
     def upload_only(self):
         return self.folio_interface_uuid is None
 
+    @classmethod
+    def load(cls, interface_uuid: str, session: Session) -> 'VendorInterface':
+        match = re.match(r'^upload_only-(\d+)$', interface_uuid)
+        if match:
+            id = int(match.group(1))
+            return session.get(cls, id)
+        else:
+            return session.scalars(
+                select(cls).where(cls.folio_interface_uuid == interface_uuid)
+            ).first()
+
 
 class FileStatus(enum.Enum):
     not_fetched = "not_fetched"
@@ -147,7 +158,8 @@ class VendorFile(Model):
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)
-    expected_execution = Column(Date, nullable=False)
+    expected_execution = Column(Date, nullable=True)
+    archive_date = Column(Date, nullable=True)
     status = Column(
         Enum(FileStatus),
         nullable=False,
@@ -158,3 +170,18 @@ class VendorFile(Model):
 
     def __repr__(self) -> str:
         return f"{self.vendor_filename} - {self.vendor_timestamp}"
+
+    @classmethod
+    def load(cls, interface_uuid: str, filename: str, session: Session) -> 'VendorFile':
+        vendor_interface = VendorInterface.load(interface_uuid, session)
+        return cls.load_with_vendor_interface(vendor_interface, filename, session)
+
+    @classmethod
+    def load_with_vendor_interface(
+        cls, vendor_interface: VendorInterface, filename: str, session: Session
+    ) -> 'VendorFile':
+        return session.scalars(
+            select(cls)
+            .where(cls.vendor_interface_id == vendor_interface.id)
+            .where(cls.vendor_filename == filename)
+        ).first()

@@ -56,7 +56,7 @@ rows = Rows(
         vendor_filename="ec1234.mrc",
         filesize=337,
         status=FileStatus.not_fetched,
-        expected_execution=datetime.utcnow() - timedelta(days=90),
+        archive_date=datetime.utcnow() - timedelta(days=90),
         vendor_timestamp=datetime.fromisoformat("2023-05-10T00:21:47"),
     ),
 )

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import date
 
 
 def vendor_data_basepath() -> str:
@@ -18,12 +18,10 @@ def archive_basepath() -> str:
     return os.path.join(vendor_data_basepath(), "archive")
 
 
-def archive_path(
-    vendor_uuid: str, vendor_interface_uuid: str, execution_date: datetime
-):
+def archive_path(vendor_uuid: str, vendor_interface_uuid: str, archive_date: date):
     return os.path.join(
         archive_basepath(),
-        execution_date.strftime("%Y%m%d"),
+        archive_date.strftime("%Y%m%d"),
         vendor_uuid,
         vendor_interface_uuid,
     )

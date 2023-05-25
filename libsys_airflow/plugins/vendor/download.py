@@ -2,7 +2,7 @@ import logging
 import re
 import pathlib
 from typing import Union, Callable, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -14,8 +14,8 @@ from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.models import VendorFile
-from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
+from libsys_airflow.plugins.vendor.models import VendorFile, VendorInterface
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,6 @@ def ftp_download_task(
     download_path: str,
     filename_regex: str,
     vendor_interface_uuid: str,
-    expected_execution: str,
 ) -> list[str]:
     logger.info(
         f"Downloading for interface {vendor_interface_uuid} from {remote_path} with {conn_id}"
@@ -96,7 +95,6 @@ def ftp_download_task(
         download_path,
         filter_strategy,
         vendor_interface_uuid,
-        datetime.fromisoformat(expected_execution).date(),
         mod_date_after,
     )
 
@@ -121,7 +119,6 @@ def download(
     download_path: str,
     filter_strategy: Callable,
     vendor_interface_uuid: str,
-    expected_execution: date,
     mod_date_after: Optional[datetime],
 ) -> list[str]:
     """
@@ -144,7 +141,6 @@ def download(
         adapter,
         mod_date_after,
         vendor_interface_uuid,
-        expected_execution,
         engine,
     )
     logger.info(f"Filtered by mod filenames: {filtered_filenames}")
@@ -163,7 +159,6 @@ def download(
                 "fetching_error",
                 vendor_interface_uuid,
                 mod_time,
-                expected_execution,
                 engine,
             )
             raise
@@ -174,7 +169,6 @@ def download(
                 "fetched",
                 vendor_interface_uuid,
                 mod_time,
-                expected_execution,
                 engine,
             )
     return list(filtered_filenames)
@@ -190,16 +184,13 @@ def _record_vendor_file(
     status: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
-    expected_execution: date,
     engine: Engine,
 ):
     with Session(engine) as session:
-        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
-        existing_vendor_file = session.scalars(
-            select(VendorFile)
-            .where(VendorFile.vendor_filename == filename)
-            .where(VendorFile.vendor_interface_id == vendor_interface.id)
-        ).first()
+        vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
+        existing_vendor_file = VendorFile.load_with_vendor_interface(
+            vendor_interface, filename, session
+        )
         if existing_vendor_file:
             session.delete(existing_vendor_file)
         new_vendor_file = VendorFile(
@@ -210,7 +201,6 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
-            expected_execution=expected_execution,
         )
         session.add(new_vendor_file)
         session.commit()
@@ -258,7 +248,7 @@ def _create_adapter(
 
 def _vendor_interface_id(vendor_interface_uuid: str, engine: Engine) -> int:
     with Session(engine) as session:
-        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
+        vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
         return vendor_interface.id
 
 
@@ -285,7 +275,6 @@ def _filter_mod_date(
     adapter: Union[FTPAdapter, SFTPAdapter],
     mod_date_after: Optional[datetime],
     vendor_interface_uuid: str,
-    expected_execution: date,
     engine: Engine,
 ) -> list[str]:
     if mod_date_after is None:
@@ -303,7 +292,6 @@ def _filter_mod_date(
                 "skipped",
                 vendor_interface_uuid,
                 mod_time,
-                expected_execution,
                 engine,
             )
     return filtered_filenames

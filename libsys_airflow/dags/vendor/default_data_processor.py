@@ -15,11 +15,9 @@ from libsys_airflow.plugins.folio.data_import import (
     data_import_branch_task,
 )
 from libsys_airflow.plugins.vendor.extract import extract_task
-from libsys_airflow.plugins.vendor.models import VendorFile
-from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
+from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ with DAG(
 
         pg_hook = PostgresHook("vendor_loads")
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
-            vendor_interface = load_vendor_interface(
+            vendor_interface = VendorInterface.load(
                 params["vendor_interface_uuid"], session
             )
             processing_options = vendor_interface.processing_options or {}
@@ -76,11 +74,9 @@ with DAG(
             params["add_fields"] = processing_options.get("add_fields")
             params["archive_regex"] = processing_options.get("archive_regex")
 
-            vendor_file = session.scalars(
-                select(VendorFile)
-                .where(VendorFile.vendor_filename == params["filename"])
-                .where(VendorFile.vendor_interface_id == vendor_interface.id)
-            ).first()
+            vendor_file = VendorFile.load_file_with_vendor_interface(
+                vendor_interface, params["filename"], session
+            )
             logger.info(f"vendor_file is {vendor_file}")
             vendor_file.dag_run_id = context["run_id"]
             session.commit()
