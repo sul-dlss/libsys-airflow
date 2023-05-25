@@ -5,7 +5,7 @@ from datetime import datetime
 
 from airflow.api.common.trigger_dag import trigger_dag
 from flask_appbuilder import expose, BaseView
-from flask import request, redirect, url_for, flash
+from flask import request, redirect, url_for, flash, send_from_directory
 from sqlalchemy import select
 
 from libsys_airflow.plugins.vendor.job_profiles import job_profiles
@@ -179,6 +179,24 @@ class VendorManagementView(BaseView):
             url_for(
                 "VendorManagementView.interface", interface_id=file.vendor_interface_id
             )
+        )
+
+    @expose("/file/<int:file_id>/download", methods=["GET"])
+    def download_file(self, file_id):
+        session = Session()
+        file = session.query(VendorFile).get(file_id)
+        path = archive_path(
+            file.vendor_interface.vendor.folio_organization_uuid,
+            file.vendor_interface.interface_uuid,
+            file.expected_execution,
+        )
+
+        print(f"Downloading {file.vendor_filename} from {path}")
+
+        return send_from_directory(
+            path,
+            file.vendor_filename,
+            as_attachment=True,
         )
 
     def _trigger_processing_dag(self, file):

@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import shutil
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
@@ -264,3 +265,26 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
                 "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
             },
         )
+
+
+def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F811
+    mocker.patch(
+        'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
+        return_value=str(tmp_path),
+    )
+    path = os.path.join(
+        tmp_path,
+        f"archive/{(now - timedelta(days=9)).strftime('%Y%m%d')}/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc.dat",
+    )
+    os.makedirs(os.path.dirname(path))
+    shutil.copyfile("tests/vendor/0720230118.mrc", path)
+
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+        )
+
+        response = test_airflow_client.get('/vendors/file/1/download')
+        assert response.status_code == 200
+        assert response.content_type == 'application/octet-stream'
+        assert response.content_length == 35981

@@ -1,4 +1,5 @@
 {% extends "airflow/main.html" %}
+{% import "vendors/_macros.html" as _macros -%}
 
 {% block content %}
 <h1>Interface: {{ interface.display_name }}</h1>
@@ -58,7 +59,7 @@
   <tr>
     <td>{{ file.created }}</td>
     <td>{{ file.updated }}</td>
-    <td>{{ file.vendor_filename }}</td>
+    <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
     <td>{{ file.filesize }}</td>
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.expected_execution }}</td>
@@ -83,7 +84,7 @@
   <tr>
     <td>{{ file.created }}</td>
     <td>{{ file.updated }}</td>
-    <td>{{ file.vendor_filename }}</td>
+    <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
     <td>{{ file.filesize }}</td>
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.loaded_timestamp }}</td>
