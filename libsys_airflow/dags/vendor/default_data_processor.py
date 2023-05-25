@@ -15,7 +15,7 @@ from libsys_airflow.plugins.folio.data_import import (
     data_import_branch_task,
 )
 from libsys_airflow.plugins.vendor.extract import extract_task
-from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
+from libsys_airflow.plugins.vendor.models import VendorInterface
 from libsys_airflow.plugins.vendor.emails import email_args
 
 from sqlalchemy.orm import Session
@@ -93,13 +93,6 @@ with DAG(
                 params["add_fields"] = None
             # Not yet supported in UI.
             params["archive_regex"] = processing_options.get("archive_regex")
-
-            vendor_file = VendorFile.load_with_vendor_interface(
-                vendor_interface, params["filename"], session
-            )
-            logger.info(f"vendor_file is {vendor_file}")
-            vendor_file.dag_run_id = context["run_id"]
-            session.commit()
 
         logger.info(f"Params are {params}")
         assert os.path.exists(os.path.join(params["download_path"], params["filename"]))

@@ -1,4 +1,7 @@
+from datetime import datetime, timezone
 import enum
+import re
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -12,7 +15,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
-import re
+from typing import List
 
 Model = declarative_base()
 
@@ -158,7 +161,7 @@ class VendorFile(Model):
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)
-    expected_execution = Column(Date, nullable=True)
+    expected_load_time = Column(DateTime, nullable=True)
     archive_date = Column(Date, nullable=True)
     status = Column(
         Enum(FileStatus),
@@ -186,3 +189,21 @@ class VendorFile(Model):
             .where(cls.vendor_interface_id == vendor_interface.id)
             .where(cls.vendor_filename == filename)
         ).first()
+
+    @classmethod
+    def ready_for_folio_load(cls, session: Session) -> List["VendorFile"]:
+        """
+        Returns a list of VendorFile objects that are ready for loading into
+        Folio. Thse are files that have a status of "fetched" and which have an
+        expected_load_time in the past. Results are ordered in ascending order
+        of when they were fetched, and no more than 1000 are returned at a time.
+        """
+        return session.scalars(
+            select(VendorFile)
+            .filter(
+                VendorFile.status.in_([FileStatus.fetched]),
+            )
+            .filter(VendorFile.expected_load_time <= datetime.now(timezone.utc))
+            .limit(1000)
+            .order_by(VendorFile.created.asc())
+        ).all()

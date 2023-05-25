@@ -191,8 +191,16 @@ def _record_vendor_file(
         existing_vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
+
         if existing_vendor_file:
             session.delete(existing_vendor_file)
+
+        expected_load_time = datetime.now()
+        if vendor_interface.processing_delay_in_days:
+            expected_load_time += timedelta(
+                days=vendor_interface.processing_delay_in_days
+            )
+
         new_vendor_file = VendorFile(
             created=datetime.now(),
             updated=datetime.now(),
@@ -201,6 +209,7 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
+            expected_load_time=expected_load_time,
         )
         session.add(new_vendor_file)
         session.commit()

@@ -203,6 +203,21 @@ class VendorManagementView(BaseView):
         session.commit()
         return new_vendor_file
 
+    @expose("/files/<int:file_id>", methods=["GET", "POST"])
+    def file(self, file_id):
+        session = Session()
+        file = session.query(VendorFile).get(file_id)
+        if request.method == 'POST' and 'expected-load-time' in request.form:
+            try:
+                file.expected_load_time = datetime.fromisoformat(
+                    request.form['expected-load-time']
+                )
+                session.commit()
+            except ValueError:
+                flash("invalid date: {request.form['expected-load-time']}")
+
+        return self.render_template("vendors/file.html", file=file)
+
     @expose("/files/<int:file_id>/load", methods=["POST"])
     def load_file(self, file_id):
         session = Session()
