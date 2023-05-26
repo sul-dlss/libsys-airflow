@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+from typing import Optional
 
 from airflow.models import Variable
 from airflow.decorators import task
@@ -28,6 +29,14 @@ def record_loaded(context):
 
 def record_loading_error(context):
     _record_status(context, FileStatus.loading_error)
+
+
+@task.branch()
+def data_import_branch_task(dataload_profile_uuid: Optional[str]):
+    if dataload_profile_uuid:
+        return "data_import_task"
+    else:
+        return None
 
 
 @task(

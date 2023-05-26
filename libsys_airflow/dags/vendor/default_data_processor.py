@@ -10,7 +10,10 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
 from libsys_airflow.plugins.vendor.paths import download_path
-from libsys_airflow.plugins.folio.data_import import data_import_task
+from libsys_airflow.plugins.folio.data_import import (
+    data_import_task,
+    data_import_branch_task,
+)
 from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.models import VendorFile
 from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
@@ -46,7 +49,7 @@ with DAG(
             "", type="string"
         ),  # '65d30c15-a560-4064-be92-f90e38eeb351',
         "dataload_profile_uuid": Param(
-            "", type="string"
+            None, type=["null", "string"]
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
         "filename": Param("", type="string"),
     },
@@ -99,8 +102,10 @@ with DAG(
         params["add_fields"],
     )
     batch_filenames = batch_task(params["download_path"], filename)
+    data_import_branch = data_import_branch_task(params["dataload_profile_uuid"])
     data_import = data_import_task(
         params["download_path"], batch_filenames, params["dataload_profile_uuid"]
     )
 
     process_marc >> batch_filenames
+    data_import_branch >> data_import
