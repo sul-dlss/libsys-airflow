@@ -47,7 +47,7 @@ with DAG(
             "", type="string"
         ),  # '65d30c15-a560-4064-be92-f90e38eeb351',
         "dataload_profile_uuid": Param(
-            "", type="string"
+            None, type=["null", "string"]
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
         "remote_path": Param(None, type=["null", "string"]),  # 'oclc'
         "filename_regex": Param(
