@@ -170,21 +170,23 @@ injected when using docker-compose:
 - **DATABASE_PASSWORD**
 - **DATABASE_HOSTNAME**
 
-(If you're having problems setting these with the `.env` file when running locally, add the keyword `export` before each variable in that `.env` file
-and then run `source .env`)
+When running locally you can use the `dotenv` command installed with the `python-dotenv` requirement to automatically put your `.env` variables into the environment.
 
 To generate a migration script, first make the changes in the `models.py`
 module and then run the following steps:
 
-1.  From the root directory, run `poetry run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE:** not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
-1.  After the migration script is created, run `poetry run alembic upgrade head` to apply your latest changes to the database.
+1. Set your shell to use the local poetry virtual environment: `poetry shell`
+2. Run `dotenv run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
+3. After the migration script is created, run `dotenv run alembic upgrade head` to apply your latest changes to the database.
+
+If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means. 
 
 #### Seeding Vendors
 
 Assuming that you have put Folio related environment variables in your `.env` file you can:
 
 ```
-poetry run bin/seed_vendors
+dotenv run bin/seed_vendors
 ```
 
 In a deployed environment, this can be run as:
@@ -197,7 +199,7 @@ where `20230516183735-airflow-webserver-1` is the container id.
 
 Assuming that you have put Folio related environment variables in your `.env` file you can look up acquisitions unit names in Folio and populate the database:
 ```
-poetry run bin/refresh_vendors
+dotenv run bin/refresh_vendors
 ```
 
 This can be run as a dry run with `-d` or `--dry`.
@@ -217,10 +219,10 @@ Install the test database (sqlite):
 `airflow db init`
 
 Then, to run the test suite, use [pytest](https://docs.pytest.org/).
-`pytest`
+`poetry run pytest`
 
 To see stdout or stderr add the `-rP` flag:
-`pytest -rP`
+`poetry run pytest -rP`
 
 ### Flake8 (Python linter)
 
