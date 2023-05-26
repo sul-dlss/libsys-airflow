@@ -1,0 +1,61 @@
+{% extends "airflow/main.html" %}
+{% import "vendors/_macros.html" as _macros -%}
+
+{% block content %}
+<div class="page-header">
+  <h1>Vendor Management</h1>
+</div>
+
+<ul class="nav nav-tabs">
+  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+  <li role="presentation"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+</ul>
+
+<div class="panel panel-success">
+  <div class="panel-heading"><h3>In Progress</h3></div>
+
+  <table class="table table-striped" id="inProgressTable">
+    <thead>
+      <th>Vendor</th>
+      <th>Vendor Interface</th>
+      <th>Filename</th>
+      <th>Status</th>
+    </thead>
+    <tbody>
+      {% for file in in_progress_files %}
+      <tr>
+        <td>{{ file.vendor_interface.vendor.display_name }}</td>
+        <td>{{ file.vendor_interface.display_name }}</td>
+        <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
+        <td>{{ file.status.value }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel panel-danger">
+  <div class="panel-heading"><h3>Errors</h3></div>
+
+  <table class="table table-striped" id="errorsTable">
+    <thead>
+      <th>Vendor</th>
+      <th>Vendor Interface</th>
+      <th>Filename</th>
+      <th>Status</th>
+      <th>Retry</th>
+    </thead>
+    <tbody>
+      {% for file in errors_files %}
+      <tr>
+        <td>{{ file.vendor_interface.vendor.display_name }}</td>
+        <td>{{ file.vendor_interface.display_name }}</td>
+        <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
+        <td>{{ file.status.value }}</td>
+        <td>TBD</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

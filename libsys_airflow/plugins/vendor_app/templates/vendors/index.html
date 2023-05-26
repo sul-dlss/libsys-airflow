@@ -11,7 +11,19 @@
 {% endblock %}
 
 {% block content %}
-<h1>Vendors</h1>
+<div class="page-header">
+  <h1>Vendors</h1>
+</div>
+
+<ul class="nav nav-tabs">
+  <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+</ul>
+
+<ol class="breadcrumb">
+  <li class="active">All</li>
+</ol>
+
 <table class="table table-striped" id="vendorTable">
     <thead>
         <th>Name</th>

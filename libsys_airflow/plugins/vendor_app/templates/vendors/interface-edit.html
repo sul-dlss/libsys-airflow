@@ -3,7 +3,21 @@
 {% block content %}
 {{ super() }}
 
-<h1>Edit Vendor Interface</h1>
+<div class="page-header">
+  <h1>Edit Vendor Interface</h1>
+</div>
+
+<ul class="nav nav-tabs">
+  <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+</ul>
+
+<ol class="breadcrumb">
+  <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
+  <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></li>
+  <li><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a></li>
+  <li class="active">Edit</li>
+</ol>
 
 <form class="form-horizontal" method="post" action="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

@@ -46,13 +46,25 @@
    document.addEventListener('DOMContentLoaded', vendorActivityHandler)
  }
 </script>
-<h1>{{ vendor.display_name }}</h1>
+<div class="page-header">
+  <h1>{{ vendor.display_name }}</h1>
+</div>
+
+<ul class="nav nav-tabs">
+  <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+</ul>
+
+<ol class="breadcrumb">
+  <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
+  <li class="active">{{ vendor.display_name }}</li>
+</ol>
 
 <dl class="dl-horizontal">
     <dt>Organization ID</dt>
     <dd>{{ vendor.folio_organization_uuid }}</dd>
 </dl>
-  
+
 <h2>Vendor Interfaces</h2>
 
 <table id="vendor_interfaces" class="table table-striped">

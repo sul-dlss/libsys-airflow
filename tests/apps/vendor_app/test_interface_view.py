@@ -157,7 +157,7 @@ def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
 
-        response = test_airflow_client.get('/vendors/interface/1')
+        response = test_airflow_client.get('/vendor_management/interfaces/1')
         assert response.status_code == 200
         pending = response.html.find(id='pending-files')
         assert pending
@@ -176,7 +176,7 @@ def test_interface_edit_view(test_airflow_client, mock_db, mocker):  # noqa: F81
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
-        response = test_airflow_client.get('/vendors/interface/1/edit')
+        response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
         assert response.status_code == 200
 
 
@@ -188,7 +188,7 @@ def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
-        response = test_airflow_client.post('/vendors/file/1/load')
+        response = test_airflow_client.post('/vendor_management/file/1/load')
         assert response.status_code == 302
 
     with Session(mock_db()) as session:
@@ -223,7 +223,7 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
         response = test_airflow_client.post(
-            '/vendors/interface/1/file',
+            '/vendor_management/interfaces/1/file',
             data={
                 'file-upload': (
                     open('tests/vendor/0720230118.mrc', 'rb'),
@@ -286,7 +286,7 @@ def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa:
             'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
         )
 
-        response = test_airflow_client.get('/vendors/file/1/download')
+        response = test_airflow_client.get('/vendor_management/file/1/download')
         assert response.status_code == 200
         assert response.content_type == 'application/octet-stream'
         assert response.content_length == 35981

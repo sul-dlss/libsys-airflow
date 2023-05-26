@@ -2,7 +2,20 @@
 {% import "vendors/_macros.html" as _macros -%}
 
 {% block content %}
-<h1>Interface: {{ interface.display_name }}</h1>
+<div class="page-header">
+  <h1>Interface: {{ interface.display_name }}</h1>
+</div>
+
+<ul class="nav nav-tabs">
+  <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+</ul>
+
+<ol class="breadcrumb">
+  <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
+  <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></li>
+  <li class="active">{{ interface.display_name }}</li>
+</ol>
 
 <dl class="dl-horizontal">
   <dt>Vendor</dt>

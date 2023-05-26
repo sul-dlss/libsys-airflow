@@ -23,25 +23,58 @@ logger = logging.getLogger(__name__)
 
 
 class VendorManagementView(BaseView):
-    default_view = "index"
-    route_base = "/vendors"
+    default_view = "dashboard"
+    route_base = "/vendor_management"
 
     @expose("/")
-    def index(self):
+    def dashboard(self):
+        in_progress_files = (
+            Session()
+            .query(VendorFile)
+            .filter(
+                VendorFile.status.in_(
+                    [
+                        FileStatus.not_fetched,
+                        FileStatus.fetched,
+                        FileStatus.loading,
+                    ]
+                )
+            )
+            .order_by(VendorFile.updated)
+        )
+        errors_files = (
+            Session()
+            .query(Vendor)
+            .filter(
+                VendorFile.status.in_(
+                    [FileStatus.fetching_error, FileStatus.loading_error]
+                )
+            )
+            .order_by(VendorFile.updated)
+        )
+
+        return self.render_template(
+            "vendors/dashboard.html",
+            in_progress_files=in_progress_files,
+            errors_files=errors_files,
+        )
+
+    @expose("/vendors")
+    def vendors(self):
         vendors = Session().query(Vendor).order_by(Vendor.display_name)
         return self.render_template("vendors/index.html", vendors=vendors)
 
-    @expose("/<int:vendor_id>")
+    @expose("/vendors/<int:vendor_id>")
     def vendor(self, vendor_id):
         vendor = Session().query(Vendor).get(vendor_id)
         return self.render_template("vendors/vendor.html", vendor=vendor)
 
-    @expose("/interface/<int:interface_id>")
+    @expose("/interfaces/<int:interface_id>")
     def interface(self, interface_id):
         interface = Session().query(VendorInterface).get(interface_id)
         return self.render_template("vendors/interface.html", interface=interface)
 
-    @expose("/interface/<int:interface_id>/edit", methods=['GET', 'POST'])
+    @expose("/interfaces/<int:interface_id>/edit", methods=['GET', 'POST'])
     def interface_edit(self, interface_id):
         session = Session()
         interface = session.query(VendorInterface).get(interface_id)
@@ -110,7 +143,7 @@ class VendorManagementView(BaseView):
 
         return interface
 
-    @expose("/interface/<int:interface_id>/file", methods=["POST"])
+    @expose("/interfaces/<int:interface_id>/file", methods=["POST"])
     def file_upload(self, interface_id):
         if "file-upload" not in request.files:
             flash("No file uploaded")
