@@ -58,6 +58,7 @@ x-airflow-common:
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     # For backward compatibility, with Airflow <2.3
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/libsys
+    AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-25}
     AIRFLOW__CELERY__RESULT_BACKEND: "db+postgresql://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/libsys"
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-}
@@ -84,6 +85,7 @@ x-airflow-common:
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    DATABASE_USERNAME: ${DATABASE_USERNAME}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/libsys_airflow:/opt/airflow/libsys_airflow
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
