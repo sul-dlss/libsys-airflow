@@ -74,7 +74,7 @@ with DAG(
             params["add_fields"] = processing_options.get("add_fields")
             params["archive_regex"] = processing_options.get("archive_regex")
 
-            vendor_file = VendorFile.load_file_with_vendor_interface(
+            vendor_file = VendorFile.load_with_vendor_interface(
                 vendor_interface, params["filename"], session
             )
             logger.info(f"vendor_file is {vendor_file}")
