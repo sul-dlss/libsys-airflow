@@ -19,6 +19,5 @@ class EngineWrapper:
         return getattr(self.engine, name)
 
 
-Session = scoped_session(
-    sessionmaker(autocommit=False, autoflush=False, bind=EngineWrapper())
-)
+engine = EngineWrapper()
+Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
