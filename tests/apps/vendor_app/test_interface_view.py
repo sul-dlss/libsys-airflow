@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import shutil
 
 import pytest
@@ -53,7 +53,7 @@ rows = Rows(
         filesize=1234,
         vendor_timestamp=now - timedelta(days=30),
         loaded_timestamp=now - timedelta(days=8),
-        expected_execution=now - timedelta(days=9),
+        archive_date=now - timedelta(days=9),
         status=FileStatus.loaded,
         dag_run_id="EB2FD649-2B0A-4671-9BD4-309BF5197870",
     ),
@@ -67,7 +67,7 @@ rows = Rows(
         filesize=123456,
         vendor_timestamp=now - timedelta(days=30),
         loaded_timestamp=None,
-        expected_execution=now - timedelta(days=3),
+        archive_date=now - timedelta(days=3),
         status=FileStatus.loading_error,
         dag_run_id="520F69D8-97BF-47CA-976A-F9CD4DB3FAD7",
     ),
@@ -81,7 +81,6 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=12),
         loaded_timestamp=None,
-        expected_execution=now + timedelta(days=1),
         status=FileStatus.fetched,
     ),
     # a file was fetched 1 day ago, and is waiting to be loaded
@@ -94,7 +93,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_execution=now + timedelta(days=0.5),
+        archive_date=now + timedelta(days=0.5),
         status=FileStatus.fetched,
     ),
     # a file was that failed to fetch right now
@@ -107,7 +106,6 @@ rows = Rows(
         filesize=24601,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_execution=now,
         status=FileStatus.fetching_error,
     ),
 )
@@ -216,8 +214,9 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
         return_value=str(tmp_path),
     )
-    mock_datetime = mocker.patch('libsys_airflow.plugins.vendor_app.vendors.datetime')
-    mock_datetime.now.return_value = datetime(2021, 1, 1, 0, 0, 0, 0)
+    today = date(2021, 1, 1)
+    mock_date = mocker.patch('libsys_airflow.plugins.vendor.archive.date')
+    mock_date.today.return_value = today
 
     with Session(mock_db()) as session:
         mocker.patch(
@@ -228,7 +227,7 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
             data={
                 'file-upload': (
                     open('tests/vendor/0720230118.mrc', 'rb'),
-                    '0720230118.mrc',
+                    'acme-extra-strength-marc.dat',
                     'application/octet-stream',
                 )
             },
@@ -238,28 +237,31 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
         assert os.path.exists(
             os.path.join(
                 tmp_path,
-                'downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/0720230118.mrc',
+                'downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat',
             )
         )
         assert os.path.exists(
             os.path.join(
                 tmp_path,
-                'archive/20210101/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/0720230118.mrc',
+                'archive/20210101/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat',
             )
         )
 
         vendor_file = session.scalars(
-            select(VendorFile).where(VendorFile.vendor_filename == '0720230118.mrc')
+            select(VendorFile).where(
+                VendorFile.vendor_filename == 'acme-extra-strength-marc.dat'
+            )
         ).first()
         assert vendor_file
         assert vendor_file.vendor_interface_id == 1
         assert vendor_file.filesize == 35981
         assert vendor_file.status == FileStatus.uploaded
+        assert vendor_file.archive_date == today
 
         mock_trigger_dag.assert_called_once_with(
             'default_data_processor',
             conf={
-                "filename": '0720230118.mrc',
+                "filename": 'acme-extra-strength-marc.dat',
                 "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
                 "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
                 "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',

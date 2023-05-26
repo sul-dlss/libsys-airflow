@@ -1,5 +1,5 @@
 import pytest  # noqa
-from datetime import datetime, date
+from datetime import datetime
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
 
@@ -35,7 +35,6 @@ rows = Rows(
         filesize=123,
         status=FileStatus.not_fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
-        expected_execution=datetime.now().date(),
     ),
     VendorFile(
         created=datetime.now(),
@@ -45,7 +44,6 @@ rows = Rows(
         filesize=456,
         status=FileStatus.fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
-        expected_execution=datetime.now().date(),
     ),
 )
 
@@ -104,7 +102,6 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
         download_path,
         _regex_filter_strategy(r".+\.mrc"),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        date.fromisoformat("2023-01-01"),
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 
@@ -142,7 +139,6 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
         download_path,
         _regex_filter_strategy(r".+\.mrc"),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        date.fromisoformat("2023-01-01"),
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 
@@ -175,7 +171,6 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             download_path,
             _regex_filter_strategy(r".+\.mrc"),
             "65d30c15-a560-4064-be92-f90e38eeb351",
-            date.fromisoformat("2023-01-01"),
             datetime.fromisoformat("2020-01-01T00:05:23"),
         )
 
@@ -205,7 +200,6 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
         download_path,
         _gobi_order_filter_strategy(),
         "65d30c15-a560-4064-be92-f90e38eeb351",
-        date.fromisoformat("2023-01-01"),
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
 

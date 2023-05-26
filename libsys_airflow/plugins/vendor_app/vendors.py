@@ -6,7 +6,6 @@ from datetime import datetime
 from airflow.api.common.trigger_dag import trigger_dag
 from flask_appbuilder import expose, BaseView
 from flask import request, redirect, url_for, flash, send_from_directory
-from sqlalchemy import select
 
 from libsys_airflow.plugins.vendor.job_profiles import job_profiles
 from libsys_airflow.plugins.vendor.models import (
@@ -15,9 +14,10 @@ from libsys_airflow.plugins.vendor.models import (
     VendorFile,
     FileStatus,
 )
-from libsys_airflow.plugins.vendor.paths import download_path, archive_path
+from libsys_airflow.plugins.vendor.paths import download_path as get_download_path
+from libsys_airflow.plugins.vendor.paths import archive_path as get_archive_path
 from libsys_airflow.plugins.vendor_app.database import Session
-from libsys_airflow.plugins.vendor.archive import archive
+from libsys_airflow.plugins.vendor.archive import archive_file
 
 logger = logging.getLogger(__name__)
 
@@ -124,20 +124,29 @@ class VendorManagementView(BaseView):
 
     def _handle_file_upload(self, interface_id, file_upload):
         session = Session()
-        execution_date = datetime.now()
         interface = session.query(VendorInterface).get(interface_id)
-        filepath = self._save_file(
-            interface.vendor.folio_organization_uuid,
-            interface.interface_uuid,
-            file_upload,
-            execution_date,
+        download_path = get_download_path(
+            interface.vendor.folio_organization_uuid, interface.interface_uuid
         )
 
-        existing_vendor_file = session.scalars(
-            select(VendorFile)
-            .where(VendorFile.vendor_filename == file_upload.filename)
-            .where(VendorFile.vendor_interface_id == interface.id)
-        ).first()
+        filepath = self._save_file(download_path, file_upload)
+
+        vendor_file = self._create_vendor_file(
+            interface, file_upload, filepath, session
+        )
+        archive_file(download_path, vendor_file, session)
+        self._trigger_processing_dag(vendor_file)
+
+    def _save_file(self, path, file_upload):
+        os.makedirs(path, exist_ok=True)
+        filepath = os.path.join(path, file_upload.filename)
+        file_upload.save(filepath)
+        return filepath
+
+    def _create_vendor_file(self, interface, file_upload, filepath, session):
+        existing_vendor_file = VendorFile.load_with_vendor_interface(
+            interface, file_upload.filename, session
+        )
         if existing_vendor_file:
             session.delete(existing_vendor_file)
         new_vendor_file = VendorFile(
@@ -147,23 +156,10 @@ class VendorManagementView(BaseView):
             vendor_filename=file_upload.filename,
             filesize=os.path.getsize(filepath),
             status=FileStatus.uploaded,
-            expected_execution=execution_date,
         )
         session.add(new_vendor_file)
         session.commit()
-        self._trigger_processing_dag(new_vendor_file)
-
-    def _save_file(self, vendor_uuid, interface_uuid, file_upload, execution_date):
-        path = download_path(vendor_uuid, interface_uuid)
-        os.makedirs(path, exist_ok=True)
-        filepath = os.path.join(path, file_upload.filename)
-        file_upload.save(filepath)
-        archive(
-            [file_upload.filename],
-            path,
-            archive_path(vendor_uuid, interface_uuid, execution_date),
-        )
-        return filepath
+        return new_vendor_file
 
     @expose("/file/<int:file_id>/load", methods=["POST"])
     def load_file(self, file_id):
@@ -185,16 +181,16 @@ class VendorManagementView(BaseView):
     def download_file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)
-        path = archive_path(
+        archive_path = get_archive_path(
             file.vendor_interface.vendor.folio_organization_uuid,
             file.vendor_interface.interface_uuid,
-            file.expected_execution,
+            file.archive_date,
         )
 
-        print(f"Downloading {file.vendor_filename} from {path}")
+        print(f"Downloading {file.vendor_filename} from {archive_path}")
 
         return send_from_directory(
-            path,
+            archive_path,
             file.vendor_filename,
             as_attachment=True,
         )

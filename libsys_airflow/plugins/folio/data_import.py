@@ -8,12 +8,11 @@ from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
-from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile
+from libsys_airflow.plugins.vendor.models import FileStatus
 from libsys_airflow.plugins.vendor.marc import is_marc
-from libsys_airflow.plugins.vendor.vendor_interface import load_vendor_interface
+from libsys_airflow.plugins.vendor.models import VendorFile
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 
 logger = logging.getLogger(__name__)
@@ -140,12 +139,7 @@ def _record_status(context, status):
 
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_interface = load_vendor_interface(vendor_interface_uuid, session)
-        vendor_file = session.scalars(
-            select(VendorFile)
-            .where(VendorFile.vendor_filename == filename)
-            .where(VendorFile.vendor_interface_id == vendor_interface.id)
-        ).first()
+        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
         vendor_file.status = status
         session.commit()
 

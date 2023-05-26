@@ -13,7 +13,7 @@ from airflow.utils.types import DagRunType
 from libsys_airflow.plugins.airflow.connections import create_connection_task
 from libsys_airflow.plugins.vendor.download import ftp_download_task
 from libsys_airflow.plugins.vendor.archive import archive_task
-from libsys_airflow.plugins.vendor.paths import download_path, archive_path
+from libsys_airflow.plugins.vendor.paths import download_path
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +65,6 @@ with DAG(
         params["download_path"] = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
-        params["archive_path"] = archive_path(
-            params["vendor_uuid"],
-            params["vendor_interface_uuid"],
-            context["execution_date"],
-        )
-        params["execution_date"] = context["execution_date"].isoformat()
-
         logger.info(f"Params are {params}")
 
         os.makedirs(params["download_path"], exist_ok=True)
@@ -119,9 +112,13 @@ with DAG(
         params["download_path"],
         params["filename_regex"],
         params["vendor_interface_uuid"],
-        params["execution_date"],
     )
-    archive_task(downloaded_files, params["download_path"], params["archive_path"])
+    archive_task(
+        downloaded_files,
+        params["download_path"],
+        params["vendor_uuid"],
+        params["vendor_interface_uuid"],
+    )
 
     dag_run_kwargs = generate_dag_run_kwargs.partial(
         vendor_uuid=params["vendor_uuid"],
