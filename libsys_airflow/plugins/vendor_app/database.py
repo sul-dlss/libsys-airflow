@@ -14,7 +14,7 @@ class EngineWrapper:
     def __getattr__(self, name):
         if self.engine is None:
             self.engine = PostgresHook("vendor_loads").get_sqlalchemy_engine(
-                max_overflow=int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
+                {"max_overflow": int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))}
             )
         return getattr(self.engine, name)
 
