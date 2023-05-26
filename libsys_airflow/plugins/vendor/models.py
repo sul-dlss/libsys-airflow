@@ -167,6 +167,7 @@ class VendorFile(Model):
         server_default=FileStatus.not_fetched.value,
     )
     dag_run_id = Column(String(350), unique=True, nullable=True)
+    folio_job_execution_uuid = Column(String(36), unique=False, nullable=True)
 
     def __repr__(self) -> str:
         return f"{self.vendor_filename} - {self.vendor_timestamp}"

@@ -45,16 +45,26 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
 )
 def data_import_task(
-    download_path: str, batch_filenames: list[str], dataload_profile_uuid: str
+    download_path: str,
+    batch_filenames: list[str],
+    dataload_profile_uuid: str,
+    vendor_interface_uuid: str,
 ):
     """
     Imports a file into Folio using Data Import API
     """
-    data_import(download_path, batch_filenames, dataload_profile_uuid)
+    data_import(
+        download_path, batch_filenames, dataload_profile_uuid, vendor_interface_uuid
+    )
 
 
 def data_import(
-    download_path, batch_filenames, dataload_profile_uuid, folio_client=None
+    download_path,
+    batch_filenames,
+    dataload_profile_uuid,
+    vendor_interface_uuid,
+    folio_client=None,
+    session=None,
 ):
     client = folio_client or _folio_client()
     upload_definition_id, job_execution_id, file_definition_dict = _upload_definition(
@@ -79,9 +89,20 @@ def data_import(
         upload_definition,
         data_type,
     )
+    with session or _session() as db_session:
+        for filename in batch_filenames:
+            vendor_file = VendorFile.load(vendor_interface_uuid, filename, db_session)
+            vendor_file.folio_job_execution_uuid = job_execution_id
+            db_session.commit()
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )
+
+
+def _session():
+    return Session(
+         PostgresHook("vendor_loads").get_sqlalchemy_engine()
+     )
 
 
 def _folio_client():

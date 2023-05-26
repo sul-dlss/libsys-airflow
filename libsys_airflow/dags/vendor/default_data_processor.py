@@ -100,7 +100,10 @@ with DAG(
     batch_filenames = batch_task(params["download_path"], filename)
     data_import_branch = data_import_branch_task(params["dataload_profile_uuid"])
     data_import = data_import_task(
-        params["download_path"], batch_filenames, params["dataload_profile_uuid"]
+        params["download_path"],
+        batch_filenames,
+        params["dataload_profile_uuid"],
+        params["vendor_interface_uuid"],
     )
 
     process_marc >> batch_filenames
