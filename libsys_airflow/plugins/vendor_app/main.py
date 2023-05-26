@@ -12,6 +12,12 @@ vendor_mgt_bp = Blueprint(
     static_url_path="/static/vendor",
 )
 
+
+@vendor_mgt_bp.teardown_app_request
+def shutdown_session(exception=None):
+    Session.remove()
+
+
 # Vendor Management
 vendor_management_view = VendorManagementView()
 vendor_management_view_package = {
@@ -30,8 +36,3 @@ class VendorManagementPlugin(AirflowPlugin):
     admin_views = []
     appbuilder_views = [vendor_management_view_package]
     appbuilder_menu_items = []
-
-
-@vendor_mgt_bp.teardown_request
-def shutdown_session(exception=None):
-    Session().remove()
