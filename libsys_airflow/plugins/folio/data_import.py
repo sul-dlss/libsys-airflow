@@ -49,12 +49,17 @@ def data_import_task(
     batch_filenames: list[str],
     dataload_profile_uuid: str,
     vendor_interface_uuid: str,
+    filename: str,
 ):
     """
     Imports a file into Folio using Data Import API
     """
     data_import(
-        download_path, batch_filenames, dataload_profile_uuid, vendor_interface_uuid
+        download_path,
+        batch_filenames,
+        dataload_profile_uuid,
+        vendor_interface_uuid,
+        filename,
     )
 
 
@@ -63,8 +68,8 @@ def data_import(
     batch_filenames,
     dataload_profile_uuid,
     vendor_interface_uuid,
+    filename,
     folio_client=None,
-    session=None,
 ):
     client = folio_client or _folio_client()
     upload_definition_id, job_execution_id, file_definition_dict = _upload_definition(
@@ -72,11 +77,11 @@ def data_import(
     )
 
     upload_definition = None
-    for filename, file_definition_id in file_definition_dict.items():
-        logger.info(f"Uploading {filename}")
+    for chunked_filename, file_definition_id in file_definition_dict.items():
+        logger.info(f"Uploading {chunked_filename}")
         upload_definition = _upload_file(
             client,
-            os.path.join(download_path, filename),
+            os.path.join(download_path, chunked_filename),
             upload_definition_id,
             file_definition_id,
         )
@@ -89,20 +94,14 @@ def data_import(
         upload_definition,
         data_type,
     )
-    with session or _session() as db_session:
-        for filename in batch_filenames:
-            vendor_file = VendorFile.load(vendor_interface_uuid, filename, db_session)
-            vendor_file.folio_job_execution_uuid = job_execution_id
-            db_session.commit()
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
+        vendor_file.folio_job_execution_uuid = job_execution_id
+        session.commit()
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )
-
-
-def _session():
-    return Session(
-         PostgresHook("vendor_loads").get_sqlalchemy_engine()
-     )
 
 
 def _folio_client():

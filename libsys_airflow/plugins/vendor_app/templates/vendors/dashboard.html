@@ -27,7 +27,7 @@
         <td>{{ file.vendor_interface.vendor.display_name }}</td>
         <td>{{ file.vendor_interface.display_name }}</td>
         <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
-        <td>{{ file.status.value }}</td>
+        <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -51,7 +51,7 @@
         <td>{{ file.vendor_interface.vendor.display_name }}</td>
         <td>{{ file.vendor_interface.display_name }}</td>
         <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
-        <td>{{ file.status.value }}</td>
+        <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
         <td>TBD</td>
       </tr>
       {% endfor %}

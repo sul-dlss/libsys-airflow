@@ -43,17 +43,8 @@ rows = Rows(
         created=datetime.now(),
         updated=datetime.now(),
         vendor_interface_id=1,
-        vendor_filename="0720230118_1.mrc",
+        vendor_filename="0720230118.mrc",
         filesize=235,
-        status=FileStatus.not_fetched,
-        vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
-    ),
-    VendorFile(
-        created=datetime.now(),
-        updated=datetime.now(),
-        vendor_interface_id=1,
-        vendor_filename="0720230118_2.mrc",
-        filesize=236,
         status=FileStatus.not_fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
     ),
@@ -159,15 +150,19 @@ def download_path(tmp_path):
     return str(tmp_path)
 
 
-def test_data_import(download_path, folio_client, pg_hook):
+def test_data_import(download_path, folio_client, pg_hook, mocker):
     with Session(pg_hook()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
         data_import(
             download_path,
             FILENAMES,
             "f4144dbd-def7-4b77-842a-954c62faf319",
             "65d30c15-a560-4064-be92-f90e38eeb351",
+            "0720230118.mrc",
             folio_client=folio_client,
-            session=session,
         )
 
     folio_client.post.assert_any_call(

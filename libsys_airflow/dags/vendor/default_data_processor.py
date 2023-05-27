@@ -104,6 +104,7 @@ with DAG(
         batch_filenames,
         params["dataload_profile_uuid"],
         params["vendor_interface_uuid"],
+        filename,
     )
 
     process_marc >> batch_filenames
