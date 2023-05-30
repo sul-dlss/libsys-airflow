@@ -16,6 +16,7 @@ from libsys_airflow.plugins.folio.data_import import (
 )
 from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
+from libsys_airflow.plugins.vendor.email import email_args
 
 from sqlalchemy.orm import Session
 
@@ -24,14 +25,15 @@ logger = logging.getLogger(__name__)
 # Run with:
 # docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger default_data_processor -c '{"vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "filename": "0720230403.mrc"}'
 
-default_args = {
-    "owner": "folio",
-    "depends_on_past": False,
-    "email_on_failure": False,
-    "email_on_retry": False,
-    "retries": 0,
-    "retry_delay": timedelta(minutes=5),
-}
+default_args = dict(
+    {
+        "owner": "folio",
+        "depends_on_past": False,
+        "retries": 0,
+        "retry_delay": timedelta(minutes=5),
+    },
+    **email_args(),
+)
 
 with DAG(
     dag_id="default_data_processor",

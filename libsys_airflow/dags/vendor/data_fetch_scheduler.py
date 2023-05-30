@@ -9,19 +9,20 @@ from airflow.decorators import task
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-
 from libsys_airflow.plugins.vendor.models import VendorInterface
+from libsys_airflow.plugins.vendor.email import email_args
 
 logger = logging.getLogger(__name__)
 
-default_args = {
-    "owner": "folio",
-    "depends_on_past": False,
-    "email_on_failure": False,
-    "email_on_retry": False,
-    "retries": 0,
-    "retry_delay": timedelta(minutes=5),
-}
+default_args = dict(
+    {
+        "owner": "folio",
+        "depends_on_past": False,
+        "retries": 0,
+        "retry_delay": timedelta(minutes=5),
+    },
+    **email_args(),
+)
 
 with DAG(
     dag_id="data_fetcher_scheduler",
