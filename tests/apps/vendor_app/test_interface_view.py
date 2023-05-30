@@ -154,7 +154,8 @@ def test_processed_files(engine):
 def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
 
         response = test_airflow_client.get('/vendor_management/interfaces/1')
@@ -174,7 +175,8 @@ def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
 def test_interface_edit_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
         response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
         assert response.status_code == 200
@@ -182,13 +184,14 @@ def test_interface_edit_view(test_airflow_client, mock_db, mocker):  # noqa: F81
 
 def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
     mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendors.trigger_dag'
+        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
     )
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
-        response = test_airflow_client.post('/vendor_management/file/1/load')
+        response = test_airflow_client.post('/vendor_management/files/1/load')
         assert response.status_code == 302
 
     with Session(mock_db()) as session:
@@ -208,7 +211,7 @@ def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
 
 def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F811
     mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendors.trigger_dag'
+        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
     )
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
@@ -220,7 +223,8 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
 
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
         response = test_airflow_client.post(
             '/vendor_management/interfaces/1/file',
@@ -283,10 +287,11 @@ def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa:
 
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
 
-        response = test_airflow_client.get('/vendor_management/file/1/download')
+        response = test_airflow_client.get('/vendor_management/files/1/download')
         assert response.status_code == 200
         assert response.content_type == 'application/octet-stream'
         assert response.content_length == 35981
