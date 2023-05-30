@@ -68,7 +68,8 @@ def mock_db(mocker, engine):
 def test_vendors_dashboard_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
         response = test_airflow_client.get('/vendor_management/')
         assert response.status_code == 200
@@ -78,7 +79,8 @@ def test_vendors_dashboard_view(test_airflow_client, mock_db, mocker):  # noqa: 
 def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
         response = test_airflow_client.get('/vendor_management/vendors')
         assert response.status_code == 200
@@ -99,7 +101,8 @@ def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
 def test_vendor_show_view(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendors.Session', return_value=session
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
         )
         response = test_airflow_client.get('/vendor_management/vendors/1')
         assert response.status_code == 200

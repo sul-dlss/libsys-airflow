@@ -194,7 +194,7 @@ class VendorManagementView(BaseView):
         session.commit()
         return new_vendor_file
 
-    @expose("/file/<int:file_id>/load", methods=["POST"])
+    @expose("/files/<int:file_id>/load", methods=["POST"])
     def load_file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)
@@ -210,7 +210,7 @@ class VendorManagementView(BaseView):
             )
         )
 
-    @expose("/file/<int:file_id>/download", methods=["GET"])
+    @expose("/files/<int:file_id>/download", methods=["GET"])
     def download_file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)

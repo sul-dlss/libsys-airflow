@@ -4,7 +4,7 @@ from flask.wrappers import Response
 import pytest
 
 from conftest import root_directory
-from libsys_airflow.plugins.vendor_app.vendors import VendorManagementView
+from libsys_airflow.plugins.vendor_app.vendor_management import VendorManagementView
 
 
 @pytest.fixture
