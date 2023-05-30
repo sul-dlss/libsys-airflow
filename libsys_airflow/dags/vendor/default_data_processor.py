@@ -16,7 +16,7 @@ from libsys_airflow.plugins.folio.data_import import (
 )
 from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile
-from libsys_airflow.plugins.vendor.email import email_args
+from libsys_airflow.plugins.vendor.emails import email_args
 
 from sqlalchemy.orm import Session
 

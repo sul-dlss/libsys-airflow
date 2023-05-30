@@ -10,7 +10,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.models import VendorInterface
-from libsys_airflow.plugins.vendor.email import email_args
+from libsys_airflow.plugins.vendor.emails import email_args
 
 logger = logging.getLogger(__name__)
 

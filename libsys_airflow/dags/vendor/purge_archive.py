@@ -10,7 +10,7 @@ from libsys_airflow.plugins.vendor.purge import (
     remove_downloads_task,
     set_status_task,
 )
-from libsys_airflow.plugins.vendor.email import email_args
+from libsys_airflow.plugins.vendor.emails import email_args
 
 logger = logging.getLogger(__name__)
 
