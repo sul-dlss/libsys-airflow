@@ -200,17 +200,13 @@ class VendorManagementView(BaseView):
     def load_file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)
-
         file.status = FileStatus.loading
         session.commit()
         self._trigger_processing_dag(file)
         flash(f"Requested reload of {file.vendor_filename}")
+        redirect_url = request.args.get("redirect_url")
 
-        return redirect(
-            url_for(
-                "VendorManagementView.interface", interface_id=file.vendor_interface_id
-            )
-        )
+        return redirect(redirect_url)
 
     @expose("/files/<int:file_id>/download", methods=["GET"])
     def download_file(self, file_id):
@@ -229,6 +225,18 @@ class VendorManagementView(BaseView):
             file.vendor_filename,
             as_attachment=True,
         )
+
+    @expose("/files/<int:file_id>/reset_fetch", methods=["POST"])
+    def reset_fetch(self, file_id):
+        session = Session()
+        file = session.query(VendorFile).get(file_id)
+        file.status = FileStatus.not_fetched
+        session.commit()
+        flash(
+            f"Requested fetch of {file.vendor_filename} with next daily vendor download."
+        )
+
+        return redirect(url_for("VendorManagementView.dashboard"))
 
     def _trigger_processing_dag(self, file):
         dag = trigger_dag(

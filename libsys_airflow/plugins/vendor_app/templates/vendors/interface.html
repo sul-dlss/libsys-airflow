@@ -102,7 +102,7 @@
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.loaded_timestamp }}</td>
     <td>
-      <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id) }}" method="POST">
+      <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input class="btn btn-link" type="submit" value="Reload" style="padding: 0px;">
       </form>

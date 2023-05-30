@@ -52,7 +52,19 @@
         <td>{{ file.vendor_interface.display_name }}</td>
         <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
         <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
-        <td>TBD</td>
+        <td>
+          {% if file.status.value == 'loading_error' %}
+            <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+            </form>
+          {% elif file.status.value == 'fetching_error' %}
+            <form action="{{ url_for('VendorManagementView.reset_fetch', file_id=file.id) }}" method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+            </form>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

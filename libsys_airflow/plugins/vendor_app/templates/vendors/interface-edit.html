@@ -22,7 +22,7 @@
 <form class="form-horizontal" method="post" action="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
   <div class="form-group">
-    <label for="vendor" class="col-sm-2 col-form-label">Vendor:</label>
+    <label for="vendor" class="col-sm-2 col-form-label">Vendor</label>
     <div class="col-sm-8" id="vendor">
       <a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">
         {{ interface.vendor.display_name }}
@@ -30,7 +30,7 @@
     </div>
   </div>
   <div class="form-group">
-    <label for="interface" class="col-sm-2 col-form-label">Interface:</label>
+    <label for="interface" class="col-sm-2 col-form-label">Interface</label>
     <div class="col-sm-8" id="interface">
       <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
         {{ interface.display_name }}
@@ -38,7 +38,7 @@
     </div>
   </div>
   <div class="form-group">
-    <label for="folio-data-import-profile-uuid" class="col-sm-2 col-form-label">Data Input Profile</label>
+    <label for="folio-data-import-profile-uuid" class="col-sm-2 col-form-label">Import Profile</label>
     <div class="col-sm-8">
       <select class="form-control" id="folio-data-import-profile-uuid" name="folio-data-import-profile-uuid">
         {% for job_profile in job_profiles %}
