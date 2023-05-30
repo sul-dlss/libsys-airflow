@@ -10,17 +10,19 @@ from libsys_airflow.plugins.vendor.purge import (
     remove_downloads_task,
     set_status_task,
 )
+from libsys_airflow.plugins.vendor.email import email_args
 
 logger = logging.getLogger(__name__)
 
-default_args = {
-    "owner": "folio",
-    "depends_on_past": False,
-    "email_on_failure": True,
-    "email_on_retry": False,
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
-}
+default_args = dict(
+    {
+        "owner": "folio",
+        "depends_on_past": False,
+        "retries": 1,
+        "retry_delay": timedelta(minutes=5),
+    },
+    **email_args(),
+)
 
 
 with DAG(
