@@ -16,6 +16,7 @@ from libsys_airflow.plugins.vendor.models import (
 )
 from tests.airflow_client import test_airflow_client  # noqa: F401
 
+
 load_dotenv()
 now = datetime.now()
 
@@ -122,6 +123,23 @@ def mock_db(mocker, engine):
     return mock_hook
 
 
+@pytest.fixture
+def job_profiles():
+    job_profiles_resp = {
+        'jobProfiles': [
+            {
+                'id': '6409dcff-71fa-433a-bc6a-e70ad38a9604',
+                'name': 'Some job profile',
+                'description': 'This job profile is used to create a new SRS MARC Bib record',
+                'dataType': 'MARC',
+                'deleted': False,
+            },
+        ],
+        'totalRecords': 1,
+    }
+    return job_profiles_resp
+
+
 def test_vendor_files(engine):  # noqa: F811
     with Session(engine) as session:
         interface = session.get(VendorInterface, 1)
@@ -172,7 +190,13 @@ def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
 @pytest.mark.skipif(
     os.environ.get("AIRFLOW_VAR_OKAPI_URL") is None, reason="No Folio Environment"
 )
-def test_interface_edit_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_interface_edit_view(
+    test_airflow_client, mock_db, mocker, job_profiles  # noqa: F811
+):
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.job_profiles',
+        return_value=job_profiles,
+    )
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',

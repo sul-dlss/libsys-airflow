@@ -1,13 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from airflow.models import Variable
 from sqlalchemy.orm import Session
 
-from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
+from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile
 from tests.airflow_client import test_airflow_client  # noqa: F401
 
+
+now = datetime.now()
 
 rows = Rows(
     Vendor(
@@ -52,6 +54,36 @@ rows = Rows(
         processing_delay_in_days=3,
         active=False,
     ),
+    VendorFile(
+        id=1,
+        vendor_interface_id=1,
+        vendor_filename="records123.mrc",
+        filesize="3049",
+        status="fetching_error",
+        created=now - timedelta(days=2),
+        updated=now - timedelta(days=1),
+        vendor_timestamp=now - timedelta(days=14),
+    ),
+    VendorFile(
+        id=2,
+        vendor_interface_id=1,
+        vendor_filename="records234.mrc",
+        filesize="1014",
+        status="loading_error",
+        created=now - timedelta(days=1),
+        updated=now,
+        vendor_timestamp=now - timedelta(days=14),
+    ),
+    VendorFile(
+        id=3,
+        vendor_interface_id=1,
+        vendor_filename="records345.mrc",
+        filesize="2000",
+        status="loading",
+        created=now - timedelta(days=1),
+        updated=now,
+        vendor_timestamp=now - timedelta(days=14),
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -85,6 +117,17 @@ def test_vendors_dashboard_view(
         response = test_airflow_client.get('/vendor_management/')
         assert response.status_code == 200
         assert response.html.h1.text == "Vendor Management"
+        error_table = response.html.find(id='errorsTable')
+        error_rows = error_table.find_all('tr')
+        assert len(error_rows) == 2
+        retry_cell = error_rows[0].find_all('td')[-1]
+        assert retry_cell.find(class_='btn')["value"] == "Retry"
+        assert retry_cell.form["action"].startswith(
+            "/vendor_management/files/1/reset_fetch"
+        )
+        retry_cell2 = error_rows[1].find_all('td')[-1]
+        assert retry_cell2.find(class_='btn')["value"] == "Retry"
+        assert retry_cell2.form["action"].startswith("/vendor_management/files/2/load")
 
 
 def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
