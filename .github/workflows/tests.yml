@@ -10,6 +10,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SQLALCHEMY_WARN_20: 1
 jobs:
   run_tests_with_coverage:
     runs-on: ubuntu-latest
