@@ -4,9 +4,13 @@ import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from datetime import date, datetime
 
+from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.emails import send_files_fetched_email
+from libsys_airflow.plugins.vendor.emails import (
+    send_files_fetched_email,
+    send_file_loaded_email,
+)
 from libsys_airflow.plugins.vendor.models import (
     Vendor,
     VendorInterface,
@@ -85,5 +89,69 @@ def test_send_files_fetched_email(pg_hook, mocker):
             
             </ul>
         </p>
+        """,
+    )
+
+
+@pytest.fixture
+def mock_okapi_url_variable(monkeypatch):
+    def mock_get(key):
+        return "https://okapi-test.stanford.edu"
+
+    monkeypatch.setattr(Variable, "get", mock_get)
+
+
+def test_send_file_loaded_email(pg_hook, mocker, mock_okapi_url_variable):
+    mock_date = mocker.patch("libsys_airflow.plugins.vendor.emails.date")
+    mock_date.today.return_value = date(2021, 1, 1)
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.os.getenv",
+        return_value="test@stanford.edu",
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.conf.get",
+        return_value="https://www.example.com",
+    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+
+    now = datetime.now()
+
+    send_file_loaded_email(
+        'ACME',
+        'Acme',
+        'd7460945-6f0c-4e74-86c9-34a8438d652e',
+        '123456.mrc',
+        now,
+        37,
+        {
+            'totalCreatedEntities': 31,
+            'totalUpdatedEntities': 1,
+            'totalDiscardedEntities': 2,
+            'totalErrors': 3,
+        },
+        {
+            'totalCreatedEntities': 31,
+            'totalUpdatedEntities': 3,
+            'totalDiscardedEntities': 1,
+            'totalErrors': 2,
+        },
+    )
+
+    mock_send_email.assert_called_once_with(
+        'test@stanford.edu',
+        "Acme (ACME) - (123456.mrc) - File Load Report",
+        f"""
+        <h5>FOLIO Catalog MARC Load started on {now}</h5>
+
+        <p>Filename 123456.mrc - https://okapi-test.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
+        <p>37 bib record(s) read from MARC file.</p>
+        <p>31 SRS records created</p>
+        <p>1 SRS records updated</p>
+        <p>2 SRS records discarded</p>
+        <p>3 SRS errors</p>
+        <p>31 Instance records created</p>
+        <p>3 Instance records updated</p>
+        <p>1 Instance records discarded</p>
+        <p>2 Instance errors</p>
         """,
     )
