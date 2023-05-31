@@ -14,7 +14,7 @@ from libsys_airflow.plugins.airflow.connections import create_connection_task
 from libsys_airflow.plugins.vendor.download import ftp_download_task
 from libsys_airflow.plugins.vendor.archive import archive_task
 from libsys_airflow.plugins.vendor.paths import download_path
-from libsys_airflow.plugins.vendor.email import email_args
+from libsys_airflow.plugins.vendor.emails import email_args, files_fetched_email_task
 
 logger = logging.getLogger(__name__)
 
@@ -129,5 +129,12 @@ with DAG(
         processing_delay=params["processing_delay"],
         processing_dag=params["processing_dag"],
     ).expand(filename=downloaded_files)
+
+    files_fetched_email_task(
+        params["vendor_name"],
+        params["vendor_code"],
+        params["vendor_interface_uuid"],
+        downloaded_files,
+    )
 
     TriggerDagRunOperator.partial(task_id="process_file").expand_kwargs(dag_run_kwargs)
