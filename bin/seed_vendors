@@ -44,21 +44,25 @@ class VendorLoader:
         """
         Returns vendors from FOLIO
         """
-        vendors = [
-            "AMALIV-SUL",
-            "CASALI-SUL",
-            "COUTTS-SUL",
-            "HARRAS-SUL",
-            "SFX",
-            "YANKEE-SUL",
-        ]
-        cql_query = f"({' or '.join(f'(code={vendor})' for vendor in vendors)})"
-        vendor_result = requests.get(
-            f"{self._folio_client.okapi_url}/organizations/organizations?query={cql_query}",
-            headers=self._folio_client.okapi_headers,
-        )
-        vendor_result.raise_for_status()
-        return vendor_result.json()
+        if opts.limited:
+            vendors = [
+                "AMALIV-SUL",
+                "CASALI-SUL",
+                "COUTTS-SUL",
+                "HARRAS-SUL",
+                "SFX",
+                "YANKEE-SUL",
+            ]
+            cql_query = f"?query=({' or '.join(f'(code={vendor})' for vendor in vendors)})"
+            vendor_result = self._folio_client.folio_get_all(
+                "/organizations-storage/organizations",
+                "organizations",
+                cql_query,
+                10,
+            )
+        else:
+            vendor_result = self._folio_client.organizations
+        return vendor_result
 
     def get_vendor_interface(self, vendor_interface_id):
         vendor_interface_result = requests.get(
@@ -91,7 +95,12 @@ def main(opts):
         os.getenv('AIRFLOW_VAR_FOLIO_USER'),
         os.getenv('AIRFLOW_VAR_FOLIO_PASSWORD'),
     )
-    for organization in vendor_load.vendors["organizations"]:
+    acq_uuids = set([org["acqUnitIds"][0] for org in vendor_load.vendors ])
+    acq_data = {}
+    for uuid in acq_uuids:
+        acq_data[uuid] = vendor_load.get_acquisitions_unit_name(uuid)
+
+    for organization in vendor_load.vendors:
         vendor = (
             session.query(Vendor)
             .filter(Vendor.folio_organization_uuid == organization["id"])
@@ -103,7 +112,7 @@ def main(opts):
                 folio_organization_uuid=organization["id"],
                 vendor_code_from_folio=organization["code"],
                 acquisitions_unit_from_folio=organization["acqUnitIds"][0],
-                acquisitions_unit_name_from_folio=vendor_load.get_acquisitions_unit_name(organization["acqUnitIds"][0]),
+                acquisitions_unit_name_from_folio=acq_data[organization["acqUnitIds"][0]],
                 last_folio_update=datetime.now(),
             )
             session.add(vendor)
@@ -135,6 +144,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--log", default="seed_vendors.log", help="A file path to write log messages"
+    )
+    parser.add_argument(
+        "--limited", help="Load a limited set of no more than 10 vendors", action="store_true"
     )
     opts = parser.parse_args()
 

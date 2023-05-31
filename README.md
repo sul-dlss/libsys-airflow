@@ -185,13 +185,19 @@ To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> an
 
 #### Seeding Vendors
 
-Assuming that you have put Folio related environment variables in your `.env` file you can:
+Assuming that you have put Folio related environment variables in your `.env` file you can load all organizations (over 3,000) with:
 
 ```
 dotenv run bin/seed_vendors
 ```
 
-In a deployed environment, this can be run as:
+To load a limited set of only six vendors, use `--limited`:
+
+```
+dotenv run bin/seed_vendors --limited
+```
+
+In a deployed environment, the full load can be run as:
 ```
 docker exec -it 20230516183735-airflow-webserver-1 bin/seed_vendors
 ```

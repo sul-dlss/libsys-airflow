@@ -9,7 +9,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from signal import signal, SIGPIPE, SIG_DFL
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from libsys_airflow.plugins.vendor.models import Vendor
@@ -34,20 +34,25 @@ def main(opts):
     Session = sessionmaker(bind=engine)
 
     with Session() as session:
-        for vendor in session.query(Vendor):
-            # look up each acquisitions unit UUID in Folio and get the acq unit name
+        acq_uuids = session.scalars(select(Vendor.acquisitions_unit_from_folio)).unique()
+        acq_data = {}
+        for uuid in acq_uuids:
+            # look up each unique acquisitions unit UUID in Folio and get the acq unit name
             acq_name_result = folio_client.get(
-                f"/acquisitions-units/units/{vendor.acquisitions_unit_from_folio}"
+                f"/acquisitions-units/units/{uuid}"
             )
+            acq_data[uuid] = acq_name_result["name"]
+    
+        for vendor in session.query(Vendor):
             if opts.dry:
                 logger.info(
-                    f"Would update vendor {vendor.id} with acq unit name {acq_name_result['name']}"
+                    f"Would update vendor {vendor.id} with acq unit name {acq_data[vendor.acquisitions_unit_from_folio]}"
                 )
             else:
-                vendor.acquisitions_unit_name_from_folio = acq_name_result["name"]
+                vendor.acquisitions_unit_name_from_folio = acq_data[vendor.acquisitions_unit_from_folio]
                 vendor.last_folio_update = datetime.now()
                 logger.info(
-                    f"Updated vendor {vendor.id} with acq unit name {acq_name_result['name']}"
+                    f"Updated vendor {vendor.id} with acq unit name {acq_data[vendor.acquisitions_unit_from_folio]}"
                 )
         session.commit()
 
