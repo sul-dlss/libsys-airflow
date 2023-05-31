@@ -16,7 +16,9 @@ def job_profiles(folio_client=None) -> list:
             Variable.get("FOLIO_PASSWORD"),
         )
 
-    job_profiles_resp = folio_client.get("/data-import-profiles/jobProfiles")
+    job_profiles_resp = folio_client.get(
+        "/data-import-profiles/jobProfiles", params={"limit": 250}
+    )
     job_profiles = [
         {"id": profile["id"], "name": profile["name"]}
         for profile in job_profiles_resp["jobProfiles"]
