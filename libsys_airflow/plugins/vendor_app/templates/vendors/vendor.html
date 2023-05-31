@@ -1,23 +1,26 @@
 {% extends "airflow/main.html" %}
 
+{% block head_css %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for_asset('switch.css') }}">
+{% endblock %}
+
+
 {% block content %}
 <script>
  const vendorActivityHandler = () => {
    document
-     .querySelectorAll('#vendor_interfaces .btn-toggle')
-     .forEach(buttonGroup => {
-       buttonGroup.addEventListener('click', (event) => {
-         // The `interfaceActive` data attr is set on an HTML element, so bools are strings
-         const newActiveValue = buttonGroup.dataset.interfaceActive === "true" ? "false" : "true"
-
+     .querySelectorAll('#vendor_interfaces .switch-input')
+     .forEach(switchInput => {
+       switchInput.addEventListener('click', (event) => {
          // The interface endpoint does not currently distinguish between form
          // POSTs and JSON POSTs, so until we feel it's worth the effort to make
          // the endpoint more API-friendly, pretend we're a form.
          const form = new FormData()
-         form.append("active", newActiveValue)
+         form.append("active", event.target.checked)
          form.append("csrf_token", csrfToken) // NOTE: Airflow sets this variable for us.
 
-         fetch(buttonGroup.dataset.interfaceUrl, {
+         fetch(switchInput.dataset.interfaceUrl, {
            method: 'POST',
            body: form
          }).then(response => {
@@ -25,14 +28,6 @@
              console.dir(response)
              return
            }
-           buttonGroup.dataset.interfaceActive = newActiveValue
-           buttonGroup
-             .querySelectorAll('.btn')
-             .forEach(button => {
-               button.classList.toggle('active')
-               button.classList.toggle('btn-danger')
-               button.classList.toggle('btn-default')
-             })
          }).catch(error => {
            console.dir(error)
          })
@@ -75,7 +70,7 @@
         <th>Remote Path</th>
         <th>Processing Delay</th>
         <th>Processing DAG</th>
-        <th>Active/Inactive</th>
+        <th>Inactive/Active</th>
     </thead>
     {% for interface in vendor.vendor_interfaces %}
     <tr>
@@ -86,15 +81,10 @@
         <td>{{ interface.processing_delay }}</td>
         <td>{{ interface.processing_dag }}</td>
         <td>
-            <div class="btn-group btn-toggle" data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}" data-interface-active="{{ interface.active|string|lower }}">
-                {% if interface.active %}
-                <button class="btn btn-danger active">Active</button>
-                <button class="btn btn-default">Inactive</button>
-                {% else %}
-                <button class="btn btn-default">Active</button>
-                <button class="btn btn-danger active">Inactive</button>
-                {% endif %}
-            </div>
+            <label class="switch-label">
+                <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
+                <span class="switch" aria-hidden="true"></span>
+            </label>
         </td>
     </tr>
     {% endfor %}
