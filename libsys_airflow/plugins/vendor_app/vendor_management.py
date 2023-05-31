@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 from airflow.api.common.trigger_dag import trigger_dag
+from airflow.models import Variable
 from flask_appbuilder import expose, BaseView
 from flask import request, redirect, url_for, flash, send_from_directory
 
@@ -44,7 +45,7 @@ class VendorManagementView(BaseView):
         )
         errors_files = (
             Session()
-            .query(Vendor)
+            .query(VendorFile)
             .filter(
                 VendorFile.status.in_(
                     [FileStatus.fetching_error, FileStatus.loading_error]
@@ -57,6 +58,7 @@ class VendorManagementView(BaseView):
             "vendors/dashboard.html",
             in_progress_files=in_progress_files,
             errors_files=errors_files,
+            folio_base_url=Variable.get("OKAPI_URL"),
         )
 
     @expose("/vendors")

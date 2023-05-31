@@ -45,16 +45,31 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
 )
 def data_import_task(
-    download_path: str, batch_filenames: list[str], dataload_profile_uuid: str
+    download_path: str,
+    batch_filenames: list[str],
+    dataload_profile_uuid: str,
+    vendor_interface_uuid: str,
+    filename: str,
 ):
     """
     Imports a file into Folio using Data Import API
     """
-    data_import(download_path, batch_filenames, dataload_profile_uuid)
+    data_import(
+        download_path,
+        batch_filenames,
+        dataload_profile_uuid,
+        vendor_interface_uuid,
+        filename,
+    )
 
 
 def data_import(
-    download_path, batch_filenames, dataload_profile_uuid, folio_client=None
+    download_path,
+    batch_filenames,
+    dataload_profile_uuid,
+    vendor_interface_uuid,
+    filename,
+    folio_client=None,
 ):
     client = folio_client or _folio_client()
     upload_definition_id, job_execution_id, file_definition_dict = _upload_definition(
@@ -62,11 +77,11 @@ def data_import(
     )
 
     upload_definition = None
-    for filename, file_definition_id in file_definition_dict.items():
-        logger.info(f"Uploading {filename}")
+    for chunked_filename, file_definition_id in file_definition_dict.items():
+        logger.info(f"Uploading {chunked_filename}")
         upload_definition = _upload_file(
             client,
-            os.path.join(download_path, filename),
+            os.path.join(download_path, chunked_filename),
             upload_definition_id,
             file_definition_id,
         )
@@ -79,6 +94,11 @@ def data_import(
         upload_definition,
         data_type,
     )
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
+        vendor_file.folio_job_execution_uuid = job_execution_id
+        session.commit()
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )

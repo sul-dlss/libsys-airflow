@@ -1,3 +1,11 @@
 {% macro fileDownload(file, link_text='<span class="glyphicon glyphicon-save" aria-hidden="true" style="color: #017cee;"></span>') -%}
   {% if file.status != 'purged' %}<a href="{{ url_for('VendorManagementView.download_file', file_id=file.id) }}">{{ link_text|safe }}</a>{% endif %}
 {%- endmacro %}
+
+{% macro renderFileStatus(file, folio_base_url) -%}
+  {% if file.folio_job_execution_uuid == None %}
+    {{ file.status.value }}
+  {% else %}
+    <a href="{{ folio_base_url }}/data-import/job-summary/{{ file.folio_job_execution_uuid }}">{{ file.status.value }}</a>
+  {% endif %}
+{% endmacro %}

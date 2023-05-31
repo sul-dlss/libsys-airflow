@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
+from airflow.models import Variable
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
@@ -57,6 +58,14 @@ engine = create_sqlite_fixture(rows)
 
 
 @pytest.fixture
+def mock_okapi_url_variable(monkeypatch):
+    def mock_get(key):
+        return "https://okapi-test.stanford.edu"
+
+    monkeypatch.setattr(Variable, "get", mock_get)
+
+
+@pytest.fixture
 def mock_db(mocker, engine):
     mock_hook = mocker.patch(
         "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
@@ -65,7 +74,9 @@ def mock_db(mocker, engine):
     yield mock_hook
 
 
-def test_vendors_dashboard_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_vendors_dashboard_view(
+    test_airflow_client, mock_db, mocker, mock_okapi_url_variable  # noqa: F811
+):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
