@@ -21,7 +21,7 @@ class Vendor(Model):
     __tablename__ = "vendors"
 
     id = Column(Integer, primary_key=True)
-    display_name = Column(String(120), unique=True, nullable=False)
+    display_name = Column(String(120), unique=False, nullable=False)
     folio_organization_uuid = Column(String(36), unique=True, nullable=False)
     vendor_code_from_folio = Column(String(36), unique=True, nullable=False)
     acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=False)
