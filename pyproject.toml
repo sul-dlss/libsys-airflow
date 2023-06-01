@@ -21,6 +21,9 @@ python-dotenv = "^1.0.0"
 alembic = "^1.10.4"
 psycopg2-binary = "^2.9.6"
 python-magic = "^0.4.27"
+honeybadger = "^0.15.2"
+# Needed according to HB docs.
+blinker = "^1.6.2"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"

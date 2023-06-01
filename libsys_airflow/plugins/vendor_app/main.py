@@ -1,5 +1,6 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
+from honeybadger.contrib.flask import FlaskHoneybadger
 
 from libsys_airflow.plugins.vendor_app.vendor_management import VendorManagementView
 from libsys_airflow.plugins.vendor_app.database import Session
@@ -11,6 +12,12 @@ vendor_mgt_bp = Blueprint(
     static_folder="static",
     static_url_path="/static/vendor",
 )
+
+
+@vendor_mgt_bp.record
+def configure_honeybadger(setup_state):
+    app = setup_state.app
+    FlaskHoneybadger(app, report_exceptions=True)
 
 
 @vendor_mgt_bp.teardown_app_request
