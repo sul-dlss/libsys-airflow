@@ -41,6 +41,7 @@
     <label for="folio-data-import-profile-uuid" class="col-sm-2 col-form-label">Import Profile</label>
     <div class="col-sm-8">
       <select class="form-control" id="folio-data-import-profile-uuid" name="folio-data-import-profile-uuid">
+        <option value="">SKIP DATA IMPORT</option>
         {% for job_profile in job_profiles %}
         <option {% if job_profile['id'] == interface.folio_data_import_profile_uuid %}selected{% endif %} value="{{ job_profile['id'] }}">
           {{ job_profile['name'] }}
@@ -48,15 +49,7 @@
         {% endfor %}
       </select>
     </div>
-  </div>
-  <div class="form-group">
-    <label for="folio-data-import-processing-name" class="col-sm-2 col-form-label">Processing Workflow</label>
-    <div class="col-sm-8">
-      <select class="form-control" id="folio-data-import-processing-name" name="folio-data-import-processing-name">
-        <option value="default-data-processor">default-data-processor</option>
-      </select>
-    </div>
-  </div>
+  </div>  
   <div class="form-group">
     <label for="processing-delay-in-days" class="col-sm-2 col-form-label">Processing Delay (Days)</label>
     <div class="col-sm-8">

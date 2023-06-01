@@ -25,3 +25,13 @@ def job_profiles(folio_client=None) -> list:
     ]
 
     return sorted(job_profiles, key=itemgetter("name"))
+
+
+def get_job_profile_name(job_profile_id):
+    _job_profiles = job_profiles()
+    job_profile = next(
+        job_profile
+        for job_profile in _job_profiles
+        if job_profile['id'] == job_profile_id
+    )
+    return job_profile['name']
