@@ -52,7 +52,9 @@
     let vendorTable = document.querySelector("#vendorTable");
     let dataTable = new simpleDatatables.DataTable(vendorTable, {
         searchable: true,
-        fixedHeight: true
+        fixedHeight: true,
+        perPage: 100,
+        perPageSelect: false
     });
     let vendorTableSelect = document.querySelector(".datatable-selector");
     vendorTableSelect.classList.add("form-control");
