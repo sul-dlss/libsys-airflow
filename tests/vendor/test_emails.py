@@ -96,7 +96,7 @@ def test_send_files_fetched_email(pg_hook, mocker):
 @pytest.fixture
 def mock_okapi_url_variable(monkeypatch):
     def mock_get(key):
-        return "https://okapi-test.stanford.edu"
+        return "https://folio-stage.stanford.edu"
 
     monkeypatch.setattr(Variable, "get", mock_get)
 
@@ -143,7 +143,7 @@ def test_send_file_loaded_email(pg_hook, mocker, mock_okapi_url_variable):
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
 
-        <p>Filename 123456.mrc - https://okapi-test.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
+        <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 bib record(s) read from MARC file.</p>
         <p>31 SRS records created</p>
         <p>1 SRS records updated</p>

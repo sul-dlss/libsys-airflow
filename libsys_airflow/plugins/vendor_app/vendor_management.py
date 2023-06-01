@@ -61,7 +61,7 @@ class VendorManagementView(BaseView):
             "vendors/dashboard.html",
             in_progress_files=in_progress_files,
             errors_files=errors_files,
-            folio_base_url=Variable.get("OKAPI_URL"),
+            folio_base_url=Variable.get("FOLIO_URL"),
         )
 
     @expose("/vendors")

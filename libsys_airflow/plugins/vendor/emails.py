@@ -155,7 +155,7 @@ def _file_loaded_html_content(
     srs_stats,
     instance_stats,
 ):
-    folio_base_url = Variable.get("OKAPI_URL")
+    folio_base_url = Variable.get("FOLIO_URL")
     template = Template(
         """
         <h5>FOLIO Catalog MARC Load started on {{load_time}}</h5>
