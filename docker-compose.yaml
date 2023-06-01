@@ -82,6 +82,7 @@ x-airflow-common:
     AIRFLOW_VAR_DOWNLOAD_DAYS_AGO: 10
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://airflow:airflow@postgres/vendor_loads
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
+    SQLALCHEMY_WARN_20: 1
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}

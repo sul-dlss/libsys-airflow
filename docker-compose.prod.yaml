@@ -86,6 +86,7 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL}
     VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
+    SQLALCHEMY_WARN_20: 1
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
