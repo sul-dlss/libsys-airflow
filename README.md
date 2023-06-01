@@ -201,7 +201,6 @@ In a deployed environment, the full load can be run as:
 ```
 docker exec -it libsys_airflow-airflow-webserver-1 bin/seed_vendors
 ```
-where `20230516183735-airflow-webserver-1` is the container id.
 
 #### Refreshing Vendor Data
 
