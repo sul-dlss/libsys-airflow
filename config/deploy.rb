@@ -23,6 +23,7 @@ set :linked_dirs, %w[config vendor-data vendor-keys]
 set :keep_releases, 2
 
 before 'deploy:cleanup', 'fix_permissions'
+before 'deploy:published', 'deploy:restart'
 
 desc 'Change release directories ownership'
 task :fix_permissions do
