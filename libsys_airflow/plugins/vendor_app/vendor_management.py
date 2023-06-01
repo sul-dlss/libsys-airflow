@@ -111,7 +111,9 @@ class VendorManagementView(BaseView):
             ]
 
         if 'processing-delay-in-days' in form.keys():
-            interface.processing_delay_in_days = int(form['processing-delay-in-days'])
+            interface.processing_delay_in_days = int(
+                form['processing-delay-in-days'] or 0
+            )
 
         if 'remote-path' in form.keys():
             interface.remote_path = form['remote-path']
