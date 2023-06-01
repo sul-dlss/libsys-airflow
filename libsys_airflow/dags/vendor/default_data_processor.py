@@ -68,12 +68,30 @@ with DAG(
             vendor_interface = VendorInterface.load(
                 params["vendor_interface_uuid"], session
             )
+            # Map from processing options to params.
             processing_options = vendor_interface.processing_options or {}
-            params["change_fields"] = processing_options.get("change_fields")
-            params["remove_fields"] = processing_options.get(
-                "remove_fields", ["905", "920", "986"]
-            )
-            params["add_fields"] = processing_options.get("add_fields")
+            # Processing options might look like this:
+            # {"package_name": "", "change_marc": [], "delete_marc": []}
+            # {"package_name": "coutts", "change_marc": [{"from": "520", "to": "920"}], "delete_marc": ["123"]}
+            params["change_fields"] = processing_options.get("change_marc", [])
+            params["remove_fields"] = processing_options.get("delete_marc") or [
+                "905",
+                "920",
+                "986",
+            ]  # Casts [] to defaults.
+            package_name = processing_options.get("package_name")
+            if package_name:
+                params["add_fields"] = (
+                    [
+                        {
+                            "tag": "910",
+                            "subfields": [{"code": "a", "value": package_name}],
+                        }
+                    ],
+                )
+            else:
+                params["add_fields"] = None
+            # Not yet supported in UI.
             params["archive_regex"] = processing_options.get("archive_regex")
 
             vendor_file = VendorFile.load_with_vendor_interface(
