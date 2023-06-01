@@ -109,7 +109,7 @@ cap alembic:migrate  # Run Alembic database migrations
 
 ## For subsequent deploys
 
-`cap ${env} deploy deploy:restart`
+`cap ${env} deploy`
 
 This will stop and remove the docker images for the previous release and start up a new one.
 
@@ -199,7 +199,7 @@ dotenv run bin/seed_vendors --limited
 
 In a deployed environment, the full load can be run as:
 ```
-docker exec -it 20230516183735-airflow-webserver-1 bin/seed_vendors
+docker exec -it libsys_airflow-airflow-webserver-1 bin/seed_vendors
 ```
 where `20230516183735-airflow-webserver-1` is the container id.
 
