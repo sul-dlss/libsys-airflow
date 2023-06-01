@@ -8,7 +8,10 @@ from airflow.models import Variable
 from flask_appbuilder import expose, BaseView
 from flask import request, redirect, url_for, flash, send_from_directory
 
-from libsys_airflow.plugins.vendor.job_profiles import job_profiles
+from libsys_airflow.plugins.vendor.job_profiles import (
+    job_profiles,
+    get_job_profile_name,
+)
 from libsys_airflow.plugins.vendor.models import (
     Vendor,
     VendorInterface,
@@ -101,14 +104,16 @@ class VendorManagementView(BaseView):
         """
 
         if 'folio-data-import-profile-uuid' in form.keys():
-            interface.folio_data_import_profile_uuid = form[
-                'folio-data-import-profile-uuid'
-            ]
-
-        if 'folio-data-import-processing-name' in form.keys():
-            interface.folio_data_import_processing_name = form[
-                'folio-data-import-processing-name'
-            ]
+            if form['folio-data-import-profile-uuid'] == '':
+                interface.folio_data_import_profile_uuid = None
+                interface.folio_data_import_processing_name = None
+            else:
+                interface.folio_data_import_profile_uuid = form[
+                    'folio-data-import-profile-uuid'
+                ]
+                interface.folio_data_import_processing_name = get_job_profile_name(
+                    form['folio-data-import-profile-uuid']
+                )
 
         if 'processing-delay-in-days' in form.keys():
             interface.processing_delay_in_days = int(

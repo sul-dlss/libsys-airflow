@@ -23,9 +23,11 @@
   <dt>Interface ID</dt>
   <dd>{{ interface.folio_interface_uuid or 'Upload only' }}</dd>
   <dt>Import Profile</dt>
-  <dd>{{ interface.folio_data_import_profile_uuid }}</dd>
-  <dt>Processing Name</dt>
-  <dd>{{ interface.folio_data_import_processing_name }}</dd>
+  {% if interface.folio_data_import_profile_uuid %}
+    <dd>{{ interface.folio_data_import_processing_name }} ({{ interface.folio_data_import_profile_uuid }})</dd>
+  {% else %}
+    <dd>Skip import</dd>
+  {% endif %}
   <dt>File Pattern</dt>
   <dd>{{ interface.file_pattern }}</dd>
   <dt>Remote Path</dt>
