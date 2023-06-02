@@ -144,6 +144,8 @@ def download(
         engine,
     )
     logger.info(f"Filtered by mod filenames: {filtered_filenames}")
+    # Airflow does not like long XCOMs so limiting the length,
+    filtered_filenames = filtered_filenames[:1000]
     logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
     for filename in filtered_filenames:
         download_filepath = _download_filepath(download_path, filename)
