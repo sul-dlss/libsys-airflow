@@ -81,14 +81,12 @@ with DAG(
             ]  # Casts [] to defaults.
             package_name = processing_options.get("package_name")
             if package_name:
-                params["add_fields"] = (
-                    [
-                        {
-                            "tag": "910",
-                            "subfields": [{"code": "a", "value": package_name}],
-                        }
-                    ],
-                )
+                params["add_fields"] = [
+                    {
+                        "tag": "910",
+                        "subfields": [{"code": "a", "value": package_name}],
+                    }
+                ]
             else:
                 params["add_fields"] = None
             # Not yet supported in UI.
