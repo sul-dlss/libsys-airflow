@@ -287,8 +287,8 @@ def discover_srs_files(*args, **kwargs):
 
     iterations_dir = pathlib.Path(airflow) / "migration/iterations"
     srs_iterations = []
-    # Checks for SRS bibs
-    for iteration in iterations_dir.iterdir():
+    # Checks for SRS bibs, sorts to make iteration deterministic
+    for iteration in sorted(iterations_dir.iterdir()):
         srs_file = iteration / "results/folio_srs_instances_bibs-transformer.json"
         if srs_file.exists():
             srs_iterations.append(str(iteration))
