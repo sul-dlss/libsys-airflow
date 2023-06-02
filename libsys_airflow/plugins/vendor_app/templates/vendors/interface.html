@@ -40,9 +40,19 @@
   <dd>{{ interface.active }}</dd>
 </dl>
 
-<a href="{{ url_for("VendorManagementView.interface_edit", interface_id=interface.id) }}">
-  <button class="btn btn-default">Edit</button>
-</a>
+<div class="row">
+  <div class="col-md-1">
+    <a href="{{ url_for("VendorManagementView.interface_edit", interface_id=interface.id) }}">
+      <button class="btn btn-default">Edit</button>
+    </a>
+  </div>
+  <div class="col-md-1">
+    <form method="POST" action="{{ url_for('VendorManagementView.interface_fetch', interface_id=interface.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="submit" class="btn btn-default" value="Process now">
+    </form>
+  </div>
+</div>
 
 <h3>File upload</h3>
 <form enctype="multipart/form-data" method="POST" action="{{ url_for('VendorManagementView.file_upload', interface_id=interface.id) }}">
