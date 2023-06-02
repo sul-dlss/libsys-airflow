@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+# A utility for listing files that are ready to be loaded into Folio.
+# This is generically named because it might make sense to give it some more
+# functionality at some point.
+
+import os
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
+from libsys_airflow.plugins.vendor.models import VendorFile
+
+load_dotenv()
+
+
+def main():
+    db_url = os.getenv(
+        'AIRFLOW_CONN_VENDOR_LOADS',
+        'postgresql+psycopg2://airflow:airflow@localhost:5432/vendor_loads',
+    )
+    engine = create_engine(db_url)
+    with Session(engine) as session:
+        for file in VendorFile.ready_for_data_import(session):
+            print(f"Vendor: {file.vendor_interface.vendor.display_name}")
+            print(f"Interface: {file.vendor_interface.display_name}")
+            print(f"File: {file.vendor_filename}")
+            print(f"Created: {file.created}")
+            print(f"Expected Load: {file.expected_load_time}")
+            print()
+
+if __name__ == "__main__":
+    main()

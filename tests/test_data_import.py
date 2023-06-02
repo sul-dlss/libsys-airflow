@@ -31,8 +31,8 @@ rows = Rows(
         active=True,
     ),
     VendorFile(
-        created=datetime.now(),
-        updated=datetime.now(),
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
         vendor_interface_id=1,
         vendor_filename="3820230411.mrc",
         filesize=234,
@@ -40,8 +40,8 @@ rows = Rows(
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
     ),
     VendorFile(
-        created=datetime.now(),
-        updated=datetime.now(),
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
         vendor_interface_id=1,
         vendor_filename="0720230118.mrc",
         filesize=235,

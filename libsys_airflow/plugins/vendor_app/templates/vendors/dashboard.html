@@ -16,6 +16,7 @@
 
   <table class="table table-striped" id="inProgressTable">
     <thead>
+      <th>ID</th>
       <th>Vendor</th>
       <th>Vendor Interface</th>
       <th>Filename</th>
@@ -24,9 +25,10 @@
     <tbody>
       {% for file in in_progress_files %}
       <tr>
+        <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
         <td>{{ file.vendor_interface.vendor.display_name }}</td>
         <td>{{ file.vendor_interface.display_name }}</td>
-        <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
+        <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
         <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
       </tr>
       {% endfor %}
@@ -39,6 +41,7 @@
 
   <table class="table table-striped" id="errorsTable">
     <thead>
+      <th>ID</th>
       <th>Vendor</th>
       <th>Vendor Interface</th>
       <th>Filename</th>
@@ -48,6 +51,7 @@
     <tbody>
       {% for file in errors_files %}
       <tr>
+        <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
         <td>{{ file.vendor_interface.vendor.display_name }}</td>
         <td>{{ file.vendor_interface.display_name }}</td>
         <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>

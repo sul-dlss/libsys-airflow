@@ -9,7 +9,7 @@ from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, Vendor
 from tests.airflow_client import test_airflow_client  # noqa: F401
 
 
-now = datetime.now()
+now = datetime.utcnow()
 
 rows = Rows(
     Vendor(
@@ -19,7 +19,7 @@ rows = Rows(
         vendor_code_from_folio="ACME",
         acquisitions_unit_from_folio="ACMEUNIT",
         has_active_vendor_interfaces=False,
-        last_folio_update=datetime.now(),
+        last_folio_update=datetime.utcnow(),
     ),
     Vendor(
         id=2,
@@ -28,7 +28,7 @@ rows = Rows(
         vendor_code_from_folio="COCINA",
         acquisitions_unit_from_folio="COCINAUNIT",
         has_active_vendor_interfaces=False,
-        last_folio_update=datetime.now(),
+        last_folio_update=datetime.utcnow(),
     ),
     VendorInterface(
         id=1,

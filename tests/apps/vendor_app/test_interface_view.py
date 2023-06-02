@@ -6,7 +6,6 @@ import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from dotenv import load_dotenv
 
 from libsys_airflow.plugins.vendor.models import (
     Vendor,
@@ -16,9 +15,7 @@ from libsys_airflow.plugins.vendor.models import (
 )
 from tests.airflow_client import test_airflow_client  # noqa: F401
 
-
-load_dotenv()
-now = datetime.now()
+now = datetime.utcnow()
 
 rows = Rows(
     # set up a vendor and its "interface"
@@ -187,20 +184,19 @@ def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert len(loaded.find_all('tr')) == 2
 
 
-@pytest.mark.skipif(
-    os.environ.get("AIRFLOW_VAR_OKAPI_URL") is None, reason="No Folio Environment"
-)
 def test_interface_edit_view(
     test_airflow_client, mock_db, mocker, job_profiles  # noqa: F811
 ):
-    mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.job_profiles',
-        return_value=job_profiles,
-    )
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
+        )
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.job_profiles',
+            return_value=[
+                {"name": "Acme FTP", "id": "A8635200-F876-46E0-ACF0-8E0EFA542A3F"}
+            ],
         )
         response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
         assert response.status_code == 200

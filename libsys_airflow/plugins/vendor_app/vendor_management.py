@@ -192,8 +192,8 @@ class VendorManagementView(BaseView):
         if existing_vendor_file:
             session.delete(existing_vendor_file)
         new_vendor_file = VendorFile(
-            created=datetime.now(),
-            updated=datetime.now(),
+            created=datetime.utcnow(),
+            updated=datetime.utcnow(),
             vendor_interface_id=interface.id,
             vendor_filename=file_upload.filename,
             filesize=os.path.getsize(filepath),
@@ -202,6 +202,21 @@ class VendorManagementView(BaseView):
         session.add(new_vendor_file)
         session.commit()
         return new_vendor_file
+
+    @expose("/files/<int:file_id>", methods=["GET", "POST"])
+    def file(self, file_id):
+        session = Session()
+        file = session.query(VendorFile).get(file_id)
+        if request.method == 'POST' and 'expected-load-time' in request.form:
+            try:
+                file.expected_load_time = datetime.fromisoformat(
+                    request.form['expected-load-time']
+                )
+                session.commit()
+            except ValueError:
+                flash("invalid date: {request.form['expected-load-time']}")
+
+        return self.render_template("vendors/file.html", file=file)
 
     @expose("/files/<int:file_id>/load", methods=["POST"])
     def load_file(self, file_id):
