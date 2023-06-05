@@ -54,10 +54,6 @@ with DAG(
                         "dataload_profile_uuid": vendor_interface.folio_data_import_profile_uuid,
                         "remote_path": vendor_interface.remote_path,
                         "filename_regex": vendor_interface.file_pattern,
-                        "processing_delay": vendor_interface.processing_delay_in_days
-                        or 0,
-                        "processing_dag": vendor_interface.processing_dag
-                        or "default_data_processor",
                     }
                 )
         return confs
