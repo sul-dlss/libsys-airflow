@@ -451,7 +451,10 @@ def boundwith_holdings(*args, **kwargs):
 
     if folio_client is None:
         folio_client = FolioClient(
-            okapi_url, "sul", Variable.get("migration_user"), Variable.get("migration_password")
+            okapi_url,
+            "sul",
+            Variable.get("migration_user"),
+            Variable.get("migration_password"),
         )
 
     locations_lookup = {}

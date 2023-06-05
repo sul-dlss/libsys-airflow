@@ -40,7 +40,9 @@ def add_marc_to_srs():
 
         okapi_username = Variable.get("migration_user")
 
-        okapi_password = context.get("okapi_password", Variable.get("migration_password"))
+        okapi_password = context.get(
+            "okapi_password", Variable.get("migration_password")
+        )
         logger.info(f"Okapi username: {okapi_username}")
 
         sul_config = LibraryConfiguration(
