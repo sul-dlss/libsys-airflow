@@ -21,14 +21,18 @@
 </ul>
 
 <ol class="breadcrumb">
-  <li class="active">All</li>
+    <li class="active">
+        {% if filter == 'all' %}All{% else %}<a href="{{ url_for('VendorManagementView.vendors') }}">All</a>{% endif %} | 
+        {% if filter == 'interfaces' %}With interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='interfaces') }}">With interfaces</a>{% endif %}  | 
+        {% if filter == 'active_interfaces' %}With active interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='active_interfaces') }}">With active interfaces</a>{% endif %}
+    </li>
 </ol>
-
 <table class="table table-striped" id="vendorTable">
     <thead>
         <th>Name</th>
         <th>Code</th>
         <th>Acquisitions Unit</th>
+        <th>Interfaces</th>
     </thead>
     <tbody>
         {% for vendor in vendors %}
@@ -42,6 +46,9 @@
             </td>
             <td>
                 {{ vendor.acquisitions_unit_name_from_folio }}
+            </td>
+            <td>
+                {{ vendor.vendor_interfaces | length }} ({{ vendor.active_vendor_interfaces | length }} active)
             </td>
         </tr>
         {% endfor %}

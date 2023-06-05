@@ -15,6 +15,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
+from sqlalchemy.sql.expression import true
 from typing import List
 
 Model = declarative_base()
@@ -29,14 +30,38 @@ class Vendor(Model):
     vendor_code_from_folio = Column(String(36), unique=True, nullable=False)
     acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=False)
     acquisitions_unit_name_from_folio = Column(String(36), unique=False, nullable=True)
-    has_active_vendor_interfaces = Column(Boolean, nullable=False, default=False)
     last_folio_update = Column(DateTime, nullable=False)
     vendor_interfaces = relationship(
-        "VendorInterface", back_populates="vendor", order_by='VendorInterface.id'
+        "VendorInterface",
+        back_populates="vendor",
+        order_by='VendorInterface.id',
+        lazy="joined",
     )
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.folio_organization_uuid}"
+
+    @property
+    def active_vendor_interfaces(self) -> List['VendorInterface']:
+        return list(
+            [interface for interface in self.vendor_interfaces if interface.active]
+        )
+
+    @classmethod
+    def with_active_vendor_interfaces(cls, session: Session) -> List['Vendor']:
+        return session.scalars(
+            select(cls)
+            .join(VendorInterface)
+            .filter(VendorInterface.active == true())
+            .distinct()
+            .order_by(Vendor.display_name)
+        ).unique()
+
+    @classmethod
+    def with_vendor_interfaces(cls, session: Session) -> List['Vendor']:
+        return session.scalars(
+            select(cls).join(VendorInterface).distinct().order_by(Vendor.display_name)
+        ).unique()
 
 
 class VendorInterface(Model):

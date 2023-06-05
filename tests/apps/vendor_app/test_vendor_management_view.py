@@ -18,7 +18,6 @@ rows = Rows(
         folio_organization_uuid="375C6E33-2468-40BD-A5F2-73F82FE56DB0",
         vendor_code_from_folio="ACME",
         acquisitions_unit_from_folio="ACMEUNIT",
-        has_active_vendor_interfaces=False,
         last_folio_update=datetime.utcnow(),
     ),
     Vendor(
@@ -27,7 +26,6 @@ rows = Rows(
         folio_organization_uuid="42E8DECC-6DE4-48C1-8F04-8578FF1BEA71",
         vendor_code_from_folio="COCINA",
         acquisitions_unit_from_folio="COCINAUNIT",
-        has_active_vendor_interfaces=False,
         last_folio_update=datetime.utcnow(),
     ),
     VendorInterface(
