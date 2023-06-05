@@ -66,8 +66,16 @@ class VendorManagementView(BaseView):
 
     @expose("/vendors")
     def vendors(self):
-        vendors = Session().query(Vendor).order_by(Vendor.display_name)
-        return self.render_template("vendors/index.html", vendors=vendors)
+        filter = request.args.get("filter", default="all")
+        if filter == "active_interfaces":
+            vendors = Vendor.with_active_vendor_interfaces(Session())
+        elif filter == "interfaces":
+            vendors = Vendor.with_vendor_interfaces(Session())
+        else:
+            vendors = Session().query(Vendor).order_by(Vendor.display_name)
+        return self.render_template(
+            "vendors/index.html", vendors=vendors, filter=filter
+        )
 
     @expose("/vendors/<int:vendor_id>")
     def vendor(self, vendor_id):

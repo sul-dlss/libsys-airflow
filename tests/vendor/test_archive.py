@@ -26,7 +26,6 @@ rows = Rows(
         folio_organization_uuid="698a62fe-8aff-40c7-b1ef-e8bd13c77536",
         vendor_code_from_folio="Gobi",
         acquisitions_unit_from_folio="ACMEUNIT",
-        has_active_vendor_interfaces=False,
         last_folio_update=datetime.utcnow(),
     ),
     VendorInterface(
