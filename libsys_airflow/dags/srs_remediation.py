@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 FOLIO_CLIENT = FolioClient(
     Variable.get("okapi_url"),
     "sul",
-    Variable.get("folio_user"),
-    Variable.get("folio_password"),
+    Variable.get("migration_user"),
+    Variable.get("migration_password"),
 )
 
 parallel_posts = int(Variable.get("parallel_posts", 3))

@@ -17,8 +17,8 @@ from libsys_airflow.plugins.folio.reports import inventory_audit_report
 folio_client = FolioClient(
     Variable.get("okapi_url"),
     "sul",
-    Variable.get("folio_user"),
-    Variable.get("folio_password"),
+    Variable.get("migration_user"),
+    Variable.get("migration_password"),
 )
 
 default_args = {

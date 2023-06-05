@@ -38,9 +38,9 @@ def add_marc_to_srs():
         srs_filenames = params.get("srs_filenames")
         iteration_id = params.get("iteration_id")
 
-        okapi_username = Variable.get("folio_user")
+        okapi_username = Variable.get("migration_user")
 
-        okapi_password = context.get("okapi_password", Variable.get("folio_password"))
+        okapi_password = context.get("okapi_password", Variable.get("migration_password"))
         logger.info(f"Okapi username: {okapi_username}")
 
         sul_config = LibraryConfiguration(
