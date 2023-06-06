@@ -198,6 +198,14 @@ def _move_001_to_035(record: pymarc.Record) -> str | None:
     return catkey
 
 
+def _move_equals_subfield(field: pymarc.Field):
+    """Moves subfield '=' to subfield 0"""
+    subfield_equals = field.get_subfields("=")
+    for value in subfield_equals:
+        field.add_subfield(code="0", value=value)
+        field.delete_subfield(code="=")
+
+
 def _srs_check_add(**kwargs) -> int:
     """
     Runs audit/remediation for a single SRS file
