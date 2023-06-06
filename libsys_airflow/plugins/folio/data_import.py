@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import pathlib
@@ -151,7 +152,7 @@ def _process_files(
     )
 
 
-def _record_status(context, status):
+def _record_status(context, status: FileStatus):
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
     filename = context["params"]["filename"]
 
@@ -161,6 +162,8 @@ def _record_status(context, status):
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
         vendor_file.status = status
+        if status is FileStatus.loaded:
+            vendor_file.loaded_timestamp = datetime.utcnow()
         session.commit()
 
 
