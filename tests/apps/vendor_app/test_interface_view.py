@@ -314,3 +314,29 @@ def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa:
         assert response.status_code == 200
         assert response.content_type == 'application/octet-stream'
         assert response.content_length == 35981
+
+
+def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
+    mock_trigger_dag = mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
+    )
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        response = test_airflow_client.post('/vendor_management/interfaces/1/fetch')
+        assert response.status_code == 302
+
+    mock_trigger_dag.assert_called_once_with(
+        'data_fetcher',
+        conf={
+            "vendor_name": 'Acme',
+            "vendor_code": 'ACME',
+            "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+            "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
+            "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
+            "remote_path": "stanford/outgoing/data",
+            "filename_regex": "*.mrc",
+        },
+    )

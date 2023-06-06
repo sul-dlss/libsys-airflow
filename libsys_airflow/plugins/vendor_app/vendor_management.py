@@ -213,6 +213,18 @@ class VendorManagementView(BaseView):
         session.commit()
         return new_vendor_file
 
+    @expose("/interfaces/<int:interface_id>/fetch", methods=["POST"])
+    def interface_fetch(self, interface_id):
+        session = Session()
+        interface = session.query(VendorInterface).get(interface_id)
+        self._trigger_fetcher_dag(interface)
+
+        flash(f"Requested fetch of {interface.display_name}")
+
+        return redirect(
+            url_for("VendorManagementView.interface", interface_id=interface_id)
+        )
+
     @expose("/files/<int:file_id>", methods=["GET", "POST"])
     def file(self, file_id):
         session = Session()
@@ -281,3 +293,18 @@ class VendorManagementView(BaseView):
             },
         )
         logger.info(f"Triggered DAG {dag} for {file.vendor_filename}")
+
+    def _trigger_fetcher_dag(self, interface):
+        dag = trigger_dag(
+            'data_fetcher',
+            conf={
+                "vendor_name": interface.vendor.display_name,
+                "vendor_code": interface.vendor.vendor_code_from_folio,
+                "vendor_uuid": interface.vendor.folio_organization_uuid,
+                "vendor_interface_uuid": interface.folio_interface_uuid,
+                "dataload_profile_uuid": interface.folio_data_import_profile_uuid,
+                "remote_path": interface.remote_path,
+                "filename_regex": interface.file_pattern,
+            },
+        )
+        logger.info(f"Triggered DAG {dag} for {interface.display_name}")
