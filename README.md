@@ -60,7 +60,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ### For FOLIO migration loads
 
 Make sure the environmental variables `AIRFLOW_VAR_MIGRATION_USER`
-and `AIRFLOW_VAR_MIGRATION_PASSWORD` variables are set in Vault to a 
+and `AIRFLOW_VAR_MIGRATION_PASSWORD` are set in Vault to a 
 user with appropriate rights (typically we've used an administrative user)
 
 ## Deploying
