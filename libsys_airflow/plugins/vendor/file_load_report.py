@@ -1,14 +1,15 @@
+import json
 import logging
+import requests
 
 from airflow.decorators import task
-from airflow.models import DagRun, Variable
+from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sensors.base import PokeReturnValue
 
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
-from libsys_airflow.plugins.vendor.emails import file_loaded_email_task
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile
 
 
@@ -24,18 +25,17 @@ def _folio_client():
     )
 
 
-# Run the task every hour for up to five days
-@task.sensor(poke_interval=3600, timeout=60 * 60 * 24 * 5, mode="reschedule")
+# Run the task every five minutes for up to one day
+@task.sensor(poke_interval=60 * 5, timeout=60 * 60 * 24, mode="reschedule")
 def report_when_file_loaded_task(
-    vendor_interface_uuid: str, filename: str, records_count: int
+    vendor_interface_uuid: str, filename: str
 ) -> PokeReturnValue:
-    return report_when_file_loaded(vendor_interface_uuid, filename, records_count)
+    return report_when_file_loaded(vendor_interface_uuid, filename)
 
 
 def report_when_file_loaded(
     vendor_interface_uuid: str,
     filename: str,
-    records_count: int,
     client=None,
 ) -> PokeReturnValue:
     folio_client = client or _folio_client()
@@ -48,30 +48,54 @@ def report_when_file_loaded(
             or vendor_file.folio_job_execution_uuid is None
         ):
             logger.info(
-                f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') has not yet been loaded."
+                f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') has not been loaded."
             )
             return PokeReturnValue(is_done=False)
 
-        # Date and Time Load was started (using the DagRun data should be sufficient)
-        dag_run = DagRun.find(run_id=vendor_file.dag_run_id)[0]
-        load_time = dag_run.start_date
-
+    try:
         job_summary = folio_client.get(
-            f"/metadata_provider/job-summary/{vendor_file.folio_job_execution_uuid}"
+            f"/metadata-provider/jobSummary/{vendor_file.folio_job_execution_uuid}"
         )
+    except requests.exceptions.HTTPError as error:
+        if error.response.status_code == 404:
+            logger.info(
+                f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') is in the process of being loaded."
+            )
+            return PokeReturnValue(is_done=False)
+        else:
+            logger.info(
+                f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') load endpoint is erroring ({error.response.status_code})."
+            )
+            raise
 
-        srs_stats = job_summary["sourceRecordSummary"]
-        instance_stats = job_summary["instanceSummary"]
-
-        file_loaded_email_task(
-            vendor_file.vendor_interface.vendor.vendor_code_from_folio,
-            vendor_file.vendor_interface.vendor.display_name,
-            vendor_file.folio_job_execution_uuid,
-            filename,
-            load_time,
-            records_count,
-            srs_stats,
-            instance_stats,
+    source_record_stats = job_summary.get("sourceRecordSummary", {})
+    instance_stats = job_summary.get("instanceSummary", {})
+    records_touched = (
+        source_record_stats.get("totalCreatedEntities", 0)
+        + source_record_stats.get("totalUpdatedEntities", 0)
+        + source_record_stats.get("totalDiscardedEntities", 0)
+        + source_record_stats.get("totalErrors", 0)
+        + instance_stats.get("totalCreatedEntities", 0)
+        + instance_stats.get("totalUpdatedEntities", 0)
+        + instance_stats.get("totalDiscardedEntities", 0)
+        + instance_stats.get("totalErrors", 0)
+    )
+    if records_touched == 0:
+        logger.info(
+            f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') is in the process of being loaded."
         )
+        return PokeReturnValue(is_done=False)
 
-        return PokeReturnValue(is_done=True)
+    # NOTE: We must return the relevant reporting values as a JSON string since
+    #       we can't return a dict. Why can't we? Because sensor tasks
+    #       (apparently) do not support `multiple_outputs`.
+    return PokeReturnValue(
+        is_done=True,
+        xcom_value=json.dumps(
+            {
+                "folio_job_execution_uuid": vendor_file.folio_job_execution_uuid,
+                "srs_stats": source_record_stats,
+                "instance_stats": instance_stats,
+            }
+        ),
+    )

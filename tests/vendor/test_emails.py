@@ -119,7 +119,7 @@ def test_send_file_loaded_email(pg_hook, mocker, mock_okapi_url_variable):
     send_file_loaded_email(
         'ACME',
         'Acme',
-        'd7460945-6f0c-4e74-86c9-34a8438d652e',
+        'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
         37,

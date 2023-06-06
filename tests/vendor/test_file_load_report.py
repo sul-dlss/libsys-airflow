@@ -25,7 +25,6 @@ rows = Rows(
         folio_organization_uuid="698a62fe-8aff-40c7-b1ef-e8bd13c77536",
         vendor_code_from_folio="Gobi",
         acquisitions_unit_from_folio="ACMEUNIT",
-        has_active_vendor_interfaces=False,
         last_folio_update=datetime.now(),
     ),
     VendorInterface(
@@ -116,7 +115,6 @@ def test_file_load_report_with_loaded_file(
         return_value = report_when_file_loaded(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded.mrc",
-            2,
             client=folio_client,
         )
         assert return_value.is_done is True
@@ -131,7 +129,6 @@ def test_file_load_report_with_no_file(pg_hook, mocker):
         return_value = report_when_file_loaded(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "nonexistent.mrc",
-            2,
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -146,7 +143,6 @@ def test_file_load_report_with_not_loaded_file(pg_hook, mocker):
         return_value = report_when_file_loaded(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "not_loaded.mrc",
-            2,
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -161,7 +157,6 @@ def test_file_load_report_with_file_lacking_job_execution_uuid(pg_hook, mocker):
         return_value = report_when_file_loaded(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded_but_messed_up.mrc",
-            2,
             client=folio_client,
         )
         assert return_value.is_done is False

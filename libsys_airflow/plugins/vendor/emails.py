@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import date, datetime
 import logging
@@ -100,33 +101,33 @@ def _vendor_interface_url(vendor_interface_uuid):
 def file_loaded_email_task(
     vendor_code: str,
     vendor_name: str,
-    folio_job_execution_uuid: str,
+    file_loaded_json: str,
     filename: str,
     load_time: datetime,
     records_count: int,
-    srs_stats: dict[str, int],
-    instance_stats: dict[str, int],
 ):
     if not _email_enabled():
         logger.info("Email not enabled.")
         return
 
+    file_loaded_info = json.loads(file_loaded_json)
+    job_execution_url = f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{file_loaded_info['folio_job_execution_uuid']}"
     send_file_loaded_email(
         vendor_code,
         vendor_name,
-        folio_job_execution_uuid,
+        job_execution_url,
         filename,
         load_time,
         records_count,
-        srs_stats,
-        instance_stats,
+        file_loaded_info["srs_stats"],
+        file_loaded_info["instance_stats"],
     )
 
 
 def send_file_loaded_email(
     vendor_code,
     vendor_name,
-    folio_job_execution_uuid,
+    job_execution_url,
     filename,
     load_time,
     records_count,
@@ -137,7 +138,7 @@ def send_file_loaded_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
         f"{vendor_name} ({vendor_code}) - ({filename}) - File Load Report",
         _file_loaded_html_content(
-            folio_job_execution_uuid,
+            job_execution_url,
             filename,
             load_time,
             records_count,
@@ -148,14 +149,13 @@ def send_file_loaded_email(
 
 
 def _file_loaded_html_content(
-    folio_job_execution_uuid,
+    job_execution_url,
     filename,
     load_time,
     records_count,
     srs_stats,
     instance_stats,
 ):
-    folio_base_url = Variable.get("FOLIO_URL")
     template = Template(
         """
         <h5>FOLIO Catalog MARC Load started on {{load_time}}</h5>
@@ -175,14 +175,14 @@ def _file_loaded_html_content(
     return template.render(
         load_time=load_time,
         filename=filename,
-        job_execution_url=f"{folio_base_url}/data-import/job-summary/{folio_job_execution_uuid}",
+        job_execution_url=job_execution_url,
         records_count=records_count,
-        srs_created=srs_stats["totalCreatedEntities"],
-        srs_updated=srs_stats["totalUpdatedEntities"],
-        srs_discarded=srs_stats["totalDiscardedEntities"],
-        srs_errors=srs_stats["totalErrors"],
-        instance_created=instance_stats["totalCreatedEntities"],
-        instance_updated=instance_stats["totalUpdatedEntities"],
-        instance_discarded=instance_stats["totalDiscardedEntities"],
-        instance_errors=instance_stats["totalErrors"],
+        srs_created=srs_stats.get("totalCreatedEntities", 0),
+        srs_updated=srs_stats.get("totalUpdatedEntities", 0),
+        srs_discarded=srs_stats.get("totalDiscardedEntities", 0),
+        srs_errors=srs_stats.get("totalErrors", 0),
+        instance_created=instance_stats.get("totalCreatedEntities", 0),
+        instance_updated=instance_stats.get("totalUpdatedEntities", 0),
+        instance_discarded=instance_stats.get("totalDiscardedEntities", 0),
+        instance_errors=instance_stats.get("totalErrors", 0),
     )

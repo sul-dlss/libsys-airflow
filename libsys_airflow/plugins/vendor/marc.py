@@ -33,14 +33,14 @@ class AddField(MarcField):
     unless: Optional[MarcField]
 
 
-@task
+@task(multiple_outputs=True)
 def process_marc_task(
     download_path: str,
     filename: str,
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[dict]] = None,
     add_fields: Optional[list[dict]] = None,
-) -> str:
+) -> dict:
     """
     Applies changes to MARC records.
 
@@ -53,17 +53,16 @@ def process_marc_task(
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
         logger.info(f"Skipping filtering fields from {marc_path}")
-        return filename
+        return {"records_count": 0, "marc_filename": filename}
     change_fields_models = None
     if change_fields:
         change_fields_models = _to_change_fields_models(change_fields)
     add_fields_models = None
     if add_fields:
         add_fields_models = _to_add_fields_models(add_fields)
-    new_marc_path = process_marc(
+    return process_marc(
         pathlib.Path(marc_path), remove_fields, change_fields_models, add_fields_models
     )
-    return new_marc_path.name
 
 
 def process_marc(
@@ -71,7 +70,7 @@ def process_marc(
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[ChangeField]] = None,
     add_fields: Optional[list[AddField]] = None,
-) -> pathlib.Path:
+) -> dict:
     logger.info(f"Processing from {marc_path}")
     records = []
     with marc_path.open("rb") as fo:
@@ -94,8 +93,7 @@ def process_marc(
     _write_records(records, new_marc_path)
 
     logger.info(f"Finished processing from {marc_path}")
-
-    return new_marc_path
+    return {"records_count": len(records), "marc_filename": new_marc_path.name}
 
 
 def is_marc(path: pathlib.Path):
