@@ -81,8 +81,8 @@ class VendorInterface(Model):
     processing_options = Column(JSON, nullable=True)
     processing_delay_in_days = Column(Integer, unique=False, nullable=True)
     active = Column(Boolean, nullable=False, default=False)
-    # vendor interface is no longer assigned to organization within FOLIO
-    removed_from_folio = Column(Boolean, nullable=False, default=False)
+    # Vendor interface is currently assigned to organization within FOLIO. Upload-only are False
+    assigned_in_folio = Column(Boolean, nullable=False, default=True)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
 
     @property

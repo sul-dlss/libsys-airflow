@@ -38,13 +38,13 @@
   <dd>{{ interface.processing_delay_in_days }}</dd>
   <dt>Active</dt>
   <dd>{{ interface.active }}</dd>
-  <dt>Removed from FOLIO</dt>
-  <dd>{{ interface.removed_from_folio }}</dd>
+  <dt>Assigned to vendor in FOLIO</dt>
+  <dd>{{ interface.assigned_in_folio }}</dd>
 </dl>
 
 <div class="row">
   <div class="col-md-1">
-    <a href="{{ url_for("VendorManagementView.interface_edit", interface_id=interface.id) }}">
+    <a href="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
       <button class="btn btn-default">Edit</button>
     </a>
   </div>

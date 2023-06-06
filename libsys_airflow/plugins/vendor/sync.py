@@ -60,7 +60,14 @@ def sync_data_task():
 def sync_data(folio_client):
     organizations = folio_client.organizations
     acq_names = _get_acquisitions_unit_names(
-        set([org["acqUnitIds"][0] for org in organizations]), folio_client
+        set(
+            [
+                org["acqUnitIds"][0]
+                for org in organizations
+                if len(org["acqUnitIds"]) > 0
+            ]
+        ),
+        folio_client,
     )
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
@@ -118,30 +125,31 @@ def sync_data(folio_client):
                     logging.info(
                         f"Adding interface {vendor_interface.display_name} to {vendor.display_name}"
                     )
-                # Update existing interface including is restored to vendor in FOLIO
+                # Update existing interface, including is assigned to vendor in FOLIO
                 else:
                     vendor_interface.display_name = vendor_interface_data["name"]
-                    vendor_interface.removed_from_folio = False
+                    vendor_interface.assigned_in_folio = True
 
-            # Deprecate removed interfaces
+            # Update interfaces that were unassigned in FOLIO
             existing_vendor_interfaces = session.scalars(
                 select(VendorInterface.folio_interface_uuid).where(
                     VendorInterface.vendor_id == vendor.id
                 )
             ).all()
-            removed = list(
+            unassigned = list(
                 set(existing_vendor_interfaces).difference(organization["interfaces"])
             )
-            for interface_uuid in removed:
-                removed_interface = (
-                    session.query(VendorInterface)
-                    .filter(VendorInterface.folio_interface_uuid == interface_uuid)
-                    .first()
-                )
-                removed_interface.active = False
-                removed_interface.removed_from_folio = True
-                logging.info(
-                    f"Marking removed {removed_interface.display_name} - {removed_interface.folio_interface_uuid}"
-                )
+            for interface_uuid in unassigned:
+                if interface_uuid is not None:  # do not unassign upload-only interfaces
+                    unassigned_interface = (
+                        session.query(VendorInterface)
+                        .filter(VendorInterface.folio_interface_uuid == interface_uuid)
+                        .first()
+                    )
+                    unassigned_interface.active = False
+                    unassigned_interface.assigned_in_folio = False
+                    logging.info(
+                        f"{unassigned_interface.display_name} - {unassigned_interface.folio_interface_uuid} is no longer Assigned in FOLIO"
+                    )
 
         session.commit()

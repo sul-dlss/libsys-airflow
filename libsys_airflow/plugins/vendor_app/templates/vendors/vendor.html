@@ -74,7 +74,7 @@
     </thead>
     {% for interface in vendor.vendor_interfaces %}
     <tr>
-        {% if interface.removed_from_folio%}
+        {% if interface.assigned_in_folio%}
           <td>{{ interface.display_name }}</td>
         {% else %}
           <td><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</td>
@@ -85,8 +85,8 @@
         <td>{{ interface.processing_delay }}</td>
         <td>{{ interface.processing_dag }}</td>
         <td>
-          {% if interface.removed_from_folio %}
-            <p>Removed from FOLIO</p>
+          {% if interface.folio_interface_uuid and not interface.assigned_in_folio %}
+            <p>Not assigned to vendor in FOLIO</p>
           {% else %}
             <label class="switch-label">
                 <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">

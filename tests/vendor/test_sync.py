@@ -39,7 +39,7 @@ rows = Rows(
         folio_interface_uuid='65d30c15-a560-4064-be92-f90e38eeb351',
         folio_data_import_profile_uuid='f4144dbd-def7-4b77-842a-954c62faf319',
         active=True,
-        removed_from_folio=False,
+        assigned_in_folio=True,
     ),
     VendorInterface(
         id=2,
@@ -48,7 +48,7 @@ rows = Rows(
         folio_interface_uuid='111z22zz-a000-4064-be92-c22e38eeb000',
         folio_data_import_profile_uuid='f4144dbd-def7-4b77-842a-954c62faf319',
         active=True,
-        removed_from_folio=False,
+        assigned_in_folio=True,
     ),
     VendorInterface(
         id=3,
@@ -57,7 +57,7 @@ rows = Rows(
         folio_interface_uuid='45678d90-b560-4064-be92-f90e38aaa222',
         folio_data_import_profile_uuid='f4144dbd-def7-4b77-842a-954c62faf319',
         active=True,
-        removed_from_folio=False,
+        assigned_in_folio=True,
     ),
     VendorInterface(
         id=4,
@@ -66,7 +66,7 @@ rows = Rows(
         folio_interface_uuid='45678d90-b560-4064-be92-f90e38aaa222',
         folio_data_import_profile_uuid='f4144dbd-def7-4b77-842a-954c62faf319',
         active=False,
-        removed_from_folio=True,
+        assigned_in_folio=False,
     ),
 )
 
@@ -166,17 +166,17 @@ def test_sync(mock_folio_client, pg_hook):
         )
 
         interface_3 = session.query(VendorInterface).get(3)
-        # interface was removed from Vendor 2 in FOLIO and is no longer active
-        assert interface_3.removed_from_folio is True
+        # interface was unassigned from Vendor 2 in FOLIO and is no longer active
+        assert interface_3.assigned_in_folio is False
         assert interface_3.active is False
 
         restored_interface = session.query(VendorInterface).get(4)
-        # interface that had been removed is added and starts as inactive
+        # interface that had been unassigned is assigned to vendor again and starts as inactive
         assert (
             restored_interface.folio_interface_uuid
             == '45678d90-b560-4064-be92-f90e38aaa222'
         )
-        assert restored_interface.removed_from_folio is False
+        assert restored_interface.assigned_in_folio is True
         assert restored_interface.active is False
 
         new_vendor = (
