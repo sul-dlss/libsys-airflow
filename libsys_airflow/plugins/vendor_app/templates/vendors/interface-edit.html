@@ -69,6 +69,13 @@
     </div>
   </div>
   <div class="form-group">
+    <label for="archive-regex" class="col-sm-2 col-form-label">Archive Pattern</label>
+    <div class="col-sm-8">
+      <input type="text" class="form-control" id="archive-regex" name="archive-regex" placeholder="^ec.*MARC_n$" value="{{ interface.archive_regex if interface.archive_regex }}">
+      <p class="help-block">For extraction from .tar.gz</p>
+    </div>
+  </div>
+  <div class="form-group">
     <label for="active" class="col-sm-2 col-form-label">Active</label>
     <div class="col-sm-8">
       <label class="radio-inline">

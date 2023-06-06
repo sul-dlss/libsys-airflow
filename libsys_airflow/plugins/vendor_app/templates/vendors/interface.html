@@ -30,6 +30,8 @@
   {% endif %}
   <dt>File Pattern</dt>
   <dd>{{ interface.file_pattern }}</dd>
+  <dt>Archive Pattern</dt>
+  <dd>{{ interface.archive_regex or '' }}</dd>
   <dt>Remote Path</dt>
   <dd>{{ interface.remote_path }}</dd>
   <dt>Processing DAG</dt>
@@ -80,7 +82,7 @@
     <td>{{ file.filesize }}</td>
     <td>{{ file.vendor_timestamp }}</td>
     <td>{{ file.expected_load_time }}</td>
-    <td>{{ file.status.value}}</td>
+    <td>{{ file.status.value }}</td>
   </tr>
   {% endfor %}
 </table>

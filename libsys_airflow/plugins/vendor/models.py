@@ -16,7 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy.sql.expression import true
-from typing import List
+from typing import List, Any
 
 Model = declarative_base()
 
@@ -125,26 +125,27 @@ class VendorInterface(Model):
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.interface_uuid}"
 
+    def processing_option(self, key: str, default: Any = None) -> Any:
+        if self.processing_options is not None:
+            return self.processing_options.get(key, default)
+        else:
+            return default
+
     @property
     def package_name(self):
-        if self.processing_options is not None:
-            return self.processing_options.get('package_name')
-        else:
-            return None
+        return self.processing_option('package_name')
 
     @property
     def delete_marc(self):
-        if self.processing_options is not None:
-            return self.processing_options.get('delete_marc', [])
-        else:
-            return []
+        return self.processing_option('delete_marc', [])
 
     @property
     def change_marc(self):
-        if self.processing_options is not None:
-            return self.processing_options.get('change_marc', [])
-        else:
-            return []
+        return self.processing_option('change_marc', [])
+
+    @property
+    def archive_regex(self):
+        return self.processing_option('archive_regex')
 
     @property
     def upload_only(self):
