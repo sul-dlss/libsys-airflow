@@ -22,6 +22,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
     _move_001_to_035,
+    _move_equals_subfield,
     post_marc_to_srs,
 )
 
@@ -456,6 +457,18 @@ def test_move_001_to_035(mock_marc_record):
     record = mock_marc_record
     _move_001_to_035(record)
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
+
+
+def test_move_equals_subfield():
+    field_100 = Field(
+        tag="100",
+        indicators=["1", " "],
+        subfields=["a", "Costa, Robson",
+                   "e", "author.",
+                   "=", "^A2387492"])
+    _move_equals_subfield(field_100)
+    assert "=" not in field_100.subfields_as_dict().keys()
+    assert field_100.get_subfields("0") == ["^A2387492"]
 
 
 def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
