@@ -83,7 +83,7 @@
   <div class="form-group">
     <label for="expected-load-time" class="col-sm-2 col-form-label">Expected Load:</label>
     <div class="col-sm-8" id="expected-load-time">
-      <input required id="expected-load-time-input" type="datetime-local" name="expected-load-time" value="{{ file.expected_load_time.isoformat(timespec='seconds') }}" />
+      <input id="expected-load-time-input" type="datetime-local" name="expected-load-time" value="{{ file.expected_load_time.isoformat(timespec='seconds') if file.expected_load_time else '' }}" />
       UTC
     </div>
   </div>

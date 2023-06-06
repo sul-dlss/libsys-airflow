@@ -217,9 +217,11 @@ class VendorManagementView(BaseView):
         file = session.query(VendorFile).get(file_id)
         if request.method == 'POST' and 'expected-load-time' in request.form:
             try:
-                file.expected_load_time = datetime.fromisoformat(
-                    request.form['expected-load-time']
-                )
+                expected_load_time = request.form['expected-load-time']
+                if expected_load_time != '':
+                    file.expected_load_time = datetime.fromisoformat(expected_load_time)
+                else:
+                    file.expected_load_time = None
                 session.commit()
             except ValueError:
                 flash("invalid date: {request.form['expected-load-time']}")
