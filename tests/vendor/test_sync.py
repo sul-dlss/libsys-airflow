@@ -68,6 +68,15 @@ rows = Rows(
         active=False,
         assigned_in_folio=False,
     ),
+    VendorInterface(
+        id=5,
+        display_name='Upload-only interface',
+        vendor_id=1,
+        folio_interface_uuid=None,
+        folio_data_import_profile_uuid='f4144dbd-def7-4b77-842a-954c62faf319',
+        active=True,
+        assigned_in_folio=False,
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -179,6 +188,11 @@ def test_sync(mock_folio_client, pg_hook):
         assert restored_interface.assigned_in_folio is True
         assert restored_interface.active is False
 
+        upload_interface = session.query(VendorInterface).get(5)
+        # upload-only interface is not changed in sync
+        assert upload_interface.active is True
+        assert upload_interface.assigned_in_folio is False
+
         new_vendor = (
             session.query(Vendor)
             .filter(
@@ -194,7 +208,7 @@ def test_sync(mock_folio_client, pg_hook):
         # new vendor and vendor interface added
         assert new_vendor.id == 3
         assert new_vendor.vendor_code_from_folio == 'NEWVEN'
-        assert new_interface.id == 5
+        assert new_interface.id == 6
         assert (
             new_interface.folio_interface_uuid == '45678d90-b560-4064-be92-f90e38aaa222'
         )
