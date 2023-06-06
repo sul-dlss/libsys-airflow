@@ -39,9 +39,10 @@ def marc_record():
 
 
 def test_filter_fields(marc_path):
-    process_marc(marc_path, ["981", "983"])
+    new_marc_path = process_marc(marc_path, ["981", "983"])
+    assert new_marc_path.name == "3820230411-processed.mrc"
 
-    with marc_path.open("rb") as fo:
+    with new_marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             assert record.get_fields("981", "983") == []
@@ -67,9 +68,9 @@ def test_move_fields(marc_path):
     change_list = _to_change_fields_models(
         [{"from": "520", "to": "920"}, {"from": "504", "to": "904"}]
     )
-    process_marc(marc_path, change_fields=change_list)
+    new_marc_path = process_marc(marc_path, change_fields=change_list)
 
-    with marc_path.open("rb") as fo:
+    with new_marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             assert record.get_fields("520", "504") == []
@@ -92,9 +93,9 @@ def test_add_fields(marc_path):
             }
         ]
     )
-    process_marc(marc_path, add_fields=add_list)
+    new_marc_path = process_marc(marc_path, add_fields=add_list)
 
-    with marc_path.open("rb") as fo:
+    with new_marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             field = record["910"]
@@ -116,9 +117,9 @@ def test_add_fields_with_unless(marcit_path):
             }
         ]
     )
-    process_marc(marcit_path, add_fields=add_list)
+    new_marc_path = process_marc(marcit_path, add_fields=add_list)
 
-    with marcit_path.open("rb") as fo:
+    with new_marc_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             field035 = record["035"]

@@ -101,14 +101,14 @@ with DAG(
     filename = extract_task(
         params["download_path"], params["filename"], params["archive_regex"]
     )
-    process_marc = process_marc_task(
+    processed_filename = process_marc_task(
         params["download_path"],
         filename,
         params["remove_fields"],
         params["change_fields"],
         params["add_fields"],
     )
-    batch_filenames = batch_task(params["download_path"], filename)
+    batch_filenames = batch_task(params["download_path"], processed_filename)
     data_import_branch = data_import_branch_task(params["dataload_profile_uuid"])
     data_import = data_import_task(
         params["download_path"],
@@ -118,5 +118,4 @@ with DAG(
         filename,
     )
 
-    process_marc >> batch_filenames
     data_import_branch >> data_import
