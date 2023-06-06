@@ -6,8 +6,8 @@ from airflow.models import Variable
 def folio_login(**kwargs):
     """Logs into FOLIO and returns Okapi token."""
     okapi_url = Variable.get("OKAPI_URL")
-    username = Variable.get("FOLIO_USER")
-    password = Variable.get("FOLIO_PASSWORD")
+    username = Variable.get("migration_user")
+    password = Variable.get("migration_password")
     tenant = "sul"
 
     data = {"username": username, "password": password}

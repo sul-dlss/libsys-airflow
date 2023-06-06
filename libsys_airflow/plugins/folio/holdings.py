@@ -196,8 +196,8 @@ def update_holdings(**kwargs):
         folio_client = FolioClient(
             Variable.get("okapi_url"),
             "sul",
-            Variable.get("folio_user"),
-            Variable.get("folio_password"),
+            Variable.get("migration_user"),
+            Variable.get("migration_password"),
         )
 
     airflow = kwargs.get("airflow", "/opt/airflow")
@@ -451,7 +451,10 @@ def boundwith_holdings(*args, **kwargs):
 
     if folio_client is None:
         folio_client = FolioClient(
-            okapi_url, "sul", Variable.get("folio_user"), Variable.get("folio_password")
+            okapi_url,
+            "sul",
+            Variable.get("migration_user"),
+            Variable.get("migration_password"),
         )
 
     locations_lookup = {}

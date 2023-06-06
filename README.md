@@ -44,6 +44,8 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_OKAPI_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
+- `AIRFLOW_VAR_MIGRATION_USER`
+- `AIRFLOW_VAR_MIGRATION_PASSWORD`
 
   These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys-airflow/{env}`.
 
@@ -57,8 +59,9 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 ### For FOLIO migration loads
 
-1. In the Airflow UI under Admin > Connections, add `bib_path` with connection type `File (Path)`.
-1. In the Airflow UI under Admin > Variables, import the `folio-dev-variables.json` file from [shared_configs](https://github.com/sul-dlss/shared_configs).
+Make sure the environmental variables `AIRFLOW_VAR_MIGRATION_USER`
+and `AIRFLOW_VAR_MIGRATION_PASSWORD` are set in Vault to a 
+user with appropriate rights (typically we've used an administrative user)
 
 ## Deploying
 

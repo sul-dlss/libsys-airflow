@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 folio_client = FolioClient(
     Variable.get("okapi_url"),
     "sul",
-    Variable.get("folio_user"),
-    Variable.get("folio_password"),
+    Variable.get("migration_user"),
+    Variable.get("migration_password"),
 )
 
 default_args = {

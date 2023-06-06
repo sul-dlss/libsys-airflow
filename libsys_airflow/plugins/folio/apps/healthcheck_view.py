@@ -29,6 +29,7 @@ class Healthcheck(AppBuilderBaseView):
 
         return {
             "Folio login": True,
+            "Migration login": self._check_migration_login(),
             "Holdings custom mappings": self._check_holdings_custom_mappings(),
             "Bib custom mappings": self._check_bib_custom_mappings(),
         }
@@ -63,3 +64,15 @@ class Healthcheck(AppBuilderBaseView):
     def _check_bib_custom_mappings(self):
         mapping_rules = self._folio_client.folio_get("/mapping-rules/marc-bib")
         return '910' in mapping_rules
+
+    def _check_migration_login(self):
+        try:
+            migration_client = FolioClient(
+                Variable.get("OKAPI_URL"),
+                "sul",
+                Variable.get("migration_user"),
+                Variable.get("migration_password"),
+            )
+            return migration_client is not None
+        except Exception:
+            return False
