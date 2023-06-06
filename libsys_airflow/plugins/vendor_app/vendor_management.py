@@ -164,12 +164,12 @@ class VendorManagementView(BaseView):
 
     @expose("/interfaces/<int:interface_id>/file", methods=["POST"])
     def file_upload(self, interface_id):
-        if "file-upload" not in request.files:
-            flash("No file uploaded")
+        file_upload = request.files["file-upload"]
+        if not file_upload or file_upload.filename == "":
+            flash("No file uploaded. Make sure to click Browse... and select a file.")
         else:
-            file_upload = request.files.get("file-upload", "")
             self._handle_file_upload(interface_id, file_upload)
-            flash("File uploaded and queued for processing")
+            flash("File uploaded and queued for processing.")
         return redirect(
             url_for("VendorManagementView.interface", interface_id=interface_id)
         )
