@@ -187,7 +187,7 @@ class VendorManagementView(BaseView):
             interface, file_upload, filepath, session
         )
         archive_file(download_path, vendor_file, session)
-        self._trigger_processing_dag(vendor_file)
+        self._trigger_processing_dag(vendor_file, session)
 
     def _save_file(self, path, file_upload):
         os.makedirs(path, exist_ok=True)
@@ -246,9 +246,7 @@ class VendorManagementView(BaseView):
     def load_file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)
-        file.status = FileStatus.loading
-        session.commit()
-        self._trigger_processing_dag(file)
+        self._trigger_processing_dag(file, session)
         flash(f"Requested reload of {file.vendor_filename}")
         redirect_url = request.args.get("redirect_url")
 
@@ -284,17 +282,26 @@ class VendorManagementView(BaseView):
 
         return redirect(url_for("VendorManagementView.dashboard"))
 
-    def _trigger_processing_dag(self, file):
-        dag = trigger_dag(
+    def _trigger_processing_dag(self, vendor_file, session):
+        dag_run = trigger_dag(
             'default_data_processor',
             conf={
-                "filename": file.vendor_filename,
-                "vendor_uuid": file.vendor_interface.vendor.folio_organization_uuid,
-                "vendor_interface_uuid": file.vendor_interface.interface_uuid,
-                "dataload_profile_uuid": file.vendor_interface.folio_data_import_profile_uuid,
+                "filename": vendor_file.vendor_filename,
+                "vendor_uuid": vendor_file.vendor_interface.vendor.folio_organization_uuid,
+                "vendor_interface_uuid": vendor_file.vendor_interface.interface_uuid,
+                "dataload_profile_uuid": vendor_file.vendor_interface.folio_data_import_profile_uuid,
             },
         )
-        logger.info(f"Triggered DAG {dag} for {file.vendor_filename}")
+
+        logger.info(f"Triggered DAG {dag_run} for {vendor_file.vendor_filename}")
+        vendor_file.dag_run_id = dag_run.run_id
+        vendor_file.expected_load_time = dag_run.execution_date
+        vendor_file.updated = datetime.utcnow()
+        vendor_file.status = FileStatus.loading
+        session.commit()
+        logger.info(
+            f"Updated vendor_file {vendor_file}: dag_run_id={dag_run.run_id} execution_date={dag_run.execution_date}"
+        )
 
     def _trigger_fetcher_dag(self, interface):
         dag = trigger_dag(

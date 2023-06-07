@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, date
 import shutil
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
@@ -136,6 +137,18 @@ def job_profiles():
     return job_profiles_resp
 
 
+@pytest.fixture
+def mock_dag_run():
+    mock_dag_run = MagicMock()
+    type(mock_dag_run).execution_date = PropertyMock(
+        return_value=datetime(2023, 4, 25, 16, 34, 12, 777715)
+    )
+    type(mock_dag_run).run_id = PropertyMock(
+        return_value='manual__2023-04-25T16:34:12.777715+00:00'
+    )
+    return mock_dag_run
+
+
 def test_vendor_files(engine):  # noqa: F811
     with Session(engine) as session:
         interface = session.get(VendorInterface, 1)
@@ -201,9 +214,10 @@ def test_interface_edit_view(
         assert response.status_code == 200
 
 
-def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_reload_file(test_airflow_client, mock_db, mock_dag_run, mocker):  # noqa: F811
     mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
+        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag',
+        return_value=mock_dag_run,
     )
     with Session(mock_db()) as session:
         mocker.patch(
@@ -216,6 +230,8 @@ def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         vendor_file = session.get(VendorFile, 1)
         assert vendor_file.status == FileStatus.loading
+        assert vendor_file.dag_run_id == mock_dag_run.run_id
+        assert vendor_file.expected_load_time == mock_dag_run.execution_date
 
     mock_trigger_dag.assert_called_once_with(
         'default_data_processor',
@@ -228,9 +244,12 @@ def test_reload_file(test_airflow_client, mock_db, mocker):  # noqa: F811
     )
 
 
-def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F811
+def test_upload_file(
+    test_airflow_client, mock_db, mock_dag_run, tmp_path, mocker  # noqa: F811
+):
     mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
+        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag',
+        return_value=mock_dag_run,
     )
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
@@ -278,8 +297,10 @@ def test_upload_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F
         assert vendor_file
         assert vendor_file.vendor_interface_id == 1
         assert vendor_file.filesize == 35981
-        assert vendor_file.status == FileStatus.uploaded
+        assert vendor_file.status == FileStatus.loading
         assert vendor_file.archive_date == today
+        assert vendor_file.dag_run_id == mock_dag_run.run_id
+        assert vendor_file.expected_load_time == mock_dag_run.execution_date
 
         mock_trigger_dag.assert_called_once_with(
             'default_data_processor',
