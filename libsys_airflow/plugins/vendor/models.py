@@ -28,7 +28,7 @@ class Vendor(Model):
     display_name = Column(String(120), unique=False, nullable=False)
     folio_organization_uuid = Column(String(36), unique=True, nullable=False)
     vendor_code_from_folio = Column(String(36), unique=True, nullable=False)
-    acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=False)
+    acquisitions_unit_from_folio = Column(String(36), unique=False, nullable=True)
     acquisitions_unit_name_from_folio = Column(String(36), unique=False, nullable=True)
     last_folio_update = Column(DateTime, nullable=False)
     vendor_interfaces = relationship(
@@ -72,7 +72,7 @@ class VendorInterface(Model):
     vendor = relationship("Vendor", back_populates="vendor_interfaces")
     display_name = Column(String(50), unique=False, nullable=False)
     # A null folio_interface_uuid indicates that upload only.
-    folio_interface_uuid = Column(String(36), unique=True, nullable=True)
+    folio_interface_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_processing_name = Column(String(50), unique=False, nullable=True)
     file_pattern = Column(String(250), unique=False, nullable=True)
@@ -81,6 +81,8 @@ class VendorInterface(Model):
     processing_options = Column(JSON, nullable=True)
     processing_delay_in_days = Column(Integer, unique=False, nullable=True)
     active = Column(Boolean, nullable=False, default=False)
+    # Vendor interface is currently assigned to organization within FOLIO. Upload-only are False
+    assigned_in_folio = Column(Boolean, nullable=False, default=True)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
 
     @property
