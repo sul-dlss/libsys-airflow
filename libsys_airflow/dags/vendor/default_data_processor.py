@@ -8,15 +8,16 @@ from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
-from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.folio.data_import import (
     data_import_task,
     data_import_branch_task,
 )
+from libsys_airflow.plugins.vendor.emails import email_args, file_loaded_email_task
 from libsys_airflow.plugins.vendor.extract import extract_task
+from libsys_airflow.plugins.vendor.file_load_report import report_when_file_loaded_task
+from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
 from libsys_airflow.plugins.vendor.models import VendorInterface
-from libsys_airflow.plugins.vendor.emails import email_args
+from libsys_airflow.plugins.vendor.paths import download_path
 
 from sqlalchemy.orm import Session
 
@@ -59,6 +60,7 @@ with DAG(
     def setup():
         context = get_current_context()
         params = context["params"]
+        params["start_time"] = context["dag_run"].start_date
         params["download_path"] = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
@@ -68,6 +70,8 @@ with DAG(
             vendor_interface = VendorInterface.load(
                 params["vendor_interface_uuid"], session
             )
+            params["vendor_code"] = vendor_interface.vendor.vendor_code_from_folio
+            params["vendor_name"] = vendor_interface.vendor.display_name
             # Map from processing options to params.
             processing_options = vendor_interface.processing_options or {}
             # Processing options might look like this:
@@ -101,14 +105,17 @@ with DAG(
     filename = extract_task(
         params["download_path"], params["filename"], params["archive_regex"]
     )
-    processed_filename = process_marc_task(
+    processed_marc = process_marc_task(
         params["download_path"],
         filename,
         params["remove_fields"],
         params["change_fields"],
         params["add_fields"],
     )
-    batch_filenames = batch_task(params["download_path"], processed_filename)
+
+    batch_filenames = batch_task(
+        params["download_path"], processed_marc["marc_filename"]
+    )
     data_import_branch = data_import_branch_task(params["dataload_profile_uuid"])
     data_import = data_import_task(
         params["download_path"],
@@ -118,4 +125,17 @@ with DAG(
         filename,
     )
 
-    data_import_branch >> data_import
+    file_loaded_sensor = report_when_file_loaded_task(
+        params["vendor_interface_uuid"], filename
+    )
+
+    file_loaded_email_task(
+        params["vendor_code"],
+        params["vendor_name"],
+        file_loaded_sensor,
+        filename,
+        params["start_time"],
+        processed_marc["records_count"],
+    )
+
+    data_import_branch >> data_import >> file_loaded_sensor

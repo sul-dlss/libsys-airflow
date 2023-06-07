@@ -28,7 +28,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
    ```
    $ git submodule init
    $ git submodule update
-   $ chmod +x migration/create_folder_structure.sh 
+   $ chmod +x migration/create_folder_structure.sh
    $ ./migration/create_folder_structure.sh
    ```
 3. Start up docker locally.
@@ -42,6 +42,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_LOBBY_URL`
 - `AIRFLOW_VAR_LOBBY_KEY`
 - `AIRFLOW_VAR_OKAPI_URL`
+- `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
 - `AIRFLOW_VAR_MIGRATION_USER`
@@ -182,7 +183,7 @@ module and then run the following steps:
 2. Run `dotenv run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
 3. After the migration script is created, run `dotenv run alembic upgrade head` to apply your latest changes to the database.
 
-If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means. 
+If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
 
 To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"
 

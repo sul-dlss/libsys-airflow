@@ -1,5 +1,7 @@
 import logging
 
+from datetime import datetime
+
 import pydantic
 import pytest
 import requests
@@ -46,6 +48,8 @@ def mock_okapi_success(monkeypatch, mocker: MockerFixture):
 def mock_dag_run(mocker: MockerFixture):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "manual_2022-03-05"
+    dag_run.start_date = datetime.now()
+
     return dag_run
 
 
