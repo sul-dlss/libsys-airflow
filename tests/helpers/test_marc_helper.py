@@ -22,6 +22,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
     _move_001_to_035,
+    _move_authkeys,
     _move_equals_subfield,
     post_marc_to_srs,
 )
@@ -459,13 +460,51 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
+def test_move_authkeys():
+    record = Record()
+    record.add_field(Field(tag="008", data="230410s1967\\\\enkzznn\o\\\\\\\\\n\zxx\d"))
+    record.add_field(
+        Field(
+            tag="240",
+            indicators=[" ", " "],
+            subfields=["a", "Quintets", "=", "^A262428"],
+        )
+    )
+    record.add_field(
+        Field(
+            tag="245",
+            indicators=["1", "0"],
+            subfields=["a", "Forellen-Quintett /", "c", "Schubert."],
+        )
+    )
+    record.add_field(
+        Field(
+            tag="700",
+            indicators=["1", " "],
+            subfields=[
+                "a",
+                "Haebler, Ingrid,",
+                "d",
+                "1929-",
+                "e",
+                "instrumentalist.",
+                "=",
+                "^A856199",
+            ],
+        )
+    )
+    _move_authkeys(record)
+    assert "0" not in record["240"].subfields_as_dict().keys()
+    assert "=" not in record["700"].subfields_as_dict().keys()
+    assert record["700"].get_subfields("0") == ["^A856199"]
+
+
 def test_move_equals_subfield():
     field_100 = Field(
         tag="100",
         indicators=["1", " "],
-        subfields=["a", "Costa, Robson",
-                   "e", "author.",
-                   "=", "^A2387492"])
+        subfields=["a", "Costa, Robson", "e", "author.", "=", "^A2387492"],
+    )
     _move_equals_subfield(field_100)
     assert "=" not in field_100.subfields_as_dict().keys()
     assert field_100.get_subfields("0") == ["^A2387492"]
