@@ -28,6 +28,30 @@ vendor_id_re = re.compile(r"\w{2,2}4")
 
 sdr_sul_re = re.compile(r"https*:\/\/purl.stanford.edu")
 
+authkey_fields = [
+    "100",
+    "110",
+    "111",
+    "130",
+    "240",
+    "440",
+    "600",
+    "610",
+    "611",
+    "630",
+    "650",
+    "651",
+    "655",
+    "700",
+    "710",
+    "711",
+    "730",
+    "800",
+    "810",
+    "811",
+    "830",
+]
+
 
 def _add_electronic_holdings(field: pymarc.Field) -> bool:
     if field.indicator2 in ["0", "1"]:
@@ -198,8 +222,22 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
+def _move_authkeys(record: pymarc.Record):
+    """
+    Moves authkeys subfields for select MARC fields
+    """
+    for tag in authkey_fields:
+        if tag in record:
+            if tag == "240" and record["008"][20] != "l":
+                continue
+            else:
+                _move_equals_subfield(record[tag])
+
+
 def _move_equals_subfield(field: pymarc.Field):
-    """Moves subfield '=' to subfield 0"""
+    """
+    Moves subfield '=' to subfield 0
+    """
     subfield_equals = field.get_subfields("=")
     for value in subfield_equals:
         field.add_subfield(code="0", value=value)
@@ -459,6 +497,7 @@ def process(*args, **kwargs):
         if record is None:
             continue
         catkey = _move_001_to_035(record)
+        _move_authkeys(record)
         library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
             _extract_e_holdings_fields(
