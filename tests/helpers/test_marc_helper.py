@@ -462,19 +462,24 @@ def test_move_001_to_035(mock_marc_record):
 
 def test_move_authkeys():
     record = Record()
-    record.add_field(Field(tag="008", data="230410s1967\\\\enkzznn\o\\\\\\\\\n\zxx\d"))
     record.add_field(
         Field(
             tag="240",
             indicators=[" ", " "],
-            subfields=["a", "Quintets", "=", "^A262428"],
+            subfields=[
+                Subfield(code="a", value="Quintets"),
+                Subfield(code="=", value="^A262428")
+            ],
         )
     )
     record.add_field(
         Field(
             tag="245",
             indicators=["1", "0"],
-            subfields=["a", "Forellen-Quintett /", "c", "Schubert."],
+            subfields=[
+                Subfield(code="a", value="Forellen-Quintett /"),
+                Subfield(code="c", value="Schubert.")
+            ],
         )
     )
     record.add_field(
@@ -482,14 +487,10 @@ def test_move_authkeys():
             tag="700",
             indicators=["1", " "],
             subfields=[
-                "a",
-                "Haebler, Ingrid,",
-                "d",
-                "1929-",
-                "e",
-                "instrumentalist.",
-                "=",
-                "^A856199",
+                Subfield(code="a", value="Haebler, Ingrid,"),
+                Subfield(code="d", value="1929-"),
+                Subfield(code="e", value="instrumentalist."),
+                Subfield(code="=", value="^A856199"),
             ],
         )
     )
@@ -499,11 +500,31 @@ def test_move_authkeys():
     assert record["700"].get_subfields("0") == ["^A856199"]
 
 
+def test_move_authkeys_240():
+    record = Record()
+    record.leader[6] = "c"
+    record.add_field(
+        Field(
+            tag="240",
+            indicators=[" ", " "],
+            subfields=[
+                Subfield(code="a", value="Quintets"),
+                Subfield(code="=", value="^A262428")],
+        )
+    )
+    _move_authkeys(record)
+    assert "=" not in record["240"].subfields_as_dict().keys()
+    assert record["240"].get_subfields("0") == ["^A262428"]
+
+
 def test_move_equals_subfield():
     field_100 = Field(
         tag="100",
         indicators=["1", " "],
-        subfields=["a", "Costa, Robson", "e", "author.", "=", "^A2387492"],
+        subfields=[
+            Subfield(code="a", value="Costa, Robson"),
+            Subfield(code="e", value="author."),
+            Subfield(code="=", value="^A2387492")],
     )
     _move_equals_subfield(field_100)
     assert "=" not in field_100.subfields_as_dict().keys()

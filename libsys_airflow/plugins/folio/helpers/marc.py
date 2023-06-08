@@ -228,10 +228,11 @@ def _move_authkeys(record: pymarc.Record):
     """
     for tag in authkey_fields:
         if tag in record:
-            if tag == "240" and record["008"][20] != "l":
-                continue
+            field = record[tag]
+            if tag == "240":
+                _process_240(field, record.leader)
             else:
-                _move_equals_subfield(record[tag])
+                _move_equals_subfield(field)
 
 
 def _move_equals_subfield(field: pymarc.Field):
@@ -244,7 +245,15 @@ def _move_equals_subfield(field: pymarc.Field):
         field.delete_subfield(code="=")
 
 
-def _srs_check_add(**kwargs) -> int:
+def _process_240(field: pymarc.Field, leader: pymarc.Leader):
+    """
+    Checks 240 field and moves subfield "=" if conditions match
+    """
+    if leader[6] in ["c", "d", "i", "j"]:
+        _move_equals_subfield(field)
+
+
+def _srs_check_add(**kwargs)  -> int:
     """
     Runs audit/remediation for a single SRS file
     """
