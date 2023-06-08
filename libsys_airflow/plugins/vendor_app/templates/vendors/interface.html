@@ -83,6 +83,15 @@
     </form>
   </div>
   {% endif %}
+  {% if interface.assigned_in_folio and interface.folio_interface_uuid %}
+  <div class="col-md-1">
+    <form method="POST" action="{{ url_for('VendorManagementView.interface_test', interface_id=interface.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="submit" class="btn btn-default" value="Test Connection">
+    </form>
+  </div>
+  {% endif %}
+
 </div>
 
 {% if interface.assigned_in_folio or interface.upload_only %}

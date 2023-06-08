@@ -75,7 +75,7 @@ def ftp_download_task(
         f"Downloading for interface {vendor_interface_uuid} from {remote_path} with {conn_id}"
     )
 
-    hook = _create_hook(conn_id)
+    hook = create_hook(conn_id)
     # Note that setting the filename regex to "CNT-ORD" triggers the Gobi order filter strategy.
     if filename_regex == "CNT-ORD":
         filter_strategy = _gobi_order_filter_strategy
@@ -99,7 +99,7 @@ def ftp_download_task(
     )
 
 
-def _create_hook(conn_id: str) -> Union[FTPHook, SFTPHook]:
+def create_hook(conn_id: str) -> Union[FTPHook, SFTPHook]:
     """Returns an FTPHook or SFTPHook for the given connection id."""
     if conn_id.startswith("sftp-"):
         hook = SFTPHook(ftp_conn_id=conn_id)
