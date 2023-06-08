@@ -13,8 +13,7 @@ numpy = "^1.22.3"
 objectpath = "^0.6.1"
 pandas = "^1.4.1"
 pydantic = "^1.9.0"
-pymarc = "^4.1.3"
-folio-migration-tools = "1.7.8"
+pymarc = "^5.0.0"
 requests = "^2.31.0"
 pyyaml = "^6.0"
 python-dotenv = "^1.0.0"
@@ -24,6 +23,7 @@ python-magic = "^0.4.27"
 honeybadger = "^0.15.2"
 # Needed according to HB docs.
 blinker = "^1.6.2"
+folio-migration-tools = {git = "https://github.com/FOLIO-FSE/folio_migration_tools.git"}
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
