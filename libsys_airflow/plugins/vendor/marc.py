@@ -234,7 +234,7 @@ def _field_match(field: MarcField, check_field: pymarc.Field):
     if field.indicator2 and check_field.indicators[1] != field.indicator2:
         return False
     for subfield in field.subfields:
-        check_subfield_value = check_field[subfield.code]
+        check_subfield_value = ''.join(check_field.get_subfields(subfield.code))
         if not check_subfield_value or check_subfield_value != subfield.value:
             return False
     return True

@@ -341,7 +341,13 @@ def test_alt_get_legacy_ids():
     marc_record = pymarc.Record()
     field_001 = pymarc.Field(tag="001", data="1964746")
     marc_record.add_field(field_001)
-    field_852 = pymarc.Field(tag="852", subfields=["b", "SAL3", "c", "PAGE-GR"])
+    field_852 = pymarc.Field(
+        tag="852",
+        subfields=[
+            pymarc.Subfield(code="b", value="SAL3"),
+            pymarc.Subfield(code="c", value="PAGE-GR"),
+        ],
+    )
     marc_record.add_field(field_852)
     legacy_id = _alt_get_legacy_ids(None, None, marc_record)
     assert legacy_id == ["1964746 SAL3 PAGE-GR"]

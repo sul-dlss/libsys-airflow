@@ -76,10 +76,10 @@ def test_move_fields(tmp_path, marc_path):
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             assert record.get_fields("520", "504") == []
-            if record.title() == "The loneliest whale blues /":
+            if record.title == "The loneliest whale blues /":
                 assert record.get_fields("920")
             if (
-                record.title()
+                record.title
                 == "The FVN handbook : the principles and practices of the Fierce Vulnerability Network."
             ):
                 assert record.get_fields("904")

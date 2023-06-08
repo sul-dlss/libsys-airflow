@@ -6,15 +6,14 @@ import requests
 
 import pytest  # noqa
 
-import folio_migration_tools.migration_tasks.batch_poster as batch_poster
-
 from pytest_mock import MockerFixture
-from pymarc import Field, MARCWriter, Record
+from pymarc import Field, MARCWriter, Record, Subfield
 
 from libsys_airflow.plugins.folio.audit import setup_audit_db
 
 from libsys_airflow.plugins.folio.helpers.marc import (
     _add_electronic_holdings,
+    BatchPoster,
     discover_srs_files,
     _extract_e_holdings_fields,
     filter_mhlds,
@@ -48,12 +47,9 @@ def mock_marc_record():
         tag="245",
         indicators=["0", "1"],
         subfields=[
-            "a",
-            "The pragmatic programmer : ",
-            "b",
-            "from journeyman to master /",
-            "c",
-            "Andrew Hunt, David Thomas.",
+            Subfield(code="a", value="The pragmatic programmer : "),
+            Subfield(code="b", value="from journeyman to master /"),
+            Subfield(code="c", value="Andrew Hunt, David Thomas."),
         ],
     )
     field_001_1 = Field(tag="001", data="a123456789")
@@ -64,20 +60,12 @@ def mock_marc_record():
 
 
 @pytest.fixture
-def mock_get_req_size(monkeypatch):
-    def mock_size(response):
-        return "150.00MB"
-
-    monkeypatch.setattr(batch_poster, "get_req_size", mock_size)
-
-
-@pytest.fixture
 def mock_srs_requests(monkeypatch, mocker: MockerFixture):
     def mock_post(*args, **kwargs):
         post_response = mocker.stub(name="post-result")
         post_response.status_code = 201
         if not args[0].endswith("snapshots"):
-            if kwargs["json"]["id"] == "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4":
+            if kwargs["json"].get("id", "") == "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4":
                 post_response.status_code = 422
                 post_response.text = "Invalid user"
         return post_response
@@ -138,11 +126,24 @@ def srs_file(mock_file_system):  # noqa
     return srs_filepath
 
 
+@pytest.fixture
+def mock_batch_poster(monkeypatch):
+    def mock_function(*args, **kwargs):
+        return
+
+    monkeypatch.setattr(BatchPoster, "__init__", mock_function)
+    monkeypatch.setattr(BatchPoster, "do_work", mock_function)
+    monkeypatch.setattr(BatchPoster, "wrap_up", mock_function)
+
+
 def test_add_electronic_holdings_skip():
     skip_856_field = Field(
         tag="856",
         indicators=["0", "1"],
-        subfields=["z", "table of contents", "u", "http://example.com/"],
+        subfields=[
+            Subfield(code="z", value="table of contents"),
+            Subfield(code="u", value="http://example.com/"),
+        ],
     )
     assert _add_electronic_holdings(skip_856_field) is False
 
@@ -152,12 +153,9 @@ def test_add_electronic_holdings_skip_multiple_fields():
         tag="856",
         indicators=["0", "1"],
         subfields=[
-            "z",
-            "Online Abstract from PCI available",
-            "3",
-            "More information",
-            "u",
-            "http://example.com/",
+            Subfield(code="z", value="Online Abstract from PCI available"),
+            Subfield(code="3", value="More information"),
+            Subfield(code="u", value="http://example.com/"),
         ],
     )
     assert _add_electronic_holdings(skip_856_field) is False
@@ -165,7 +163,9 @@ def test_add_electronic_holdings_skip_multiple_fields():
 
 def test_add_electronic_holdings():
     field_856 = Field(
-        tag="856", indicators=["0", "0"], subfields=["u", "http://example.com/"]
+        tag="856",
+        indicators=["0", "0"],
+        subfields=[Subfield(code="u", value="http://example.com/")],
     )
     assert _add_electronic_holdings(field_856) is True
 
@@ -194,63 +194,55 @@ def test_extract_856s():
             tag="856",
             indicators=["0", "1"],
             subfields=[
-                "3",
-                "Finding Aid",
-                "u",
-                "https://purl.stanford.edu/123345",
-                "x",
-                "purchased",
-                "x",
-                "cz4",
-                "x",
-                "Provider: Cambridge University Press",
-                "y",
-                "Access on Campus Only",
-                "z",
-                "Stanford Use Only",
-                "z",
-                "Restricted",
+                Subfield(code="3", value="Finding Aid"),
+                Subfield(code="u", value="https://purl.stanford.edu/123345"),
+                Subfield(code="x", value="purchased"),
+                Subfield(code="x", value="cz4"),
+                Subfield(code="x", value="Provider: Cambridge University Press"),
+                Subfield(code="y", value="Access on Campus Only"),
+                Subfield(code="z", value="Stanford Use Only"),
+                Subfield(code="z", value="Restricted"),
             ],
         ),
         Field(
             tag="856",
             indicators=["4", "1"],
             subfields=[
-                "u",
-                "http://purl.stanford.edu/bh752xn6465",
-                "x",
-                "SDR-PURL",
-                "x",
-                "file:bh752xn6465%2FSC1228_Powwow_program_2014_001.jp2",
-                "x",
-                "collection:cy369sj5591:10719939:Stanford University, Native American Cultural Center, records",
-                "x",
-                "label:2014",
-                "x",
-                "rights:world",
+                Subfield(code="u", value="http://purl.stanford.edu/bh752xn6465"),
+                Subfield(code="x", value="SDR-PURL"),
+                Subfield(
+                    code="x",
+                    value="file:bh752xn6465%2FSC1228_Powwow_program_2014_001.jp2",
+                ),
+                Subfield(
+                    code="x",
+                    value="collection:cy369sj5591:10719939:Stanford University, Native American Cultural Center, records",
+                ),
+                Subfield(code="x", value="label:2014"),
+                Subfield(code="x", value="rights:world"),
             ],
         ),
         Field(
             tag="856",
             indicators=["0", "0"],
             subfields=[
-                "u",
-                "http://doi.org/34456",
-                "y",
-                "Public Document All Access",
-                "z",
-                "World Available",
+                Subfield(code="u", value="http://doi.org/34456"),
+                Subfield(code="y", value="Public Document All Access"),
+                Subfield(code="z", value="World Available"),
             ],
         ),
         Field(
             tag="856",
             indicators=["0", "1"],
-            subfields=["u", "https://example.doi.org/4566", "3", "sample text"],
+            subfields=[
+                Subfield(code="u", value="https://example.doi.org/4566"),
+                Subfield(code="3", value="sample text"),
+            ],
         ),
         Field(
             tag="856",
             indicators=["0", "8"],
-            subfields=["u", "https://example.doi.org/45668"],
+            subfields=[Subfield(code="u", value="https://example.doi.org/45668")],
         ),
     ]
     output = _extract_e_holdings_fields(
@@ -275,18 +267,21 @@ def test_extract_956s():
             tag="956",
             indicators=["4", "1"],
             subfields=[
-                "u",
-                "http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&9008",
+                Subfield(
+                    code="u",
+                    value="http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&9008",
+                ),
             ],
         ),
         Field(
             tag="956",
             indicators=["0", "1"],
             subfields=[
-                "u",
-                "http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&8998",
-                "z",
-                "Sample text",
+                Subfield(
+                    code="u",
+                    value="http://library.stanford.edu/sfx?url%5Fver=Z39.88-2004&8998",
+                ),
+                Subfield(code="z", value="Sample text"),
             ],
         ),
     ]
@@ -354,18 +349,26 @@ def test_filter_mhlds(tmp_path, caplog):
 
     record_one = Record()
     record_one.add_field(
-        Field(tag="852", indicators=[" ", " "], subfields=['a', 'CSt'])
+        Field(
+            tag="852",
+            indicators=[" ", " "],
+            subfields=[Subfield(code='a', value='CSt')],
+        )
     )
     record_two = Record()
     record_two.add_field(
-        Field(tag="852", indicators=[" ", " "], subfields=['a', '**REQUIRED Field**'])
+        Field(
+            tag="852",
+            indicators=[" ", " "],
+            subfields=[Subfield(code='a', value='**REQUIRED Field**')],
+        )
     )
     record_three = Record()
     record_three.add_field(
         Field(
             tag="852",
             indicators=[" ", " "],
-            subfields=['z', 'All holdings transferred to CSt'],
+            subfields=[Subfield(code='z', value='All holdings transferred to CSt')],
         )
     )
 
@@ -402,24 +405,24 @@ def test_get_library_default():
 
 
 def test_get_library_law():
-    fields = [Field(tag="596", subfields=["a", "24"])]
+    fields = [Field(tag="596", subfields=[Subfield(code="a", value="24")])]
     library = _get_library(fields)
     assert library.startswith("LAW")
 
 
 def test_get_library_hoover():
-    fields_25 = [Field(tag="596", subfields=["a", "25 22"])]
+    fields_25 = [Field(tag="596", subfields=[Subfield(code="a", value="25 22")])]
     library_hoover = _get_library(fields_25)
     assert library_hoover.startswith("HOOVER")
-    fields_27 = [Field(tag="596", subfields=["a", "27 22"])]
+    fields_27 = [Field(tag="596", subfields=[Subfield(code="a", value="27 22")])]
     library_hoover2 = _get_library(fields_27)
     assert library_hoover2.startswith("HOOVER")
 
 
 def test_get_library_business():
     fields = [
-        Field(tag="596", subfields=["a", "28"]),
-        Field(tag="596", subfields=["a", "28 22"]),
+        Field(tag="596", subfields=[Subfield(code="a", value="28")]),
+        Field(tag="596", subfields=[Subfield(code="a", value="28 22")]),
     ]
     library = _get_library(fields)
     assert library.startswith("BUSINESS")
@@ -464,7 +467,11 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     with sample_mrc.open("wb+") as fo:
         marc_record = Record()
         marc_record.add_field(
-            Field(tag="245", indicators=[" ", " "], subfields=["a", "A Test Title"])
+            Field(
+                tag="245",
+                indicators=[" ", " "],
+                subfields=[Subfield(code="a", value="A Test Title")],
+            )
         )
         writer = MARCWriter(fo)
         writer.write(marc_record)
@@ -477,7 +484,11 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
             Field(
                 tag="852",
                 indicators=[" ", " "],
-                subfields=["a", "CSt", "b", "GREEN", "c", "STACKS"],
+                subfields=[
+                    Subfield(code="a", value="CSt"),
+                    Subfield(code="b", value="GREEN"),
+                    Subfield(code="c", value="STACKS"),
+                ],
             )
         )
         writer = MARCWriter(mhld_fo)
@@ -512,10 +523,9 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
 
 def test_post_marc_to_srs(
     srs_file,
-    mock_okapi_success,  # noqa
+    mock_batch_poster,
     mock_dag_run,  # noqa
     mock_file_system,  # noqa
-    mock_get_req_size,
     mock_okapi_variable,  # noqa
     caplog,
 ):

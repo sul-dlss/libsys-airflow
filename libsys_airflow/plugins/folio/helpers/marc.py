@@ -188,7 +188,9 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     if len(all001) > 1:
         for field001 in all001[1:]:
             field035 = pymarc.Field(
-                tag="035", indicators=[" ", " "], subfields=["a", field001.data]
+                tag="035",
+                indicators=[" ", " "],
+                subfields=[pymarc.Subfield(code="a", value=field001.data)],
             )
             record.add_field(field035)
             record.remove_field(field001)
