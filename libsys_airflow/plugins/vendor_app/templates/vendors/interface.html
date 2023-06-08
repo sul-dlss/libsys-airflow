@@ -1,6 +1,18 @@
 {% extends "airflow/main.html" %}
 {% import "vendors/_macros.html" as _macros -%}
 
+{% block head_css %}
+{{ super() }}
+<style type="text/css">
+  dl.dl-wide > dt {
+    width: 200px;
+  }
+  dl.dl-wide > dd {
+    margin-left: 220px;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <h1>Interface: {{ interface.display_name }}</h1>
@@ -17,7 +29,7 @@
   <li class="active">{{ interface.display_name }}</li>
 </ol>
 
-<dl class="dl-horizontal">
+<dl class="dl-horizontal dl-wide">
   <dt>Vendor</dt>
   <dd><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></dd>
   <dt>Interface ID</dt>
