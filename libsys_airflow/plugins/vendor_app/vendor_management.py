@@ -22,6 +22,8 @@ from libsys_airflow.plugins.vendor.paths import download_path as get_download_pa
 from libsys_airflow.plugins.vendor.paths import archive_path as get_archive_path
 from libsys_airflow.plugins.vendor_app.database import Session
 from libsys_airflow.plugins.vendor.archive import archive_file
+from libsys_airflow.plugins.airflow.connections import create_connection
+from libsys_airflow.plugins.vendor.download import create_hook
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +225,22 @@ class VendorManagementView(BaseView):
 
         return redirect(
             url_for("VendorManagementView.interface", interface_id=interface_id)
+        )
+
+    @expose("/interfaces/<int:interface_id>/test", methods=['POST'])
+    def interface_test(self, interface_id):
+        session = Session()
+        interface = session.query(VendorInterface).get(interface_id)
+
+        try:
+            conn_id = create_connection(interface.folio_interface_uuid)
+            create_hook(conn_id)
+            flash("Test succeeded")
+        except Exception as e:
+            flash(f"Test failed: {e}")
+
+        return redirect(
+            url_for('VendorManagementView.interface', interface_id=interface.id)
         )
 
     @expose("/files/<int:file_id>", methods=["GET", "POST"])
