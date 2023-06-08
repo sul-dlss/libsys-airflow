@@ -222,7 +222,7 @@ class VendorFile(Model):
     def ready_for_data_import(cls, session: Session) -> List["VendorFile"]:
         """
         Returns a list of VendorFile objects that are ready for loading into
-        Folio. Thse are files that have a status of "fetched" and which have an
+        Folio. These are files that have a status of "fetched" and which have an
         expected_load_time in the past. Results are ordered in ascending order
         of when they were fetched, and no more than 1000 are returned at a time.
         """

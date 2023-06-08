@@ -82,6 +82,22 @@ class VendorManagementView(BaseView):
         vendor = Session().query(Vendor).get(vendor_id)
         return self.render_template("vendors/vendor.html", vendor=vendor)
 
+    @expose("/vendors/<int:vendor_id>/interfaces", methods=["POST"])
+    def create_vendor_interface(self, vendor_id):
+        session = Session()
+        vendor = session.query(Vendor).get(vendor_id)
+        interface = VendorInterface(
+            vendor_id=vendor.id,
+            display_name=f"{vendor.display_name} - Upload Only",
+            active=True,
+            assigned_in_folio=False,
+        )
+        session.add(interface)
+        session.commit()
+        return redirect(
+            url_for('VendorManagementView.interface_edit', interface_id=interface.id)
+        )
+
     @expose("/interfaces/<int:interface_id>")
     def interface(self, interface_id):
         interface = Session().query(VendorInterface).get(interface_id)

@@ -361,3 +361,26 @@ def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
             "filename_regex": "*.mrc",
         },
     )
+
+
+def test_create_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        response = test_airflow_client.post(
+            '/vendor_management/vendors/1/interfaces',
+        )
+        assert response.status_code == 302
+
+        interface = session.scalars(
+            select(VendorInterface).where(
+                VendorInterface.display_name == 'Acme - Upload Only'
+            )
+        ).first()
+        assert interface
+        assert interface.vendor_id == 1
+        assert interface.active
+        assert interface.folio_interface_uuid is None
+        assert not interface.assigned_in_folio
