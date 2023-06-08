@@ -94,4 +94,9 @@
     {% endfor %}
 </table>
 
+<form method="POST" action="{{ url_for('VendorManagementView.create_vendor_interface', vendor_id=vendor.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <input type="submit" class="btn btn-default" value="Add Upload Only Interface">
+</form>
+
 {% endblock %}
