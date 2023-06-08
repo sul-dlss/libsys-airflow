@@ -40,6 +40,21 @@
   <dd>{{ interface.active }}</dd>
   <dt>Assigned to vendor in FOLIO</dt>
   <dd>{{ interface.assigned_in_folio }}</dd>
+  {% if interface.processing_options %}
+    <dt>Package Name</dt>
+    <dd>{{ interface.processing_options['package_name'] }}</dd>
+    <dt>Fields to Remove</dt>
+    <dd>{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+    <dt>Fields to Move</dt>
+    <dd>
+      {% for rule in interface.processing_options['change_marc'] %}
+        {{ rule['from'] }} <span class="material-icons">double_arrow</span> {{ rule['to'] }}<br>
+      {% endfor %}
+    </dd>
+  {% else %}
+    <dt>Processing Rules</dt>
+    <dd>None</dd>
+  {% endif %}
 </dl>
 
 <div class="row">
