@@ -103,7 +103,7 @@ class VendorInterface(Model):
                     ]
                 )
             )
-            .order_by(VendorFile.created.desc())
+            .order_by(VendorFile.updated.desc())
         ).all()
 
     @property
@@ -116,7 +116,7 @@ class VendorInterface(Model):
             .filter(
                 VendorFile.status.in_([FileStatus.loaded, FileStatus.loading_error])
             )
-            .order_by(VendorFile.loaded_timestamp.desc())
+            .order_by(VendorFile.updated.desc())
         ).all()
 
     @property

@@ -161,9 +161,9 @@ def test_pending_files(engine):
         pending = interface.pending_files
         assert len(pending) == 3
         assert [v.vendor_filename for v in pending] == [
+            "acme-ftp-broken-marc.dat",
             "acme-extra-strength-marc.dat",
             "acme-lite-marc.dat",
-            "acme-ftp-broken-marc.dat",
         ]
 
 
@@ -173,8 +173,8 @@ def test_processed_files(engine):
         processed = interface.processed_files
         assert len(processed) == 2
         assert [v.vendor_filename for v in processed] == [
-            "acme-marc.dat",
             "acme-bad-marc.dat",
+            "acme-marc.dat",
         ]
 
 
