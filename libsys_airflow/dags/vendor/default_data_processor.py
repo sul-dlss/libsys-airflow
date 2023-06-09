@@ -133,6 +133,7 @@ with DAG(
         params["vendor_code"],
         params["vendor_name"],
         file_loaded_sensor,
+        params["download_path"],
         filename,
         params["start_time"],
         processed_marc["records_count"],

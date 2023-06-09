@@ -2,6 +2,7 @@ import json
 import os
 from datetime import date, datetime
 import logging
+import pathlib
 
 from airflow.configuration import conf
 from airflow.decorators import task
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from jinja2 import Template
 
 from libsys_airflow.plugins.vendor.models import VendorInterface
+from libsys_airflow.plugins.vendor.marc import is_marc
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,7 @@ def file_loaded_email_task(
     vendor_code: str,
     vendor_name: str,
     file_loaded_json: str,
+    download_path: str,
     filename: str,
     load_time: datetime,
     records_count: int,
@@ -112,6 +115,8 @@ def file_loaded_email_task(
 
     file_loaded_info = json.loads(file_loaded_json)
     job_execution_url = f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{file_loaded_info['folio_job_execution_uuid']}"
+    marc_path = pathlib.Path(download_path) / filename
+
     send_file_loaded_email(
         vendor_code,
         vendor_name,
@@ -121,6 +126,7 @@ def file_loaded_email_task(
         records_count,
         file_loaded_info["srs_stats"],
         file_loaded_info["instance_stats"],
+        is_marc(marc_path),
     )
 
 
@@ -133,11 +139,15 @@ def send_file_loaded_email(
     records_count,
     srs_stats,
     instance_stats,
+    is_marc,
 ):
+    html_content_func = (
+        _file_loaded_bib_html_content if is_marc else _file_loaded_edi_html_content
+    )
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
         f"{vendor_name} ({vendor_code}) - ({filename}) - File Load Report",
-        _file_loaded_html_content(
+        html_content_func(
             job_execution_url,
             filename,
             load_time,
@@ -148,7 +158,35 @@ def send_file_loaded_email(
     )
 
 
-def _file_loaded_html_content(
+def _file_loaded_edi_html_content(
+    job_execution_url,
+    filename,
+    load_time,
+    records_count,
+    srs_stats,
+    instance_stats,
+):
+    template = Template(
+        """
+        <h5>FOLIO Catalog EDI Load started on {{load_time}}</h5>
+
+        <p>Filename {{filename}} - {{job_execution_url}}</p>
+        <p>{{records_count}} invoices read from EDI file.</p>
+        <p>{{srs_created}} SRS records created</p>
+        <p>{{instance_errors}} Instance errors</p>
+        """
+    )
+    return template.render(
+        load_time=load_time,
+        filename=filename,
+        job_execution_url=job_execution_url,
+        records_count=records_count,
+        srs_created=srs_stats.get("totalCreatedEntities", 0),
+        instance_errors=instance_stats.get("totalErrors", 0),
+    )
+
+
+def _file_loaded_bib_html_content(
     job_execution_url,
     filename,
     load_time,
