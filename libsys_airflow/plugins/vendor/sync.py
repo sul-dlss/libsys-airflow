@@ -83,10 +83,14 @@ def sync_data(folio_client):
                     display_name=organization["name"],
                     folio_organization_uuid=organization["id"],
                     vendor_code_from_folio=organization["code"],
-                    acquisitions_unit_from_folio=organization["acqUnitIds"][0],
+                    acquisitions_unit_from_folio=organization["acqUnitIds"][0]
+                    if organization["acqUnitIds"]
+                    else None,
                     acquisitions_unit_name_from_folio=acq_names[
                         organization["acqUnitIds"][0]
-                    ],
+                    ]
+                    if organization["acqUnitIds"]
+                    else None,
                     last_folio_update=datetime.now(),
                 )
                 logging.info(f"Adding vendor {vendor.display_name}")
@@ -95,10 +99,16 @@ def sync_data(folio_client):
             else:
                 vendor.display_name = organization["name"]
                 vendor.vendor_code_from_folio = organization["code"]
-                vendor.acquisitions_unit_from_folio = organization["acqUnitIds"][0]
-                vendor.acquisitions_unit_name_from_folio = acq_names[
+                vendor.acquisitions_unit_from_folio = (
                     organization["acqUnitIds"][0]
-                ]
+                    if organization["acqUnitIds"]
+                    else None
+                )
+                vendor.acquisitions_unit_name_from_folio = (
+                    acq_names[organization["acqUnitIds"][0]]
+                    if organization["acqUnitIds"]
+                    else None
+                )
                 vendor.last_folio_update = datetime.now()
 
             # Sync interfaces
