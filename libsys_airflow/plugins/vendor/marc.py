@@ -96,13 +96,14 @@ def process_marc(
     logger.info(f"Processing from {marc_path}")
     records = []
     with marc_path.open("rb") as fo:
-        reader = _marc_reader(fo)
+        reader = _marc_reader(fo, to_unicode=False)
         for record in reader:
             if record is None:
                 logger.info(
                     f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception}"
                 )
             else:
+                record = _marc8_to_unicode(record)
                 if remove_fields:
                     record.remove_fields(*remove_fields)
                 if change_fields:
@@ -122,9 +123,9 @@ def is_marc(path: pathlib.Path):
     return magic.from_file(str(path), mime=True) == "application/marc"
 
 
-def _marc_reader(file):
+def _marc_reader(file, to_unicode=True):
     return pymarc.MARCReader(
-        file, to_unicode=True, permissive=True, utf8_handling="replace"
+        file, to_unicode=to_unicode, permissive=True, utf8_handling="replace"
     )
 
 
@@ -234,7 +235,19 @@ def _field_match(field: MarcField, check_field: pymarc.Field):
     if field.indicator2 and check_field.indicators[1] != field.indicator2:
         return False
     for subfield in field.subfields:
-        check_subfield_value = check_field[subfield.code]
+        check_subfield_value = ''.join(check_field.get_subfields(subfield.code))
         if not check_subfield_value or check_subfield_value != subfield.value:
             return False
     return True
+
+
+def _marc8_to_unicode(record: pymarc.Record) -> pymarc.Record:
+    """
+    Handle MARC records that are encoded as MARC8 but have incorrect bit
+    set for utf-8 encoding in leader or have mixed MARC8 and UTF-8 encodings
+    in different fields
+    """
+    modified_leader = record.leader[0:9] + " " + record.leader[10:]
+    record.leader = modified_leader
+    raw_marc = record.as_marc()
+    return pymarc.Record(data=raw_marc, to_unicode=True)

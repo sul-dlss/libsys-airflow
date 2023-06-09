@@ -12,6 +12,7 @@ from libsys_airflow.plugins.vendor.marc import (
     _to_change_fields_models,
     _to_add_fields_models,
     _has_matching_field,
+    _marc8_to_unicode,
     MarcField,
     MarcSubfield,
 )
@@ -29,6 +30,13 @@ def marcit_path(tmp_path):
     dest_filepath = os.path.join(tmp_path, "marcit_sample_n.mrc")
     shutil.copyfile("tests/vendor/marcit_sample_n.mrc", dest_filepath)
     return pathlib.Path(dest_filepath)
+
+
+@pytest.fixture
+def encoding_marc_path(tmp_path):
+    dest_filepath = tmp_path / "encoding-samples.mrc"
+    shutil.copyfile("tests/vendor/encoding-samples.mrc", dest_filepath)
+    return dest_filepath
 
 
 @pytest.fixture
@@ -76,10 +84,10 @@ def test_move_fields(tmp_path, marc_path):
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             assert record.get_fields("520", "504") == []
-            if record.title() == "The loneliest whale blues /":
+            if record.title == "The loneliest whale blues /":
                 assert record.get_fields("920")
             if (
-                record.title()
+                record.title
                 == "The FVN handbook : the principles and practices of the Fierce Vulnerability Network."
             ):
                 assert record.get_fields("904")
@@ -198,3 +206,26 @@ def test_has_matching_field(marc_record):
         ],
     )
     assert _has_matching_field(marc_record, marcField)
+
+
+def test_marc8_to_unicode(encoding_marc_path):
+    with encoding_marc_path.open("rb") as fo:
+        marc_records = [record for record in pymarc.MARCReader(fo, to_unicode=False)]
+
+    mod_record = _marc8_to_unicode(marc_records[0])
+
+    assert mod_record.leader[9] == " "
+
+    # The original 245 subfield 'a' had mixed marc8 and utf-8 characters
+    # Spaces added at the end for those tokens that could not be parsed
+    assert mod_record.title == "한국환경농학회 워크      "
+
+    assert marc_records[1].leader[9] == "a"
+    mod_record2 = _marc8_to_unicode(marc_records[1])
+
+    assert marc_records[1].leader[9] == " "
+    # Confirms that other records are encoded correctly
+    assert (
+        mod_record2.title
+        == "Signal. image. architecture. : everything is already an image /"
+    )
