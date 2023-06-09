@@ -2,13 +2,16 @@ from datetime import datetime, timedelta
 import logging
 
 from airflow import DAG
+from airflow.decorators import task
+from airflow.models.param import Param
+from airflow.operators.python import get_current_context
 from libsys_airflow.plugins.vendor.sync import sync_data_task
 
 
 logger = logging.getLogger(__name__)
 
 # Run with:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger folio_vendor_sync
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger folio_vendor_sync -c '{"folio_org_uuid": "57705203-3413-40aa-9bd5-35fafc6d72d7"}'
 
 default_args = dict(
     {
@@ -25,5 +28,18 @@ with DAG(
     schedule=None,  # change to daily?
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    params={
+        "folio_org_uuid": Param(None, type=["null", "string"])
+    },  # "57705203-3413-40aa-9bd5-35fafc6d72d7"
 ) as dag:
-    sync_data = sync_data_task()
+
+    @task(multiple_outputs=True)
+    def setup():
+        context = get_current_context()
+        params = context["params"]
+        logger.info(f"Params are {params}")
+        return params
+
+    params = setup()
+
+    sync_data_task(params["folio_org_uuid"])

@@ -26,11 +26,16 @@ def _folio_client():
         raise
 
 
-def _get_vendors(folio_client):
+def _get_vendors(folio_org_uuid, folio_client) -> list:
     """
-    Returns organizations (vendors) from FOLIO
+    Returns all or a single organization's (vendor) data from FOLIO
     """
-    return folio_client.organizations
+    if folio_org_uuid:
+        return [
+            folio_client.folio_get(f"/organizations/organizations/{folio_org_uuid}")
+        ]
+    else:
+        return folio_client.organizations
 
 
 def _get_vendor_interface(vendor_interface_id, folio_client):
@@ -52,13 +57,15 @@ def _get_acquisitions_unit_names(acq_uuids, folio_client):
 
 
 @task()
-def sync_data_task():
+def sync_data_task(folio_org_uuid):
+    logger.info(f"folio_org_uuid is {folio_org_uuid}")
     folio_client = _folio_client()
-    sync_data(folio_client)
+    sync_data(folio_org_uuid, folio_client)
 
 
-def sync_data(folio_client):
-    organizations = folio_client.organizations
+def sync_data(folio_org_uuid, folio_client):
+    organizations = _get_vendors(folio_org_uuid, folio_client)
+    logger.info(f"Syncing {len(organizations)} organization(s)")
     acq_names = _get_acquisitions_unit_names(
         set(
             [

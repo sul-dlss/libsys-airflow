@@ -100,6 +100,13 @@ class VendorManagementView(BaseView):
             url_for('VendorManagementView.interface_edit', interface_id=interface.id)
         )
 
+    @expose("/vendors/<int:vendor_id>/sync", methods=["POST"])
+    def vendor_sync(self, vendor_id):
+        vendor = Session().query(Vendor).get(vendor_id)
+        self._trigger_folio_vendor_sync_dag(vendor)
+        flash("Refresh of vendor data from FOLIO requested.")
+        return redirect(url_for('VendorManagementView.vendor', vendor_id=vendor.id))
+
     @expose("/interfaces/<int:interface_id>")
     def interface(self, interface_id):
         interface = Session().query(VendorInterface).get(interface_id)
@@ -362,3 +369,12 @@ class VendorManagementView(BaseView):
             },
         )
         logger.info(f"Triggered DAG {dag} for {interface.display_name}")
+
+    def _trigger_folio_vendor_sync_dag(self, vendor):
+        dag = trigger_dag(
+            'folio_vendor_sync',
+            conf={
+                "folio_org_uuid": vendor.folio_organization_uuid,
+            },
+        )
+        logger.info(f"Triggered DAG {dag} for {vendor.display_name}")

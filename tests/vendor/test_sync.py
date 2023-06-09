@@ -113,6 +113,15 @@ organizations_resp = [
         'acqUnitIds': ['aa000c65-1234-41f7-8361-1c1e8433333'],
     },
 ]
+organization_resp = {
+    'id': '123b45cd-8aff-40c7-b1ef-e8bd13c11111',
+    'name': 'Gobi New Name',
+    'code': 'GOBI-SUL',
+    'status': 'Active',
+    'interfaces': ['111z22zz-a000-4064-be92-c22e38eeb000'],
+    'isVendor': True,
+    'acqUnitIds': ['aa000c65-1234-41f7-8361-1c1e8433333'],
+}
 interface_resp_1 = {
     'id': '65d30c15-a560-4064-be92-f90e38eeb351',
     'name': 'OCLC - Full bibs',
@@ -126,6 +135,11 @@ interface_resp_3 = {
     'name': 'Records Service',
 }
 acq_unit_resp = 'NEW-STANFORD-UNIT'
+
+
+@pytest.fixture
+def folio_org_uuid():
+    return '123b45cd-8aff-40c7-b1ef-e8bd13c11111'
 
 
 @pytest.fixture
@@ -145,6 +159,8 @@ def mock_folio_get(*args, **kwargs):
         return interface_resp_2
     elif args[0].endswith('45678d90-b560-4064-be92-f90e38aaa222'):
         return interface_resp_3
+    elif args[0].endswith('123b45cd-8aff-40c7-b1ef-e8bd13c11111'):
+        return organization_resp
     else:
         return 'Response not found'
 
@@ -159,7 +175,8 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 def test_sync(mock_folio_client, pg_hook):
-    sync_data(mock_folio_client)
+    folio_org_id = None
+    sync_data(folio_org_id, mock_folio_client)
 
     with Session(pg_hook()) as session:
         vendor_1 = session.query(Vendor).get(1)
@@ -211,4 +228,18 @@ def test_sync(mock_folio_client, pg_hook):
         assert new_interface.id == 6
         assert (
             new_interface.folio_interface_uuid == '45678d90-b560-4064-be92-f90e38aaa222'
+        )
+
+
+def test_sync_on_demand(folio_org_uuid, mock_folio_client, pg_hook):
+    sync_data(folio_org_uuid, mock_folio_client)
+
+    with Session(pg_hook()) as session:
+        vendor = session.query(Vendor).get(2)
+        # vendor display name updated from FOLIO
+        assert vendor.display_name == 'Gobi New Name'
+        # acquisitions unit updated from FOLIO
+        assert vendor.acquisitions_unit_name_from_folio == 'NEW-STANFORD-UNIT'
+        assert (
+            vendor.acquisitions_unit_from_folio == 'aa000c65-1234-41f7-8361-1c1e8433333'
         )
