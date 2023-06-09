@@ -70,7 +70,7 @@ class VendorInterface(Model):
     id = Column(Integer, primary_key=True)
     vendor_id = Column(Integer, ForeignKey("vendors.id"))
     vendor = relationship("Vendor", back_populates="vendor_interfaces")
-    display_name = Column(String(50), unique=False, nullable=False)
+    display_name = Column(String(135), unique=False, nullable=False)
     # A null folio_interface_uuid indicates that upload only.
     folio_interface_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
