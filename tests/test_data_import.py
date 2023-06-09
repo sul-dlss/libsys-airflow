@@ -248,9 +248,14 @@ def test_record_loading(context, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.status == FileStatus.loading
+        assert vendor_file.loaded_timestamp is None
 
 
-def test_record_loaded(context, pg_hook):
+def test_record_loaded(context, pg_hook, mocker):
+    now = datetime(2019, 5, 18, 15, 17, 8, 132263)
+    mock_datetime = mocker.patch('libsys_airflow.plugins.folio.data_import.datetime')
+    mock_datetime.utcnow.return_value = now
+
     record_loaded(context)
 
     with Session(pg_hook()) as session:
@@ -258,6 +263,7 @@ def test_record_loaded(context, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.status == FileStatus.loaded
+        assert vendor_file.loaded_timestamp == now
 
 
 def test_record_loading_error(context, pg_hook):
@@ -268,6 +274,7 @@ def test_record_loading_error(context, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()
         assert vendor_file.status == FileStatus.loading_error
+        assert vendor_file.loaded_timestamp is None
 
 
 def test_marc_datatype(download_path):
