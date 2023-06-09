@@ -286,21 +286,32 @@ class VendorManagementView(BaseView):
 
         return redirect(redirect_url)
 
-    @expose("/files/<int:file_id>/download", methods=["GET"])
-    def download_file(self, file_id):
+    @expose("/files/<int:file_id>/download/<type>", methods=["GET"])
+    def download_file(self, file_id, type):
         session = Session()
         file = session.query(VendorFile).get(file_id)
-        archive_path = get_archive_path(
-            file.vendor_interface.vendor.folio_organization_uuid,
-            file.vendor_interface.interface_uuid,
-            file.archive_date,
-        )
+        if type == 'processed':
+            path = get_download_path(
+                file.vendor_interface.vendor.folio_organization_uuid,
+                file.vendor_interface.interface_uuid,
+            )
+            filename = file.processed_filename
+        else:
+            path = get_archive_path(
+                file.vendor_interface.vendor.folio_organization_uuid,
+                file.vendor_interface.interface_uuid,
+                file.archive_date,
+            )
+            filename = file.vendor_filename
 
-        print(f"Downloading {file.vendor_filename} from {archive_path}")
+        print(f"Downloading {filename} from {path}")
+        if not os.path.exists(os.path.join(path, filename)):
+            flash(f"Oops, {filename} is not available.")
+            return redirect(request.referrer)
 
         return send_from_directory(
-            archive_path,
-            file.vendor_filename,
+            path,
+            filename,
             as_attachment=True,
         )
 

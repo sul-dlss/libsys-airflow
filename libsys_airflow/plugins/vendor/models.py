@@ -186,6 +186,8 @@ class VendorFile(Model):
     vendor_interface_id = Column(Integer, ForeignKey("vendor_interfaces.id"))
     vendor_interface = relationship("VendorInterface", back_populates="vendor_files")
     vendor_filename = Column(String(250), unique=False, nullable=False)
+    # Name of the file after it has been processed.
+    processed_filename = Column(String(250), unique=False, nullable=True)
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)

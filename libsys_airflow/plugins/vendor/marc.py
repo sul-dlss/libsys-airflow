@@ -8,6 +8,11 @@ from pydantic import BaseModel, Field
 
 from airflow.decorators import task
 from airflow.models import Variable
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+from libsys_airflow.plugins.vendor.models import VendorFile
+
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +38,24 @@ class AddField(MarcField):
     unless: Optional[MarcField]
 
 
-@task(multiple_outputs=True)
+def record_processed_filename(context):
+    vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
+    filename = context["params"]["filename"]
+    processed_filename = context['ti'].xcom_pull(key='marc_filename')
+
+    logger.info(f"Recording processed filename for {filename}: {processed_filename}")
+
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
+        vendor_file.processed_filename = processed_filename
+        session.commit()
+
+
+@task(
+    multiple_outputs=True,
+    on_success_callback=record_processed_filename,
+)
 def process_marc_task(
     download_path: str,
     filename: str,

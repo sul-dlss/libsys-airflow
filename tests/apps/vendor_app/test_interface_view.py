@@ -48,6 +48,7 @@ rows = Rows(
         updated=now - timedelta(days=10),
         vendor_interface_id=1,
         vendor_filename="acme-marc.dat",
+        processed_filename="acme-marc-processed.dat",
         filesize=1234,
         vendor_timestamp=now - timedelta(days=30),
         loaded_timestamp=now - timedelta(days=8),
@@ -313,7 +314,9 @@ def test_upload_file(
         )
 
 
-def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa: F811
+def test_download_original_file(
+    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
+):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
         return_value=str(tmp_path),
@@ -331,10 +334,65 @@ def test_download_file(test_airflow_client, mock_db, tmp_path, mocker):  # noqa:
             return_value=session,
         )
 
-        response = test_airflow_client.get('/vendor_management/files/1/download')
+        response = test_airflow_client.get(
+            '/vendor_management/files/1/download/original'
+        )
         assert response.status_code == 200
         assert response.content_type == 'application/octet-stream'
         assert response.content_length == 35981
+
+
+def test_download_processed_file(
+    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
+):
+    mocker.patch(
+        'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
+        return_value=str(tmp_path),
+    )
+    path = os.path.join(
+        tmp_path,
+        "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc-processed.dat",
+    )
+    os.makedirs(os.path.dirname(path))
+    shutil.copyfile("tests/vendor/0720230118.mrc", path)
+
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        response = test_airflow_client.get(
+            '/vendor_management/files/1/download/processed'
+        )
+        assert response.status_code == 200
+        assert response.content_type == 'application/octet-stream'
+        assert response.content_length == 35981
+
+
+def test_download_missing_file(
+    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
+):
+    mocker.patch(
+        'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
+        return_value=str(tmp_path),
+    )
+    path = os.path.join(
+        tmp_path,
+        "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc-processed.dat",
+    )
+    os.makedirs(os.path.dirname(path))
+
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        response = test_airflow_client.get(
+            '/vendor_management/files/1/download/processed'
+        )
+        assert response.status_code == 302
 
 
 def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
