@@ -54,7 +54,7 @@
         <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
         <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
         <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
-        <td>{{ _macros.fileDownload(file, file.vendor_filename) }}</td>
+        <td>{{ _macros.fileDownload(file) }}</td>
         <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
         <td>
           {% if file.status.value == 'loading_error' %}

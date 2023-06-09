@@ -155,7 +155,7 @@ def _record_status(context, status):
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
     filename = context["params"]["filename"]
 
-    logger.info(f"Recording {status} for filename")
+    logger.info(f"Recording {status} for {filename}")
 
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
