@@ -8,10 +8,18 @@ import magic
 
 from airflow.decorators import task
 
+from libsys_airflow.plugins.vendor.models import FileStatus
+from libsys_airflow.plugins.vendor.file_status import record_status_from_context
+
+
 logger = logging.getLogger(__name__)
 
 
-@task
+def record_processing_error(context):
+    record_status_from_context(context, FileStatus.processing_error)
+
+
+@task(on_failure_callback=record_processing_error)
 def extract_task(
     download_path: str, filename: str, archive_regex: Optional[str] = None
 ) -> str:

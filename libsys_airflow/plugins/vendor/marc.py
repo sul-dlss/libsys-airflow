@@ -10,7 +10,8 @@ from airflow.decorators import task
 from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.models import VendorFile, FileStatus
+from libsys_airflow.plugins.vendor.file_status import record_status_from_context
 
 from sqlalchemy.orm import Session
 
@@ -52,9 +53,18 @@ def record_processed_filename(context):
         session.commit()
 
 
+def record_processing_error(context):
+    record_status_from_context(context, FileStatus.processing_error)
+
+
+def record_processed(context):
+    record_status_from_context(context, FileStatus.processed)
+
+
 @task(
     multiple_outputs=True,
     on_success_callback=record_processed_filename,
+    on_failure_callback=record_processing_error,
 )
 def process_marc_task(
     download_path: str,
@@ -129,7 +139,7 @@ def _marc_reader(file, to_unicode=True):
     )
 
 
-@task
+@task(on_failure_callback=record_processing_error, on_success_callback=record_processed)
 def batch_task(download_path: str, filename: str) -> list[str]:
     """
     Splits a MARC file into batches.
