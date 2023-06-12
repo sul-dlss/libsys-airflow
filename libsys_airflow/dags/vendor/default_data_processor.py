@@ -75,7 +75,7 @@ with DAG(
                 params["vendor_interface_uuid"], session
             )
             params["vendor_code"] = vendor_interface.vendor.vendor_code_from_folio
-            params["vendor_name"] = vendor_interface.vendor.display_name
+            params["vendor_interface_name"] = vendor_interface.display_name
             # Map from processing options to params.
             processing_options = vendor_interface.processing_options or {}
             # Processing options might look like this:
@@ -135,7 +135,7 @@ with DAG(
 
     file_loaded_email_task(
         params["vendor_code"],
-        params["vendor_name"],
+        params["vendor_interface_name"],
         file_loaded_sensor,
         params["download_path"],
         filename,
@@ -144,7 +144,7 @@ with DAG(
     )
 
     file_not_loaded_email = file_not_loaded_email_task(
-        params["vendor_name"],
+        params["vendor_interface_name"],
         params["vendor_code"],
         params["vendor_interface_uuid"],
         filename,

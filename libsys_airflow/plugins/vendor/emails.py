@@ -36,7 +36,7 @@ def email_args() -> dict:
 
 @task
 def files_fetched_email_task(
-    vendor_name: str,
+    vendor_interface_name: str,
     vendor_code: str,
     vendor_interface_uuid: str,
     downloaded_files: list[str],
@@ -50,29 +50,32 @@ def files_fetched_email_task(
         return
 
     send_files_fetched_email(
-        vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
+        vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
     )
 
 
 def send_files_fetched_email(
-    vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
+    vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
 ):
     if _email_enabled():
         send_email(
             os.getenv('VENDOR_LOADS_TO_EMAIL'),
-            f"{vendor_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
+            f"{vendor_interface_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
             _files_fetched_html_content(
-                vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
+                vendor_interface_name,
+                vendor_code,
+                vendor_interface_uuid,
+                downloaded_files,
             ),
         )
 
 
 def _files_fetched_html_content(
-    vendor_name, vendor_code, vendor_interface_uuid, downloaded_files
+    vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
 ):
     template = Template(
         """
-        <h5>{{vendor_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
+        <h5>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
 
         <p>
             Files fetched:
@@ -85,7 +88,7 @@ def _files_fetched_html_content(
         """
     )
     return template.render(
-        vendor_name=vendor_name,
+        vendor_interface_name=vendor_interface_name,
         vendor_code=vendor_code,
         vendor_interface_uuid=vendor_interface_uuid,
         downloaded_files=downloaded_files,
@@ -103,7 +106,7 @@ def _vendor_interface_url(vendor_interface_uuid):
 @task
 def file_loaded_email_task(
     vendor_code: str,
-    vendor_name: str,
+    vendor_interface_name: str,
     file_loaded_json: str,
     download_path: str,
     filename: str,
@@ -121,7 +124,7 @@ def file_loaded_email_task(
 
     send_file_loaded_email(
         vendor_code,
-        vendor_name,
+        vendor_interface_name,
         job_execution_url,
         filename,
         load_time,
@@ -134,7 +137,7 @@ def file_loaded_email_task(
 
 def send_file_loaded_email(
     vendor_code,
-    vendor_name,
+    vendor_interface_name,
     job_execution_url,
     filename,
     load_time,
@@ -148,7 +151,7 @@ def send_file_loaded_email(
     )
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_name} ({vendor_code}) - ({filename}) - File Load Report",
+        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report",
         html_content_func(
             job_execution_url,
             filename,
@@ -230,7 +233,7 @@ def _file_loaded_bib_html_content(
 
 @task
 def file_not_loaded_email_task(
-    vendor_name: str,
+    vendor_interface_name: str,
     vendor_code: str,
     vendor_interface_uuid: str,
     filename: str,
@@ -240,7 +243,7 @@ def file_not_loaded_email_task(
         return
 
     send_file_not_loaded_email(
-        vendor_name,
+        vendor_interface_name,
         vendor_code,
         vendor_interface_uuid,
         filename,
@@ -248,29 +251,29 @@ def file_not_loaded_email_task(
 
 
 def send_file_not_loaded_email(
-    vendor_name,
+    vendor_interface_name,
     vendor_code,
     vendor_interface_uuid,
     filename,
 ):
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_name} ({vendor_code}) - ({filename}) - File Processed",
+        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Processed",
         _file_not_loaded_html_content(
-            vendor_name, vendor_code, vendor_interface_uuid, filename
+            vendor_interface_name, vendor_code, vendor_interface_uuid, filename
         ),
     )
 
 
 def _file_not_loaded_html_content(
-    vendor_name,
+    vendor_interface_name,
     vendor_code,
     vendor_interface_uuid,
     filename,
 ):
     template = Template(
         """
-        <h5>{{vendor_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
+        <h5>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
 
         <p>
             File processed, but not loaded: {{filename}}
@@ -278,7 +281,7 @@ def _file_not_loaded_html_content(
         """
     )
     return template.render(
-        vendor_name=vendor_name,
+        vendor_interface_name=vendor_interface_name,
         vendor_code=vendor_code,
         vendor_interface_uuid=vendor_interface_uuid,
         vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
