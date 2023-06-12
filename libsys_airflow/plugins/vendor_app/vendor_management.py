@@ -361,7 +361,7 @@ class VendorManagementView(BaseView):
         dag = trigger_dag(
             'data_fetcher',
             conf={
-                "vendor_name": interface.vendor.display_name,
+                "vendor_interface_name": interface.display_name,
                 "vendor_code": interface.vendor.vendor_code_from_folio,
                 "vendor_uuid": interface.vendor.folio_organization_uuid,
                 "vendor_interface_uuid": interface.folio_interface_uuid,

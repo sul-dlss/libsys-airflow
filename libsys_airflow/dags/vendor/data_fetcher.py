@@ -16,9 +16,9 @@ from libsys_airflow.plugins.vendor.emails import email_args, files_fetched_email
 logger = logging.getLogger(__name__)
 
 # Run with:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_interface_name": "Gobi - Full bibs", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
 # With processing delay:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_name": "GOBI/YBP", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$", "processing_delay": 5}'
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_interface_name": "Gobi - Full bibs", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$", "processing_delay": 5}'
 
 default_args = dict(
     {
@@ -37,7 +37,7 @@ with DAG(
     catchup=False,
     start_date=datetime(2023, 1, 1),
     params={
-        "vendor_name": Param("", type="string"),  # 'GOBI/YBP'
+        "vendor_interface_name": Param("", type="string"),  # 'Gobi - Full bibs'
         "vendor_code": Param("", type="string"),  # 'YANKEE-SUL'
         "vendor_uuid": Param(
             "", type="string"
@@ -87,7 +87,7 @@ with DAG(
     )
 
     files_fetched_email_task(
-        params["vendor_name"],
+        params["vendor_interface_name"],
         params["vendor_code"],
         params["vendor_interface_uuid"],
         downloaded_files,

@@ -410,7 +410,7 @@ def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
     mock_trigger_dag.assert_called_once_with(
         'data_fetcher',
         conf={
-            "vendor_name": 'Acme',
+            "vendor_interface_name": 'Acme FTP',
             "vendor_code": 'ACME',
             "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
             "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',

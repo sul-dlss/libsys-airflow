@@ -68,7 +68,7 @@ def test_send_files_fetched_email(pg_hook, mocker):
     mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
 
     send_files_fetched_email(
-        'Acme',
+        'Acme FTP',
         'ACME',
         '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
         ['123456.mrc', '234567.mrc'],
@@ -76,9 +76,9 @@ def test_send_files_fetched_email(pg_hook, mocker):
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme (ACME) - 140530EB-EE54-4302-81EE-D83B9DAC9B6E - Daily Fetch Report (2021-01-01)",
+        "Acme FTP (ACME) - 140530EB-EE54-4302-81EE-D83B9DAC9B6E - Daily Fetch Report (2021-01-01)",
         """
-        <h5>Acme (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
+        <h5>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
         <p>
             Files fetched:
@@ -119,7 +119,7 @@ def test_send_file_loaded_bib_email(pg_hook, mocker, mock_okapi_url_variable):
 
     send_file_loaded_email(
         'ACME',
-        'Acme',
+        'Acme FTP',
         'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
@@ -141,7 +141,7 @@ def test_send_file_loaded_bib_email(pg_hook, mocker, mock_okapi_url_variable):
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme (ACME) - (123456.mrc) - File Load Report",
+        "Acme FTP (ACME) - (123456.mrc) - File Load Report",
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
 
@@ -176,7 +176,7 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
 
     send_file_loaded_email(
         'ACME',
-        'Acme',
+        'Acme FTP',
         'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
@@ -198,7 +198,7 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme (ACME) - (123456.mrc) - File Load Report",
+        "Acme FTP (ACME) - (123456.mrc) - File Load Report",
         f"""
         <h5>FOLIO Catalog EDI Load started on {now}</h5>
 
@@ -222,7 +222,7 @@ def test_send_file_not_loaded_email(pg_hook, mocker):
     mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
 
     send_file_not_loaded_email(
-        'Acme',
+        'Acme FTP',
         'ACME',
         '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
         '123456.mrc',
@@ -230,9 +230,9 @@ def test_send_file_not_loaded_email(pg_hook, mocker):
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme (ACME) - (123456.mrc) - File Processed",
+        "Acme FTP (ACME) - (123456.mrc) - File Processed",
         f"""
-        <h5>Acme (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
+        <h5>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
         <p>
             File processed, but not loaded: 123456.mrc
