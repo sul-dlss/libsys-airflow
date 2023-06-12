@@ -266,6 +266,17 @@ class VendorManagementView(BaseView):
             url_for('VendorManagementView.interface', interface_id=interface.id)
         )
 
+    @expose("/interfaces/<int:interface_id>/delete", methods=["POST"])
+    def interface_delete(self, interface_id):
+        session = Session()
+        interface = session.query(VendorInterface).get(interface_id)
+        vendor_id = interface.vendor_id
+        session.delete(interface)
+        session.commit()
+
+        flash("Interface deleted")
+        return redirect(url_for('VendorManagementView.vendor', vendor_id=vendor_id))
+
     @expose("/files/<int:file_id>", methods=["GET", "POST"])
     def file(self, file_id):
         session = Session()
