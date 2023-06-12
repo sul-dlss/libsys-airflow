@@ -36,7 +36,7 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     if dataload_profile_uuid:
         return "data_import_task"
     else:
-        return None
+        return "file_not_loaded_email_task"
 
 
 @task(

@@ -47,7 +47,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now + timedelta(days=2),
+        expected_processing_time=now + timedelta(days=2),
         status=FileStatus.fetched,
     ),
 )
@@ -73,14 +73,14 @@ def test_file_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         response = test_airflow_client.get('/vendor_management/files/1')
         assert response.status_code == 200
 
-        expected_load_time = response.html.select_one('#expected-load-time input')
-        assert expected_load_time
-        expected_load_time = expected_load_time.attrs['value']
-        expected_load_time = datetime.fromisoformat(expected_load_time)
+        expected_processing_time = response.html.select_one('#expected-load-time input')
+        assert expected_processing_time
+        expected_processing_time = expected_processing_time.attrs['value']
+        expected_processing_time = datetime.fromisoformat(expected_processing_time)
         # the <input type=timelocal> doesn't do microseconds
         then = (now + timedelta(days=2)).replace(microsecond=0)
-        assert expected_load_time.date() == then.date()
-        assert expected_load_time.time() == then.time()
+        assert expected_processing_time.date() == then.date()
+        assert expected_processing_time.time() == then.time()
 
 
 def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
@@ -90,7 +90,7 @@ def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
             return_value=session,
         )
 
-        # update the expected_load_time with a POST
+        # update the expected_processing_time with a POST
         # the <input type=timelocal> doesn't do microseconds
         tomorrow = (now + timedelta(days=1)).replace(microsecond=0)
         response = test_airflow_client.post(
@@ -100,14 +100,14 @@ def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert response.status_code == 200
 
         # ensure HTML response includes the updated expected-load-time
-        expected_load_time = response.html.select_one('#expected-load-time input')
-        assert expected_load_time
-        expected_load_time = expected_load_time.attrs['value']
-        expected_load_time = datetime.fromisoformat(expected_load_time)
-        assert expected_load_time.date() == tomorrow.date()
-        assert expected_load_time.time() == tomorrow.time().replace(microsecond=0)
+        expected_processing_time = response.html.select_one('#expected-load-time input')
+        assert expected_processing_time
+        expected_processing_time = expected_processing_time.attrs['value']
+        expected_processing_time = datetime.fromisoformat(expected_processing_time)
+        assert expected_processing_time.date() == tomorrow.date()
+        assert expected_processing_time.time() == tomorrow.time().replace(microsecond=0)
 
         # peek in the database to see if it was updated there
         vendor_file = session.get(VendorFile, 1)
-        assert vendor_file.expected_load_time.date() == tomorrow.date()
-        assert vendor_file.expected_load_time.time() == tomorrow.time()
+        assert vendor_file.expected_processing_time.date() == tomorrow.date()
+        assert vendor_file.expected_processing_time.time() == tomorrow.time()

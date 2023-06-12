@@ -14,10 +14,10 @@ from libsys_airflow.plugins.vendor.models import VendorFile, FileStatus
 logger = logging.getLogger(__name__)
 
 # Run with:
-# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger folio_load_scheduler
+# docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger folio_processing_scheduler
 
 with DAG(
-    dag_id="folio_load_scheduler",
+    dag_id="folio_processing_scheduler",
     default_args={},
     schedule="@hourly",
     catchup=False,
@@ -36,7 +36,7 @@ with DAG(
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
             # get up to 1000 files that need to be loaded
             # as a practical matter should we limit this further?
-            vendor_files = VendorFile.ready_for_data_import(session)
+            vendor_files = VendorFile.ready_for_data_processing(session)
             if len(vendor_files) == 0:
                 return []
 

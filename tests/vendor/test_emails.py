@@ -10,6 +10,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from libsys_airflow.plugins.vendor.emails import (
     send_files_fetched_email,
     send_file_loaded_email,
+    send_file_not_loaded_email,
 )
 from libsys_airflow.plugins.vendor.models import (
     Vendor,
@@ -205,5 +206,36 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
         <p>37 invoices read from EDI file.</p>
         <p>31 SRS records created</p>
         <p>2 Instance errors</p>
+        """,
+    )
+
+
+def test_send_file_not_loaded_email(pg_hook, mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.os.getenv",
+        return_value="test@stanford.edu",
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.conf.get",
+        return_value="https://www.example.com",
+    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+
+    send_file_not_loaded_email(
+        'Acme',
+        'ACME',
+        '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
+        '123456.mrc',
+    )
+
+    mock_send_email.assert_called_once_with(
+        'test@stanford.edu',
+        "Acme (ACME) - (123456.mrc) - File Processed",
+        f"""
+        <h5>Acme (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
+
+        <p>
+            File processed, but not loaded: 123456.mrc
+        </p>
         """,
     )

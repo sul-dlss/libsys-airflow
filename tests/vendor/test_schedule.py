@@ -47,7 +47,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now + timedelta(days=2),
+        expected_processing_time=now + timedelta(days=2),
         status=FileStatus.fetched,
     ),
     # a file that was fetched 2 days ago and was ready for loading 10 minutes ago
@@ -60,7 +60,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now - timedelta(minutes=10),
+        expected_processing_time=now - timedelta(minutes=10),
         status=FileStatus.fetched,
     ),
     # a file that was fetched 2 days ago and was ready for loading 8 hours ago
@@ -73,7 +73,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now - timedelta(hours=8),
+        expected_processing_time=now - timedelta(hours=8),
         status=FileStatus.fetched,
     ),
     # a file that was fetched 2 days ago and has been loaded
@@ -86,7 +86,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now - timedelta(hours=8),
+        expected_processing_time=now - timedelta(hours=8),
         status=FileStatus.loaded,
     ),
     # a file that was fetched 2 days ago, was loaded but resulted in an error
@@ -99,7 +99,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=now - timedelta(hours=8),
+        expected_processing_time=now - timedelta(hours=8),
         status=FileStatus.loading_error,
     ),
     # A vendor interface with now import profile (which should be skipped)
@@ -117,7 +117,7 @@ rows = Rows(
         active=True,
     ),
     # a ready file but which is attached to an interface without an import profile
-    # and which consequently has no expected_load_time
+    # and which consequently has no expected_processing_time
     VendorFile(
         id=6,
         created=now - timedelta(days=1),
@@ -127,7 +127,7 @@ rows = Rows(
         filesize=1234567,
         vendor_timestamp=now - timedelta(days=14),
         loaded_timestamp=None,
-        expected_load_time=None,
+        expected_processing_time=None,
         status=FileStatus.fetched,
     ),
 )
@@ -146,8 +146,8 @@ def mock_db(mocker, engine):
 
 def test_schedule(engine):
     with Session(engine) as session:
-        vendor_files = VendorFile.ready_for_data_import(session)
-        # only "fetched" fils with expected_load_time in the past should be returned
+        vendor_files = VendorFile.ready_for_data_processing(session)
+        # only "fetched" fils with expected_processing_time in the past should be returned
         assert len(vendor_files) == 2
         # results should be in ascending order by when they were fetched
         assert vendor_files[0].created < vendor_files[1].created

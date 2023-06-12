@@ -126,7 +126,7 @@
     <th>Filename</th>
     <th>File Size</th>
     <th>File Timestamp</th>
-    <th>Expected Load</th>
+    <th>Expected Processing</th>
     <th>Status</th>
   </thead>
   <tbody>
@@ -138,7 +138,7 @@
       <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
       <td>{{ file.filesize }}</td>
       <td>{{ file.vendor_timestamp }}</td>
-      <td>{{ file.expected_load_time }}</td>
+      <td>{{ file.expected_processing_time }}</td>
       <td>{{ file.status.value }}</td>
     </tr>
     {% endfor %}

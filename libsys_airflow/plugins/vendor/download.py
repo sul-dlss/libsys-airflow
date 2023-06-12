@@ -197,15 +197,11 @@ def _record_vendor_file(
         if existing_vendor_file:
             session.delete(existing_vendor_file)
 
-        # vendor interfaces with no import profile do not get an expected load time
-        if vendor_interface.folio_data_import_profile_uuid:
-            expected_load_time = datetime.utcnow()
-            if vendor_interface.processing_delay_in_days:
-                expected_load_time += timedelta(
-                    days=vendor_interface.processing_delay_in_days
-                )
-        else:
-            expected_load_time = None
+        expected_processing_time = datetime.utcnow()
+        if vendor_interface.processing_delay_in_days:
+            expected_processing_time += timedelta(
+                days=vendor_interface.processing_delay_in_days
+            )
 
         new_vendor_file = VendorFile(
             created=datetime.utcnow(),
@@ -215,7 +211,7 @@ def _record_vendor_file(
             filesize=filesize,
             status=status,
             vendor_timestamp=vendor_timestamp,
-            expected_load_time=expected_load_time,
+            expected_processing_time=expected_processing_time,
         )
         session.add(new_vendor_file)
         session.commit()

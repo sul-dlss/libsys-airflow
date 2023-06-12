@@ -22,12 +22,12 @@ def main():
     )
     engine = create_engine(db_url)
     with Session(engine) as session:
-        for file in VendorFile.ready_for_data_import(session):
+        for file in VendorFile.ready_for_data_processing(session):
             print(f"Vendor: {file.vendor_interface.vendor.display_name}")
             print(f"Interface: {file.vendor_interface.display_name}")
             print(f"File: {file.vendor_filename}")
             print(f"Created: {file.created}")
-            print(f"Expected Load: {file.expected_load_time}")
+            print(f"Expected Processing: {file.expected_processing_time}")
             print()
 
 if __name__ == "__main__":
