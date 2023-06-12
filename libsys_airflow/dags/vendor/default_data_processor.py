@@ -12,7 +12,11 @@ from libsys_airflow.plugins.folio.data_import import (
     data_import_task,
     data_import_branch_task,
 )
-from libsys_airflow.plugins.vendor.emails import email_args, file_loaded_email_task
+from libsys_airflow.plugins.vendor.emails import (
+    email_args,
+    file_loaded_email_task,
+    file_not_loaded_email_task,
+)
 from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.file_load_report import report_when_file_loaded_task
 from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
@@ -139,4 +143,12 @@ with DAG(
         processed_marc["records_count"],
     )
 
+    file_not_loaded_email = file_not_loaded_email_task(
+        params["vendor_name"],
+        params["vendor_code"],
+        params["vendor_interface_uuid"],
+        filename,
+    )
+
     data_import_branch >> data_import >> file_loaded_sensor
+    data_import_branch >> file_not_loaded_email

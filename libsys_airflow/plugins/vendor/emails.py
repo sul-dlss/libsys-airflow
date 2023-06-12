@@ -224,3 +224,61 @@ def _file_loaded_bib_html_content(
         instance_discarded=instance_stats.get("totalDiscardedEntities", 0),
         instance_errors=instance_stats.get("totalErrors", 0),
     )
+
+
+@task
+def file_not_loaded_email_task(
+    vendor_name: str,
+    vendor_code: str,
+    vendor_interface_uuid: str,
+    filename: str,
+):
+    if not _email_enabled():
+        logger.info("Email not enabled.")
+        return
+
+    send_file_not_loaded_email(
+        vendor_name,
+        vendor_code,
+        vendor_interface_uuid,
+        filename,
+    )
+
+
+def send_file_not_loaded_email(
+    vendor_name,
+    vendor_code,
+    vendor_interface_uuid,
+    filename,
+):
+    send_email(
+        os.getenv('VENDOR_LOADS_TO_EMAIL'),
+        f"{vendor_name} ({vendor_code}) - ({filename}) - File Processed",
+        _file_not_loaded_html_content(
+            vendor_name, vendor_code, vendor_interface_uuid, filename
+        ),
+    )
+
+
+def _file_not_loaded_html_content(
+    vendor_name,
+    vendor_code,
+    vendor_interface_uuid,
+    filename,
+):
+    template = Template(
+        """
+        <h5>{{vendor_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
+
+        <p>
+            File processed, but not loaded: {{filename}}
+        </p>
+        """
+    )
+    return template.render(
+        vendor_name=vendor_name,
+        vendor_code=vendor_code,
+        vendor_interface_uuid=vendor_interface_uuid,
+        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
+        filename=filename,
+    )
