@@ -232,7 +232,7 @@ def test_reload_file(test_airflow_client, mock_db, mock_dag_run, mocker):  # noq
         vendor_file = session.get(VendorFile, 1)
         assert vendor_file.status == FileStatus.loading
         assert vendor_file.dag_run_id == mock_dag_run.run_id
-        assert vendor_file.expected_load_time == mock_dag_run.execution_date
+        assert vendor_file.expected_processing_time == mock_dag_run.execution_date
 
     mock_trigger_dag.assert_called_once_with(
         'default_data_processor',
@@ -301,7 +301,7 @@ def test_upload_file(
         assert vendor_file.status == FileStatus.loading
         assert vendor_file.archive_date == today
         assert vendor_file.dag_run_id == mock_dag_run.run_id
-        assert vendor_file.expected_load_time == mock_dag_run.execution_date
+        assert vendor_file.expected_processing_time == mock_dag_run.execution_date
 
         mock_trigger_dag.assert_called_once_with(
             'default_data_processor',

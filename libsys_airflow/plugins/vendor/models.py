@@ -191,7 +191,7 @@ class VendorFile(Model):
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)
-    expected_load_time = Column(DateTime, nullable=True)
+    expected_processing_time = Column(DateTime, nullable=True)
     archive_date = Column(Date, nullable=True)
     status = Column(
         Enum(FileStatus),
@@ -221,11 +221,11 @@ class VendorFile(Model):
         ).first()
 
     @classmethod
-    def ready_for_data_import(cls, session: Session) -> List["VendorFile"]:
+    def ready_for_data_processing(cls, session: Session) -> List["VendorFile"]:
         """
         Returns a list of VendorFile objects that are ready for loading into
         Folio. These are files that have a status of "fetched" and which have an
-        expected_load_time in the past. Results are ordered in ascending order
+        expected_processing_time in the past. Results are ordered in ascending order
         of when they were fetched, and no more than 1000 are returned at a time.
         """
         return session.scalars(
@@ -234,8 +234,8 @@ class VendorFile(Model):
                 VendorFile.status.in_([FileStatus.fetched]),
             )
             # not really needed but explicitly ignore files not assigned a load time
-            .filter(VendorFile.expected_load_time.is_not(None))
-            .filter(VendorFile.expected_load_time <= datetime.utcnow())
+            .filter(VendorFile.expected_processing_time.is_not(None))
+            .filter(VendorFile.expected_processing_time <= datetime.utcnow())
             .limit(1000)
             .order_by(VendorFile.created.asc())
         ).all()

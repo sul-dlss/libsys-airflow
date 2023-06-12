@@ -272,11 +272,13 @@ class VendorManagementView(BaseView):
         file = session.query(VendorFile).get(file_id)
         if request.method == 'POST' and 'expected-load-time' in request.form:
             try:
-                expected_load_time = request.form['expected-load-time']
-                if expected_load_time != '':
-                    file.expected_load_time = datetime.fromisoformat(expected_load_time)
+                expected_processing_time = request.form['expected-load-time']
+                if expected_processing_time != '':
+                    file.expected_processing_time = datetime.fromisoformat(
+                        expected_processing_time
+                    )
                 else:
-                    file.expected_load_time = None
+                    file.expected_processing_time = None
                 session.commit()
             except ValueError:
                 flash("invalid date: {request.form['expected-load-time']}")
@@ -347,7 +349,7 @@ class VendorManagementView(BaseView):
 
         logger.info(f"Triggered DAG {dag_run} for {vendor_file.vendor_filename}")
         vendor_file.dag_run_id = dag_run.run_id
-        vendor_file.expected_load_time = dag_run.execution_date
+        vendor_file.expected_processing_time = dag_run.execution_date
         vendor_file.updated = datetime.utcnow()
         vendor_file.status = FileStatus.loading
         session.commit()
