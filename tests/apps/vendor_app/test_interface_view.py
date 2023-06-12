@@ -442,3 +442,34 @@ def test_create_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert interface.active
         assert interface.folio_interface_uuid is None
         assert not interface.assigned_in_folio
+
+
+def test_delete_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        # This creates the interface.
+        interface = VendorInterface(
+            vendor_id=1,
+            display_name="Acme - Test Upload Only",
+            active=True,
+            assigned_in_folio=False,
+        )
+        session.add(interface)
+        session.commit()
+
+        # This deletes the interface.
+        response = test_airflow_client.post(
+            f"/vendor_management/interfaces/{interface.id}/delete",
+        )
+        assert response.status_code == 302
+
+        interface = session.scalars(
+            select(VendorInterface).where(
+                VendorInterface.display_name == 'Acme - Test Upload Only'
+            )
+        ).first()
+        assert not interface
