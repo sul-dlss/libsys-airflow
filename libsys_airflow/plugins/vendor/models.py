@@ -18,6 +18,7 @@ from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy.sql.expression import true
 from typing import List, Any
 
+
 Model = declarative_base()
 
 
@@ -87,7 +88,7 @@ class VendorInterface(Model):
 
     @property
     def pending_files(self):
-        """Returns a list of VendorFile objects that are not_fetched, fetching_error, fetched, uploaded, or loading."""
+        """Returns a list of VendorFile objects that are not_fetched, fetching_error, fetched, uploaded, more ..."""
         session = Session.object_session(self)
         return session.scalars(
             select(VendorFile)
@@ -100,6 +101,9 @@ class VendorInterface(Model):
                         FileStatus.fetched,
                         FileStatus.loading,
                         FileStatus.uploaded,
+                        FileStatus.processing,
+                        FileStatus.processing_error,
+                        FileStatus.processed,
                     ]
                 )
             )
@@ -170,6 +174,9 @@ class FileStatus(enum.Enum):
     fetching_error = "fetching_error"
     fetched = "fetched"
     uploaded = "uploaded"
+    processing = "processing"
+    processed = "processed"
+    processing_error = "processing_error"
     loading = "loading"
     loading_error = "loading_error"
     loaded = "loaded"

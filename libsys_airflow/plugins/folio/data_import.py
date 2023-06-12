@@ -1,4 +1,3 @@
-from datetime import datetime
 import logging
 import os
 import pathlib
@@ -12,6 +11,7 @@ from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.vendor.models import FileStatus
 from libsys_airflow.plugins.vendor.marc import is_marc
 from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.file_status import record_status_from_context
 
 from sqlalchemy.orm import Session
 
@@ -20,15 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 def record_loading(context):
-    _record_status(context, FileStatus.loading)
+    record_status_from_context(context, FileStatus.loading)
 
 
 def record_loaded(context):
-    _record_status(context, FileStatus.loaded)
+    record_status_from_context(context, FileStatus.loaded)
 
 
 def record_loading_error(context):
-    _record_status(context, FileStatus.loading_error)
+    record_status_from_context(context, FileStatus.loading_error)
 
 
 @task.branch()
@@ -150,21 +150,6 @@ def _process_files(
     folio_client.post(
         f"/data-import/uploadDefinitions/{upload_definition_id}/processFiles", payload
     )
-
-
-def _record_status(context, status: FileStatus):
-    vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
-    filename = context["params"]["filename"]
-
-    logger.info(f"Recording {status} for {filename}")
-
-    pg_hook = PostgresHook("vendor_loads")
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
-        vendor_file.status = status
-        if status is FileStatus.loaded:
-            vendor_file.loaded_timestamp = datetime.utcnow()
-        session.commit()
 
 
 def _data_type(download_path, filename):

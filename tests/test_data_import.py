@@ -253,7 +253,7 @@ def test_record_loading(context, pg_hook):
 
 def test_record_loaded(context, pg_hook, mocker):
     now = datetime(2019, 5, 18, 15, 17, 8, 132263)
-    mock_datetime = mocker.patch('libsys_airflow.plugins.folio.data_import.datetime')
+    mock_datetime = mocker.patch('libsys_airflow.plugins.vendor.file_status.datetime')
     mock_datetime.utcnow.return_value = now
 
     record_loaded(context)

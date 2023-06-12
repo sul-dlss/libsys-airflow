@@ -20,8 +20,9 @@ from libsys_airflow.plugins.vendor.emails import (
 from libsys_airflow.plugins.vendor.extract import extract_task
 from libsys_airflow.plugins.vendor.file_load_report import report_when_file_loaded_task
 from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
-from libsys_airflow.plugins.vendor.models import VendorInterface
+from libsys_airflow.plugins.vendor.models import VendorInterface, FileStatus
 from libsys_airflow.plugins.vendor.paths import download_path
+from libsys_airflow.plugins.vendor.file_status import record_status_from_context
 
 from sqlalchemy.orm import Session
 
@@ -60,7 +61,13 @@ with DAG(
     },
 ) as dag:
 
-    @task(multiple_outputs=True)
+    def record_processing(context):
+        record_status_from_context(context, FileStatus.processing)
+
+    @task(
+        multiple_outputs=True,
+        on_execute_callback=record_processing,
+    )
     def setup():
         context = get_current_context()
         params = context["params"]
