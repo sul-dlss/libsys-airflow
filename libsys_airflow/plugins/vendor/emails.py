@@ -15,6 +15,7 @@ from jinja2 import Template
 
 from libsys_airflow.plugins.vendor.models import VendorInterface
 from libsys_airflow.plugins.vendor.marc import is_marc
+from libsys_airflow.plugins.vendor.edi import invoice_count
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,8 @@ def file_loaded_email_task(
 
     file_loaded_info = json.loads(file_loaded_json)
     job_execution_url = f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{file_loaded_info['folio_job_execution_uuid']}"
-    marc_path = pathlib.Path(download_path) / filename
+    file_path = pathlib.Path(download_path) / filename
+    _is_marc = is_marc(file_path)
 
     send_file_loaded_email(
         vendor_code,
@@ -123,10 +125,10 @@ def file_loaded_email_task(
         job_execution_url,
         filename,
         load_time,
-        records_count,
+        records_count if _is_marc else invoice_count(file_path),
         file_loaded_info["srs_stats"],
         file_loaded_info["instance_stats"],
-        is_marc(marc_path),
+        _is_marc,
     )
 
 
