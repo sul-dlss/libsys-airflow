@@ -18,7 +18,8 @@ from libsys_airflow.plugins.vendor.emails import (
     file_not_loaded_email_task,
 )
 from libsys_airflow.plugins.vendor.extract import extract_task
-from libsys_airflow.plugins.vendor.file_load_report import report_when_file_loaded_task
+from libsys_airflow.plugins.vendor.file_loaded_sensor import file_loaded_sensor_task
+from libsys_airflow.plugins.vendor.job_summary import job_summary_task
 from libsys_airflow.plugins.vendor.marc import process_marc_task, batch_task
 from libsys_airflow.plugins.vendor.models import VendorInterface
 from libsys_airflow.plugins.vendor.paths import download_path
@@ -129,18 +130,22 @@ with DAG(
         filename,
     )
 
-    file_loaded_sensor = report_when_file_loaded_task(
-        params["vendor_interface_uuid"], filename
+    file_loaded_sensor = file_loaded_sensor_task(
+        params["vendor_interface_uuid"], filename, data_import["upload_definition_id"]
     )
+
+    job_summary = job_summary_task(data_import["job_execution_id"])
 
     file_loaded_email_task(
         params["vendor_code"],
         params["vendor_interface_name"],
-        file_loaded_sensor,
+        data_import["job_execution_id"],
         params["download_path"],
         filename,
         params["start_time"],
         processed_marc["records_count"],
+        job_summary["srs_stats"],
+        job_summary["instance_stats"],
     )
 
     file_not_loaded_email = file_not_loaded_email_task(
@@ -150,5 +155,5 @@ with DAG(
         filename,
     )
 
-    data_import_branch >> data_import >> file_loaded_sensor
+    data_import_branch >> data_import >> file_loaded_sensor >> job_summary
     data_import_branch >> file_not_loaded_email

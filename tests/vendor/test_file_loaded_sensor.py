@@ -1,7 +1,6 @@
 import pytest  # noqa
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from unittest.mock import Mock
-from mocks import mock_dag_run  # noqa: F401
 
 from datetime import datetime
 
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.file_load_report import report_when_file_loaded
+from libsys_airflow.plugins.vendor.file_loaded_sensor import file_loaded_sensor
 from libsys_airflow.plugins.vendor.models import (
     VendorInterface,
     VendorFile,
@@ -51,7 +50,7 @@ rows = Rows(
         updated=datetime.now(),
         vendor_interface_id=1,
         vendor_filename="loaded.mrc",
-        dag_run_id="manual_2022-03-05",  # NOTE: value from mock_dag_run in mocks.py
+        dag_run_id="manual_2022-03-05",
         filesize=234,
         folio_job_execution_uuid="d7460945-6f0c-4e74-86c9-34a8438d652e",
         status=FileStatus.loaded,
@@ -81,43 +80,72 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 @pytest.fixture
-def folio_client():
-    job_summary_resp = {
-        'jobExecutionId': 'd7460945-6f0c-4e74-86c9-34a8438d652e',
-        'totalErrors': 0,
-        'sourceRecordSummary': {
-            'totalCreatedEntities': 2,
-            'totalUpdatedEntities': 0,
-            'totalDiscardedEntities': 0,
-            'totalErrors': 0,
-        },
-        'instanceSummary': {
-            'totalCreatedEntities': 2,
-            'totalUpdatedEntities': 0,
-            'totalDiscardedEntities': 0,
-            'totalErrors': 0,
+def folio_client(request):
+    upload_definition_resp = {
+        "id": "7927246d-fa26-491e-a956-53fdcbdb364b",
+        "metaJobExecutionId": "d7460945-6f0c-4e74-86c9-34a8438d652e",
+        "status": request.param,
+        "createDate": "2023-06-12T21:00:19.670+00:00",
+        "fileDefinitions": [
+            {
+                "id": "f6e9601b-e023-4195-8793-d69311f2a310",
+                "sourcePath": "./storage/upload/7927246d-fa26-491e-a956-53fdcbdb364b/f6e9601b-e023-4195-8793-d69311f2a310/2023-06-12T14:00:19-07:00.marc",
+                "name": "2023-06-12T14:00:19-07:00.marc",
+                "status": "UPLOADED",
+                "jobExecutionId": "eefe2d8f-72d8-40c2-a89e-b7d4fc455f5c",
+                "uploadDefinitionId": "7927246d-fa26-491e-a956-53fdcbdb364b",
+                "createDate": "2023-06-12T21:00:19.670+00:00",
+                "uploadedDate": "2023-06-12T21:00:19.976+00:00",
+            }
+        ],
+        "metadata": {
+            "createdDate": "2023-06-12T21:00:19.663+00:00",
+            "createdByUserId": "297649ab-3f9e-5ece-91a3-25cf700062ae",
+            "updatedDate": "2023-06-12T21:00:19.663+00:00",
+            "updatedByUserId": "297649ab-3f9e-5ece-91a3-25cf700062ae",
         },
     }
     mock_client = Mock()
-    mock_client.get.return_value = job_summary_resp
+    mock_client.get.return_value = upload_definition_resp
     return mock_client
 
 
-def test_file_load_report_with_loaded_file(
-    pg_hook, mocker, mock_dag_run, folio_client  # noqa: F811
+@pytest.mark.parametrize('folio_client', ['COMPLETED'], indirect=True)
+def test_file_load_report_with_loaded_file_and_job_completed(
+    pg_hook,
+    mocker,
+    folio_client,  # noqa: F811
 ):
     with Session(pg_hook()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        mocker.patch('airflow.models.DagRun.find', return_value=[mock_dag_run])
-        return_value = report_when_file_loaded(
+        return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded.mrc",
+            "38f47152-c3c2-471c-b7e0-c9d024e47357",
             client=folio_client,
         )
         assert return_value.is_done is True
+
+
+@pytest.mark.parametrize('folio_client', ['IN_PROGRESS'], indirect=True)
+def test_file_load_report_with_loaded_file_and_job_not_completed(
+    pg_hook, mocker, folio_client  # noqa: F811
+):
+    with Session(pg_hook()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        return_value = file_loaded_sensor(
+            "65d30c15-a560-4064-be92-f90e38eeb351",
+            "loaded.mrc",
+            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            client=folio_client,
+        )
+        assert return_value.is_done is False
 
 
 def test_file_load_report_with_no_file(pg_hook, mocker):
@@ -126,9 +154,10 @@ def test_file_load_report_with_no_file(pg_hook, mocker):
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        return_value = report_when_file_loaded(
+        return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "nonexistent.mrc",
+            "38f47152-c3c2-471c-b7e0-c9d024e47357",
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -140,9 +169,10 @@ def test_file_load_report_with_not_loaded_file(pg_hook, mocker):
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        return_value = report_when_file_loaded(
+        return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "not_loaded.mrc",
+            "38f47152-c3c2-471c-b7e0-c9d024e47357",
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -154,9 +184,10 @@ def test_file_load_report_with_file_lacking_job_execution_uuid(pg_hook, mocker):
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        return_value = report_when_file_loaded(
+        return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded_but_messed_up.mrc",
+            "38f47152-c3c2-471c-b7e0-c9d024e47357",
             client=folio_client,
         )
         assert return_value.is_done is False

@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import date, datetime
 import logging
@@ -107,18 +106,21 @@ def _vendor_interface_url(vendor_interface_uuid):
 def file_loaded_email_task(
     vendor_code: str,
     vendor_interface_name: str,
-    file_loaded_json: str,
+    job_execution_id: str,
     download_path: str,
     filename: str,
     load_time: datetime,
     records_count: int,
+    srs_stats: dict,
+    instance_stats: dict,
 ):
     if not _email_enabled():
         logger.info("Email not enabled.")
         return
 
-    file_loaded_info = json.loads(file_loaded_json)
-    job_execution_url = f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{file_loaded_info['folio_job_execution_uuid']}"
+    job_execution_url = (
+        f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{job_execution_id}"
+    )
     file_path = pathlib.Path(download_path) / filename
     _is_marc = is_marc(file_path)
 
@@ -129,8 +131,8 @@ def file_loaded_email_task(
         filename,
         load_time,
         records_count if _is_marc else invoice_count(file_path),
-        file_loaded_info["srs_stats"],
-        file_loaded_info["instance_stats"],
+        srs_stats,
+        instance_stats,
         _is_marc,
     )
 
