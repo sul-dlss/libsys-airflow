@@ -156,7 +156,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        data_import(
+        import_results = data_import(
             download_path,
             FILENAMES,
             "f4144dbd-def7-4b77-842a-954c62faf319",
@@ -164,6 +164,10 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             "0720230118.mrc",
             folio_client=folio_client,
         )
+        assert import_results == {
+            'job_execution_id': '4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae',
+            'upload_definition_id': '38f47152-c3c2-471c-b7e0-c9d024e47357',
+        }
 
     folio_client.post.assert_any_call(
         "/data-import/uploadDefinitions",

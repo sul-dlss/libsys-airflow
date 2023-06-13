@@ -44,6 +44,7 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     on_success_callback=record_loaded,
     on_failure_callback=record_loading_error,
     max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
+    multiple_outputs=True,
 )
 def data_import_task(
     download_path: str,
@@ -51,11 +52,11 @@ def data_import_task(
     dataload_profile_uuid: str,
     vendor_interface_uuid: str,
     filename: str,
-):
+) -> dict:
     """
     Imports a file into Folio using Data Import API
     """
-    data_import(
+    return data_import(
         download_path,
         batch_filenames,
         dataload_profile_uuid,
@@ -71,7 +72,7 @@ def data_import(
     vendor_interface_uuid,
     filename,
     folio_client=None,
-):
+) -> dict:
     client = folio_client or _folio_client()
     upload_definition_id, job_execution_id, file_definition_dict = _upload_definition(
         client, batch_filenames
@@ -103,6 +104,10 @@ def data_import(
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )
+    return {
+        "upload_definition_id": upload_definition_id,
+        "job_execution_id": job_execution_id,
+    }
 
 
 def _folio_client():
