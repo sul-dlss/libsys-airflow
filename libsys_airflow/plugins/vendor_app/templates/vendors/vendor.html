@@ -73,42 +73,46 @@
   {% endif %}
 </div>
 
-<h2>Vendor Interfaces</h2>
+{% if vendor.vendor_interfaces | length > 0 %}
+    <h2>Vendor Interfaces</h2>
 
-<table id="vendor_interfaces" class="table table-striped">
-    <thead>
-        <th>Name</th>
-        <th>Import Profile</th>
-        <th>File Pattern</th>
-        <th>Remote Path</th>
-        <th>Processing Delay</th>
-        <th>Processing DAG</th>
-        <th>Inactive/Active</th>
-    </thead>
-    {% for interface in vendor.vendor_interfaces %}
-    <tr>
-        <td>
-          <div><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
-          <div>{{ interface.folio_interface_uuid or "" }}</div>
-        </td>
-        <td>{{ interface.folio_data_import_processing_name or "Skip import" }}</td>
-        <td>{{ interface.file_pattern }}</td>
-        <td>{{ interface.remote_path }}</td>
-        <td>{{ interface.processing_delay }}</td>
-        <td>{{ interface.processing_dag }}</td>
-        <td>
-          {% if interface.folio_interface_uuid and not interface.assigned_in_folio %}
-            <p>Not assigned to vendor in FOLIO</p>
-          {% else %}
-            <label class="switch-label">
-                <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
-                <span class="switch" aria-hidden="true"></span>
-            </label>
-          {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+    <table id="vendor_interfaces" class="table table-striped">
+        <thead>
+            <th>Name</th>
+            <th>Import Profile</th>
+            <th>File Pattern</th>
+            <th>Remote Path</th>
+            <th>Processing Delay</th>
+            <th>Processing DAG</th>
+            <th>Inactive/Active</th>
+        </thead>
+        {% for interface in vendor.vendor_interfaces %}
+        <tr>
+            <td>
+              <div><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
+              <div>{{ interface.folio_interface_uuid or "" }}</div>
+            </td>
+            <td>{{ interface.folio_data_import_processing_name or "Skip import" }}</td>
+            <td>{{ interface.file_pattern }}</td>
+            <td>{{ interface.remote_path }}</td>
+            <td>{{ interface.processing_delay }}</td>
+            <td>{{ interface.processing_dag }}</td>
+            <td>
+              {% if interface.folio_interface_uuid and not interface.assigned_in_folio %}
+                <p>Not assigned to vendor in FOLIO</p>
+              {% else %}
+                <label class="switch-label">
+                    <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
+                    <span class="switch" aria-hidden="true"></span>
+                </label>
+              {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <h3><em>No interfaces configured for {{ vendor.display_name }}</em></h3>
+{% endif %}
 
 <form method="POST" action="{{ url_for('VendorManagementView.create_vendor_interface', vendor_id=vendor.id) }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
