@@ -1,71 +1,84 @@
 {% extends "airflow/main.html" %}
 
 {% block head_css %}
-    {{ super() }}
-    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+ .breadcrumb > .active {
+   color: #666;
+ }
+ .datatable-pagination .datatable-disabled a, .datatable-pagination .datatable-disabled a:focus, .datatable-pagination .datatable-disabled a:hover {
+   opacity: 1.0;
+ }
+</style>
 {% endblock %}
 
 {% block head_js %}
-    {{ super() }}
-    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
+<header class="page-header">
   <h1>Vendors</h1>
-</div>
+</header>
 
-<ul class="nav nav-tabs">
-  <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
-</ul>
+<nav>
+  <ul class="nav nav-tabs">
+    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+  </ul>
 
-<ol class="breadcrumb">
+  <ol class="breadcrumb">
     <li class="active">
-        {% if filter == 'all' %}All{% else %}<a href="{{ url_for('VendorManagementView.vendors') }}">All</a>{% endif %} | 
-        {% if filter == 'interfaces' %}With interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='interfaces') }}">With interfaces</a>{% endif %}  | 
-        {% if filter == 'active_interfaces' %}With active interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='active_interfaces') }}">With active interfaces</a>{% endif %}
+      {% if filter == 'all' %}All{% else %}<a href="{{ url_for('VendorManagementView.vendors') }}">All</a>{% endif %} |
+      {% if filter == 'interfaces' %}With interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='interfaces') }}">With interfaces</a>{% endif %}  |
+      {% if filter == 'active_interfaces' %}With active interfaces{% else %}<a href="{{ url_for('VendorManagementView.vendors', filter='active_interfaces') }}">With active interfaces</a>{% endif %}
     </li>
-</ol>
-<table class="table table-striped" id="vendorTable">
+  </ol>
+</nav>
+
+<main>
+  <table class="table table-striped" id="vendorTable">
     <thead>
-        <th>Name</th>
-        <th>Code</th>
-        <th>Acquisitions Unit</th>
-        <th>Interfaces</th>
+      <th>Name</th>
+      <th>Code</th>
+      <th>Acquisitions Unit</th>
+      <th>Interfaces</th>
     </thead>
     <tbody>
-        {% for vendor in vendors %}
-        <tr>
-            <td>
-              <a href="{{ url_for('VendorManagementView.vendor', vendor_id=vendor.id) }}">{{ vendor.display_name }}</a><br>
-                ID: {{ vendor.folio_organization_uuid }}
-            </td>
-            <td>
-                {{ vendor.vendor_code_from_folio }}
-            </td>
-            <td>
-                {{ vendor.acquisitions_unit_name_from_folio }}
-            </td>
-            <td>
-                {{ vendor.vendor_interfaces | length }} ({{ vendor.active_vendor_interfaces | length }} active)
-            </td>
-        </tr>
-        {% endfor %}
+      {% for vendor in vendors %}
+      <tr>
+        <td>
+          <a href="{{ url_for('VendorManagementView.vendor', vendor_id=vendor.id) }}">{{ vendor.display_name }}</a><br>
+          ID: {{ vendor.folio_organization_uuid }}
+        </td>
+        <td>
+          {{ vendor.vendor_code_from_folio }}
+        </td>
+        <td>
+          {{ vendor.acquisitions_unit_name_from_folio }}
+        </td>
+        <td>
+          {{ vendor.vendor_interfaces | length }} ({{ vendor.active_vendor_interfaces | length }} active)
+        </td>
+      </tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
 
-<script type="text/javascript">
-    let vendorTable = document.querySelector("#vendorTable");
-    let dataTable = new simpleDatatables.DataTable(vendorTable, {
-        searchable: true,
-        fixedHeight: true,
-        perPage: 100,
-        perPageSelect: false
-    });
-    let vendorTableSelect = document.querySelector(".datatable-selector");
-    vendorTableSelect.classList.add("form-control");
-    let vendorSearchInput = document.querySelector(".datatable-input");
-    vendorSearchInput.classList.add("form-control");
-</script>
+  <script type="text/javascript">
+   let vendorTable = document.querySelector("#vendorTable");
+   let dataTable = new simpleDatatables.DataTable(vendorTable, {
+     searchable: true,
+     fixedHeight: true,
+     perPage: 100,
+     perPageSelect: false
+   });
+   let vendorTableSelect = document.querySelector(".datatable-selector");
+   vendorTableSelect.classList.add("form-control");
+   let vendorSearchInput = document.querySelector(".datatable-input");
+   vendorSearchInput.classList.add("form-control");
+  </script>
+</main>
 {% endblock %}
