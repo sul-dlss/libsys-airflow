@@ -178,11 +178,25 @@ class VendorManagementView(BaseView):
                 if m := re.match(r'^move-field-from-(\d+)', name):
                     # use the identifier on the "from" form name to determine the
                     # corresponding name for the "to" form name
-                    to_name = f"move-field-to-{m.group(1)}"
-                    to_value = form.get(to_name)
-                    if to_value:
+                    to_tag = form.get(f"move-field-to-{m.group(1)}")
+                    to_indicator1 = form.get(f"move-indicator1-to-{m.group(1)}")
+                    to_indicator2 = form.get(f"move-indicator2-to-{m.group(1)}")
+                    from_indicator1 = form.get(f"move-indicator1-from-{m.group(1)}")
+                    from_indicator2 = form.get(f"move-indicator2-from-{m.group(1)}")
+                    if to_tag:
                         processing_options['change_marc'].append(
-                            {"from": value, "to": to_value}
+                            {
+                                "from": {
+                                    "tag": value,
+                                    "indicator1": from_indicator1,
+                                    "indicator2": from_indicator2,
+                                },
+                                "to": {
+                                    "tag": to_tag,
+                                    "indicator1": to_indicator1,
+                                    "indicator2": to_indicator2,
+                                },
+                            }
                         )
 
             interface.processing_options = processing_options

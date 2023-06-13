@@ -108,13 +108,13 @@
 
     <section id="remove-fields">
       <template id="remove-fields-template">
-        <div class="form-group remove-field">
+        <div id="remove-rule" class="form-group remove-field">
           <label for="remove-field" class="col-sm-2 col-form-label">Field</label>
           <div class="col-sm-2">
             <input class="form-control" type="text" id="remove-field" name="remove-field" value="">
           </div>
           <div class="col-sm-2">
-            <button class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
+            <button id="remove-rule-remove" class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
           </div>
         </div>
       </template>
@@ -132,18 +132,40 @@
 
   <section id="move-fields">
     <template id="move-fields-template">
-      <div class="form-group move-field">
-        <div class="col-sm-2">
-          <label class="rule-label" for="move-field-from">From:</label>
-          <input minlength="3" maxlength="3" type="text" id="move-field-from" name="move-field-from" value="">
+      <div id="move-rule" class="move-field col-sm-offset-2"  style="margin-top: 30px;">
+        <label>Original Field:</label>
+        <div class="form-group">
+          <div class="col-sm-offset-1 col-sm-3">
+            <label class="rule-label" for="move-field-from">Field:</label>
+            <input minlength="3" maxlength="3" type="text" id="move-field-from" name="move-field-from" value="">
+          </div>
+          <div class="col-sm-3">
+            <label class="rule-label" for="move-indicator1-from">Indicator 1:</label>
+            <input maxlength="1" type="text" id="move-indicator1-from" name="move-indicator1-from" value="">
+          </div>
+          <div class="col-sm-3">
+            <label class="rule-label" for="move-indicator2-from">Indicator 2:</label>
+            <input maxlength="1" type="text" id="move-indicator2-from" name="move-indicator2-from" value="">
+          </div>          
         </div>
-        <div class="col-sm-2">
-          <label class="rule-label" for="move-field-to">To:</label>
-          <input minlength="3" maxlength="3" type="text" id="move-field-to" name="move-field-to" value="">
+        <span class="help-block">No indicator ("") will match all indicators. A space indicator (" ") will match blank indicators.</span>
+        <label>Destination Field:</label>
+        <div class="form-group">
+          <div class="col-sm-offset-1 col-sm-3">
+            <label class="rule-label" for="move-field-to">Field:</label>
+            <input minlength="3" maxlength="3" type="text" id="move-field-to" name="move-field-to" value="">
+          </div>
+          <div class="col-sm-3">
+            <label class="rule-label" for="move-indicator1-to">Indicator 1:</label>
+            <input maxlength="1" type="text" id="move-indicator1-to" name="move-indicator1-to" value="">
+          </div>
+          <div class="col-sm-3">
+            <label class="rule-label" for="move-indicator2-to">Indicator 2:</label>
+            <input maxlength="1" type="text" id="move-indicator2-to" name="move-indicator2-to" value="">
+          </div>          
         </div>
-        <div class="col-sm-2">
-          <button class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
-        </div>
+        <span class="help-block">No indicator ("") will move the existing indicator. A space indicator (" ") will replace the existing indicator with a blank indicator.</span>
+        <button id="move-rule-remove" class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
       </div>
     </template>
     
@@ -172,93 +194,100 @@
 </main>
 
 <script>
-   // Note: some of this feels like it might be bending over backwards to avoid pulling
-   // in something like React or Vue for managing the state of this form?
+ /**
+  * Creates a form element for a new Remove Field Rule and adds it to the form.
+  */
+ function newRemoveFieldRule(marcField='') {
+   const template = document.getElementById("remove-fields-template");
+   const clone = template.content.cloneNode(true);
+   const now = new Date().getTime();
 
-  /**
-   * A function to create an HTML element with a given name, attributes and text.
-   */
-  function element(name, attributes={}, text="") {
-    const el = document.createElement(name);
-    for (const [name, value] of Object.entries(attributes)) {
-      el.setAttribute(name, value);
-    }
-    el.innerText = text;
-    return el
-  }
+   updateTemplate(clone, "remove-rule", now)
+   updateTemplateRemoveBtn(clone, "remove-rule-remove", "remove-rule", now)
+   updateInputTemplate(clone, "remove-field", now, marcField)
+   updateLabelTemplate(clone, "remove-field", now)
 
-  /**
-   * Creates a form element for a new Remove Field Rule and adds it to the form.
-   */
-  function newRemoveFieldRule(marcField='') {
-    const template = document.getElementById("remove-fields-template");
-    const clone = template.content.cloneNode(true);
-    const now = new Date().getTime();
+   const removeFields = document.getElementById("remove-fields");
+   removeFields.appendChild(clone);
+ }
 
-    updateInputTemplate(clone, "remove-field", now, marcField)
-    updateLabelTemplate(clone, "remove-field", now)
+ /**
+  * Creates a Move Field Rule element and adds it to the form.
+  */
+ function newMoveFieldRule(fromTag='', fromIndicator1='', fromIndicator2='', toTag='', toIndicator1='', toIndicator2='') {    
+   const template = document.getElementById("move-fields-template");
+   const clone = template.content.cloneNode(true);
+   const now = new Date().getTime();
 
-    const removeFields = document.getElementById("remove-fields");
-    removeFields.appendChild(clone);
-  }
+   updateTemplate(clone, "move-rule", now)
+   updateTemplateRemoveBtn(clone, "move-rule-remove", "move-rule", now)
+   updateInputTemplate(clone, "move-field-from", now, fromTag)
+   updateLabelTemplate(clone, "move-field-from", now)
+   updateInputTemplate(clone, "move-indicator1-from", now, fromIndicator1)
+   updateLabelTemplate(clone, "move-indicator1-from", now)
+   updateInputTemplate(clone, "move-indicator2-from", now, fromIndicator2)
+   updateLabelTemplate(clone, "move-indicator2-from", now)
+   updateInputTemplate(clone, "move-field-to", now, toTag)
+   updateLabelTemplate(clone, "move-field-to", now)
+   updateInputTemplate(clone, "move-indicator1-to", now, toIndicator1)
+   updateLabelTemplate(clone, "move-indicator1-to", now)
+   updateInputTemplate(clone, "move-indicator2-to", now, toIndicator2)
+   updateLabelTemplate(clone, "move-indicator2-to", now)
 
-  /**
-   * Creates a Move Field Rule element and adds it to the form.
-   */
-  function newMoveFieldRule(fromField='', toField='') {    
-    const template = document.getElementById("move-fields-template");
-    const clone = template.content.cloneNode(true);
-    const now = new Date().getTime();
+   const moveFields = document.getElementById("move-fields");
+   moveFields.append(clone);
+ }
 
-    updateInputTemplate(clone, "move-field-from", now, fromField)
-    updateLabelTemplate(clone, "move-field-from", now)
-    updateInputTemplate(clone, "move-field-to", now, toField)
-    updateLabelTemplate(clone, "move-field-to", now)
+ function removeRule(event) {
+   const el = event.target;
+   const rule_id = el.dataset.ruleId;
+   const ruleElement = document.getElementById(rule_id);
+   ruleElement.parentNode.removeChild(ruleElement);
+ }
 
-    const moveFields = document.getElementById("move-fields");
-    moveFields.append(clone);
-  }
+ function updateTemplate(clone, id, now) {
+   const input = clone.getElementById(id);
+   updateTemplateAttr(input, "id", now)
+ }
 
-  function removeRule(event) {
-    const el = event.target;
-    const rule = el.parentNode;
-    const field = rule.parentNode;
-    const form = field.parentNode;
-    form.removeChild(field);
-  }
+ function updateInputTemplate(clone, id, now, value) {
+   const input = clone.getElementById(id);
+   updateTemplateAttr(input, "id", now)
+   updateTemplateAttr(input, "name", now)
+   input.value = value
+ }
 
-  function updateInputTemplate(clone, id, now, value) {
-    const input = clone.querySelector(`#${id}`);
-    updateTemplateAttr(input, "id", now)
-    updateTemplateAttr(input, "name", now)
-    input.value = value
-  }
+ function updateLabelTemplate(clone, id, now) {
+   const label = clone.querySelector(`label[for="${id}"]`);
+   updateTemplateAttr(label, "for", now)
+ }
 
-  function updateLabelTemplate(clone, id, now) {
-    const label = clone.querySelector(`label[for="${id}"]`);
-    updateTemplateAttr(label, "for", now)
-  }
+ function updateTemplateAttr(templateElement, attrName, now) {
+   const value = templateElement.getAttribute(attrName);
+   templateElement.setAttribute(attrName, getId(now, value))
+ }
 
-  function updateTemplateAttr(templateElement, attrName, now) {
-    const value = templateElement.getAttribute(attrName);
-    templateElement.setAttribute(attrName, getId(now, value))
-  }
+ function updateTemplateRemoveBtn(clone, id, ruleId, now) {
+   const btn = clone.getElementById(id);
+   updateTemplateAttr(btn, "id", now)
+   btn.dataset.ruleId = getId(now, ruleId)
+ }
 
-  function getId(now, name) {    
-    return `${name}-${now}`;
-  }
+ function getId(now, name) {    
+   return `${name}-${now}`;
+ }
 
-  function main() {
-    {% for delete_marc in interface.delete_marc %}
-      newRemoveFieldRule("{{ delete_marc }}");
-    {% endfor %}
+ function main() {
+   {% for delete_marc in interface.delete_marc %}
+     newRemoveFieldRule("{{ delete_marc }}");
+   {% endfor %}
 
-    {% for change_marc in interface.change_marc %}
-      newMoveFieldRule("{{ change_marc['from'] }}", "{{ change_marc['to'] }}");
-    {% endfor %}
-  }
+   {% for change_marc in interface.change_marc %}
+     newMoveFieldRule("{{ change_marc['from']['tag'] }}", "{{ change_marc['from']['indicator1'] }}", "{{ change_marc['from']['indicator2'] }}", "{{ change_marc['to']['tag'] }}", "{{ change_marc['to']['indicator1'] }}", "{{ change_marc['to']['indicator2'] }}");
+   {% endfor %}
+ }
 
-  addEventListener("load", main);
+ addEventListener("load", main);
 
 </script>
 
