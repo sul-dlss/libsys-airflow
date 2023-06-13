@@ -176,6 +176,10 @@ class FileStatus(enum.Enum):
     purged = "purged"
     skipped = "skipped"  # Files on the FTP server that are not fetched because they are before the download window.
 
+    def can_set_loaded(self):
+        """Return a boolean indicating whether the FileStatus can be manually set to loaded by a user"""
+        return self not in (self.loading, self.loaded, self.purged)
+
 
 class VendorFile(Model):
     __tablename__ = "vendor_files"

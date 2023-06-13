@@ -73,7 +73,9 @@ def test_file_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         response = test_airflow_client.get('/vendor_management/files/1')
         assert response.status_code == 200
 
-        expected_processing_time = response.html.select_one('#expected-load-time input')
+        expected_processing_time = response.html.select_one(
+            '#expected-processing-time input'
+        )
         assert expected_processing_time
         expected_processing_time = expected_processing_time.attrs['value']
         expected_processing_time = datetime.fromisoformat(expected_processing_time)
@@ -83,7 +85,7 @@ def test_file_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert expected_processing_time.time() == then.time()
 
 
-def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_expected_processing_time(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -95,12 +97,14 @@ def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
         tomorrow = (now + timedelta(days=1)).replace(microsecond=0)
         response = test_airflow_client.post(
             '/vendor_management/files/1',
-            data={'expected-load-time': tomorrow.isoformat()},
+            data={'expected-processing-time': tomorrow.isoformat()},
         )
         assert response.status_code == 200
 
-        # ensure HTML response includes the updated expected-load-time
-        expected_processing_time = response.html.select_one('#expected-load-time input')
+        # ensure HTML response includes the updated expected-processing-time
+        expected_processing_time = response.html.select_one(
+            '#expected-processing-time input'
+        )
         assert expected_processing_time
         expected_processing_time = expected_processing_time.attrs['value']
         expected_processing_time = datetime.fromisoformat(expected_processing_time)
@@ -111,3 +115,27 @@ def test_file_update(test_airflow_client, mock_db, mocker):  # noqa: F811
         vendor_file = session.get(VendorFile, 1)
         assert vendor_file.expected_processing_time.date() == tomorrow.date()
         assert vendor_file.expected_processing_time.time() == tomorrow.time()
+
+
+def test_set_status(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        # update the expected_processing_time with a POST
+        # the <input type=timelocal> doesn't do microseconds
+        response = test_airflow_client.post(
+            '/vendor_management/files/1',
+            data={'status': FileStatus.loaded.value},
+        )
+        assert response.status_code == 200
+
+        # ensure that the ability to set status with the select input is now removed
+        status_input = response.html.select_one('#status select')
+        assert status_input is None
+
+        # peek in the database to see if it was updated there
+        vendor_file = session.get(VendorFile, 1)
+        assert vendor_file.status == FileStatus.loaded
