@@ -97,6 +97,7 @@ def _wrap_additional_mapping(func):
                 filtered_holdings.append(statement)
         if len(filtered_holdings) > 0:
             holdings_record["holdingsStatements"] = filtered_holdings
+        holdings_record["callNumber"] = "MARC Holdings"
         func(*args, **kwargs)
 
     return wrapper

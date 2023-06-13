@@ -71,6 +71,7 @@ def test_wrap_additional_mapping():
         assert holding["copyNumber"] == "1"
         assert "permanentLocationId" not in holding["holdingsStatements"]
         assert len(holding["holdingsStatements"]) == 1
+        assert holding["callNumber"] == "MARC Holdings"
 
     incorrect_holding = {
         "holdingsStatements": [
