@@ -1,6 +1,12 @@
 {% extends "airflow/main.html" %}
 {% import "vendors/_macros.html" as _macros -%}
 
+{% block head_css %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
+{% endblock %}
+
 {% block content %}
 <header class="page-header">
   <h1>Vendor File: {{ file.vendor_filename }}</h1>
@@ -8,8 +14,8 @@
 
 <nav>
   <ul class="nav nav-tabs">
-    <li role="presentation"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
   </ul>
 </nav>
 
@@ -18,7 +24,7 @@
     <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
     <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></li>
     <li><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></li>
-    <li class="active" style="color: #5c5959">{{ file.vendor_filename }}</li>
+    <li class="active">{{ file.vendor_filename }}</li>
   </ol>
 </nav>
 
