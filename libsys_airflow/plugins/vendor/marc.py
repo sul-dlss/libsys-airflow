@@ -142,6 +142,17 @@ def _marc_reader(file, to_unicode=True):
     )
 
 
+def extract_double_zero_one_field_values(path: pathlib.Path) -> list[str]:
+    if not is_marc(path):
+        return []
+
+    return [
+        double_zero_one.value()
+        for record in _marc_reader(path.open("rb"))
+        for double_zero_one in record.get_fields("001")
+    ]
+
+
 @task(on_failure_callback=record_processing_error, on_success_callback=record_processed)
 def batch_task(download_path: str, filename: str) -> list[str]:
     """

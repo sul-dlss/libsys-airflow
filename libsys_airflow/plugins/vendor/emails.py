@@ -13,7 +13,10 @@ from sqlalchemy.orm import Session
 from jinja2 import Template
 
 from libsys_airflow.plugins.vendor.models import VendorInterface
-from libsys_airflow.plugins.vendor.marc import is_marc
+from libsys_airflow.plugins.vendor.marc import (
+    is_marc,
+    extract_double_zero_one_field_values,
+)
 from libsys_airflow.plugins.vendor.edi import invoice_count
 
 logger = logging.getLogger(__name__)
@@ -138,6 +141,7 @@ def file_loaded_email_task(
         srs_stats,
         instance_stats,
         _is_marc,
+        extract_double_zero_one_field_values(file_path),
     )
 
 
@@ -151,21 +155,32 @@ def send_file_loaded_email(
     srs_stats,
     instance_stats,
     is_marc,
+    double_zero_ones,
 ):
-    html_content_func = (
-        _file_loaded_bib_html_content if is_marc else _file_loaded_edi_html_content
-    )
-    send_email(
-        os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report",
-        html_content_func(
+    html_content = (
+        _file_loaded_bib_html_content(
             job_execution_url,
             filename,
             load_time,
             records_count,
             srs_stats,
             instance_stats,
-        ),
+            double_zero_ones,
+        )
+        if is_marc
+        else _file_loaded_edi_html_content(
+            job_execution_url,
+            filename,
+            load_time,
+            records_count,
+            srs_stats,
+            instance_stats,
+        )
+    )
+    send_email(
+        os.getenv('VENDOR_LOADS_TO_EMAIL'),
+        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report",
+        html_content,
     )
 
 
@@ -204,6 +219,7 @@ def _file_loaded_bib_html_content(
     records_count,
     srs_stats,
     instance_stats,
+    double_zero_ones,
 ):
     template = Template(
         """
@@ -219,6 +235,17 @@ def _file_loaded_bib_html_content(
         <p>{{instance_updated}} Instance records updated</p>
         <p>{{instance_discarded}} Instance records discarded</p>
         <p>{{instance_errors}} Instance errors</p>
+
+        <h5>001 Values</h5>
+        {% if double_zero_ones | length > 0 -%}
+          <ul>
+          {% for double_zero_one in double_zero_ones -%}
+            <li>{{ double_zero_one }}</li>
+          {% endfor -%}
+          </ul>
+        {%- else -%}
+          <p>No 001 fields</p>
+        {%- endif -%}
         """
     )
     return template.render(
@@ -234,6 +261,7 @@ def _file_loaded_bib_html_content(
         instance_updated=instance_stats.get("totalUpdatedEntities", 0),
         instance_discarded=instance_stats.get("totalDiscardedEntities", 0),
         instance_errors=instance_stats.get("totalErrors", 0),
+        double_zero_ones=double_zero_ones,
     )
 
 
