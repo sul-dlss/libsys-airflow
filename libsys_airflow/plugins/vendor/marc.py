@@ -42,7 +42,7 @@ class ChangeField(BaseModel):
 def record_processed_filename(context):
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
     filename = context["params"]["filename"]
-    processed_filename = context['ti'].xcom_pull(key='marc_filename')
+    processed_filename = context['ti'].xcom_pull(key='filename')
 
     logger.info(f"Recording processed filename for {filename}: {processed_filename}")
 
@@ -88,7 +88,7 @@ def process_marc_task(
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
         logger.info(f"Skipping filtering fields from {marc_path}")
-        return {"records_count": 0, "marc_filename": filename}
+        return {"records_count": 0, "filename": filename}
     change_fields_models = None
     if change_fields:
         change_fields_models = _to_change_fields_models(change_fields)
@@ -129,7 +129,7 @@ def process_marc(
     _write_records(records, new_marc_path)
 
     logger.info(f"Finished processing from {marc_path}")
-    return {"records_count": len(records), "marc_filename": new_marc_path.name}
+    return {"records_count": len(records), "filename": new_marc_path.name}
 
 
 def is_marc(path: pathlib.Path):
