@@ -1,6 +1,11 @@
 {% extends "airflow/main.html" %}
 {% import "vendors/_macros.html" as _macros -%}
 
+{% block head_css %}
+{{ super() }}
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
+{% endblock %}
+
 {% block content %}
 <header class="page-header">
   <h1>Vendor Management</h1>
@@ -9,13 +14,13 @@
 <nav>
   <ul class="nav nav-tabs">
     <li class="active"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}" style="color: #555;">Vendors</a></li>
+    <li><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
   </ul>
 </nav>
 
 <main>
   <div class="panel panel-success">
-    <div class="panel-heading"><h2 style="color: #0b5e49;">In Progress</h2></div>
+    <div class="panel-heading"><h2>In Progress</h2></div>
 
     <table class="table table-striped" id="inProgressTable">
       <thead>
@@ -48,7 +53,7 @@
   </div>
 
   <div class="panel panel-danger">
-    <div class="panel-heading"><h2 style="color: #a94442;">Errors</h2></div>
+    <div class="panel-heading"><h2>Errors</h2></div>
 
     <table class="table table-striped" id="errorsTable">
       <thead>
@@ -72,12 +77,12 @@
               {% if file.status.value == 'loading_error' %}
                 <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+                  <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% elif file.status.value == 'fetching_error' %}
                 <form action="{{ url_for('VendorManagementView.reset_fetch', file_id=file.id) }}" method="POST">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+                  <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% endif %}
             </td>

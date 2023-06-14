@@ -23,3 +23,15 @@ dl.dl-wide > dd {
 .datatable-pagination .datatable-disabled a, .datatable-pagination .datatable-disabled a:focus, .datatable-pagination .datatable-disabled a:hover {
   opacity: 1.0; // For increased contrast
 }
+.p-0 {
+  padding: 0px;
+}
+.mt-40 {
+  margin-top: 40px;
+}
+.mt-30 {
+  margin-top: 30px;
+}
+.glyphicon-save {
+  color: #017cee;
+}
