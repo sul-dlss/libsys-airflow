@@ -21,7 +21,9 @@ def record_status_from_context(context: Context, status: FileStatus):
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
         vendor_file.status = status
-        vendor_file.updated = datetime.utcnow()
+        now = datetime.utcnow()
+        vendor_file.updated = now
         if status is FileStatus.loaded:
-            vendor_file.loaded_timestamp = datetime.utcnow()
+            vendor_file.loaded_timestamp = now
+            vendor_file.loaded_history = vendor_file.loaded_history + [now.isoformat()]
         session.commit()

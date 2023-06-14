@@ -139,3 +139,4 @@ def test_set_status(test_airflow_client, mock_db, mocker):  # noqa: F811
         # peek in the database to see if it was updated there
         vendor_file = session.get(VendorFile, 1)
         assert vendor_file.status == FileStatus.loaded
+        assert len(vendor_file.loaded_history) == 1
