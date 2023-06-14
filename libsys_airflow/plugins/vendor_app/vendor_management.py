@@ -47,6 +47,7 @@ class VendorManagementView(BaseView):
                 )
             )
             .order_by(VendorFile.updated)
+            .all()
         )
         errors_files = (
             Session()
@@ -57,6 +58,7 @@ class VendorManagementView(BaseView):
                 )
             )
             .order_by(VendorFile.updated)
+            .all()
         )
 
         return self.render_template(

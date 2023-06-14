@@ -2,76 +2,96 @@
 {% import "vendors/_macros.html" as _macros -%}
 
 {% block content %}
-<div class="page-header">
+<header class="page-header">
   <h1>Vendor Management</h1>
-</div>
+</header>
 
-<ul class="nav nav-tabs">
-  <li role="presentation" class="active"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-  <li role="presentation"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
-</ul>
+<nav>
+  <ul class="nav nav-tabs">
+    <li class="active"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
+    <li><a href="{{ url_for('VendorManagementView.vendors') }}" style="color: #555;">Vendors</a></li>
+  </ul>
+</nav>
 
-<div class="panel panel-success">
-  <div class="panel-heading"><h3>In Progress</h3></div>
+<main>
+  <div class="panel panel-success">
+    <div class="panel-heading"><h2 style="color: #0b5e49;">In Progress</h2></div>
 
-  <table class="table table-striped" id="inProgressTable">
-    <thead>
-      <th>ID</th>
-      <th>Vendor</th>
-      <th>Vendor Interface</th>
-      <th>Filename</th>
-      <th>Status</th>
-    </thead>
-    <tbody>
-      {% for file in in_progress_files %}
-      <tr>
-        <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
-        <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
-        <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
-        <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
-        <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+    <table class="table table-striped" id="inProgressTable">
+      <thead>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Vendor Interface</th>
+        <th>Filename</th>
+        <th>Status</th>
+      </thead>
+      <tbody>
+        {% if in_progress_files | length > 0 %}
+          {% for file in in_progress_files %}
+          <tr>
+            <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
+            <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
+            <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
+            <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
+            <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center">
+              <em>No files in progress</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 
-<div class="panel panel-danger">
-  <div class="panel-heading"><h3>Errors</h3></div>
+  <div class="panel panel-danger">
+    <div class="panel-heading"><h2 style="color: #a94442;">Errors</h2></div>
 
-  <table class="table table-striped" id="errorsTable">
-    <thead>
-      <th>ID</th>
-      <th>Vendor</th>
-      <th>Vendor Interface</th>
-      <th>Filename</th>
-      <th>Status</th>
-      <th>Retry</th>
-    </thead>
-    <tbody>
-      {% for file in errors_files %}
-      <tr>
-        <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
-        <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
-        <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
-        <td>{{ _macros.fileDownload(file) }}</td>
-        <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
-        <td>
-          {% if file.status.value == 'loading_error' %}
-            <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
-            </form>
-          {% elif file.status.value == 'fetching_error' %}
-            <form action="{{ url_for('VendorManagementView.reset_fetch', file_id=file.id) }}" method="POST">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
-            </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+    <table class="table table-striped" id="errorsTable">
+      <thead>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Vendor Interface</th>
+        <th>Filename</th>
+        <th>Status</th>
+        <th>Retry</th>
+      </thead>
+      <tbody>
+        {% if errors_files | length > 0 %}
+          {% for file in errors_files %}
+          <tr>
+            <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
+            <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
+            <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
+            <td>{{ _macros.fileDownload(file) }}</td>
+            <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
+            <td>
+              {% if file.status.value == 'loading_error' %}
+                <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+                </form>
+              {% elif file.status.value == 'fetching_error' %}
+                <form action="{{ url_for('VendorManagementView.reset_fetch', file_id=file.id) }}" method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input class="btn btn-link" type="submit" value="Retry" style="padding: 0px;">
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center">
+              <em>No files with errors</em>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</main>
 {% endblock %}
