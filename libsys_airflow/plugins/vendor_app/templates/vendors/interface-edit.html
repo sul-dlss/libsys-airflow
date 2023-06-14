@@ -119,7 +119,7 @@
         </div>
       </template>
 
-      <div class="form-group" style="margin-top: 40px;">
+      <div class="form-group mt-40">
         <div class="col-sm-2">
           <strong>Remove Fields</strong>
         </div>
@@ -132,7 +132,7 @@
 
   <section id="move-fields">
     <template id="move-fields-template">
-      <div id="move-rule" class="move-field col-sm-offset-2"  style="margin-top: 30px;">
+      <div id="move-rule" class="move-field col-sm-offset-2 mt-30">
         <label>Original Field:</label>
         <div class="form-group">
           <div class="col-sm-offset-1 col-sm-3">
@@ -146,7 +146,7 @@
           <div class="col-sm-3">
             <label class="rule-label" for="move-indicator2-from">Indicator 2:</label>
             <input maxlength="1" type="text" id="move-indicator2-from" name="move-indicator2-from" value="">
-          </div>          
+          </div>
         </div>
         <span class="help-block">No indicator ("") will match all indicators. A space indicator (" ") will match blank indicators.</span>
         <label>Destination Field:</label>
@@ -162,14 +162,14 @@
           <div class="col-sm-3">
             <label class="rule-label" for="move-indicator2-to">Indicator 2:</label>
             <input maxlength="1" type="text" id="move-indicator2-to" name="move-indicator2-to" value="">
-          </div>          
+          </div>
         </div>
         <span class="help-block">No indicator ("") will move the existing indicator. A space indicator (" ") will replace the existing indicator with a blank indicator.</span>
         <button id="move-rule-remove" class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
       </div>
     </template>
-    
-    <div class="form-group" style="margin-top: 40px">
+
+    <div class="form-group mt-40">
       <div class="col-sm-2">
         <strong>Move Fields</strong>
       </div>
@@ -214,7 +214,7 @@
  /**
   * Creates a Move Field Rule element and adds it to the form.
   */
- function newMoveFieldRule(fromTag='', fromIndicator1='', fromIndicator2='', toTag='', toIndicator1='', toIndicator2='') {    
+ function newMoveFieldRule(fromTag='', fromIndicator1='', fromIndicator2='', toTag='', toIndicator1='', toIndicator2='') {
    const template = document.getElementById("move-fields-template");
    const clone = template.content.cloneNode(true);
    const now = new Date().getTime();
@@ -273,7 +273,7 @@
    btn.dataset.ruleId = getId(now, ruleId)
  }
 
- function getId(now, name) {    
+ function getId(now, name) {
    return `${name}-${now}`;
  }
 
