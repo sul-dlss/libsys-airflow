@@ -49,6 +49,11 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_MIGRATION_PASSWORD`
 
   These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
+  
+  Example script to quickly populate your .env file for dev:
+  ```
+  for i in `vault kv list puppet/application/libsys_airflow/dev`; do val=$(echo $i| tr '[a-z]' '[A-Z]'); echo AIRFLOW_VAR_$val=`vault kv get -field=content puppet/application/libsys_airflow/dev/$i`; done
+  ```
 
   **NOTE** In order to connect to the OKAPI_URL you must be connected to the VPN or the on-campus network.
 
