@@ -3,14 +3,7 @@
 {% block head_css %}
 {{ super() }}
 <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-<style type="text/css">
- .breadcrumb > .active {
-   color: #666;
- }
- .datatable-pagination .datatable-disabled a, .datatable-pagination .datatable-disabled a:focus, .datatable-pagination .datatable-disabled a:hover {
-   opacity: 1.0;
- }
-</style>
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
 {% endblock %}
 
 {% block head_js %}

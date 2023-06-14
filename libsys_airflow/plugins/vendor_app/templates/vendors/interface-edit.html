@@ -2,24 +2,7 @@
 
 {% block head_css %}
 {{ super() }}
-<style type="text/css">
- hr {
-   margin-top: 30px;
-   margin-bottom: 30px;
- }
- .rule-label {
-   margin-right: 10px;
- }
- .breadcrumb > .active {
-   color: #666;
- }
- .btn-primary {
-   background-color: #006fd6; // 10% darker for increased contrast
- }
- .btn-success {
-   background-color: #008636; // 22% darker for increased contrast
- }
-</style>
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
 {% endblock %}
 
 {% block content %}

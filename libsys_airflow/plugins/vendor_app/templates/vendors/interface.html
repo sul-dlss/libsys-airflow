@@ -4,17 +4,7 @@
 {% block head_css %}
 {{ super() }}
 <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-<style type="text/css">
- dl.dl-wide > dt {
-   width: 200px;
- }
- dl.dl-wide > dd {
-   margin-left: 220px;
- }
- .breadcrumb > .active {
-   color: #666;
- }
-</style>
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
 {% endblock %}
 
 {% block head_js %}

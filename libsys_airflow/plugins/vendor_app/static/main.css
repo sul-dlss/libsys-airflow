@@ -1,0 +1,25 @@
+hr {
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+.rule-label {
+  margin-right: 10px;
+}
+.breadcrumb > .active {
+  color: #666;
+}
+.btn-primary {
+  background-color: #006fd6; // 10% darker for increased contrast
+}
+.btn-success {
+  background-color: #008636; // 22% darker for increased contrast
+}
+dl.dl-wide > dt {
+  width: 200px;
+}
+dl.dl-wide > dd {
+  margin-left: 220px;
+}
+.datatable-pagination .datatable-disabled a, .datatable-pagination .datatable-disabled a:focus, .datatable-pagination .datatable-disabled a:hover {
+  opacity: 1.0; // For increased contrast
+}
