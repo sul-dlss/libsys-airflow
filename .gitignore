@@ -5,6 +5,8 @@ __pycache__/
 .coverage
 coverage.lcov
 coverage.xml
+refresh_vendors.log
+seed_vendors.log
 circ/
 dist/
 .python-version
