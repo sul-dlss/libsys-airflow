@@ -1,13 +1,13 @@
 {% macro fileDownload(file) -%}
   {% if file.status != 'purged' %}
     (
-    original
-    <a title="Download original file" href="{{ url_for('VendorManagementView.download_file', file_id=file.id, type='original') }}">
+    original 
+    <a title="Download original file" href="{{ url_for('VendorManagementView.download_file', file_id=file.id, type='original') }}" aria-label="Download original file">
         <span class="glyphicon glyphicon-save" aria-hidden="true"></span>
     </a>
     {% if file.processed_filename %}
-    | processed
-    <a title="Download processed file" href="{{ url_for('VendorManagementView.download_file', file_id=file.id, type='processed') }}">
+    | processed 
+    <a title="Download processed file" href="{{ url_for('VendorManagementView.download_file', file_id=file.id, type='processed') }}" aria-label="Download processed file">
         <span class="glyphicon glyphicon-save" aria-hidden="true"></span>
     </a>
     {% endif %}

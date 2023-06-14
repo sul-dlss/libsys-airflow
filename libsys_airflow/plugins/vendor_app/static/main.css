@@ -5,8 +5,13 @@ hr {
 .rule-label {
   margin-right: 10px;
 }
+
+.breadcrumb > li {
+  color: #25425c;
+}
+
 .breadcrumb > .active {
-  color: #666;
+  color: #4a4949;
 }
 .btn-primary {
   background-color: #006fd6; // 10% darker for increased contrast
