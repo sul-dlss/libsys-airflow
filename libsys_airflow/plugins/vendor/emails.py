@@ -19,12 +19,17 @@ from libsys_airflow.plugins.vendor.edi import invoice_count
 logger = logging.getLogger(__name__)
 
 
-def _email_enabled() -> bool:
-    return conf.has_option("smtp", "smtp_host")
+# NOTE: The default value of the `smtp.smtp_host` config value is `localhost`
+#       and we consider that an indicator that the app is running in a
+#       development container where email is disabled. Our deployed
+#       environments use the docker-compose-prod.yaml configurations, which
+#       override this value and effectively communicate that email is enabled.
+def _email_disabled() -> bool:
+    return conf.get("smtp", "smtp_host") == "localhost"
 
 
 def email_args() -> dict:
-    if not _email_enabled():
+    if _email_disabled():
         return {}
 
     return {
@@ -44,7 +49,7 @@ def files_fetched_email_task(
         logger.info("Skipping sending email since no files downloaded.")
         return
 
-    if not _email_enabled():
+    if _email_disabled():
         logger.info("Email not enabled.")
         return
 
@@ -56,17 +61,16 @@ def files_fetched_email_task(
 def send_files_fetched_email(
     vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
 ):
-    if _email_enabled():
-        send_email(
-            os.getenv('VENDOR_LOADS_TO_EMAIL'),
-            f"{vendor_interface_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
-            _files_fetched_html_content(
-                vendor_interface_name,
-                vendor_code,
-                vendor_interface_uuid,
-                downloaded_files,
-            ),
-        )
+    send_email(
+        os.getenv('VENDOR_LOADS_TO_EMAIL'),
+        f"{vendor_interface_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
+        _files_fetched_html_content(
+            vendor_interface_name,
+            vendor_code,
+            vendor_interface_uuid,
+            downloaded_files,
+        ),
+    )
 
 
 def _files_fetched_html_content(
@@ -114,7 +118,7 @@ def file_loaded_email_task(
     srs_stats: dict,
     instance_stats: dict,
 ):
-    if not _email_enabled():
+    if _email_disabled():
         logger.info("Email not enabled.")
         return
 
@@ -240,7 +244,7 @@ def file_not_loaded_email_task(
     vendor_interface_uuid: str,
     filename: str,
 ):
-    if not _email_enabled():
+    if _email_disabled():
         logger.info("Email not enabled.")
         return
 
