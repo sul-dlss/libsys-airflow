@@ -283,20 +283,28 @@ class VendorManagementView(BaseView):
     def file(self, file_id):
         session = Session()
         file = session.query(VendorFile).get(file_id)
-        if request.method == 'POST' and 'expected-load-time' in request.form:
-            try:
-                expected_processing_time = request.form['expected-load-time']
-                if expected_processing_time != '':
+        if request.method == 'POST':
+            # expected_processing_time can only be posted if the file hasn't been processed
+            expected_processing_time = request.form.get('expected-processing-time')
+            if expected_processing_time:
+                try:
                     file.expected_processing_time = datetime.fromisoformat(
                         expected_processing_time
                     )
-                else:
-                    file.expected_processing_time = None
-                session.commit()
-            except ValueError:
-                flash("invalid date: {request.form['expected-load-time']}")
+                except ValueError:
+                    flash("invalid date: {request.form['expected-processing-time']}")
 
-        return self.render_template("vendors/file.html", file=file)
+            # The key "status" will not be in the form if it can no longer be manually set to loaded.
+            # Also, to prevent a possible race codition ensure that the current status is allowed
+            # to transition to loaded.
+            if 'status' in request.form and file.status.can_set_loaded():
+                file.status = request.form.get('status', file.status)
+                file.loaded_timestamp = datetime.utcnow()
+
+            session.commit()
+        return self.render_template(
+            "vendors/file.html", file=file, FileStatus=FileStatus
+        )
 
     @expose("/files/<int:file_id>/load", methods=["POST"])
     def load_file(self, file_id):

@@ -107,21 +107,46 @@
     </div>
 
     <section id="remove-fields">
+      <template id="remove-fields-template">
+        <div class="form-group remove-field">
+          <label for="remove-field" class="col-sm-2 col-form-label">Field</label>
+          <div class="col-sm-2">
+            <input class="form-control" type="text" id="remove-field" name="remove-field" value="">
+          </div>
+          <div class="col-sm-2">
+            <button class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
+          </div>
+        </div>
+      </template>
 
-    <div class="form-group" style="margin-top: 40px;">
-      <div class="col-sm-2">
-        <strong>Remove Fields</strong>
+      <div class="form-group" style="margin-top: 40px;">
+        <div class="col-sm-2">
+          <strong>Remove Fields</strong>
+        </div>
+        <div class="col-sm-1">
+          <button class="btn btn-primary col-sm-offset-1"
+            onclick="newRemoveFieldRule(); return false;">Add Rule</button>
+        </div>
       </div>
-      <div class="col-sm-1">
-        <button class="btn btn-primary col-sm-offset-1"
-          onclick="newRemoveFieldRule(); return false;">Add Rule</button>
+  </section>
+
+  <section id="move-fields">
+    <template id="move-fields-template">
+      <div class="form-group move-field">
+        <div class="col-sm-2">
+          <label class="rule-label" for="move-field-from">From:</label>
+          <input minlength="3" maxlength="3" type="text" id="move-field-from" name="move-field-from" value="">
+        </div>
+        <div class="col-sm-2">
+          <label class="rule-label" for="move-field-to">To:</label>
+          <input minlength="3" maxlength="3" type="text" id="move-field-to" name="move-field-to" value="">
+        </div>
+        <div class="col-sm-2">
+          <button class="btn btn-danger" onclick="removeRule(event); return false;">Remove Rule</button>
+        </div>
       </div>
-    </div>
-
-    </section>
-
-    <section id="move-fields">
-
+    </template>
+    
     <div class="form-group" style="margin-top: 40px">
       <div class="col-sm-2">
         <strong>Move Fields</strong>
@@ -166,50 +191,32 @@
    * Creates a form element for a new Remove Field Rule and adds it to the form.
    */
   function newRemoveFieldRule(marcField='') {
+    const template = document.getElementById("remove-fields-template");
+    const clone = template.content.cloneNode(true);
+    const now = new Date().getTime();
+
+    updateInputTemplate(clone, "remove-field", now, marcField)
+    updateLabelTemplate(clone, "remove-field", now)
+
     const removeFields = document.getElementById("remove-fields");
-    const id = getId("remove-field");
-
-    const formGroup = element("div", {"class": "form-group remove-field"});
-    removeFields.append(formGroup);
-
-    formGroup.appendChild(element("label", {"for": id, "class": "col-sm-2 col-form-label"}, "Field"));
-
-    const inputDiv = element("div", {"class": "col-sm-2"});
-    inputDiv.appendChild(element("input", {"class": "form-control", "type": "text", "id": id, "name": id, "value": marcField}));
-    formGroup.appendChild(inputDiv);
-
-    formGroup.appendChild(removeButton());
+    removeFields.appendChild(clone);
   }
 
   /**
    * Creates a Move Field Rule element and adds it to the form.
    */
-  function newMoveFieldRule(fromField='', toField='') {
+  function newMoveFieldRule(fromField='', toField='') {    
+    const template = document.getElementById("move-fields-template");
+    const clone = template.content.cloneNode(true);
+    const now = new Date().getTime();
+
+    updateInputTemplate(clone, "move-field-from", now, fromField)
+    updateLabelTemplate(clone, "move-field-from", now)
+    updateInputTemplate(clone, "move-field-to", now, toField)
+    updateLabelTemplate(clone, "move-field-to", now)
+
     const moveFields = document.getElementById("move-fields");
-    const formGroup = element("div", {"class": "form-group move-field"});
-    moveFields.append(formGroup);
-
-    const fromDiv = element("div", {"class": "col-sm-2"});
-    const fromId = getId("move-field-from");
-    formGroup.append(fromDiv);
-    fromDiv.appendChild(element("label", {"class": "rule-label", "for": fromId}, "From:"));
-    fromDiv.appendChild(element("input", {"minlength": 3, "maxlength": 3, "type": "text", "id": fromId, "name": fromId, "value": fromField}));
-
-    const toDiv = element("div", {"class": "col-sm-2"});
-    // use the fromId to create toId so that the unique ID part is the same
-    const toId = fromId.replace('move-field-from', 'move-field-to');
-    formGroup.append(toDiv);
-    toDiv.appendChild(element("label", {"class": "rule-label", "for": toId}, "To:"));
-    toDiv.appendChild(element("input", {"minlength": 3, "maxlength": 3, "type": "text", "id": toId, "name": toId, "value": toField}));
-
-    formGroup.appendChild(removeButton());
-  }
-
-  function removeButton() {
-    const div = element("div", {"class": "col-sm-2"});
-    const button = element("button", {"class": "btn btn-danger", "onclick": "removeRule(event); return false;"}, "Remove Rule");
-    div.appendChild(button);
-    return div;
+    moveFields.append(clone);
   }
 
   function removeRule(event) {
@@ -220,9 +227,25 @@
     form.removeChild(field);
   }
 
-  function getId(name) {
-    const epoch = new Date().getTime();
-    return `${name}-${epoch}`;
+  function updateInputTemplate(clone, id, now, value) {
+    const input = clone.querySelector(`#${id}`);
+    updateTemplateAttr(input, "id", now)
+    updateTemplateAttr(input, "name", now)
+    input.value = value
+  }
+
+  function updateLabelTemplate(clone, id, now) {
+    const label = clone.querySelector(`label[for="${id}"]`);
+    updateTemplateAttr(label, "for", now)
+  }
+
+  function updateTemplateAttr(templateElement, attrName, now) {
+    const value = templateElement.getAttribute(attrName);
+    templateElement.setAttribute(attrName, getId(now, value))
+  }
+
+  function getId(now, name) {    
+    return `${name}-${now}`;
   }
 
   function main() {

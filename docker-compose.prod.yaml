@@ -85,7 +85,7 @@ x-airflow-common:
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/vendor_loads
     AIRFLOW__SMTP__SMTP_HOST: host.docker.internal
     AIRFLOW__SMTP__SMTP_STARTTLS: 'false'
-    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM:-jpnelson@stanford.edu}
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM:-folio-load-reports@lists.stanford.edu}
     AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL}
     VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
