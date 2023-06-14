@@ -18,6 +18,7 @@ from libsys_airflow.plugins.vendor.purge import (
     remove_archived,
     remove_files,
     set_purge_status,
+    PRIOR_DAYS,
 )
 
 
@@ -90,11 +91,11 @@ def pg_hook(mocker, engine) -> PostgresHook:
 def test_find_directories(archive_basepath):
     # Create mock directories
     today = datetime.utcnow()
-    prior_90 = today - timedelta(days=90)
+    prior_datestamp = today - timedelta(days=PRIOR_DAYS)
 
     directories = []
 
-    for date in [prior_90 - timedelta(days=1), prior_90]:
+    for date in [prior_datestamp - timedelta(days=1), prior_datestamp]:
         single_archive = archive_basepath / date.strftime("%Y%m%d")
         single_archive.mkdir()
         directories.append(single_archive)
@@ -111,14 +112,20 @@ def test_find_directories(archive_basepath):
 def test_find_files(downloads_basepath):
     # Create mock directories and files
     today = datetime.utcnow()
-    prior_91 = today - timedelta(days=91)
+    prior_datestamp_plus_one = today - timedelta(days=PRIOR_DAYS + 1)
     for vendor in vendor_interfaces:
         for interface, file_name in vendor["interfaces"].items():
             parent_dir = downloads_basepath / vendor["vendor"] / interface
             parent_dir.mkdir(parents=True)
             file_path = parent_dir / file_name
             file_path.touch()
-            os.utime(str(file_path), (prior_91.timestamp(), prior_91.timestamp()))
+            os.utime(
+                str(file_path),
+                (
+                    prior_datestamp_plus_one.timestamp(),
+                    prior_datestamp_plus_one.timestamp(),
+                ),
+            )
 
     target_files = find_files(downloads_basepath)
 
@@ -139,8 +146,8 @@ def test_find_empty_directory(archive_basepath, caplog):
 def test_remove_archived(archive_basepath):
     # Create Mocks
     today = datetime.utcnow()
-    prior_90 = today - timedelta(days=90)
-    target_directory = archive_basepath / prior_90.strftime("%Y%m%d")
+    prior_datestamp = today - timedelta(days=PRIOR_DAYS)
+    target_directory = archive_basepath / prior_datestamp.strftime("%Y%m%d")
     target_directory.mkdir()
     for row in vendor_interfaces:
         vendor_path = target_directory / row["vendor"]
@@ -155,7 +162,7 @@ def test_remove_archived(archive_basepath):
     assert target_directory.exists() is False
     assert len(result[0]) == 4
     first_interface = result[0]["88d39c9c-fa8c-46ee-921d-71f725afb719"]
-    assert first_interface["date"] == prior_90.strftime("%Y%m%d")
+    assert first_interface["date"] == prior_datestamp.strftime("%Y%m%d")
     assert first_interface["files"][0] == "ec1234.mrc"
 
 

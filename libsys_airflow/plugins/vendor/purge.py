@@ -12,13 +12,17 @@ from sqlalchemy.orm import Session
 from libsys_airflow.plugins.vendor.paths import archive_basepath, downloads_basepath
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
 
+
 logger = logging.getLogger(__name__)
 
 
+PRIOR_DAYS = 180
+
+
 @task(multiple_outputs=True)
-def discover_task() -> dict[list]:
+def discover_task() -> dict[str, list]:
     """
-    Task for discovering 90-day old active files and archived directories
+    Task for discovering old active files and archived directories
     of vendor file loads to be deleted
     """
     return {
@@ -28,7 +32,7 @@ def discover_task() -> dict[list]:
 
 
 @task
-def remove_downloads_task(target_files: list) -> list:
+def remove_downloads_task(target_files: list[str]) -> bool:
     """
     Task takes a list of paths and attempts to delete
     """
@@ -65,29 +69,30 @@ def _extract_uuids(directory: str):
     return output
 
 
-def find_directories(archive_directory: str, prior_days=90) -> list:
+def find_directories(archive_directory: str) -> list[str]:
     """
     Iterates through archives to determine what vendor management
     directories to delete based on age
     """
     target_dirs = []
-    today = datetime.utcnow()
-    prior_90_days = (today - timedelta(days=prior_days)).strftime("%Y%m%d")
-    archive_directory = pathlib.Path(archive_directory)
-    for directory in sorted(archive_directory.iterdir()):
-        if directory.stem <= prior_90_days:
+    prior_datestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).strftime(
+        "%Y%m%d"
+    )
+    archive_directory_path = pathlib.Path(archive_directory)
+    for directory in sorted(archive_directory_path.iterdir()):
+        if directory.stem <= prior_datestamp:
             target_dirs.append(str(directory))
     if len(target_dirs) < 1:
         logger.info("No directories available for purging")
     return target_dirs
 
 
-def find_files(downloads_directory: str, prior_days=90):
+def find_files(downloads_directory: str):
     """
     Iterates through downloads directory determing what files to
     delete based on the file's age
     """
-    prior_timestamp = (datetime.utcnow() - timedelta(days=prior_days)).timestamp()
+    prior_timestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).timestamp()
     downloads_path = pathlib.Path(downloads_directory)
     files = []
     for file_path in downloads_path.glob("**/*"):
