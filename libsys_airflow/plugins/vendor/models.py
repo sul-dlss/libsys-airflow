@@ -202,6 +202,7 @@ class VendorFile(Model):
     filesize = Column(Integer, nullable=False)
     vendor_timestamp = Column(DateTime, nullable=True)
     loaded_timestamp = Column(DateTime, nullable=True)
+    loaded_history = Column(JSON, nullable=False, server_default="[]")
     expected_processing_time = Column(DateTime, nullable=True)
     archive_date = Column(Date, nullable=True)
     status = Column(
@@ -215,6 +216,10 @@ class VendorFile(Model):
 
     def __repr__(self) -> str:
         return f"{self.vendor_filename} - {self.vendor_timestamp}"
+
+    @property
+    def loaded_history_timestamps(self):
+        return [datetime.fromisoformat(timestamp) for timestamp in self.loaded_history]
 
     @classmethod
     def load(cls, interface_uuid: str, filename: str, session: Session) -> 'VendorFile':

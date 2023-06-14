@@ -313,7 +313,10 @@ class VendorManagementView(BaseView):
             # to transition to loaded.
             if 'status' in request.form and file.status.can_set_loaded():
                 file.status = request.form.get('status', file.status)
-                file.loaded_timestamp = datetime.utcnow()
+                now = datetime.utcnow()
+                file.updated = now
+                file.loaded_timestamp = now
+                file.loaded_history = file.loaded_history + [now.isoformat()]
 
             session.commit()
         return self.render_template(
