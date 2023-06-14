@@ -117,7 +117,7 @@ with DAG(
     filename = extract_task(
         params["download_path"], params["filename"], params["archive_regex"]
     )
-    processed_marc = process_marc_task(
+    processed_params = process_marc_task(
         params["download_path"],
         filename,
         params["remove_fields"],
@@ -125,16 +125,14 @@ with DAG(
         params["add_fields"],
     )
 
-    batch_filenames = batch_task(
-        params["download_path"], processed_marc["marc_filename"]
-    )
+    batch_filenames = batch_task(params["download_path"], processed_params["filename"])
     data_import_branch = data_import_branch_task(params["dataload_profile_uuid"])
     data_import = data_import_task(
         params["download_path"],
         batch_filenames,
         params["dataload_profile_uuid"],
         params["vendor_interface_uuid"],
-        filename,
+        params["filename"],
     )
 
     file_loaded_sensor = file_loaded_sensor_task(
@@ -150,7 +148,7 @@ with DAG(
         params["download_path"],
         filename,
         params["start_time"],
-        processed_marc["records_count"],
+        processed_params["records_count"],
         job_summary["srs_stats"],
         job_summary["instance_stats"],
     )

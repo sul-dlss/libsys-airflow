@@ -47,7 +47,7 @@ def marc_record():
 
 
 def test_filter_fields(tmp_path, marc_path):
-    new_marc_filename = process_marc(marc_path, ["981", "983"])["marc_filename"]
+    new_marc_filename = process_marc(marc_path, ["981", "983"])["filename"]
     assert new_marc_filename == "3820230411-processed.mrc"
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
@@ -83,9 +83,7 @@ def test_move_fields(tmp_path, marc_path):
             },
         ]
     )
-    new_marc_filename = process_marc(marc_path, change_fields=change_list)[
-        "marc_filename"
-    ]
+    new_marc_filename = process_marc(marc_path, change_fields=change_list)["filename"]
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -120,7 +118,7 @@ def test_add_fields(tmp_path, marc_path):
             }
         ]
     )
-    new_marc_filename = process_marc(marc_path, add_fields=add_list)["marc_filename"]
+    new_marc_filename = process_marc(marc_path, add_fields=add_list)["filename"]
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -144,7 +142,7 @@ def test_add_fields_with_unless(tmp_path, marcit_path):
             }
         ]
     )
-    new_marc_filename = process_marc(marcit_path, add_fields=add_list)["marc_filename"]
+    new_marc_filename = process_marc(marcit_path, add_fields=add_list)["filename"]
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
