@@ -18,11 +18,6 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 
-class ChangeField(BaseModel):
-    from_: str = Field(alias='from')
-    to: str
-
-
 class MarcSubfield(BaseModel):
     code: str
     value: str
@@ -32,11 +27,16 @@ class MarcField(BaseModel):
     tag: str
     indicator1: Optional[str] = None
     indicator2: Optional[str] = None
-    subfields: list[MarcSubfield]
+    subfields: list[MarcSubfield] = []
 
 
 class AddField(MarcField):
     unless: Optional[MarcField]
+
+
+class ChangeField(BaseModel):
+    from_: MarcField = Field(alias='from')
+    to: MarcField
 
 
 def record_processed_filename(context):
@@ -76,7 +76,10 @@ def process_marc_task(
     """
     Applies changes to MARC records.
 
-    change_fields example: [{ from: "520" to: "920" }, { from: "528" to: "928" }]
+    change_fields example: [
+        { from: { tag: "520" }, to: { tag: "920" },
+        { from: { tag: "528", indicator1: "a", indicator2: "b" },  to: { tag: "928", indicator1: "", indicator2: " " }
+    ]
     add_fields example: [
             { tag: "910", indicator1: '2', subfields: [{code: "a", value: "MARCit"}] },
             { tag: "590", subfields: [{code: "a", value: "MARCit brief record"}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
@@ -209,8 +212,52 @@ def _to_add_fields_models(add_fields):
 
 def _change_fields(record, change_fields):
     for change in change_fields:
-        for field in record.get_fields(change.from_):
-            field.tag = change.to
+        for field in record.get_fields(change.from_.tag):
+            if _change_field_match(field, change.from_):
+                if field.is_control_field():
+                    # This assumes that control fields will be moved to normal fields
+                    record.add_ordered_field(
+                        pymarc.Field(
+                            tag=change.to.tag,
+                            indicators=[
+                                change.to.indicator1 or " ",
+                                change.to.indicator2 or " ",
+                            ],
+                            subfields=[
+                                # Always add value to subfield a.
+                                pymarc.Subfield(code='a', value=field.value())
+                            ],
+                        )
+                    )
+                    record.remove_field(field)
+                else:
+                    field.tag = change.to.tag
+                    if change.to.indicator1 and change.to.indicator1 != "":
+                        field.indicator1 = change.to.indicator1
+                    if change.to.indicator2 and change.to.indicator2 != "":
+                        field.indicator2 = change.to.indicator2
+                    record.remove_field(field)
+                    record.add_ordered_field(field)
+
+
+def _change_field_match(field: pymarc.field.Field, match_field: MarcField):
+    if field.tag != match_field.tag:
+        return False
+    if (
+        not field.is_control_field()
+        and match_field.indicator1
+        and match_field.indicator1 != ""
+        and field.indicator1 != match_field.indicator1
+    ):
+        return False
+    if (
+        not field.is_control_field()
+        and match_field.indicator2
+        and match_field.indicator2 != ""
+        and field.indicator2 != match_field.indicator2
+    ):
+        return False
+    return True
 
 
 def _add_fields(record, add_fields):
@@ -223,7 +270,7 @@ def _add_fields(record, add_fields):
         )
         for subfield in add_field.subfields:
             field.add_subfield(subfield.code, subfield.value)
-        record.add_field(field)
+        record.add_ordered_field(field)
 
 
 def _skip(record, unless):

@@ -74,7 +74,14 @@ def test_batch(tmp_path, marc_path):
 
 def test_move_fields(tmp_path, marc_path):
     change_list = _to_change_fields_models(
-        [{"from": "520", "to": "920"}, {"from": "504", "to": "904"}]
+        [
+            {"from": {"tag": "001"}, "to": {"tag": "035", "indicator2": "9"}},
+            {"from": {"tag": "520", "indicator1": " "}, "to": {"tag": "920"}},
+            {
+                "from": {"tag": "504"},
+                "to": {"tag": "904", "indicator1": "a", "indicator2": " "},
+            },
+        ]
     )
     new_marc_filename = process_marc(marc_path, change_fields=change_list)[
         "marc_filename"
@@ -83,14 +90,24 @@ def test_move_fields(tmp_path, marc_path):
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
-            assert record.get_fields("520", "504") == []
             if record.title == "The loneliest whale blues /":
-                assert record.get_fields("920")
+                field = record.get_fields("035")[0]
+                assert field
+                assert field.indicator1 == " "
+                assert field.indicator2 == "9"
+                assert field["a"] == "gls17928831"
+                field = record.get_fields("920")[0]
+                assert field
+                assert field.indicator1 == " "
+                assert field.indicator2 == " "
             if (
                 record.title
                 == "The FVN handbook : the principles and practices of the Fierce Vulnerability Network."
             ):
-                assert record.get_fields("904")
+                field = record.get_fields("904")[0]
+                assert field
+                assert field.indicator1 == "a"
+                assert field.indicator2 == " "
 
 
 def test_add_fields(tmp_path, marc_path):
