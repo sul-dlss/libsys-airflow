@@ -57,7 +57,7 @@ def inventory_audit_report(**kwargs):
     """
     airflow = kwargs.get("airflow", "/opt/airflow")
 
-    iteration = kwargs['iteration']
+    iteration = kwargs['iteration_id']
     iteration_path = pathlib.Path(airflow) / f"migration/iterations/{iteration}"
 
     report_path = iteration_path / "reports/report_inventory-audit.md"

@@ -17,3 +17,5 @@ COPY bin ./bin
 RUN pip install -r requirements.txt
 RUN poetry build --format=wheel --no-interaction --no-ansi
 RUN pip install dist/*.whl
+
+COPY loc_language_codes.xml /home/airflow/.local/lib/python3.10/site-packages/folio_migration_tools/marc_rules_transformation/
