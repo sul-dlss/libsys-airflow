@@ -50,6 +50,7 @@ with DAG(
                     {
                         "vendor_code": vendor_interface.vendor.vendor_code_from_folio,
                         "vendor_uuid": vendor_interface.vendor.folio_organization_uuid,
+                        "vendor_interface_name": vendor_interface.display_name,
                         "vendor_interface_uuid": vendor_interface.folio_interface_uuid,
                         "dataload_profile_uuid": vendor_interface.folio_data_import_profile_uuid,
                         "remote_path": vendor_interface.remote_path,

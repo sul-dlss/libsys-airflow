@@ -66,7 +66,7 @@ def send_files_fetched_email(
 ):
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - {vendor_interface_uuid} - Daily Fetch Report ({date.today().isoformat()})",
+        f"{vendor_interface_name} ({vendor_code}) - Daily Fetch Report ({date.today().isoformat()})",
         _files_fetched_html_content(
             vendor_interface_name,
             vendor_code,

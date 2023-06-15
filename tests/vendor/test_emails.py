@@ -76,7 +76,7 @@ def test_send_files_fetched_email(pg_hook, mocker):
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - 140530EB-EE54-4302-81EE-D83B9DAC9B6E - Daily Fetch Report (2021-01-01)",
+        "Acme FTP (ACME) - Daily Fetch Report (2021-01-01)",
         """
         <h5>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
