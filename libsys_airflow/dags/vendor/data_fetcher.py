@@ -62,6 +62,8 @@ with DAG(
         params["download_path"] = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
+        params["environment"] = os.getenv('HONEYBADGER_ENVIRONMENT', 'development')
+
         logger.info(f"Params are {params}")
 
         os.makedirs(params["download_path"], exist_ok=True)
@@ -91,4 +93,5 @@ with DAG(
         params["vendor_code"],
         params["vendor_interface_uuid"],
         downloaded_files,
+        params["environment"],
     )
