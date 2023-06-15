@@ -95,16 +95,29 @@ with DAG(
                 "920",
                 "986",
             ]  # Casts [] to defaults.
+            add_fields = []
             package_name = processing_options.get("package_name")
             if package_name:
-                params["add_fields"] = [
+                add_fields.append(
                     {
                         "tag": "910",
                         "subfields": [{"code": "a", "value": package_name}],
                     }
-                ]
-            else:
-                params["add_fields"] = None
+                )
+            if vendor_interface.vendor.vendor_code_from_folio == "sfx":
+                add_fields.append(
+                    {
+                        "tag": "590",
+                        "subfields": [{"code": "a", "value": "MARCit brief record"}],
+                        "unless": {
+                            "tag": "035",
+                            "subfields": [{"code": "a", "value": "OCoLC"}],
+                        },
+                    }
+                )
+
+            params["add_fields"] = add_fields if len(add_fields) > 0 else None
+
             # Not yet supported in UI.
             params["archive_regex"] = processing_options.get("archive_regex")
 
