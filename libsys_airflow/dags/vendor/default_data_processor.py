@@ -157,6 +157,7 @@ with DAG(
     file_loaded_email_task(
         params["vendor_code"],
         params["vendor_interface_name"],
+        params["vendor_interface_uuid"],
         data_import["job_execution_id"],
         params["download_path"],
         filename,

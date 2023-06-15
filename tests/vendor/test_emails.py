@@ -120,6 +120,7 @@ def test_send_file_loaded_bib_email_no_001s(pg_hook, mocker, mock_okapi_url_vari
     send_file_loaded_email(
         'ACME',
         'Acme FTP',
+        "140530EB-EE54-4302-81EE-D83B9DAC9B6E",
         'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
@@ -145,6 +146,7 @@ def test_send_file_loaded_bib_email_no_001s(pg_hook, mocker, mock_okapi_url_vari
         "Acme FTP (ACME) - (123456.mrc) - File Load Report",
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
+        <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 bib record(s) read from MARC file.</p>
@@ -180,6 +182,7 @@ def test_send_file_loaded_bib_email_with_001s(pg_hook, mocker, mock_okapi_url_va
     send_file_loaded_email(
         'ACME',
         'Acme FTP',
+        "140530EB-EE54-4302-81EE-D83B9DAC9B6E",
         'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
@@ -205,6 +208,7 @@ def test_send_file_loaded_bib_email_with_001s(pg_hook, mocker, mock_okapi_url_va
         "Acme FTP (ACME) - (123456.mrc) - File Load Report",
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
+        <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 bib record(s) read from MARC file.</p>
@@ -244,6 +248,7 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
     send_file_loaded_email(
         'ACME',
         'Acme FTP',
+        "140530EB-EE54-4302-81EE-D83B9DAC9B6E",
         'https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e',
         '123456.mrc',
         now,
@@ -269,6 +274,7 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
         "Acme FTP (ACME) - (123456.mrc) - File Load Report",
         f"""
         <h5>FOLIO Catalog EDI Load started on {now}</h5>
+        <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 invoices read from EDI file.</p>

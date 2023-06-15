@@ -113,6 +113,7 @@ def _vendor_interface_url(vendor_interface_uuid):
 def file_loaded_email_task(
     vendor_code: str,
     vendor_interface_name: str,
+    vendor_interface_uuid: str,
     job_execution_id: str,
     download_path: str,
     filename: str,
@@ -134,6 +135,7 @@ def file_loaded_email_task(
     send_file_loaded_email(
         vendor_code,
         vendor_interface_name,
+        vendor_interface_uuid,
         job_execution_url,
         filename,
         load_time,
@@ -148,6 +150,7 @@ def file_loaded_email_task(
 def send_file_loaded_email(
     vendor_code,
     vendor_interface_name,
+    vendor_interface_uuid,
     job_execution_url,
     filename,
     load_time,
@@ -166,6 +169,9 @@ def send_file_loaded_email(
             srs_stats,
             instance_stats,
             double_zero_ones,
+            vendor_interface_name,
+            vendor_code,
+            vendor_interface_uuid,
         )
         if is_marc
         else _file_loaded_edi_html_content(
@@ -175,6 +181,9 @@ def send_file_loaded_email(
             records_count,
             srs_stats,
             instance_stats,
+            vendor_interface_name,
+            vendor_code,
+            vendor_interface_uuid,
         )
     )
     send_email(
@@ -191,10 +200,14 @@ def _file_loaded_edi_html_content(
     records_count,
     srs_stats,
     instance_stats,
+    vendor_interface_name,
+    vendor_code,
+    vendor_interface_uuid,
 ):
     template = Template(
         """
         <h5>FOLIO Catalog EDI Load started on {{load_time}}</h5>
+        <h6>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h6>
 
         <p>Filename {{filename}} - {{job_execution_url}}</p>
         <p>{{records_count}} invoices read from EDI file.</p>
@@ -209,6 +222,10 @@ def _file_loaded_edi_html_content(
         records_count=records_count,
         srs_created=srs_stats.get("totalCreatedEntities", 0),
         instance_errors=instance_stats.get("totalErrors", 0),
+        vendor_interface_name=vendor_interface_name,
+        vendor_code=vendor_code,
+        vendor_interface_uuid=vendor_interface_uuid,
+        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
     )
 
 
@@ -220,10 +237,14 @@ def _file_loaded_bib_html_content(
     srs_stats,
     instance_stats,
     double_zero_ones,
+    vendor_interface_name,
+    vendor_code,
+    vendor_interface_uuid,
 ):
     template = Template(
         """
         <h5>FOLIO Catalog MARC Load started on {{load_time}}</h5>
+        <h6>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h6>
 
         <p>Filename {{filename}} - {{job_execution_url}}</p>
         <p>{{records_count}} bib record(s) read from MARC file.</p>
@@ -262,6 +283,10 @@ def _file_loaded_bib_html_content(
         instance_discarded=instance_stats.get("totalDiscardedEntities", 0),
         instance_errors=instance_stats.get("totalErrors", 0),
         double_zero_ones=double_zero_ones,
+        vendor_interface_name=vendor_interface_name,
+        vendor_code=vendor_code,
+        vendor_interface_uuid=vendor_interface_uuid,
+        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
     )
 
 
