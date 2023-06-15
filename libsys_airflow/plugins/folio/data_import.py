@@ -105,7 +105,10 @@ def data_import(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
     )
     return {
-        "upload_definition_id": upload_definition_id,
+        # NOTE: We think we don't need this anymore, but we don't have absolute
+        #       confidence in this, so we're leaving this here for now
+        #
+        # "upload_definition_id": upload_definition_id,
         "job_execution_id": job_execution_id,
     }
 

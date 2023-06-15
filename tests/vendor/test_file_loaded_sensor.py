@@ -81,37 +81,50 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 @pytest.fixture
 def folio_client(request):
-    upload_definition_resp = {
-        "id": "7927246d-fa26-491e-a956-53fdcbdb364b",
-        "metaJobExecutionId": "d7460945-6f0c-4e74-86c9-34a8438d652e",
-        "status": request.param,
-        "createDate": "2023-06-12T21:00:19.670+00:00",
-        "fileDefinitions": [
-            {
-                "id": "f6e9601b-e023-4195-8793-d69311f2a310",
-                "sourcePath": "./storage/upload/7927246d-fa26-491e-a956-53fdcbdb364b/f6e9601b-e023-4195-8793-d69311f2a310/2023-06-12T14:00:19-07:00.marc",
-                "name": "2023-06-12T14:00:19-07:00.marc",
-                "status": "UPLOADED",
-                "jobExecutionId": "eefe2d8f-72d8-40c2-a89e-b7d4fc455f5c",
-                "uploadDefinitionId": "7927246d-fa26-491e-a956-53fdcbdb364b",
-                "createDate": "2023-06-12T21:00:19.670+00:00",
-                "uploadedDate": "2023-06-12T21:00:19.976+00:00",
-            }
-        ],
-        "metadata": {
-            "createdDate": "2023-06-12T21:00:19.663+00:00",
-            "createdByUserId": "297649ab-3f9e-5ece-91a3-25cf700062ae",
-            "updatedDate": "2023-06-12T21:00:19.663+00:00",
-            "updatedByUserId": "297649ab-3f9e-5ece-91a3-25cf700062ae",
+    job_execution_resp = {
+        "id": "d7460945-6f0c-4e74-86c9-34a8438d652e",
+        "hrId": 10000,
+        "jobProfileInfo": {
+            "id": "88dfac11-1caf-4470-9ad1-d533f6360bad",
+            "name": "stub job profile",
+            "dataType": "MARC",
         },
+        "jobProfileSnapshotWrapper": {
+            "id": "0fc0ba76-d560-4541-826f-f8bdd3b09841",
+            "profileId": "dc4ac439-57ae-4779-872e-1892b163bb47",
+            "contentType": "JOB_PROFILE",
+            "reactTo": "NON-MATCH",
+            "content": {
+                "id": "dc4ac439-57ae-4779-872e-1892b163bb47",
+                "name": "Load vendor order records",
+                "description": "Ordered on vendor site; load MARC to create bib, holdings, item, and order; keep MARC",
+                "dataTypes": ["MARC_BIB"],
+                "tags": {"tagList": ["acq", "daily"]},
+            },
+        },
+        "parentJobId": "67dfac11-1caf-4470-9ad1-d533f6360bdd",
+        "subordinationType": "PARENT_SINGLE",
+        "sourcePath": "mport_1.csv",
+        "fileName": "import_1.csv",
+        "runBy": {"firstName": "DIKU", "lastName": "ADMINISTRATOR"},
+        "progress": {
+            "jobExecutionId": "67dfac11-1caf-4470-9ad1-d533f6360bdd",
+            "current": 50,
+            "total": 50,
+        },
+        "startedDate": "2018-10-30T12:36:55.000",
+        "completedDate": "2018-10-30T12:40:01.000",
+        "status": request.param,
+        "uiStatus": "RUNNING_COMPLETE",
+        "userId": "c9db5d7a-e1d4-11e8-9f32-f2801f1b9fd1",
     }
     mock_client = Mock()
-    mock_client.get.return_value = upload_definition_resp
+    mock_client.get.return_value = job_execution_resp
     return mock_client
 
 
-@pytest.mark.parametrize('folio_client', ['COMPLETED'], indirect=True)
-def test_file_load_report_with_loaded_file_and_job_completed(
+@pytest.mark.parametrize('folio_client', ['COMMITTED'], indirect=True)
+def test_file_load_report_with_loaded_file_and_job_committed(
     pg_hook,
     mocker,
     folio_client,  # noqa: F811
@@ -124,14 +137,14 @@ def test_file_load_report_with_loaded_file_and_job_completed(
         return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded.mrc",
-            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            "d7460945-6f0c-4e74-86c9-34a8438d652e",
             client=folio_client,
         )
         assert return_value.is_done is True
 
 
-@pytest.mark.parametrize('folio_client', ['IN_PROGRESS'], indirect=True)
-def test_file_load_report_with_loaded_file_and_job_not_completed(
+@pytest.mark.parametrize('folio_client', ['FILE_UPLOADED'], indirect=True)
+def test_file_load_report_with_loaded_file_and_job_not_committed(
     pg_hook, mocker, folio_client  # noqa: F811
 ):
     with Session(pg_hook()) as session:
@@ -142,7 +155,7 @@ def test_file_load_report_with_loaded_file_and_job_not_completed(
         return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded.mrc",
-            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            "d7460945-6f0c-4e74-86c9-34a8438d652e",
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -157,7 +170,7 @@ def test_file_load_report_with_no_file(pg_hook, mocker):
         return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "nonexistent.mrc",
-            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            "d7460945-6f0c-4e74-86c9-34a8438d652e",
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -172,7 +185,7 @@ def test_file_load_report_with_not_loaded_file(pg_hook, mocker):
         return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "not_loaded.mrc",
-            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            "d7460945-6f0c-4e74-86c9-34a8438d652e",
             client=folio_client,
         )
         assert return_value.is_done is False
@@ -187,7 +200,7 @@ def test_file_load_report_with_file_lacking_job_execution_uuid(pg_hook, mocker):
         return_value = file_loaded_sensor(
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "loaded_but_messed_up.mrc",
-            "38f47152-c3c2-471c-b7e0-c9d024e47357",
+            "d7460945-6f0c-4e74-86c9-34a8438d652e",
             client=folio_client,
         )
         assert return_value.is_done is False

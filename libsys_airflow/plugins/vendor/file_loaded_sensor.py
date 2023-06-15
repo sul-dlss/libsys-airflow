@@ -1,4 +1,5 @@
 import logging
+import requests
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -26,15 +27,15 @@ def _folio_client():
 # Run the task every five minutes for up to one day
 @task.sensor(poke_interval=60 * 5, timeout=60 * 60 * 24, mode="reschedule")
 def file_loaded_sensor_task(
-    vendor_interface_uuid: str, filename: str, upload_definition_id: str
+    vendor_interface_uuid: str, filename: str, job_execution_id: str
 ) -> PokeReturnValue:
-    return file_loaded_sensor(vendor_interface_uuid, filename, upload_definition_id)
+    return file_loaded_sensor(vendor_interface_uuid, filename, job_execution_id)
 
 
 def file_loaded_sensor(
     vendor_interface_uuid: str,
     filename: str,
-    upload_definition_id: str,
+    job_execution_id: str,
     client=None,
 ) -> PokeReturnValue:
     folio_client = client or _folio_client()
@@ -47,15 +48,27 @@ def file_loaded_sensor(
             or vendor_file.folio_job_execution_uuid is None
         ):
             logger.info(
-                f"Skipping sending email since file ('{vendor_interface_uuid} - {filename}') has not been loaded."
+                f"File ('{vendor_interface_uuid} - {filename}') has not been loaded yet."
             )
             return PokeReturnValue(is_done=False)
 
-    upload_definition = folio_client.get(
-        f"/data-import/uploadDefinitions/{upload_definition_id}"
-    )
+    try:
+        job_execution = folio_client.get(
+            f"/change-manager/jobExecutions/{job_execution_id}"
+        )
+    except requests.exceptions.HTTPError as error:
+        if error.response.status_code == 404:
+            logger.info(
+                f"Processing job for file ('{vendor_interface_uuid} - {filename}') has not started yet."
+            )
+            return PokeReturnValue(is_done=False)
+        else:
+            raise
 
-    if upload_definition["status"] in ["COMPLETED", "ERROR"]:
+    if job_execution["status"] in ["COMMITTED", "ERROR"]:
         return PokeReturnValue(is_done=True)
 
+    logger.info(
+        f"File ('{vendor_interface_uuid} - {filename}') has not been processed yet."
+    )
     return PokeReturnValue(is_done=False)
