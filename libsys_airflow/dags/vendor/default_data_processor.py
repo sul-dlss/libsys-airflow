@@ -108,7 +108,7 @@ with DAG(
                 add_fields.append(
                     {
                         "tag": "590",
-                        "subfields": [{"code": "a", "value": "MARCit brief record"}],
+                        "subfields": [{"code": "a", "value": "MARCit brief record."}],
                         "unless": {
                             "tag": "035",
                             "subfields": [{"code": "a", "value": "OCoLC"}],
@@ -116,7 +116,7 @@ with DAG(
                     }
                 )
 
-            params["add_fields"] = add_fields if len(add_fields) > 0 else None
+            params["add_fields"] = add_fields or None
 
             # Not yet supported in UI.
             params["archive_regex"] = processing_options.get("archive_regex")

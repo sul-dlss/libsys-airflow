@@ -134,7 +134,7 @@ def test_add_fields_with_unless(tmp_path, marcit_path):
         [
             {
                 "tag": "590",
-                "subfields": [{"code": "a", "value": "MARCit brief record"}],
+                "subfields": [{"code": "a", "value": "MARCit brief record."}],
                 "unless": {
                     "tag": "035",
                     "subfields": [{"code": "a", "value": "OCoLC"}],
@@ -148,14 +148,14 @@ def test_add_fields_with_unless(tmp_path, marcit_path):
         marc_reader = pymarc.MARCReader(fo)
         for record in marc_reader:
             field035 = record["035"]
-            field590 = record["590"]
-            assert field035 or field590
-            if field035 and field035["a"] == "OCoLC":
-                assert not field590
-            if not field035 or field035["a"] != "OCoLC":
-                assert field590
-            if field590:
-                assert field590["a"] == "MARCit brief record"
+            field590s = record.get_fields("590")
+            assert field035 or field590s
+            if field035 and "OCoLC" in field035["a"]:
+                assert not field590s
+            if not field035 or "OCoLC" not in field035["a"]:
+                assert field590s
+            if field590s:
+                assert field590s[0]["a"] == "MARCit brief record."
 
 
 def test_bad_check_fields():
