@@ -11,13 +11,13 @@ from folioclient import FolioClient
 
 from libsys_airflow.plugins.folio.invoices import (
     invoices_awaiting_payment,
-    invoices_pending_payment
+    invoices_pending_payment,
 )
 
 from libsys_airflow.plugins.folio.orafin_payments import (
     transform_folio_data,
     feeder_file,
-    sftp_file
+    sftp_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,36 +48,42 @@ default_args = {
 with DAG(
     "payments_to_orafin",
     default_args=default_args,
-    schedule=CronDataIntervalTimetable(cron="00 18 * * 3,5", timezone="America/Los_Angeles"),
+    schedule=CronDataIntervalTimetable(
+        cron="00 18 * * 3,5", timezone="America/Los_Angeles"
+    ),
     start_date=datetime(2023, 1, 1),
     catchup=False,
     tags=["folio"],
 ) as dag:
     folio_invoices_awaiting_payment = PythonOperator(
         task_id="get_invoices_awaiting_payment",
-        python_callable=invoices_awaiting_payment
+        python_callable=invoices_awaiting_payment,
     )
 
     orafin_data = PythonOperator(
         task_id="transform_folio_data_to_orafin_data",
-        python_callable=transform_folio_data
+        python_callable=transform_folio_data,
     )
 
     feeder_file = PythonOperator(
-        task_id="write_feeder_file",
-        python_callable=feeder_file
+        task_id="write_feeder_file", python_callable=feeder_file
     )
 
     send_feeder_file = PythonOperator(
-        task_id="sftp_feeder_file_to_ap",
-        python_callable=sftp_file
+        task_id="sftp_feeder_file_to_ap", python_callable=sftp_file
     )
 
     folio_invoices_pending_payment = PythonOperator(
         # pass voucher UUIDs for invoices sent to AP thru xcom to update voucher disbursementNumber to "Pending"
         task_id="update_invoices_to_pending_payment",
-        python_callable=invoices_pending_payment
+        python_callable=invoices_pending_payment,
     )
 
 
-folio_invoices_awaiting_payment >> orafin_data >> feeder_file >> send_feeder_file >> folio_invoices_pending_payment
+(
+    folio_invoices_awaiting_payment
+    >> orafin_data
+    >> feeder_file
+    >> send_feeder_file
+    >> folio_invoices_pending_payment
+)
