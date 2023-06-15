@@ -82,7 +82,7 @@ def process_marc_task(
     ]
     add_fields example: [
             { tag: "910", indicator1: '2', subfields: [{code: "a", value: "MARCit"}] },
-            { tag: "590", subfields: [{code: "a", value: "MARCit brief record"}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
+            { tag: "590", subfields: [{code: "a", value: "MARCit brief record."}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
         ]
     """
     marc_path = pathlib.Path(download_path) / filename
@@ -304,7 +304,7 @@ def _field_match(field: MarcField, check_field: pymarc.Field):
         return False
     for subfield in field.subfields:
         check_subfield_value = ''.join(check_field.get_subfields(subfield.code))
-        if not check_subfield_value or check_subfield_value != subfield.value:
+        if not check_subfield_value or (subfield.value not in check_subfield_value):
             return False
     return True
 
