@@ -166,7 +166,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
         )
         assert import_results == {
             'job_execution_id': '4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae',
-            'upload_definition_id': '38f47152-c3c2-471c-b7e0-c9d024e47357',
+            # 'upload_definition_id': '38f47152-c3c2-471c-b7e0-c9d024e47357',
         }
 
     folio_client.post.assert_any_call(

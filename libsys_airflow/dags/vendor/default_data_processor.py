@@ -150,7 +150,7 @@ with DAG(
     )
 
     file_loaded_sensor = file_loaded_sensor_task(
-        params["vendor_interface_uuid"], filename, data_import["upload_definition_id"]
+        params["vendor_interface_uuid"], filename, data_import["job_execution_id"]
     )
 
     job_summary = job_summary_task(data_import["job_execution_id"])
