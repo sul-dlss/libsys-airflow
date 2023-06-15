@@ -47,6 +47,7 @@ def files_fetched_email_task(
     vendor_code: str,
     vendor_interface_uuid: str,
     downloaded_files: list[str],
+    environment: str,
 ):
     if not downloaded_files:
         logger.info("Skipping sending email since no files downloaded.")
@@ -57,16 +58,24 @@ def files_fetched_email_task(
         return
 
     send_files_fetched_email(
-        vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
+        vendor_interface_name,
+        vendor_code,
+        vendor_interface_uuid,
+        downloaded_files,
+        environment,
     )
 
 
 def send_files_fetched_email(
-    vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
+    vendor_interface_name,
+    vendor_code,
+    vendor_interface_uuid,
+    downloaded_files,
+    environment,
 ):
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - Daily Fetch Report ({date.today().isoformat()})",
+        f"{vendor_interface_name} ({vendor_code}) - Daily Fetch Report ({date.today().isoformat()}) [{environment}]",
         _files_fetched_html_content(
             vendor_interface_name,
             vendor_code,
@@ -121,6 +130,7 @@ def file_loaded_email_task(
     records_count: int,
     srs_stats: dict,
     instance_stats: dict,
+    environment: str,
 ):
     if _email_disabled():
         logger.info("Email not enabled.")
@@ -144,6 +154,7 @@ def file_loaded_email_task(
         instance_stats,
         _is_marc,
         extract_double_zero_one_field_values(file_path),
+        environment,
     )
 
 
@@ -159,6 +170,7 @@ def send_file_loaded_email(
     instance_stats,
     is_marc,
     double_zero_ones,
+    environment,
 ):
     html_content = (
         _file_loaded_bib_html_content(
@@ -188,7 +200,7 @@ def send_file_loaded_email(
     )
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report",
+        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report [{environment}]",
         html_content,
     )
 
@@ -296,16 +308,14 @@ def file_not_loaded_email_task(
     vendor_code: str,
     vendor_interface_uuid: str,
     filename: str,
+    environment: str,
 ):
     if _email_disabled():
         logger.info("Email not enabled.")
         return
 
     send_file_not_loaded_email(
-        vendor_interface_name,
-        vendor_code,
-        vendor_interface_uuid,
-        filename,
+        vendor_interface_name, vendor_code, vendor_interface_uuid, filename, environment
     )
 
 
@@ -314,10 +324,11 @@ def send_file_not_loaded_email(
     vendor_code,
     vendor_interface_uuid,
     filename,
+    environment,
 ):
     send_email(
         os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Processed",
+        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Processed [{environment}]",
         _file_not_loaded_html_content(
             vendor_interface_name, vendor_code, vendor_interface_uuid, filename
         ),

@@ -72,11 +72,12 @@ def test_send_files_fetched_email(pg_hook, mocker):
         'ACME',
         '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
         ['123456.mrc', '234567.mrc'],
+        'development',
     )
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - Daily Fetch Report (2021-01-01)",
+        "Acme FTP (ACME) - Daily Fetch Report (2021-01-01) [development]",
         """
         <h5>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
@@ -139,11 +140,12 @@ def test_send_file_loaded_bib_email_no_001s(pg_hook, mocker, mock_okapi_url_vari
         },
         True,
         [],
+        'development',
     )
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Load Report",
+        "Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
@@ -201,11 +203,12 @@ def test_send_file_loaded_bib_email_with_001s(pg_hook, mocker, mock_okapi_url_va
         },
         True,
         ['in00000023779', 'in00000023780', 'in00000023781'],
+        'development',
     )
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Load Report",
+        "Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
         f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
@@ -267,11 +270,12 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_okapi_url_variable):
         },
         False,
         [],
+        'development',
     )
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Load Report",
+        "Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
         f"""
         <h5>FOLIO Catalog EDI Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
@@ -300,11 +304,12 @@ def test_send_file_not_loaded_email(pg_hook, mocker):
         'ACME',
         '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
         '123456.mrc',
+        'development',
     )
 
     mock_send_email.assert_called_once_with(
         'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Processed",
+        "Acme FTP (ACME) - (123456.mrc) - File Processed [development]",
         f"""
         <h5>Acme FTP (ACME) - <a href="https://www.example.com/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 

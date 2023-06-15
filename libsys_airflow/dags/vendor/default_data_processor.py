@@ -76,6 +76,7 @@ with DAG(
         params["download_path"] = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
+        params["environment"] = os.getenv('HONEYBADGER_ENVIRONMENT', 'development')
 
         pg_hook = PostgresHook("vendor_loads")
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
@@ -165,6 +166,7 @@ with DAG(
         processed_params["records_count"],
         job_summary["srs_stats"],
         job_summary["instance_stats"],
+        params["environment"],
     )
 
     file_not_loaded_email = file_not_loaded_email_task(
@@ -172,6 +174,7 @@ with DAG(
         params["vendor_code"],
         params["vendor_interface_uuid"],
         filename,
+        params["environment"],
     )
 
     data_import_branch >> data_import >> file_loaded_sensor >> job_summary
