@@ -3,37 +3,20 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable
 from airflow.timetables.interval import CronDataIntervalTimetable
 
-from folioclient import FolioClient
-
 from libsys_airflow.plugins.folio.invoices import (
-    invoices_awaiting_payment,
-    invoices_pending_payment,
+    invoices_awaiting_payment_task,
+    invoices_pending_payment_task,
 )
 
 from libsys_airflow.plugins.folio.orafin_payments import (
-    transform_folio_data,
-    feeder_file,
-    sftp_file,
+    transform_folio_data_task,
+    feeder_file_task,
+    sftp_file_task,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def folio_client():
-    try:
-        return FolioClient(
-            Variable.get("OKAPI_URL"),
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
-        )
-    except ValueError as error:
-        logger.error(error)
-        raise
 
 
 default_args = {
@@ -55,35 +38,12 @@ with DAG(
     catchup=False,
     tags=["folio"],
 ) as dag:
-    folio_invoices_awaiting_payment = PythonOperator(
-        task_id="get_invoices_awaiting_payment",
-        python_callable=invoices_awaiting_payment,
-    )
+    folio_invoice_ids = invoices_awaiting_payment_task()
 
-    orafin_data = PythonOperator(
-        task_id="transform_folio_data_to_orafin_data",
-        python_callable=transform_folio_data,
-    )
+    orafin_data = transform_folio_data_task.expand(invoice_id=folio_invoice_ids)
 
-    feeder_file = PythonOperator(
-        task_id="write_feeder_file", python_callable=feeder_file
-    )
+    feeder_file = feeder_file_task(orafin_data)
 
-    send_feeder_file = PythonOperator(
-        task_id="sftp_feeder_file_to_ap", python_callable=sftp_file
-    )
+    upload_status = sftp_file_task(feeder_file)
 
-    folio_invoices_pending_payment = PythonOperator(
-        # pass voucher UUIDs for invoices sent to AP thru xcom to update voucher disbursementNumber to "Pending"
-        task_id="update_invoices_to_pending_payment",
-        python_callable=invoices_pending_payment,
-    )
-
-
-(
-    folio_invoices_awaiting_payment
-    >> orafin_data
-    >> feeder_file
-    >> send_feeder_file
-    >> folio_invoices_pending_payment
-)
+    invoices_pending_payment_task(folio_invoice_ids, upload_status)
