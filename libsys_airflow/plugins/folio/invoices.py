@@ -26,7 +26,7 @@ def _get_ids_from_vouchers(folio_query: str, folio_client: FolioClient) -> list:
     Returns all invoice Ids from vouchers given query parameter
     """
     vouchers = folio_client.get(
-        "/voucher/vouchers", params={"query": folio_query, "limit": 100}
+        "/voucher/vouchers", params={"query": folio_query, "limit": 500}
     )
     return [row.get("invoiceId") for row in vouchers["vouchers"]]
 
@@ -34,10 +34,10 @@ def _get_ids_from_vouchers(folio_query: str, folio_client: FolioClient) -> list:
 @task
 def invoices_awaiting_payment_task() -> list:
     folio_client = _folio_client()
-    invoice_ids = _get_ids_from_vouchers(
-        "exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"\"",
-        folio_client,
-    )
+    sul_invoices = "(acqUnitIds==*\"bd6c5f05-9ab3-41f7-8361-1c1e847196d3\"*) and exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"\""
+    law_invoices = "(acqUnitIds==*\"556eb26f-dbea-41c1-a1de-9a88ad950d95\"*) and exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"\""
+    query = f'"({sul_invoices}) or ({law_invoices})"'
+    invoice_ids = _get_ids_from_vouchers(query, folio_client)
     return invoice_ids
 
 
