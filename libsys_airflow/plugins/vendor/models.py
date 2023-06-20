@@ -22,7 +22,9 @@ from typing import List, Any
 Model = declarative_base()
 
 
-class Vendor(Model):
+# TODO: once airflow (and our vendor app) move to SQLAlchemy 2.x, mypy's typechecking may play better with
+# SQLAlchemy, see https://docs.sqlalchemy.org/en/20/orm/extensions/mypy.html
+class Vendor(Model):  # type: ignore
     __tablename__ = "vendors"
 
     id = Column(Integer, primary_key=True)
@@ -65,7 +67,7 @@ class Vendor(Model):
         ).unique()
 
 
-class VendorInterface(Model):
+class VendorInterface(Model):  # type: ignore
     __tablename__ = "vendor_interfaces"
 
     id = Column(Integer, primary_key=True)
@@ -188,7 +190,7 @@ class FileStatus(enum.Enum):
         return self not in (self.loading, self.loaded, self.purged)
 
 
-class VendorFile(Model):
+class VendorFile(Model):  # type: ignore
     __tablename__ = "vendor_files"
 
     id = Column(Integer, primary_key=True)
