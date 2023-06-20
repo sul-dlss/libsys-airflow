@@ -172,7 +172,7 @@ def batch(download_path: str, filename: str, max_records: int) -> list[str]:
     """
     records = []
     index = 1
-    batch_filenames = []
+    batch_filenames: list[str] = []
     with open(pathlib.Path(download_path) / filename, "rb") as fo:
         reader = _marc_reader(fo)
         for record in reader:
@@ -192,19 +192,19 @@ def batch(download_path: str, filename: str, max_records: int) -> list[str]:
     return batch_filenames
 
 
-def _new_batch(download_path, filename, index, batch_filenames, records):
+def _new_batch(download_path, filename, index, batch_filenames: list[str], records):
     batch_filename = _batch_filename(filename, index)
     batch_filenames.append(batch_filename)
     _write_records(records, pathlib.Path(download_path) / batch_filename)
     return [], index + 1
 
 
-def _batch_filename(filename, index):
+def _batch_filename(filename, index) -> str:
     file_path = pathlib.Path(filename)
     return f"{file_path.stem}_{index}{file_path.suffix}"
 
 
-def _write_records(records, marc_path):
+def _write_records(records, marc_path) -> None:
     logger.info(f"Writing {len(records)} records to {marc_path}")
     with marc_path.open("wb") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -213,7 +213,7 @@ def _write_records(records, marc_path):
             marc_writer.write(record)
 
 
-def _to_change_fields_models(change_fields):
+def _to_change_fields_models(change_fields) -> list[ChangeField]:
     return [ChangeField(**change) for change in change_fields]
 
 

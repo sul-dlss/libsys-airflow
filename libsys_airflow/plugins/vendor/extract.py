@@ -51,7 +51,7 @@ def _is_tar(file: pathlib.Path) -> bool:
     )
 
 
-def _filter_filenames(filenames: list[str], regex: str) -> list[str]:
+def _filter_filenames(filenames: list[str], regex: Optional[str]) -> str:
     filtered_filenames = filenames
     if regex:
         filtered_filenames = [

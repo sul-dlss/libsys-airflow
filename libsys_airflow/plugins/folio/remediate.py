@@ -13,16 +13,17 @@ from folio_uuid.folio_uuid import FOLIONamespaces
 logger = logging.getLogger(__name__)
 
 
-def _get_json_payload(con: sqlite3.Connection, record_id: int) -> dict:
+def _get_json_payload(con: sqlite3.Connection, record_id: int) -> dict | None:
     """Retrieves JSON Payload from Audit Database for missing Record"""
     cur = con.cursor()
     cur.execute("SELECT payload FROM JsonPayload WHERE record_id=?;", (record_id,))
     record_json = cur.fetchone()
     if record_json:
         return record_json[0]
+    return None
 
 
-def _post_record(**kwargs):
+def _post_record(**kwargs) -> None:
     post_url: str = kwargs["post_url"]
     db_id: int = kwargs["db_id"]
     con: sqlite3.Connection = kwargs["con"]

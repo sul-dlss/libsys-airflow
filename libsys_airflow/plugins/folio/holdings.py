@@ -43,7 +43,7 @@ def _run_transformer(transformer, airflow, dag_run_id, item_path):
     transformer.wrap_up()
 
 
-def _generate_lookups(holdings_tsv_path: pathlib.Path) -> tuple:
+def _generate_lookups(holdings_tsv_path: pathlib.Path) -> dict:
     """
     Takes FOLIO holdings file, creates a dictionary by holdings id for
     merging MHLD records with existing holdings records
@@ -387,7 +387,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     logger.info(f"Finished transforming MHLD {filepath.name} to FOLIO holdings")
 
 
-def electronic_holdings(*args, **kwargs) -> str:
+def electronic_holdings(*args, **kwargs) -> None:
     """Generates FOLIO Holdings records from Symphony 856 fields"""
     dag = kwargs["dag_run"]
     holdings_stem = kwargs["holdings_stem"]

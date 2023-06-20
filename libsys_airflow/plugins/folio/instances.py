@@ -20,7 +20,7 @@ def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
     """
     Generates record lookup dictionary based on values in tsv
     """
-    record_lookups = {}
+    record_lookups: dict = {}
     logger.error(f"Base {base_tsv}")
     with base_tsv.open() as fo:
         tsv_reader = csv.DictReader(fo, delimiter="\t")
@@ -44,7 +44,7 @@ def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
     return record_lookups
 
 
-def _remove_dup_admin_notes(record: dict):
+def _remove_dup_admin_notes(record: dict) -> None:
     """
     Removes administrativeNotes that contain duplicated HRID
     """
@@ -53,7 +53,9 @@ def _remove_dup_admin_notes(record: dict):
             record['administrativeNotes'].pop(i)
 
 
-def _set_cataloged_date(instance: dict, dates_df: pd.DataFrame, instance_status: dict):
+def _set_cataloged_date(
+    instance: dict, dates_df: pd.DataFrame, instance_status: dict
+) -> None:
     ckey = instance["hrid"].removeprefix("a")
     matched_row = dates_df.loc[dates_df["CATKEY"] == ckey]
     if matched_row["CATALOGED_DATE"].values[0] != "0":
@@ -64,7 +66,7 @@ def _set_cataloged_date(instance: dict, dates_df: pd.DataFrame, instance_status:
         instance["statusId"] = instance_status["Uncataloged"]
 
 
-def _adjust_records(**kwargs):
+def _adjust_records(**kwargs) -> None:
     """
     Modifies instances records
     """

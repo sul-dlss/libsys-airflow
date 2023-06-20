@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import pathlib
+from typing import TypedDict
 
 import pandas as pd
 import requests
@@ -13,6 +14,9 @@ from folio_migration_tools.migration_tasks.items_transformer import ItemsTransfo
 from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_logging
 
 logger = logging.getLogger(__name__)
+
+# TODO: once on python >= 3.11, can mark "codes" specifically as NotRequired; for now, total=False makes all keys optional
+BarcodeDict = TypedDict('BarcodeDict', {"suppress?": bool, "codes": list}, total=False)
 
 
 def _determine_discovery_suppress(row: dict, suppressed_locations: dict) -> bool:
@@ -45,7 +49,7 @@ def _determine_stat_codes(row: dict, stat_codes: dict) -> list:
 
 def _generate_item_notes(
     item, tsv_note_df: pd.DataFrame, item_note_types: dict
-) -> list:
+) -> None:
     """Takes TSV notes dataframe and returns a list of generated Item notes"""
     barcode = item.get("barcode")
     if barcode is None:
@@ -105,7 +109,7 @@ def _generate_items_lookups(
 
     stat_codes = _statistical_codes_lookup(airflow, folio_client)
 
-    items_lookup = {}
+    items_lookup: dict[str, BarcodeDict] = {}
 
     with items_tsv_path.open() as fo:
         items_reader = csv.DictReader(fo, delimiter="\t")
@@ -191,7 +195,7 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
     return note_types
 
 
-def _add_additional_info(**kwargs):
+def _add_additional_info(**kwargs) -> None:
     """Generates notes from tsv files"""
     airflow: str = kwargs["airflow"]
     items_tsv: str = kwargs["items_tsv"]
@@ -264,7 +268,7 @@ def post_folio_items_records(**kwargs):
         )
 
 
-def run_items_transformer(*args, **kwargs) -> bool:
+def run_items_transformer(*args, **kwargs) -> None:
     """Runs item tranformer"""
     airflow = kwargs.get("airflow", "/opt/airflow")
     dag = kwargs["dag_run"]

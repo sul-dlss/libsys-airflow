@@ -87,7 +87,7 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(key="bwchild-file", value=bib_file_load.get("tsv-bwchild"))
 
 
-def post_to_okapi(**kwargs) -> bool:
+def post_to_okapi(**kwargs) -> dict:
     endpoint = kwargs.get("endpoint")
     jwt = kwargs["token"]
     iteration_id = kwargs.get("iteration_id")
@@ -162,7 +162,7 @@ def put_to_okapi(**kwargs):
     logger.info(f"PUT Result status code {update_record_result.status_code}")  # noqa
 
 
-def process_records(*args, **kwargs) -> list:
+def process_records(*args, **kwargs) -> int:
     """Function creates valid json from file of FOLIO objects"""
     prefix = kwargs.get("prefix")
     dag = kwargs["dag_run"]
