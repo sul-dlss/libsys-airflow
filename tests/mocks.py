@@ -105,7 +105,7 @@ def mock_file_system(tmp_path, mock_dag_run):
 
 
 # Mock xcom messages dict
-messages = {}
+messages: dict[str, str] = {}
 
 
 # Mock xcoms
