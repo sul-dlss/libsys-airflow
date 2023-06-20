@@ -98,7 +98,7 @@ with DAG(
         task_id="post_to_lobbytrack", python_callable=lobby_post
     )
 
-    route_aeon_post = PythonOperator(
+    route_aeon_post_task = PythonOperator(
         task_id="route_aeon_post",
         python_callable=route_aeon_post,
         op_kwargs={
@@ -110,5 +110,5 @@ with DAG(
     )
 
 
-aeon_user_data >> route_aeon_post
+aeon_user_data >> route_aeon_post_task
 aeon_user_data >> filtered_user_data >> transform_to_lobby_data >> post_to_lobbytrack
