@@ -270,7 +270,7 @@ Type declarations are only used in testing and type checking, and do not affect 
 
 If you run into something where the type checker complains and you're sure that the usage is ok, you can comment the line with `# type: ignore` to quiet the type checker for that line.  As with linting, use your best judgement as to whether an exception is preferable to mollifying the checker.
 
-The type checker is not currently wired up in CI, but you may still find it useful for catching lurking consistency issues.
+The type checker is not currently wired up in CI as a required check, but you may still find it useful for catching lurking consistency issues.
 
 ## Symphony Mount
 
