@@ -40,7 +40,7 @@ healthcheck_package = {
 
 class FOLIOPlugin(AirflowPlugin):
     name = "FOLIOInformation"
-    operators = []
+    operators = []  # type: ignore
     flask_blueprints = [bp]
     hooks = []
     executors = []

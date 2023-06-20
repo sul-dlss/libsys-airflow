@@ -121,7 +121,7 @@ def post_to_okapi(**kwargs) -> dict:
     if new_record_result.status_code > 399:
         logger.error(new_record_result.text)
         if iteration_id is None:
-            kwargs["iteration_id"] = kwargs.get("dag_run").run_id
+            kwargs["iteration_id"] = kwargs.get("dag_run").run_id  # type: ignore
         _save_error_record_ids(error_code=new_record_result.status_code, **kwargs)
 
     if len(new_record_result.text) < 1:
@@ -171,7 +171,7 @@ def process_records(*args, **kwargs) -> int:
 
     out_filename = f"{kwargs.get('out_filename')}-{dag.run_id}"
 
-    total_jobs = int(kwargs.get("jobs"))
+    total_jobs = int(kwargs.get("jobs"))  # type: ignore
 
     airflow = kwargs.get("airflow", "/opt/airflow")
     tmp = kwargs.get("tmp", "/tmp")

@@ -53,7 +53,8 @@ class SFTPAdapter:
 
     def get_mod_time(self, filename: str) -> datetime:
         mod_time_str = self._file_descriptions[filename]["modify"]
-        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
+        # TODO: revisit this type ignore if SFTPHook.describe_directory gets better TypedDict hints, see https://peps.python.org/pep-0589/
+        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")  # type: ignore
 
     def get_size(self, filename: str) -> int | str | None:
         return self._file_descriptions[filename]["size"]
