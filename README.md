@@ -190,7 +190,7 @@ module and then run the following steps:
 
 If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
 
-To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"
+To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"`
 
 #### Seeding Vendors
 
