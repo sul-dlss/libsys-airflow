@@ -121,8 +121,12 @@ def test_user_data(mock_queue_requests, mock_aeon_variable):
         aeon_url="https://aeon.example.us", aeon_key="123", queue_id="1"
     )
 
-    # assert lambda: user_data[0] == mock_aeon_queue_data[0]
-    assert lambda: user_data[0] == ["aeonuser2@gmail.com", 2]
+    aeon_queue_data = mock_aeon_queue_data()
+    assert user_data[0] == [
+        aeon_queue_data[0]["username"],
+        aeon_queue_data[0]["transactionNumber"],
+    ]
+    assert user_data[2] == ["aeonuser2@gmail.com", 2]
     assert len(user_data) == 3
 
 
