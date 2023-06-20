@@ -15,8 +15,6 @@ from libsys_airflow.plugins.folio.instances import (
 
 from mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
-instances = [{}, {}]
-
 
 class MockResultsFile(pydantic.BaseModel):
     name = ""
