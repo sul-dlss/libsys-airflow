@@ -59,7 +59,7 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
     instances_file = mock_file_system[3] / "folio_bib_instances.json"
     instances_file.write_text(
         """{"id": "3e815a91-8a6e-4bbf-8bd9-cf42f9f789e1", "hrid": "a123456", "administrativeNotes": ["Identifier(s) from previous system: a123456"]}
-{"id": "123326dd-9924-498f-9ca3-4fa00dda6c90", "hrid": "a98765"}
+{"id": "123326dd-9924-498f-9ca3-4fa00dda6c90", "hrid": "a98765", "contributors": [{"authorityId": "x", "name": "Penone, Giuseppe"}]}
 {"id": "6193afd3-d42f-4051-ad56-273f3ae67e53", "hrid": "a347891"}"""
     )
     tsv_dates_file = mock_file_system[3] / "libr.ckeys.001.dates.tsv"
@@ -115,6 +115,7 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
         statistical_code_ids["MARCIVE"]
     ]
     assert instance_records[1]["discoverySuppress"] is True
+    assert "authorityId" not in instance_records[1]["contributors"][0]
     assert "statisticalCodeIds" not in instance_records[2]
     assert not tsv_dates_file.exists()
 
