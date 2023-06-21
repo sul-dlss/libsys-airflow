@@ -114,7 +114,7 @@ def _audit_items(
     return item_count
 
 
-def _add_record(record, con, record_type):
+def _add_record(record, con, record_type) -> int:
     cur = con.cursor()
     cur.execute(
         """INSERT INTO Record (uuid, hrid, folio_type, current_version)
@@ -161,7 +161,7 @@ def add_audit_log(record_id, con, status_id):
     return log_id
 
 
-def _get_add_record(record, con, record_type):
+def _get_add_record(record, con, record_type) -> int:
     cur = con.cursor()
     cur.execute("SELECT id FROM Record WHERE uuid=?;", (record["id"],))
     record_exists = cur.fetchone()
@@ -172,7 +172,7 @@ def _get_add_record(record, con, record_type):
     return record_id
 
 
-def _check_instance_views(results_dir, pg_hook) -> dict:
+def _check_instance_views(results_dir, pg_hook) -> None:
     """
     Associates Instances to it's Holdings and Items.
     """
@@ -190,7 +190,7 @@ def _check_instance_views(results_dir, pg_hook) -> dict:
     )
 
 
-def setup_audit_db(*args, **kwargs):
+def setup_audit_db(*args, **kwargs) -> None:
     """
     Initializes the DAG Run Audit SQLITE Database
     """

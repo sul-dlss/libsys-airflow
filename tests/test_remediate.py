@@ -40,7 +40,7 @@ class MockFolioClient(pydantic.BaseModel):
     okapi_url = "https://okapi-folio.dev.edu"
     password = "abdccde"
     username = "folio_admin"
-    okapi_headers = {}
+    okapi_headers: dict = {}
 
 
 def test_with_no_missing_records(mock_dag_run, mock_file_system, caplog):  # noqa

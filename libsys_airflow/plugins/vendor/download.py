@@ -35,7 +35,7 @@ class FTPAdapter:
     def get_mod_time(self, filename: str) -> datetime:
         return self.hook.get_mod_time(filename)
 
-    def get_size(self, filename: str) -> int:
+    def get_size(self, filename: str) -> int | None:
         return self.hook.get_size(filename)
 
     def retrieve_file(self, filename: str, download_filepath: str):
@@ -49,13 +49,14 @@ class SFTPAdapter:
         self._file_descriptions = hook.describe_directory(remote_path)
 
     def list_directory(self) -> list[str]:
-        return self._file_descriptions.keys()
+        return list(self._file_descriptions.keys())
 
     def get_mod_time(self, filename: str) -> datetime:
         mod_time_str = self._file_descriptions[filename]["modify"]
-        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
+        # TODO: revisit this type ignore if SFTPHook.describe_directory gets better TypedDict hints, see https://peps.python.org/pep-0589/
+        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")  # type: ignore
 
-    def get_size(self, filename: str) -> int:
+    def get_size(self, filename: str) -> int | str | None:
         return self._file_descriptions[filename]["size"]
 
     def retrieve_file(self, filename: str, download_filepath: str):
@@ -101,6 +102,7 @@ def ftp_download_task(
 
 def create_hook(conn_id: str) -> Union[FTPHook, SFTPHook]:
     """Returns an FTPHook or SFTPHook for the given connection id."""
+    hook: Optional[Union[FTPHook, SFTPHook]] = None
     if conn_id.startswith("sftp-"):
         hook = SFTPHook(ftp_conn_id=conn_id)
     else:
@@ -182,7 +184,7 @@ def _download_filepath(download_path: str, filename: str) -> str:
 
 def _record_vendor_file(
     filename: str,
-    filesize: int,
+    filesize: int | str | None,
     status: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,

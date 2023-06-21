@@ -20,11 +20,13 @@ from libsys_airflow.plugins.folio.items import (
 
 
 def test_post_folio_items_records():
-    assert post_folio_items_records
+    # if the import is successful, this will always pass because the function ref is truthy, hence the typechecker complaint
+    assert post_folio_items_records  # type: ignore
 
 
 def test_items_transformers():
-    assert run_items_transformer
+    # if the import is successful, this will always pass because the function ref is truthy, hence the typechecker complaint
+    assert run_items_transformer  # type: ignore
 
 
 item_note_types = {

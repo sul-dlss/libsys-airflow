@@ -64,7 +64,7 @@ def _add_srs_audit_record(record: dict, connection, record_type):
     return record_id
 
 
-def _check_add_srs_records(**kwargs):
+def _check_add_srs_records(**kwargs) -> None:
     srs_record: dict = kwargs["srs_record"]
     snapshot_id: str = kwargs["snapshot_id"]
     folio_client = kwargs["folio_client"]
@@ -177,11 +177,11 @@ def _get_snapshot_id(folio_client):
     return snapshot_id
 
 
-def _move_001_to_035(record: pymarc.Record) -> str:
+def _move_001_to_035(record: pymarc.Record) -> str | None:
     all001 = record.get_fields("001")
 
     if len(all001) < 1:
-        return
+        return None
 
     catkey = all001[0].data
 
@@ -198,7 +198,7 @@ def _move_001_to_035(record: pymarc.Record) -> str:
     return catkey
 
 
-def _srs_check_add(**kwargs):
+def _srs_check_add(**kwargs) -> int:
     """
     Runs audit/remediation for a single SRS file
     """

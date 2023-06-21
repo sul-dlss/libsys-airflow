@@ -190,7 +190,7 @@ module and then run the following steps:
 
 If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
 
-To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"
+To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"`
 
 #### Seeding Vendors
 
@@ -257,6 +257,20 @@ For CI, see the `Format with black` step in `.github/workflows/lint.yml` github 
 To run the black formatter to fix any violations:
 
 `poetry run black .`
+
+### Mypy (Python type checker)
+
+[Mypy](https://github.com/python/mypy) is a static type checker.  Configuration is in `pyproject.toml`.
+
+To run the mypy type checker on the codebase: `poetry run mypy libsys_airflow tests`.
+
+The type checker will complain if assignments, return types, parameter types, etc are inconsistently used, e.g. if an int is provided for a string param, a function doesn't return the type it claims to, etc (helpful for documenting function signatures correctly, and for sussing out issues like inconsistent types for variable assignment or function return, which can be confusing at best, and bug prone at worst).
+
+Type declarations are only used in testing and type checking, and do not affect runtime behavior.
+
+If you run into something where the type checker complains and you're sure that the usage is ok, you can comment the line with `# type: ignore` to quiet the type checker for that line.  As with linting, use your best judgement as to whether an exception is preferable to mollifying the checker.
+
+The type checker is not currently wired up in CI as a required check, but you may still find it useful for catching lurking consistency issues.
 
 ## Symphony Mount
 

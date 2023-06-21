@@ -41,7 +41,8 @@ def _get_invoice(invoice_id: str, folio_client: FolioClient) -> dict:
     # Retrieves Invoice Details
     # Retrieves Invoices Lines
     # Call to Okapi organization endpoint to see VAT is applicable
-    invoice["vat"] = _get_vat(invoice["vendorId"], folio_client)
+    # TODO: typechecker thinks all invoice dict values are None because of vendorId initialization, _get_vat wants a non-None str; can prob unignore typing once this is more fleshed out
+    invoice["vat"] = _get_vat(invoice["vendorId"], folio_client)  # type: ignore
     return invoice
 
 
@@ -57,6 +58,7 @@ def feeder_file_task(invoices: list):
     return "foo"
 
 
+# TODO: can un-ignore type checking here once this function is less of a stub
 @task
-def sftp_file_task(feeder_file: task):
+def sftp_file_task(feeder_file: task):  # type: ignore
     return "foo"

@@ -34,14 +34,16 @@ class MockCursor(object):
 
 
 class MockConnection(pydantic.BaseModel):
-    cursor = lambda x: MockCursor()  # noqa
-    commit = lambda x: None  # noqa
-    close = lambda x: None  # noqa
+    cursor = lambda x: MockCursor()  # noqa: E731
+    commit = lambda x: None  # noqa: E731
+    close = lambda x: None  # noqa: E731
 
 
 class MockExtraDeJson(pydantic.BaseModel):
-    get = lambda *args: False  # noqa
-    items = lambda x: []  # noqa
+    get = lambda *args: False  # noqa: E731
+
+    def items(x) -> list:
+        return []
 
 
 class MockAirflowConnection(pydantic.BaseModel):

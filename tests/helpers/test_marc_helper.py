@@ -577,4 +577,5 @@ def test_missing_file_post_marc_to_srs(
 
 
 def test_process_marc():
-    assert process_marc
+    # if the import is successful, this will always pass because the function ref is truthy, hence the typechecker complaint
+    assert process_marc  # type: ignore

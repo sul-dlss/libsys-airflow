@@ -15,8 +15,6 @@ from libsys_airflow.plugins.folio.instances import (
 
 from mocks import mock_dag_run, mock_file_system, MockFOLIOClient  # noqa
 
-instances = [{}, {}]
-
 
 class MockResultsFile(pydantic.BaseModel):
     name = ""
@@ -128,8 +126,10 @@ def test_get_statistical_codes(mock_okapi_requests):  # noqa
 
 
 def test_post_folio_instance_records():
-    assert post_folio_instance_records
+    # if the import is successful, this will always pass because the function ref is truthy, hence the typechecker complaint
+    assert post_folio_instance_records  # type: ignore
 
 
 def test_run_bibs_transformer():
-    assert run_bibs_transformer
+    # if the import is successful, this will always pass because the function ref is truthy, hence the typechecker complaint
+    assert run_bibs_transformer  # type: ignore

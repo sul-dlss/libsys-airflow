@@ -65,7 +65,8 @@ def _extract_uuids(directory: str):
         for interface_path in vendor_path.iterdir():
             output[interface_path.stem] = {"date": dir_path.stem, "files": []}
             for file in interface_path.iterdir():
-                output[interface_path.stem]["files"].append(file.name)
+                # the typechecker is being a bit naive about the "files" field, and "files" being initialized to an array seems clear, so TypedDict doesn't seem worth the effort
+                output[interface_path.stem]["files"].append(file.name)  # type: ignore
     return output
 
 
