@@ -94,6 +94,9 @@ def _adjust_records(**kwargs) -> None:
                 record["statisticalCodeIds"] = list(set(stat_codes))
             if record_lookups.get(record["hrid"], {}).get("suppress", False):
                 record["discoverySuppress"] = True
+            for contributor in record.get("contributors", []):
+                if "authorityId" in contributor.keys():
+                    contributor.pop("authorityId")
             _set_cataloged_date(record, dates_df, instance_status)
             _remove_dup_admin_notes(record)
             records.append(record)

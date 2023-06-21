@@ -50,7 +50,9 @@ def test_get_inventory_audit_report(mock_dag_run, mock_file_system):  # noqa
         )
         add_audit_log(missing_db_id, db_connection, AuditStatus.MISSING.value)
 
-    inventory_audit_report(airflow=mock_file_system[0], iteration=mock_dag_run.run_id)
+    inventory_audit_report(
+        airflow=mock_file_system[0], iteration_id=mock_dag_run.run_id
+    )
 
     with (mock_file_system[2] / "reports/report_inventory-audit.md").open() as fo:
         inventory_report = fo.read()
