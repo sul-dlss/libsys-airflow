@@ -9,7 +9,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
-  lint:
+  typechecking:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
