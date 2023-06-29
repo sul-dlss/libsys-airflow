@@ -468,7 +468,7 @@ def test_move_authkeys():
             indicators=[" ", " "],
             subfields=[
                 Subfield(code="a", value="Quintets"),
-                Subfield(code="=", value="^A262428")
+                Subfield(code="=", value="^A262428"),
             ],
         )
     )
@@ -478,7 +478,7 @@ def test_move_authkeys():
             indicators=["1", "0"],
             subfields=[
                 Subfield(code="a", value="Forellen-Quintett /"),
-                Subfield(code="c", value="Schubert.")
+                Subfield(code="c", value="Schubert."),
             ],
         )
     )
@@ -497,7 +497,7 @@ def test_move_authkeys():
     _move_authkeys(record)
     assert "0" not in record["240"].subfields_as_dict().keys()
     assert "=" not in record["700"].subfields_as_dict().keys()
-    assert record["700"].get_subfields("0") == ["^A856199"]
+    assert record["700"].get_subfields("0") == ["(SIRSI)856199"]
 
 
 def test_move_authkeys_240():
@@ -509,12 +509,13 @@ def test_move_authkeys_240():
             indicators=[" ", " "],
             subfields=[
                 Subfield(code="a", value="Quintets"),
-                Subfield(code="=", value="^A262428")],
+                Subfield(code="=", value="^A262428"),
+            ],
         )
     )
     _move_authkeys(record)
     assert "=" not in record["240"].subfields_as_dict().keys()
-    assert record["240"].get_subfields("0") == ["^A262428"]
+    assert record["240"].get_subfields("0") == ["(SIRSI)262428"]
 
 
 def test_move_equals_subfield():
@@ -524,11 +525,12 @@ def test_move_equals_subfield():
         subfields=[
             Subfield(code="a", value="Costa, Robson"),
             Subfield(code="e", value="author."),
-            Subfield(code="=", value="^A2387492")],
+            Subfield(code="=", value="^A2387492"),
+        ],
     )
     _move_equals_subfield(field_100)
     assert "=" not in field_100.subfields_as_dict().keys()
-    assert field_100.get_subfields("0") == ["^A2387492"]
+    assert field_100.get_subfields("0") == ["(SIRSI)2387492"]
 
 
 def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa

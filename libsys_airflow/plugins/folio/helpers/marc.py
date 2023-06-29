@@ -237,11 +237,12 @@ def _move_authkeys(record: pymarc.Record):
 
 def _move_equals_subfield(field: pymarc.Field):
     """
-    Moves subfield '=' to subfield 0
+    Moves subfield '=' to subfield 0 and add prefix
     """
     subfield_equals = field.get_subfields("=")
     for value in subfield_equals:
-        field.add_subfield(code="0", value=value)
+        value = value.replace("^A", "")
+        field.add_subfield(code="0", value=f"(SIRSI){value}")
         field.delete_subfield(code="=")
 
 
@@ -253,7 +254,7 @@ def _process_240(field: pymarc.Field, leader: pymarc.Leader):
         _move_equals_subfield(field)
 
 
-def _srs_check_add(**kwargs)  -> int:
+def _srs_check_add(**kwargs) -> int:
     """
     Runs audit/remediation for a single SRS file
     """
