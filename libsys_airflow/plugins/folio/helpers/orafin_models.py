@@ -82,12 +82,18 @@ class Invoice:
     lines: list[InvoiceLine]
     vendor: Vendor
     paymentDate: Union[datetime, None] = None
+    paymentTerms: Union[str, None] = None
 
     @property
     def amount(self):
         if self.vendor and self.vendor.liableForVat:
             return self.total
         return self.subTotal
+
+    @property
+    def attachment_flag(self):
+        if self.paymentTerms and self.paymentTerms.startswith("WILLCALL"):
+            return "Y"
 
     @property
     def internal_number(self):

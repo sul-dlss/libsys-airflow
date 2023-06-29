@@ -116,6 +116,7 @@ def test_get_invoice(mock_folio_client):
     assert invoice.vendor.liableForVat is False
     assert invoice.vendor.vendor_number == "HD012957FEEDER"
     assert invoice.lines[0].tax_exempt is False
+    assert invoice.attachment_flag is None
     assert invoice.lines[0].tax_code(invoice.vendor.liableForVat) == "USE_CA"
 
     # Tests conditional properties
@@ -129,6 +130,8 @@ def test_get_invoice(mock_folio_client):
     invoice.lines[0].adjustmentsTotal = 0.0
     assert invoice.lines[0].tax_exempt is True
     assert invoice.lines[0].tax_code(True) == "TAX_EXEMPT"
+    invoice.paymentTerms = "WILLCALL"
+    assert invoice.attachment_flag == "Y"
 
 
 def test_init_feeder_file(mock_folio_client):
