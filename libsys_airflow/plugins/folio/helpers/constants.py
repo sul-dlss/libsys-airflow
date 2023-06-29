@@ -1,3 +1,5 @@
+from numpy import nan
+
 """
   includes the default call number type Ids
 """
@@ -37,52 +39,101 @@ see_other_lib_locs = {
     "RUMSEYMAP": "RUM-SEE-OTHER",
 }
 
-expense_codes = {
-    '53245': {'acquisition_method': 'Default'},
-    '53250': {
-        'acquisition_method': 'Maintenance fee',
-        'material_type': 'microform',
-        'order_format': 'Physical Resource',
+expense_codes = [
+    {
+        'acquisition method': 'Purchase',
+        'order format': 'Electronic Resource',
+        'material type': 'database',
+        'Expense code': '53258',
     },
-    '53256': {
-        'acquisition_method': 'Purchase',
-        'material_type': 'book',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Subscription',
+        'order format': 'Electronic Resource',
+        'material type': 'database',
+        'Expense code': '53263',
     },
-    '53257': {
-        'acquisition_method': 'Purchase',
-        'material_type': 'periodical',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Approval Plan',
+        'order format': 'Electronic Resource',
+        'material type': 'book',
+        'Expense code': '53256',
     },
-    '53258': {
-        'acquisition_method': 'Purchase',
-        'material_type': 'database',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Purchase',
+        'order format': 'Electronic Resource',
+        'material type': 'book',
+        'Expense code': '53256',
     },
-    '53261': {
-        'acquisition_method': 'Subscription',
-        'material_type': 'book',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Subscription',
+        'order format': 'Electronic Resource',
+        'material type': 'book',
+        'Expense code': '53261',
     },
-    '53262': {
-        'acquisition_method': 'Subscription',
-        'material_type': 'periodical',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Purchase',
+        'order format': 'Electronic Resource',
+        'material type': 'periodical',
+        'Expense code': '53257',
     },
-    '53263': {
-        'acquisition_method': 'Subscription',
-        'material_type': 'database',
-        'order_format': 'Electronic Resource',
+    {
+        'acquisition method': 'Subscription',
+        'order format': 'Electronic Resource',
+        'material type': 'periodical',
+        'Expense code': '53262',
     },
-    '53270': {
-        'acquisition_method': 'Maintenance fee',
-        'material_type': 'video recording',
-        'order_format': 'Physical Resource',
+    {
+        'acquisition method': 'Maintenance fee',
+        'order format': 'Electronic Resource',
+        'material type': nan,
+        'Expense code': '53270',
     },
-    '55320': {'acquisition_method': 'Shipping'},
-    '55410': {
-        'acquisition_method': 'Maintenance fee',
-        'material_type': 'software',
-        'order_format': 'Physical Resource',
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'sound recording',
+        'Expense code': '53270',
     },
-}
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'map',
+        'Expense code': '53270',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'microform',
+        'Expense code': '53250',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'score',
+        'Expense code': '53270',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'software',
+        'Expense code': '55410',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'video recording',
+        'Expense code': '53270',
+    },
+    {
+        'acquisition method': 'Shipping',
+        'order format': nan,
+        'material type': nan,
+        'Expense code': '55320',
+    },
+    {
+        'acquisition method': nan,
+        'order format': nan,
+        'material type': nan,
+        'Expense code': '53245',
+    },
+]

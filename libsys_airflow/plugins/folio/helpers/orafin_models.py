@@ -1,9 +1,11 @@
-import jmespath
-
 from datetime import datetime
+
+import numpy as np
+import pandas as pd
 
 from attrs import define
 from typing import Union
+
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.helpers.constants import expense_codes
 
@@ -38,7 +40,7 @@ class fundDistribution:
 class PurchaseOrderLine:
     id: str
     acquisitionMethod: str
-    orderFormat: str
+    orderFormat: Union[str, None]
     materialType: Union[str, None]
 
 
@@ -109,7 +111,7 @@ class FeederFile:
     invoices: list[Invoice]
     trailer_number: str = "LIB9999999999"
 
-    expense_codes: dict = expense_codes
+    expense_codes_df: Union[pd.DataFrame, None] = None
 
     @property
     def batch_total_amount(self) -> float:
@@ -119,48 +121,112 @@ class FeederFile:
     def number_of_invoices(self) -> int:
         return len(self.invoices)
 
-    def _invoice_line_expense_line(self, invoice_line: InvoiceLine):
-        default_expense_code = '53245'
-        if invoice_line.poLine is None:
-            invoice_line.expense_code = default_expense_code
-            return
-        query_template = "[*].{{key: @, order_format: order_format, acquisition_method_uuid: acquisition_method_uuid, material_type_uuid: material_type_uuid}} | [?order_format == '{order_format_value}' && contains(acquisition_method_uuid, '{acquisition_method_uuid_value}') && contains(material_type_uuid, '{material_type_uuid_value}')].key"
-        expense_code = jmespath.search(
-            query_template.format(
-                order_format_value=invoice_line.poLine.orderFormat,
-                acquisition_method_uuid_value=invoice_line.poLine.acquisitionMethod,
-                material_type_uuid_value=invoice_line.poLine.materialType,
-            ),
-            self.expense_codes,
+    def _invoice_line_expense_line(self, invoice_line: InvoiceLine) -> None:
+        default_condition = (
+            self.expense_codes_df["acquisition method"].isnull()  # type: ignore
+            & self.expense_codes_df["material type"].isnull()  # type: ignore
+            & self.expense_codes_df["order format"].isnull()  # type: ignore
         )
-        if expense_code is None:
-            invoice_line.expense_code = default_expense_code
+        if invoice_line.poLine is None:
+            result = self.expense_codes_df.loc[default_condition]  # type: ignore
         else:
-            invoice_line.expense_code = expense_code[0]
+            for row in [
+                # Attempts to match on all three conditions
+                (
+                    (
+                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
+                        == invoice_line.poLine.acquisitionMethod
+                    )
+                    & (
+                        self.expense_codes_df["material type uuid"]  # type: ignore
+                        == invoice_line.poLine.materialType
+                    )
+                    & (
+                        self.expense_codes_df["order format"]  # type: ignore
+                        == invoice_line.poLine.orderFormat
+                    )
+                ),
+                # Attempts match when acquisition method is None or doesn't matter
+                (
+                    (
+                        self.expense_codes_df["material type uuid"]  # type: ignore
+                        == invoice_line.poLine.acquisitionMethod
+                    )
+                    & (
+                        self.expense_codes_df["order format"]  # type: ignore
+                        == invoice_line.poLine.orderFormat
+                    )
+                ),
+                # Attempts match when material type is None
+                (
+                    (
+                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
+                        == invoice_line.poLine.acquisitionMethod
+                    )
+                    & (
+                        self.expense_codes_df["order format"]  # type: ignore
+                        == invoice_line.poLine.orderFormat
+                    )
+                ),
+                # Attempts match when acquisition method is None
+                (
+                    (
+                        self.expense_codes_df["material type uuid"]  # type: ignore
+                        == invoice_line.poLine.materialType
+                    )
+                    & (
+                        self.expense_codes_df["order format"]  # type: ignore
+                        == invoice_line.poLine.orderFormat
+                    )
+                ),
+                # Attempts match for Shipping
+                (
+                    (
+                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
+                        == invoice_line.poLine.acquisitionMethod
+                    )
+                    & (
+                        self.expense_codes_df["acquisition method"]  # type: ignore
+                        == "Shipping"
+                    )
+                ),
+                # Default if all three conditions are None
+                default_condition,
+            ]:
+                result = self.expense_codes_df.loc[row]  # type: ignore
+                if len(result) > 0:
+                    break
+        invoice_line.expense_code = result["Expense code"].values[0]  # type: ignore
 
     def _populate_expense_code_lookup(self, folio_client):
+        acq_methods_lookup, mtypes_lookup = dict(), dict()
+
+        expense_codes_df = pd.DataFrame(expense_codes, dtype=object)
+
         acquisition_methods = folio_client.get(
             "/orders/acquisition-methods", params={"limit": 250}
         )
+        for row in acquisition_methods['acquisitionMethods']:
+            acq_methods_lookup[row['value']] = row['id']
 
         material_types = folio_client.get("/material-types", params={"limit": 250})
 
-        acq_method_query = "acquisitionMethods[?value =='{0}'].id"
-        material_type_query = "mtypes[?name =='{0}'].id"
+        for row in material_types['mtypes']:
+            mtypes_lookup[row['name']] = row['id']
 
-        for row in self.expense_codes.values():
-            if len(row['acquisition_method']) > 0:
-                row['acquisition_method_uuid'] = jmespath.search(
-                    acq_method_query.format(row['acquisition_method']),
-                    acquisition_methods,
-                )
-            if len(row.get('material_type', [])) > 0:
-                row['material_type_uuid'] = jmespath.search(
-                    material_type_query.format(row['material_type']), material_types
-                )
+        expense_codes_df["acquisition method uuid"] = expense_codes_df[
+            "acquisition method"
+        ].apply(lambda x: acq_methods_lookup.get(x, np.nan))
+        expense_codes_df["material type uuid"] = expense_codes_df[
+            "material type"
+        ].apply(lambda x: mtypes_lookup.get(x, np.nan))
+
+        self.expense_codes_df = expense_codes_df
 
     def add_expense_lines(self, folio_client: FolioClient):
         self._populate_expense_code_lookup(folio_client)
         for invoice in self.invoices:
             for line in invoice.lines:
                 self._invoice_line_expense_line(line)
+        # Sets to None so we don't serialize as JSON
+        self.expense_codes_df = None
