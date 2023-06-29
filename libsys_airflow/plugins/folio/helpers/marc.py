@@ -254,6 +254,17 @@ def _process_240(field: pymarc.Field, leader: pymarc.Leader):
         _move_equals_subfield(field)
 
 
+def _remove_unauthorized(record: pymarc.Record):
+    """
+    Removes record fields that have subfield $? UNAUTHORIZED
+    """
+    for field in record.fields:
+        if field.is_control_field():
+            continue
+        if "UNAUTHORIZED" in field.get_subfields("?"):
+            field.delete_subfield("?")
+
+
 def _srs_check_add(**kwargs) -> int:
     """
     Runs audit/remediation for a single SRS file
@@ -508,6 +519,7 @@ def process(*args, **kwargs):
             continue
         catkey = _move_001_to_035(record)
         _move_authkeys(record)
+        _remove_unauthorized(record)
         library = _get_library(record.get_fields("596"))
         electronic_holdings.extend(
             _extract_e_holdings_fields(

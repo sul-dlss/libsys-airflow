@@ -1,3 +1,4 @@
+import copy
 import json
 import pathlib
 import sqlite3
@@ -25,6 +26,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     _move_authkeys,
     _move_equals_subfield,
     post_marc_to_srs,
+    _remove_unauthorized,
 )
 
 from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
@@ -594,6 +596,24 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     ).exists()
 
     mocks.messages = {}
+
+
+def test_remove_unauthorized(mock_marc_record):
+    record = copy.deepcopy(mock_marc_record)
+    record.add_field(Field(tag='003', data="SIRSI"))
+    record.add_field(
+        Field(
+            tag='100',
+            indicators=["1", " "],
+            subfields=[
+                Subfield(code="a", value="Ryves, Elizabeth"),
+                Subfield(code="?", value="UNAUTHORIZED"),
+            ],
+        )
+    )
+    _remove_unauthorized(record)
+    assert record['100'].get_subfields("?") == []
+    assert "003" in record
 
 
 def test_post_marc_to_srs(
