@@ -495,7 +495,9 @@ def boundwith_holdings(*args, **kwargs):
                             okapi_url, FOLIONamespaces.instances, f"a{row['CATKEY']}"
                         )
                     ),
-                    "callNumber": row["BASE_CALL_NUMBER"],
+                    "callNumber": (
+                        row["BASE_CALL_NUMBER"] + " " + row["VOLUME_INFO"]
+                    ).strip(),
                     "callNumberTypeId": constants.call_number_codes.get(
                         row["CALL_NUMBER_TYPE"], "Library of Congress classification"
                     ),
