@@ -23,17 +23,7 @@ python-magic = "^0.4.27"
 honeybadger = "^0.15.2"
 # Needed according to HB docs.
 blinker = "^1.6.2"
-# TODO: update this to install from PyPI when there's a release
-folio-migration-tools = {git = "https://github.com/FOLIO-FSE/folio_migration_tools.git"}
-# TODO: remove this after folio-migration-tools is released to PyPI
-folioclient = "^0.50.0"
-pyhumps = "^3.7.3"
-defusedxml = "^0.7.1"
-python-dateutil = "^2.8.2"
-folio-uuid = "^0.2.8"
-deepdiff = "^6.2.3"
-pyaml = "^21.10.1"
-httpx = "^0.23.3"
+folio-migration-tools = "^1.8.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
