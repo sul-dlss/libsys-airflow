@@ -11,6 +11,7 @@ from libsys_airflow.plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
+    _alt_condition_remove_ending_punc,
     _alt_get_legacy_ids,
     _wrap_additional_mapping,
 )
@@ -338,6 +339,15 @@ def test_boundwith_holdings(
         bw_part_rec = [json.loads(line) for line in bwp.readlines()]
 
     assert holdings_rec[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
+
+
+def test_alt_condition_remove_ending_punc():
+    open_end_periodical_range = _alt_condition_remove_ending_punc(
+        None, None, "v.27(2014),v.32(2016)-"
+    )
+    assert open_end_periodical_range == "v.27(2014),v.32(2016)-"
+    removed_end_punc = _alt_condition_remove_ending_punc(None, None, "A note=")
+    assert removed_end_punc == "A note"
 
 
 def test_alt_get_legacy_ids():

@@ -23,6 +23,8 @@ from folio_migration_tools.marc_rules_transformation.rules_mapper_holdings impor
     RulesMapperHoldings,
 )
 
+from folio_migration_tools.marc_rules_transformation.conditions import Conditions
+
 from libsys_airflow.plugins.folio.helpers import (
     post_to_okapi,
     setup_data_logging,
@@ -69,6 +71,18 @@ def _alt_get_legacy_ids(*args):
         library = marc_record["852"]["b"]
         location = marc_record["852"]["c"]
     return [f"{field_001} {library} {location}"]
+
+
+def _alt_condition_remove_ending_punc(*args):
+    """
+    This function overrides the condition_remove_ending_punc method to use
+    the same ending characters as is used by FOLIO data-import-processing-core
+    """
+    v = args[2]
+    chars = ";:,/+= "
+    while any(v) > 0 and v[-1] in chars:
+        v = v.rstrip(v[-1])
+    return v
 
 
 def _wrap_additional_mapping(func):
@@ -372,6 +386,11 @@ def run_mhld_holdings_transformer(*args, **kwargs):
     # Overrides method that handles 852 field
     RulesMapperHoldings.fix_853_bug_in_rules = partialmethod(
         _ignore_fix_853_bug_in_rules, RulesMapperHoldings
+    )
+
+    # Aligns characters to remove with mod-data-import
+    Conditions.condition_remove_ending_punc = partialmethod(
+        _alt_condition_remove_ending_punc
     )
 
     holdings_transformer = HoldingsMarcTransformer(
