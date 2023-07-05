@@ -226,6 +226,13 @@ docker exec -it 20230516183735-airflow-webserver-1 bin/refresh_vendors
 ```
 where `20230516183735-airflow-webserver-1` is the container id.
 
+#### Poetry Lock Merge Conflicts
+If when doing a rebase you encounter a merge conflict with the `poetry.lock` file and assuming you have added/updated
+dependencies to the `pyproject.toml`, run the following commands:
+
+- `git checkout --theirs poetry.lock`
+- `poetry lock --no-update`  
+
 ## Testing
 
 1. Install dependencies per `Dependency Management and Packaging` above
