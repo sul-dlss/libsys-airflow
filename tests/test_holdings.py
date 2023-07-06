@@ -11,6 +11,7 @@ from libsys_airflow.plugins.folio.holdings import (
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
+    _add_holdings_type_ids,
     _alt_condition_remove_ending_punc,
     _alt_get_legacy_ids,
     _wrap_additional_mapping,
@@ -339,6 +340,42 @@ def test_boundwith_holdings(
         bw_part_rec = [json.loads(line) for line in bwp.readlines()]
 
     assert holdings_rec[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
+
+
+class FolioClientMock(pydantic.BaseModel):
+    folio_get = lambda *args: {  # noqa
+        "holdingsTypes": [
+            {"id": "5684e4a3-9279-4463-b6ee-20ae21bbec07", "name": "Book"},
+            {"id": "f6ba0bff-5674-445b-9922-8451d0365814", "name": "Unknown"},
+        ]
+    }
+
+
+def test_add_holdings_type_ids(mock_file_system, mock_dag_run):  # noqa
+    folio_client = FolioClientMock()
+
+    holdings_path = mock_file_system[3] / "folio_holdings_tsv-transformer.json"
+
+    holdings = [
+        {"id": "3e36dd80-057e-5a84-8c7a-a35737c944fb", "holdingsTypeId": "MARC"},
+        {"id": "56840dc5-88fd-5481-866d-b028e4acf782", "holdingsTypeId": "MAGAZINE"},
+    ]
+
+    with holdings_path.open("w+") as fo:
+        for row in holdings:
+            fo.write(f"{json.dumps(row)}\n")
+
+    _add_holdings_type_ids(
+        airflow=mock_file_system[0],
+        dag_run_id=mock_dag_run.run_id,
+        folio_client=folio_client,
+    )
+
+    with holdings_path.open() as fo:
+        mod_holdings = [json.loads(line) for line in fo.readlines()]
+
+    assert mod_holdings[0]["holdingsTypeId"] == "5684e4a3-9279-4463-b6ee-20ae21bbec07"
+    assert mod_holdings[1]["holdingsTypeId"] == "f6ba0bff-5674-445b-9922-8451d0365814"
 
 
 def test_alt_condition_remove_ending_punc():
