@@ -137,3 +137,16 @@ expense_codes = [
         'Expense code': '53245',
     },
 ]
+
+symphony_holdings_types_map = {
+    "EQUIP": "Equipment",
+    "MARC": "Book",
+    "MANUSCRIPT": "Archival Collection",
+    "MAP": "Map",
+    "MRDF": "Computer File",
+    "RECORDING": "Recording",
+    "SCORE": "Score",
+    "SERIAL": "Serial",
+    "TECHRPTS": "Book",
+    "VM": "Visual Material",
+}

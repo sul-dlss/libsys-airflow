@@ -59,6 +59,39 @@ def _generate_lookups(holdings_tsv_path: pathlib.Path) -> dict:
     return all_holdings
 
 
+def _add_holdings_type_ids(**kwargs):
+    """
+    Looks-up and assigns Holdings Id based on FORMAT value in tsv
+    """
+    airflow = kwargs.get("airflow")
+    dag_run_id = kwargs.get("dag_run_id")
+    folio_client = kwargs.get("folio_client")
+    holdings_type_result = folio_client.folio_get("/holdings-types?limit=200")
+    holdings_type_lookup = {}
+    for row in holdings_type_result["holdingsTypes"]:
+        holdings_type_lookup[row["name"]] = row["id"]
+
+    holdings_file = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag_run_id}/results/folio_holdings_tsv-transformer.json"
+    )
+    holdings = []
+    with holdings_file.open() as fo:
+        for line in fo.readlines():
+            record = json.loads(line)
+            record["holdingsTypeId"] = holdings_type_lookup.get(
+                constants.symphony_holdings_types_map.get(
+                    record["holdingsTypeId"], "Unknown"
+                )
+            )
+            holdings.append(record)
+
+    with holdings_file.open("w+") as fo:
+        for record in holdings:
+            fo.write(f"{json.dumps(record)}\n")
+
+    logger.info(f"Finished updating {len(holdings):,} holdingsTypeIds")
+
+
 def _alt_get_legacy_ids(*args):
     """
     This function overrides RulesMapperHolding method for MHLDs so
@@ -334,6 +367,11 @@ def run_holdings_tranformer(*args, **kwargs):
 
     _run_transformer(holdings_transformer, airflow, dag.run_id, holdings_filepath)
 
+    _add_holdings_type_ids(
+        folio_client=holdings_transformer.folio_client,
+        airflow=airflow,
+        dag_run_id=dag.run_id,
+    )
     logger.info(f"Finished transforming {holdings_stem}.tsv to FOLIO holdings")
 
 
