@@ -496,10 +496,23 @@ def test_move_authkeys():
             ],
         )
     )
+    record.add_field(
+        Field(
+            tag="700",
+            indicators=["1", " "],
+            subfields=[
+                Subfield(code="a", value="Soldiers"),
+                Subfield(code="z", value="Pakistan"),
+                Subfield(code="=", value="^A1062453"),
+            ],
+        )
+    )
     _move_authkeys(record)
     assert "0" not in record["240"].subfields_as_dict().keys()
     assert "=" not in record["700"].subfields_as_dict().keys()
-    assert record["700"].get_subfields("0") == ["(SIRSI)856199"]
+    fields700 = record.get_fields("700")
+    assert fields700[0].get_subfields("0") == ["(SIRSI)856199"]
+    assert fields700[1].get_subfields("0") == ["(SIRSI)1062453"]
 
 
 def test_move_authkeys_240():

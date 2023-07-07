@@ -228,11 +228,12 @@ def _move_authkeys(record: pymarc.Record):
     """
     for tag in authkey_fields:
         if tag in record:
-            field = record[tag]
-            if tag == "240":
-                _process_240(field, record.leader)
-            else:
-                _move_equals_subfield(field)
+            fields = record.get_fields(tag)
+            for field in fields:
+                if tag == "240":
+                    _process_240(field, record.leader)
+                else:
+                    _move_equals_subfield(field)
 
 
 def _move_equals_subfield(field: pymarc.Field):
