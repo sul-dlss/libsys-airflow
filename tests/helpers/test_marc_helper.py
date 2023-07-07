@@ -459,7 +459,9 @@ def test_missing_001_to_034(mock_marc_record):
 def test_move_001_to_035(mock_marc_record):
     record = mock_marc_record
     _move_001_to_035(record)
-    assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
+    assert (
+        record.get_fields("035")[0].get_subfields("a")[0] == "(sirsi)gls_0987654321"
+    )  # noqa
 
 
 def test_move_authkeys():
