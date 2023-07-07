@@ -541,6 +541,7 @@ def boundwith_holdings(*args, **kwargs):
                 loc_code = f"{constants.see_other_lib_locs.get(row.get('LIBRARY'))}"
 
                 perm_loc_id = locations_lookup.get(loc_code)
+
                 if perm_loc_id is None:
                     logger.error(f"Failed to find location for {row}")
                     continue
@@ -564,6 +565,9 @@ def boundwith_holdings(*args, **kwargs):
 
                 logger.info(f"Writing holdings id {holdings_id} to file")
                 bwh.write(f"{json.dumps(holdings)}\n")
+
+                if len(row["BARCODE"]) < 1:
+                    continue
 
                 bw_id = str(
                     FolioUUID(
