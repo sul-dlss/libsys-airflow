@@ -311,6 +311,7 @@ def test_boundwith_holdings(
     bw_tsv_lines = [
         "CATKEY\tCALL_SEQ\tCOPY\tBARCODE\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tITEM_CAT2\tITEM_SHADOW\tCALL_NUMBER_TYPE\tBASE_CALL_NUMBER\tVOLUME_INFO\tCALL_SHADOW\tFORMAT\tCATALOG_SHADOW",
         "2956972\t2\t1\t36105127895816\tGREEN\tSEE-OTHER\tSEE-OTHER\tGOVSTKS\tBW-CHILD\t\t0\tSUDOC\tI\t29.9/5:148\t\t0\tMARC\t0",
+        "2950696\t2\t1\t\tSAL3\tSEE-OTHER\tSEE-OTHER\tSTKS-MONO\tBW-CHILD\t\t0\t1\tALPHANUM\t353 PAM\tC:NO.6\t0\tMARC\t0",
     ]
 
     with bw_tsv.open("w+") as fo:
@@ -321,7 +322,8 @@ def test_boundwith_holdings(
 
     mock_folio_client = MockFOLIOClient(
         locations=[
-            {"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-SEE-OTHER"}
+            {"id": "0edeef57-074a-4f07-aee2-9f09d55e65c3", "code": "GRE-SEE-OTHER"},
+            {"id": "58168a3-ede4-4cc1-8c98-61f4feeb22ea", "code": "SAL3-SEE-OTHER"},
         ]
     )
 
@@ -333,13 +335,17 @@ def test_boundwith_holdings(
     )
 
     with holdings_json.open() as hld:
-        holdings_rec = [json.loads(line) for line in hld.readlines()]
+        holdings_records = [json.loads(line) for line in hld.readlines()]
+
+    assert len(holdings_records) == 2
+    assert holdings_records[1]["callNumber"] == "ALPHANUM 353 PAM"
 
     bw_part = mock_file_system[3] / "boundwith_parts.json"
     with bw_part.open() as bwp:
         bw_part_rec = [json.loads(line) for line in bwp.readlines()]
 
-    assert holdings_rec[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
+    assert len(bw_part_rec) == 1
+    assert holdings_records[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
 
 
 class FolioClientMock(pydantic.BaseModel):
