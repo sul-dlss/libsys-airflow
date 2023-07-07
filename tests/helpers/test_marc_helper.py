@@ -1,3 +1,4 @@
+import copy
 import json
 import pathlib
 import sqlite3
@@ -22,7 +23,10 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     marc_only,
     move_marc_files,
     _move_001_to_035,
+    _move_authkeys,
+    _move_equals_subfield,
     post_marc_to_srs,
+    _remove_unauthorized,
 )
 
 from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
@@ -458,6 +462,92 @@ def test_move_001_to_035(mock_marc_record):
     assert record.get_fields("035")[0].get_subfields("a")[0] == "gls_0987654321"  # noqa
 
 
+def test_move_authkeys():
+    record = Record()
+    record.add_field(
+        Field(
+            tag="240",
+            indicators=[" ", " "],
+            subfields=[
+                Subfield(code="a", value="Quintets"),
+                Subfield(code="=", value="^A262428"),
+            ],
+        )
+    )
+    record.add_field(
+        Field(
+            tag="245",
+            indicators=["1", "0"],
+            subfields=[
+                Subfield(code="a", value="Forellen-Quintett /"),
+                Subfield(code="c", value="Schubert."),
+            ],
+        )
+    )
+    record.add_field(
+        Field(
+            tag="700",
+            indicators=["1", " "],
+            subfields=[
+                Subfield(code="a", value="Haebler, Ingrid,"),
+                Subfield(code="d", value="1929-"),
+                Subfield(code="e", value="instrumentalist."),
+                Subfield(code="=", value="^A856199"),
+            ],
+        )
+    )
+    record.add_field(
+        Field(
+            tag="700",
+            indicators=["1", " "],
+            subfields=[
+                Subfield(code="a", value="Soldiers"),
+                Subfield(code="z", value="Pakistan"),
+                Subfield(code="=", value="^A1062453"),
+            ],
+        )
+    )
+    _move_authkeys(record)
+    assert "0" not in record["240"].subfields_as_dict().keys()
+    assert "=" not in record["700"].subfields_as_dict().keys()
+    fields700 = record.get_fields("700")
+    assert fields700[0].get_subfields("0") == ["(SIRSI)856199"]
+    assert fields700[1].get_subfields("0") == ["(SIRSI)1062453"]
+
+
+def test_move_authkeys_240():
+    record = Record()
+    record.leader[6] = "c"
+    record.add_field(
+        Field(
+            tag="240",
+            indicators=[" ", " "],
+            subfields=[
+                Subfield(code="a", value="Quintets"),
+                Subfield(code="=", value="^A262428"),
+            ],
+        )
+    )
+    _move_authkeys(record)
+    assert "=" not in record["240"].subfields_as_dict().keys()
+    assert record["240"].get_subfields("0") == ["(SIRSI)262428"]
+
+
+def test_move_equals_subfield():
+    field_100 = Field(
+        tag="100",
+        indicators=["1", " "],
+        subfields=[
+            Subfield(code="a", value="Costa, Robson"),
+            Subfield(code="e", value="author."),
+            Subfield(code="=", value="^A2387492"),
+        ],
+    )
+    _move_equals_subfield(field_100)
+    assert "=" not in field_100.subfields_as_dict().keys()
+    assert field_100.get_subfields("0") == ["(SIRSI)2387492"]
+
+
 def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     task_instance = MockTaskInstance()
     airflow_path = mock_file_system[0]
@@ -519,6 +609,24 @@ def test_move_marc_files(mock_file_system, mock_dag_run):  # noqa
     ).exists()
 
     mocks.messages = {}
+
+
+def test_remove_unauthorized(mock_marc_record):
+    record = copy.deepcopy(mock_marc_record)
+    record.add_field(Field(tag='003', data="SIRSI"))
+    record.add_field(
+        Field(
+            tag='100',
+            indicators=["1", " "],
+            subfields=[
+                Subfield(code="a", value="Ryves, Elizabeth"),
+                Subfield(code="?", value="UNAUTHORIZED"),
+            ],
+        )
+    )
+    _remove_unauthorized(record)
+    assert record['100'].get_subfields("?") == []
+    assert "003" in record
 
 
 def test_post_marc_to_srs(
