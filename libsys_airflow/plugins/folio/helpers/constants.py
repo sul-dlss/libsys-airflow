@@ -141,7 +141,7 @@ expense_codes = [
 symphony_holdings_types_map = {
     "EQUIP": "Equipment",
     "MARC": "Book",
-    "MANUSCRIPT": "Archival Collection",
+    "MANUSCRPT": "Archival Collection",
     "MAP": "Map",
     "MRDF": "Computer File",
     "RECORDING": "Recording",
