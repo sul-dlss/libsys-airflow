@@ -68,6 +68,63 @@ class InvoiceLine:
             return "SALES_STANDARD"
         return "USE_CA"
 
+    def generate_dr_rows(self, internal_number: str, liable_for_vat: bool) -> list:
+        rows = []
+        # For each InvoiceLine only create one DR line
+        for fund_distribution in self.fundDistributions:
+            if fund_distribution.distributionType.startswith('percentage'):
+                amount = self.subTotal * fund_distribution.value
+            else:
+                amount = fund_distribution.value
+            rows.append(
+                "".join(
+                    [
+                        f"{internal_number: <13}",
+                        "DR",
+                        f"{amount:015.2f}",
+                        f"{self.tax_code(liable_for_vat): <20}",
+                    ]
+                )
+            )
+        return rows
+
+    def generate_ta_rows(self, internal_number: str, liable_for_vat: bool) -> list:
+        rows = []
+        for adjustment in self.fundDistributions:
+            rows.append(
+                "".join(
+                    [
+                        f"{internal_number: <13}",
+                        "TA",
+                        f"{-1 * adjustment.value:015.2f}",
+                        f"{self.tax_code(liable_for_vat): <20}",
+                        "",  # Project Number
+                        "",  # Task Number
+                        "",  # Expediture
+                        "",  # Item Description
+                        "",  # P-T-A-E
+                    ]
+                )
+            )
+        return rows
+
+    def generate_tx_rows(self, internal_number: str, liable_for_vat: bool) -> list:
+        rows = []
+        for adjustment in self.fundDistributions:
+            # if adjustment.is_tax:
+            rows.append(
+                "".join(
+                    [
+                        f"{internal_number: <13}",
+                        "TX",
+                        f"{adjustment.value:015.2f}",
+                        f"{self.tax_code(liable_for_vat): <20}",
+                        "",
+                    ]
+                )
+            )
+        return rows
+
 
 @define
 class Invoice:
@@ -81,7 +138,7 @@ class Invoice:
 
     lines: list[InvoiceLine]
     vendor: Vendor
-    paymentDate: Union[datetime, None] = None
+    paymentDue: Union[datetime, None] = None
     paymentTerms: Union[str, None] = None
 
     @property
@@ -94,6 +151,7 @@ class Invoice:
     def attachment_flag(self):
         if self.paymentTerms and self.paymentTerms.startswith("WILLCALL"):
             return "Y"
+        return " "
 
     @property
     def internal_number(self):
@@ -107,9 +165,41 @@ class Invoice:
 
     @property
     def terms_name(self):
-        if self.paymentDate:
+        if self.paymentDue:
             return "IMMEDIATE"
         return "N30"
+
+    def header(self):
+        invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
+        return "".join(
+            [
+                f"{self.internal_number: <13}",
+                f"HD{self.accountingCode: <21}",
+                f"{invoice_number: <40}",
+                f"{self.invoiceDate.strftime('%Y%m%d')}",
+                f"{self.amount:015.2f}",
+                f"{self.invoice_type: <32}",
+                f"{self.terms_name: <15}",
+                f"{self.attachment_flag}",
+            ]
+        )
+
+    def line_data(self) -> str:
+        rows = []
+        for line in self.lines:
+            rows.extend(
+                line.generate_dr_rows(self.internal_number, self.vendor.liableForVat)
+            )
+            rows.extend(
+                line.generate_tx_rows(self.internal_number, self.vendor.liableForVat)
+            )
+            if self.vendor.liableForVat:
+                rows.extend(
+                    line.generate_ta_rows(
+                        self.internal_number, self.vendor.liableForVat
+                    )
+                )
+        return "\n".join(rows)
 
 
 @define
@@ -236,3 +326,18 @@ class FeederFile:
                 self._invoice_line_expense_line(line)
         # Sets to None so we don't serialize as JSON
         self.expense_codes_df = None
+
+    def generate(self) -> str:
+        raw_file = ""
+        for invoice in self.invoices:
+            raw_file += f"{invoice.header()}\n"
+            raw_file += invoice.line_data()
+        raw_file += "".join(
+            [
+                self.trailer_number,
+                f"""TR{datetime.utcnow().strftime("%Y%m%d")}""",
+                str(self.number_of_invoices),
+                f"{self.batch_total_amount:015.2f}",
+            ]
+        )
+        return raw_file
