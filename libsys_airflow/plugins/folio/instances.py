@@ -16,12 +16,14 @@ from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_loggi
 logger = logging.getLogger(__name__)
 
 
-def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
+def _generate_record_lookups(
+    base_tsv: Path, instatcodes_tsv: Path, lookup_stat_codes: dict
+) -> dict:
     """
     Generates record lookup dictionary based on values in tsv
     """
     record_lookups: dict = {}
-    logger.error(f"Base {base_tsv}")
+    logger.info(f"Base {base_tsv}")
     with base_tsv.open() as fo:
         tsv_reader = csv.DictReader(fo, delimiter="\t")
         for row in tsv_reader:
@@ -41,6 +43,29 @@ def _generate_record_lookups(base_tsv: Path, lookup_stat_codes: dict) -> dict:
                     "stat_codes": stat_codes,
                     "suppress": discovery_suppress,
                 }
+
+    if instatcodes_tsv.exists():
+        logger.info(f"Instance Stat Codes {instatcodes_tsv}")
+        with instatcodes_tsv.open() as fo:
+            tsv_reader = csv.DictReader(
+                fo, delimiter="\t", fieldnames=["CKEY", "ITEM_TYPE", "ITEM_CAT1"]
+            )
+            for i, row in enumerate(tsv_reader):
+                # Skips first row of column headers because explictly setting fieldnames in reader
+                if i == 0:
+                    continue
+                catkey = f"a{row['CKEY']}"
+                stat_codes = []
+                if row["ITEM_CAT1"] in lookup_stat_codes:
+                    stat_codes.append(lookup_stat_codes[row["ITEM_CAT1"]])
+                if catkey in record_lookups:
+                    record_lookups[catkey]["stat_codes"].extend(stat_codes)
+                else:
+                    record_lookups[catkey] = {
+                        "stat_codes": stat_codes,
+                        "suppress": False,  # discoverySuppress as default
+                    }
+        instatcodes_tsv.unlink()
     return record_lookups
 
 
@@ -74,6 +99,7 @@ def _adjust_records(**kwargs) -> None:
     tsv_dates: str = kwargs["tsv_dates"]
     instance_status: dict = kwargs["instance_statuses"]
     base_tsv: Path = kwargs["base_tsv"]
+    instatcodes_tsv: str = kwargs["instatcodes_tsv"]
     stat_codes: dict = kwargs["stat_codes"]
 
     dates_df = pd.read_csv(
@@ -82,7 +108,9 @@ def _adjust_records(**kwargs) -> None:
         dtype={"CATKEY": str, "CREATED_DATE": str, "CATALOGED_DATE": str},
     )
 
-    record_lookups = _generate_record_lookups(base_tsv, stat_codes)
+    record_lookups = _generate_record_lookups(
+        base_tsv, Path(instatcodes_tsv), stat_codes
+    )
 
     records = []
     with instances_path.open() as fo:
@@ -139,7 +167,10 @@ def _get_statistical_codes(folio_client: FolioClient) -> dict:
     instance_stat_codes_result.raise_for_status()
     stat_code_lookup = {}
     for row in instance_stat_codes_result.json()['statisticalCodes']:
-        match row['code']:
+        match row['code'].upper():
+            case "DATABASE":
+                stat_code_lookup["DATABASE"] = row["id"]
+
             case "E-THESIS":
                 stat_code_lookup["E-THESIS"] = row["id"]
 
@@ -190,6 +221,8 @@ def run_bibs_transformer(*args, **kwargs):
 
     tsv_dates = kwargs["dates_tsv"]
 
+    tsv_instatcodes = kwargs["instatcodes_tsv"]
+
     folio_client = kwargs.get("folio_client")
     if folio_client is None:
         folio_client = FolioClient(
@@ -239,6 +272,7 @@ def run_bibs_transformer(*args, **kwargs):
         instance_statuses=instance_statuses,
         base_tsv=base_tsv_path,
         stat_codes=stat_codes,
+        instatcodes_tsv=tsv_instatcodes,
     )
 
     bibs_transformer.wrap_up()

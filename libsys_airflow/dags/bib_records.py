@@ -163,6 +163,7 @@ with DAG(
                 "library_config": sul_config,
                 "marc_stem": """{{ ti.xcom_pull('move-transform.move-marc-files') }}""",  # noqa
                 "dates_tsv": "{{ ti.xcom_pull('bib-files-group', key='tsv-dates') }}",
+                "instatcodes_tsv": "{{ ti.xcom_pull('bib-files-group', key='tsv-instatcode') }}",
             },
         )
 
