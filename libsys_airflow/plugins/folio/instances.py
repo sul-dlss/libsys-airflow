@@ -206,7 +206,7 @@ def run_bibs_transformer(*args, **kwargs):
         migration_task_type="BibsTransformer",
         library_config=library_config,
         hrid_handling=HridHandling.preserve001,
-        never_update_hrid_settings=True,
+        update_hrid_settings=False,
         files=[{"file_name": f"{marc_stem}.mrc", "suppress": False}],
         ils_flavour="tag001",
     )

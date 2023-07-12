@@ -359,6 +359,7 @@ def run_holdings_tranformer(*args, **kwargs):
         holdings_type_uuid_for_boundwiths="",
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
+        update_hrid_settings=False,
     )
 
     holdings_transformer = HoldingsCsvTransformer(
@@ -408,7 +409,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id="03c9c400-b9e3-4a07-ac0e-05ab470233ed",
         create_source_records=True,
-        never_update_hrid_settings=True,
+        update_hrid_settings=False,
     )
 
     # Overrides static method to allow duplicate CATKEYs in MHLD records
@@ -476,6 +477,7 @@ def electronic_holdings(*args, **kwargs) -> None:
         holdings_merge_criteria=["instanceId", "permanentLocationId"],
         default_call_number_type_name="Library of Congress classification",
         fallback_holdings_type_id=holdings_type_id,
+        update_hrid_settings=False,
     )
 
     holdings_transformer = HoldingsCsvTransformer(

@@ -304,6 +304,7 @@ def run_items_transformer(*args, **kwargs) -> None:
         loan_types_map_file_name="loan_types.tsv",
         item_statuses_map_file_name="item_statuses.tsv",
         call_number_type_map_file_name="call_number_type_mapping.tsv",
+        update_hrid_settings=False,
     )
 
     items_transformer = ItemsTransformer(item_config, library_config, use_logging=False)
