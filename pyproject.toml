@@ -35,7 +35,7 @@ pytest-cov = "^4.0.0"
 pytest-mock = "^3.7.0"
 # these are needed for running tests outside of the airflow docker container
 # the airflow version here should be kept in sync with the docker image
-apache-airflow = "2.6.2"
+apache-airflow = "2.6.3"
 apache-airflow-providers-postgres = "5.4.0"
 apache-airflow-providers-sftp = "^4.2.4"
 requests-mock = "^1.10.0"
