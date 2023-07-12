@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.folio.helpers.orafin_models import (
     FeederFile,
+    Fund,
+    fundDistribution,
     Invoice,
     InvoiceLine,
     PurchaseOrderLine,
@@ -97,6 +99,49 @@ def mock_folio_client():
     mock_client = MagicMock()
     mock_client.get = mock_get
     return mock_client
+
+
+@pytest.fixture
+def mock_invoice():
+    return Invoice(
+        id="fd6e5f34-101e-4dd2-8542-0fdaf7713a2b",
+        accountingCode="668330FEEDER",
+        folioInvoiceNo="10592",
+        invoiceDate=datetime.datetime(2023, 7, 12),
+        lines=[
+            InvoiceLine(
+                id="b26f45bd-aa92-471d-9aa9-a27d5f520a78",
+                adjustmentsTotal=34.24,
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType="percentage",
+                        value=100.0,
+                        fund=Fund(
+                            id="96750a26-90a9-47cd-94a2-1b910e824d7e",
+                            externalAccountNo="1065031-111-KBAEW",
+                        ),
+                    )
+                ],
+                poLine=PurchaseOrderLine(
+                    id=str(uuid.uuid4()),
+                    acquisitionMethod="e723e091-1d0a-48f4-9065-61427e723174",
+                    materialType="dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1",
+                    orderFormat="Physical Resource",
+                ),
+                subTotal=375.03,
+                total=409.24,
+            )
+        ],
+        subTotal=1442.03,
+        total=1572.1,
+        vendor=Vendor(
+            code="ANTIPODEAN-SUL",
+            erpCode="668330FEEDER",
+            id="3b114160-5312-4268-8bf9-4da5b193bb1a",
+            liableForVat=False,
+        ),
+        vendorInvoiceNo="15142",
+    )
 
 
 def test_expense_codes(mock_folio_client):
@@ -269,3 +314,33 @@ def test_expense_codes(mock_folio_client):
     assert feeder_file.invoices[0].lines[7].expense_code == "55410"
     assert feeder_file.invoices[0].lines[8].expense_code == "55320"
     assert feeder_file.invoices[0].lines[9].expense_code == "53245"
+
+
+def test_invoice_header(mock_invoice):
+    raw_header = mock_invoice.header()
+
+    assert len(raw_header) == 147
+
+    # Internal Number
+    assert raw_header[0:13] == "LIB10592     "
+
+    # Vendor Number and Vendor Site Code
+    assert raw_header[13:36] == "HD668330FEEDER         "
+
+    # Invoice Number
+    assert raw_header[36:76] == "15142 10592                             "
+
+    # Invoice Date
+    assert raw_header[76:84] == "20230712"
+
+    # Invoice Amount
+    assert raw_header[84:99] == "000000001442.03"
+
+    # Invoice Type
+    assert raw_header[99:131] == "DR                              "
+
+    # Terms name
+    assert raw_header[131:145] == "N30           "
+
+    # Attachment flag
+    assert raw_header[146] == " "
