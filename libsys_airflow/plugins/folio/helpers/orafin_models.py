@@ -68,61 +68,68 @@ class InvoiceLine:
             return "SALES_STANDARD"
         return "USE_CA"
 
-    def generate_dr_rows(self, internal_number: str, liable_for_vat: bool) -> list:
+    def _generate_line(self, **kwargs) -> str:
+        line_type: str = kwargs["line_type"]
+        internal_number: str = kwargs["internal_number"]
+        amount: float = kwargs["amount"]
+        tax_code: str = kwargs["tax_code"]
+        external_account_number: str = kwargs["external_account_number"]
+        return "".join(
+            [
+                f"{internal_number: <13}",
+                line_type,
+                f"{amount:015.2f}",
+                f"{tax_code: <20}",
+                f"{external_account_number}",
+                f"-{self.expense_code: <51}",
+            ]
+        )
+
+    def generate_lines(self, internal_number: str, liable_for_vat: bool) -> list:
         rows = []
-        # For each InvoiceLine only create one DR line
+        tax_code = self.tax_code(liable_for_vat)
+
         for fund_distribution in self.fundDistributions:
             if fund_distribution.distributionType.startswith('percentage'):
-                amount = self.subTotal * fund_distribution.value
+                percentage = fund_distribution.value / 100
+                amount = self.subTotal * percentage
+                adjusted_amt = self.adjustmentsTotal * percentage
             else:
                 amount = fund_distribution.value
+                adjusted_amt = self.adjustmentsTotal
+            # Create DR line
             rows.append(
-                "".join(
-                    [
-                        f"{internal_number: <13}",
-                        "DR",
-                        f"{amount:015.2f}",
-                        f"{self.tax_code(liable_for_vat): <20}",
-                    ]
+                self._generate_line(
+                    line_type="DR",
+                    internal_number=internal_number,
+                    amount=amount,
+                    tax_code=tax_code,
+                    external_account_number=fund_distribution.fund.externalAccountNo,  # type: ignore
                 )
             )
-        return rows
-
-    def generate_ta_rows(self, internal_number: str, liable_for_vat: bool) -> list:
-        rows = []
-        for adjustment in self.fundDistributions:
-            rows.append(
-                "".join(
-                    [
-                        f"{internal_number: <13}",
-                        "TA",
-                        f"{-1 * adjustment.value:015.2f}",
-                        f"{self.tax_code(liable_for_vat): <20}",
-                        "",  # Project Number
-                        "",  # Task Number
-                        "",  # Expediture
-                        "",  # Item Description
-                        "",  # P-T-A-E
-                    ]
+            # Create TX line if adjustmentsTotal not zero
+            if self.adjustmentsTotal != 0:
+                rows.append(
+                    self._generate_line(
+                        line_type="TX",
+                        internal_number=internal_number,
+                        amount=adjusted_amt,
+                        tax_code=tax_code,
+                        external_account_number=fund_distribution.fund.externalAccountNo,  # type: ignore
+                    )
                 )
-            )
-        return rows
-
-    def generate_tx_rows(self, internal_number: str, liable_for_vat: bool) -> list:
-        rows = []
-        for adjustment in self.fundDistributions:
-            # if adjustment.is_tax:
-            rows.append(
-                "".join(
-                    [
-                        f"{internal_number: <13}",
-                        "TX",
-                        f"{adjustment.value:015.2f}",
-                        f"{self.tax_code(liable_for_vat): <20}",
-                        "",
-                    ]
-                )
-            )
+                # Create TA line if not liable for VAT
+                if liable_for_vat is False:
+                    rows.append(
+                        "".join(
+                            [
+                                f"{internal_number: <13}",
+                                "TA",
+                                f"{-adjusted_amt:015.2f}",
+                                f"{tax_code: <20}",
+                            ]
+                        )
+                    )
         return rows
 
 
@@ -186,19 +193,10 @@ class Invoice:
 
     def line_data(self) -> str:
         rows = []
-        for line in self.lines:
+        for line in sorted(self.lines, key=lambda x: x.subTotal, reverse=True):
             rows.extend(
-                line.generate_dr_rows(self.internal_number, self.vendor.liableForVat)
+                line.generate_lines(self.internal_number, self.vendor.liableForVat)
             )
-            rows.extend(
-                line.generate_tx_rows(self.internal_number, self.vendor.liableForVat)
-            )
-            if self.vendor.liableForVat:
-                rows.extend(
-                    line.generate_ta_rows(
-                        self.internal_number, self.vendor.liableForVat
-                    )
-                )
         return "\n".join(rows)
 
 

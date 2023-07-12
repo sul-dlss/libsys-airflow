@@ -116,7 +116,7 @@ def test_get_invoice(mock_folio_client):
     assert invoice.vendor.liableForVat is False
     assert invoice.vendor.vendor_number == "HD012957FEEDER"
     assert invoice.lines[0].tax_exempt is False
-    assert invoice.attachment_flag is None
+    assert invoice.attachment_flag == " "
     assert invoice.lines[0].tax_code(invoice.vendor.liableForVat) == "USE_CA"
 
     # Tests conditional properties
@@ -124,7 +124,7 @@ def test_get_invoice(mock_folio_client):
     assert invoice.amount == invoice.total
     invoice.total = -100.00
     assert invoice.invoice_type == "CR"
-    invoice.paymentDate = datetime.utcnow()
+    invoice.paymentDue = datetime.utcnow()
     assert invoice.terms_name == "IMMEDIATE"
     assert invoice.lines[0].tax_code(True) == "SALES_STANDARD"
     invoice.lines[0].adjustmentsTotal = 0.0
