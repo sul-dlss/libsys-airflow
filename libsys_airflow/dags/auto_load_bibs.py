@@ -56,14 +56,17 @@ def auto_bib_loads(**kwargs):
                     f"MHLD file path is {mhld_file} exists {mhld_file.exists()}"
                 )
             for tsv_file in files_path.glob(f"{marc_file.stem}*.tsv"):
+                tsv_file_str = str(tsv_file)
                 if tsv_file.name == f"{marc_file.stem}.tsv":
-                    record_group["tsv-base"] = str(tsv_file)
+                    record_group["tsv-base"] = tsv_file_str
                 elif tsv_file.name == f"{marc_file.stem}.dates.tsv":
-                    record_group["tsv-dates"] = str(tsv_file)
+                    record_group["tsv-dates"] = tsv_file_str
                 elif tsv_file.name.endswith("bwchild.tsv"):
-                    record_group["tsv-bwchild"] = str(tsv_file)
+                    record_group["tsv-bwchild"] = tsv_file_str
+                elif tsv_file.name.endswith("instatcode.tsv"):
+                    record_group["tsv-instatcode"] = tsv_file_str
                 else:
-                    record_group["tsv"].append(str(tsv_file))
+                    record_group["tsv"].append(tsv_file_str)
             bib_record_groups.append(record_group)
             logger.info(f"{marc_file.name} with {len(record_group['tsv']):,} tsv files")
 

@@ -60,14 +60,19 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
     instances_file.write_text(
         """{"id": "3e815a91-8a6e-4bbf-8bd9-cf42f9f789e1", "hrid": "a123456", "administrativeNotes": ["Identifier(s) from previous system: a123456"]}
 {"id": "123326dd-9924-498f-9ca3-4fa00dda6c90", "hrid": "a98765", "contributors": [{"authorityId": "x", "name": "Penone, Giuseppe"}]}
-{"id": "6193afd3-d42f-4051-ad56-273f3ae67e53", "hrid": "a347891"}"""
+{"id": "6193afd3-d42f-4051-ad56-273f3ae67e53", "hrid": "a347891"}
+{"id": "4d4e3f00-f820-5cdf-b947-0a3cce619b7c", "hrid": "a14800901"}
+{"id": "bed3ec5c-6666-43c1-8310-a4af507a51f5", "hrid": "a10361029"}"""
     )
     tsv_dates_file = mock_file_system[3] / "libr.ckeys.001.dates.tsv"
     tsv_dates_file.write_text(
         """CATKEY\tCREATED_DATE\tCATALOGED_DATE
 123456\t19900927\t19950710
 98765\t20220101\t0
-347891\t20230310\t20230321"""
+347891\t20230310\t20230321
+14800901\t20230711\t20230711
+10361029\t20230713\t20230711
+"""
     )
 
     instance_statuses = {
@@ -86,7 +91,18 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
         ]:
             fo.write(f"{line}\n")
 
+    instatcode_tsv = mock_file_system[1] / "instatcode.tsv"
+
+    with instatcode_tsv.open("w+") as fo:
+        for line in [
+            "\ufeffCKEY\tITEM_TYPE\tITEM_CAT1",
+            "14800901\tSUL\tLEVEL3OCLC",
+            "10361029\tDATABASE\tMARCIVE",
+        ]:
+            fo.write(f"{line}\n")
+
     statistical_code_ids = {
+        "DATABASE": "4bc78766-8f34-4b1a-9e39-2a689a4ae998",
         "LEVEL3-CAT": "ae9ce864-f50c-47ce-a5f1-6579f7057fc5",
         "LEVEL3OCLC": "ae9ce864-f50c-47ce-a5f1-6579f7057fc5",
         "MARCIVE": "d3f618e2-9fa9-4623-94ae-1d95d1d66f79",
@@ -99,6 +115,7 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
         instance_statuses=instance_statuses,
         stat_codes=statistical_code_ids,
         base_tsv=base_tsv,
+        instatcodes_tsv=instatcode_tsv,
     )
 
     with instances_file.open() as fo:
@@ -110,6 +127,7 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
     assert instance_records[0]["administrativeNotes"] == []
     assert len(instance_records[0]["statisticalCodeIds"]) == 2
     assert "catalogedDate" not in instance_records[1]
+
     assert instance_records[1]["statusId"] == "26f5208e-110a-4394-be29-1569a8c84a65"
     assert instance_records[1]["statisticalCodeIds"] == [
         statistical_code_ids["MARCIVE"]
@@ -117,7 +135,16 @@ def test_adjust_records(mock_file_system, mock_dag_run):  # noqa
     assert instance_records[1]["discoverySuppress"] is True
     assert "authorityId" not in instance_records[1]["contributors"][0]
     assert "statisticalCodeIds" not in instance_records[2]
+
+    assert instance_records[3]["statisticalCodeIds"] == [
+        statistical_code_ids["LEVEL3OCLC"]
+    ]
+
+    assert statistical_code_ids["MARCIVE"] in instance_records[4]["statisticalCodeIds"]
+    assert statistical_code_ids["DATABASE"] in instance_records[4]["statisticalCodeIds"]
+
     assert not tsv_dates_file.exists()
+    assert not instatcode_tsv.exists()
 
 
 def test_get_statistical_codes(mock_okapi_requests):  # noqa
