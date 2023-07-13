@@ -315,6 +315,10 @@ def test_expense_codes(mock_folio_client):
     assert feeder_file.invoices[0].lines[8].expense_code == "55320"
     assert feeder_file.invoices[0].lines[9].expense_code == "53245"
 
+    feeder_file.invoices[0].lines[0].poLine = None
+    feeder_file.add_expense_lines(mock_folio_client)
+    assert feeder_file.invoices[0].lines[0].expense_code == "53245"
+
 
 def test_invoice_header(mock_invoice):
     raw_header = mock_invoice.header()
@@ -344,3 +348,174 @@ def test_invoice_header(mock_invoice):
 
     # Attachment flag
     assert raw_header[146] == " "
+
+
+def test_invoice_amount(mock_invoice):
+    assert mock_invoice.amount == 1442.03
+    mock_invoice.vendor.liableForVat = True
+    assert mock_invoice.amount == 1572.1
+
+
+def test_attachment_flag(mock_invoice):
+    assert mock_invoice.attachment_flag == " "
+    mock_invoice.paymentTerms = "WILLCALL"
+    assert mock_invoice.attachment_flag == "Y"
+
+
+def test_terms_name(mock_invoice):
+    assert mock_invoice.terms_name == "N30"
+    mock_invoice.paymentDue = datetime.datetime(2023, 7, 13)
+    assert mock_invoice.terms_name == "IMMEDIATE"
+
+
+def test_invoice_type(mock_invoice):
+    assert mock_invoice.invoice_type == "DR"
+    mock_invoice.subTotal = -1.0
+    assert mock_invoice.invoice_type == "CR"
+
+
+def test_invoice_lines_generate_lines(mock_invoice):
+    for line in mock_invoice.lines:
+        line.expense_code = '53245'
+
+    raw_lines = mock_invoice.line_data()
+    dr_line, tx_line, ta_line = raw_lines.splitlines()
+
+    assert len(dr_line) == 119
+    assert len(tx_line) == 119
+    assert len(ta_line) == 119
+
+    # DR Internal Number
+    assert dr_line[0:13] == "LIB10592     "
+
+    assert dr_line[13:15] == "DR"
+
+    assert dr_line[15:30] == "000000000375.03"
+
+    assert dr_line[30:50] == "USE_CA              "
+
+    assert dr_line[50:72] == "1065031-111-KBAEW-5324"
+
+    # TX Internal Number
+    assert tx_line[0:13] == "LIB10592     "
+
+    assert tx_line[13:15] == "TX"
+
+    assert tx_line[15:30] == "000000000034.24"
+
+    assert tx_line[30:50] == "USE_CA              "
+
+    assert tx_line[50:72] == "1065031-111-KBAEW-5324"
+
+    # TA Internal Number
+    assert ta_line[0:13] == "LIB10592     "
+
+    assert ta_line[13:15] == "TA"
+
+    assert ta_line[15:30] == "-00000000034.24"
+
+    assert ta_line[30:50] == "USE_CA              "
+
+
+def test_split_percentage_invoice_lines():
+    invoice_line = InvoiceLine(
+        adjustmentsTotal=41.08,
+        id='eb96354a-c3d7-4faf-b6aa-21e10c0dc5c4',
+        subTotal=450.0,
+        total=491.08,
+        expense_code='53245',
+        poLine=PurchaseOrderLine(
+            id='3b793afc-904b-4daf-94e9-9b7ac0445113',
+            acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+            orderFormat='Physical Resource',
+            materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+        ),
+        fundDistributions=[
+            fundDistribution(
+                distributionType='percentage',
+                value=75.0,
+                fund=Fund(
+                    id='15c375e7-ee16-4b3d-8370-1a02bb3d909d',
+                    externalAccountNo='1065032-101-KARFD',
+                ),
+            ),
+            fundDistribution(
+                distributionType='percentage',
+                value=25.0,
+                fund=Fund(
+                    id='12347aee-492b-4d73-b7fd-b5d113227f89',
+                    externalAccountNo='1065090-101-KATMX',
+                ),
+            ),
+        ],
+    )
+    lines = invoice_line.generate_lines("LIB10592", False)
+
+    assert len(lines) == 6
+
+    assert float(lines[0][15:30]) == 337.5
+    assert float(lines[1][15:30]) == 30.81
+    assert float(lines[2][15:30]) == -30.81
+
+    assert float(lines[3][15:30]) == 112.5
+    assert float(lines[4][15:30]) == 10.27
+
+    assert (
+        float(lines[1][15:30]) + float(lines[4][15:30]) == invoice_line.adjustmentsTotal
+    )
+
+
+def test_invoice_line_fund_dist_amt():
+    invoice_line = InvoiceLine(
+        id=str(uuid.uuid4()),
+        adjustmentsTotal=0.00,
+        subTotal=40.00,
+        total=0.00,
+        expense_code="53245",
+        fundDistributions=[
+            fundDistribution(
+                distributionType="amount",
+                value=40.00,
+                fund=Fund(
+                    id="12347aee-492b-4d73-b7fd-b5d113227f89",
+                    externalAccountNo='1065090-101-KATMX',
+                ),
+            )
+        ],
+    )
+
+    lines = invoice_line.generate_lines("LIB10592", True)
+
+    assert lines[0][15:30] == "000000000040.00"
+
+
+def test_invoice_line_tax_code():
+    invoice_line = InvoiceLine(
+        id=str(uuid.uuid4()),
+        adjustmentsTotal=0.00,
+        subTotal=0.00,
+        total=0.00,
+    )
+
+    assert invoice_line.tax_code(False) == "TAX_EXEMPT"
+
+    invoice_line.adjustmentsTotal = 1.00
+
+    assert invoice_line.tax_code(True) == "SALES_STANDARD"
+
+
+def test_vendor_number(mock_invoice):
+    assert mock_invoice.vendor.vendor_number == "HD668330FEEDER"
+
+
+def test_feeder_file(mock_invoice, mock_folio_client):
+    feeder_file = FeederFile(invoices=[mock_invoice])
+
+    assert feeder_file.batch_total_amount == 1442.03
+    assert feeder_file.number_of_invoices == 1
+
+    feeder_file.add_expense_lines(mock_folio_client)
+
+    raw_feeder_file = feeder_file.generate()
+
+    assert raw_feeder_file.splitlines()[-1] == "LIB9999999999TR202307131000000001442.03"

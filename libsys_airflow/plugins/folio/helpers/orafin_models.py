@@ -127,6 +127,7 @@ class InvoiceLine:
                                 "TA",
                                 f"{-adjusted_amt:015.2f}",
                                 f"{tax_code: <20}",
+                                f"{' ': <69}",
                             ]
                         )
                     )
@@ -330,6 +331,7 @@ class FeederFile:
         for invoice in self.invoices:
             raw_file += f"{invoice.header()}\n"
             raw_file += invoice.line_data()
+        raw_file += "\n"
         raw_file += "".join(
             [
                 self.trailer_number,
