@@ -56,6 +56,8 @@ def _generate_record_lookups(
                     continue
                 catkey = f"a{row['CKEY']}"
                 stat_codes = []
+                if row["ITEM_TYPE"] in lookup_stat_codes:
+                    stat_codes.append(lookup_stat_codes[row["ITEM_TYPE"]])
                 if row["ITEM_CAT1"] in lookup_stat_codes:
                     stat_codes.append(lookup_stat_codes[row["ITEM_CAT1"]])
                 if catkey in record_lookups:
