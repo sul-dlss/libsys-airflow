@@ -157,7 +157,7 @@ class Invoice:
 
     @property
     def attachment_flag(self):
-        if self.paymentTerms and self.paymentTerms.startswith("WILLCALL"):
+        if self.paymentTerms and self.paymentTerms.upper().startswith("WILLCALL"):
             return "Y"
         return " "
 
