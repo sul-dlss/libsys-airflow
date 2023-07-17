@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from attrs import define
-from typing import Union
+from typing import List, Union
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.helpers.constants import expense_codes
@@ -86,10 +86,11 @@ class InvoiceLine:
         )
 
     def generate_lines(self, internal_number: str, liable_for_vat: bool) -> list:
-        rows = []
+        output = []
         tax_code = self.tax_code(liable_for_vat)
 
         for fund_distribution in self.fundDistributions:
+            rows = []
             if fund_distribution.distributionType.startswith('percentage'):
                 percentage = fund_distribution.value / 100
                 amount = self.subTotal * percentage
@@ -131,7 +132,11 @@ class InvoiceLine:
                             ]
                         )
                     )
-        return rows
+            output.append({"rows": rows, "amount": amount})
+        feeder_rows: List[str] = []
+        for line in sorted(output, key=lambda x: x['amount'], reverse=True):  # type: ignore
+            feeder_rows.extend(line["rows"])  # type: ignore
+        return feeder_rows
 
 
 @define
@@ -194,7 +199,7 @@ class Invoice:
 
     def line_data(self) -> str:
         rows = []
-        for line in sorted(self.lines, key=lambda x: x.subTotal, reverse=True):
+        for line in self.lines:
             rows.extend(
                 line.generate_lines(self.internal_number, self.vendor.liableForVat)
             )

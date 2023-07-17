@@ -518,4 +518,7 @@ def test_feeder_file(mock_invoice, mock_folio_client):
 
     raw_feeder_file = feeder_file.generate()
 
-    assert raw_feeder_file.splitlines()[-1] == "LIB9999999999TR202307131000000001442.03"
+    current_date_str = datetime.datetime.utcnow().strftime("%Y%m%d")
+    last_line = f"LIB9999999999TR{current_date_str}1000000001442.03"
+
+    assert raw_feeder_file.splitlines()[-1] == last_line
