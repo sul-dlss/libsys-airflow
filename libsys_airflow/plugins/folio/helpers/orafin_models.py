@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from attrs import define
-from typing import Union
+from typing import List, Union
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.helpers.constants import expense_codes
@@ -68,6 +68,76 @@ class InvoiceLine:
             return "SALES_STANDARD"
         return "USE_CA"
 
+    def _generate_line(self, **kwargs) -> str:
+        line_type: str = kwargs["line_type"]
+        internal_number: str = kwargs["internal_number"]
+        amount: float = kwargs["amount"]
+        tax_code: str = kwargs["tax_code"]
+        external_account_number: str = kwargs["external_account_number"]
+        return "".join(
+            [
+                f"{internal_number: <13}",
+                line_type,
+                f"{amount:015.2f}",
+                f"{tax_code: <20}",
+                f"{external_account_number}",
+                f"-{self.expense_code: <51}",
+            ]
+        )
+
+    def generate_lines(self, internal_number: str, liable_for_vat: bool) -> list:
+        output = []
+        tax_code = self.tax_code(liable_for_vat)
+
+        for fund_distribution in self.fundDistributions:
+            rows = []
+            if fund_distribution.distributionType.startswith('percentage'):
+                percentage = fund_distribution.value / 100
+                amount = self.subTotal * percentage
+                adjusted_amt = self.adjustmentsTotal * percentage
+            else:
+                amount = fund_distribution.value
+                adjusted_amt = self.adjustmentsTotal
+            # Create DR line
+            rows.append(
+                self._generate_line(
+                    line_type="DR",
+                    internal_number=internal_number,
+                    amount=amount,
+                    tax_code=tax_code,
+                    external_account_number=fund_distribution.fund.externalAccountNo,  # type: ignore
+                )
+            )
+            # Create TX line if adjustmentsTotal not zero
+            if self.adjustmentsTotal != 0:
+                rows.append(
+                    self._generate_line(
+                        line_type="TX",
+                        internal_number=internal_number,
+                        amount=adjusted_amt,
+                        tax_code=tax_code,
+                        external_account_number=fund_distribution.fund.externalAccountNo,  # type: ignore
+                    )
+                )
+                # Create TA line if not liable for VAT
+                if liable_for_vat is False:
+                    rows.append(
+                        "".join(
+                            [
+                                f"{internal_number: <13}",
+                                "TA",
+                                f"{-adjusted_amt:015.2f}",
+                                f"{tax_code: <20}",
+                                f"{' ': <69}",
+                            ]
+                        )
+                    )
+            output.append({"rows": rows, "amount": amount})
+        feeder_rows: List[str] = []
+        for line in sorted(output, key=lambda x: x['amount'], reverse=True):  # type: ignore
+            feeder_rows.extend(line["rows"])  # type: ignore
+        return feeder_rows
+
 
 @define
 class Invoice:
@@ -81,7 +151,7 @@ class Invoice:
 
     lines: list[InvoiceLine]
     vendor: Vendor
-    paymentDate: Union[datetime, None] = None
+    paymentDue: Union[datetime, None] = None
     paymentTerms: Union[str, None] = None
 
     @property
@@ -92,8 +162,9 @@ class Invoice:
 
     @property
     def attachment_flag(self):
-        if self.paymentTerms and self.paymentTerms.startswith("WILLCALL"):
+        if self.paymentTerms and self.paymentTerms.upper().startswith("WILLCALL"):
             return "Y"
+        return " "
 
     @property
     def internal_number(self):
@@ -107,9 +178,32 @@ class Invoice:
 
     @property
     def terms_name(self):
-        if self.paymentDate:
+        if self.paymentDue:
             return "IMMEDIATE"
         return "N30"
+
+    def header(self):
+        invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
+        return "".join(
+            [
+                f"{self.internal_number: <13}",
+                f"HD{self.accountingCode: <21}",
+                f"{invoice_number: <40}",
+                f"{self.invoiceDate.strftime('%Y%m%d')}",
+                f"{self.amount:015.2f}",
+                f"{self.invoice_type: <32}",
+                f"{self.terms_name: <15}",
+                f"{self.attachment_flag}",
+            ]
+        )
+
+    def line_data(self) -> str:
+        rows = []
+        for line in self.lines:
+            rows.extend(
+                line.generate_lines(self.internal_number, self.vendor.liableForVat)
+            )
+        return "\n".join(rows)
 
 
 @define
@@ -236,3 +330,19 @@ class FeederFile:
                 self._invoice_line_expense_line(line)
         # Sets to None so we don't serialize as JSON
         self.expense_codes_df = None
+
+    def generate(self) -> str:
+        raw_file = ""
+        for invoice in self.invoices:
+            raw_file += f"{invoice.header()}\n"
+            raw_file += invoice.line_data()
+        raw_file += "\n"
+        raw_file += "".join(
+            [
+                self.trailer_number,
+                f"""TR{datetime.utcnow().strftime("%Y%m%d")}""",
+                str(self.number_of_invoices),
+                f"{self.batch_total_amount:015.2f}",
+            ]
+        )
+        return raw_file
