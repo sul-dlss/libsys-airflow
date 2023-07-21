@@ -9,6 +9,7 @@ import pytest  # noqa
 
 from pytest_mock import MockerFixture
 from pymarc import Field, MARCWriter, Record, Subfield
+from folio_uuid.folio_uuid import FOLIONamespaces
 
 from libsys_airflow.plugins.folio.audit import setup_audit_db
 
@@ -19,7 +20,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     _extract_e_holdings_fields,
     filter_mhlds,
     _get_library,
-    handle_srs_files,
+    get_snapshot_id,
     marc_only,
     move_marc_files,
     _move_001_to_035,
@@ -27,6 +28,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     _move_equals_subfield,
     post_marc_to_srs,
     _remove_unauthorized,
+    srs_check_add
 )
 
 from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
@@ -178,17 +180,13 @@ def test_discover_srs_files(mock_file_system, srs_file):  # noqa
     airflow = mock_file_system[0]
     iteration_two_results = airflow / "migration/iterations/manual_2023-03-09/results/"
     iteration_two_results.mkdir(parents=True)
-    folio_srs2 = iteration_two_results / "folio_srs_instances_bibs-transformer.json"
-    folio_srs2.write_text("""{ "id": "5bfd2479-6773-4100-99dd-fd042063c2ec" }""")
 
-    discover_srs_files(
-        airflow=mock_file_system[0],
-        jobs=2,
-        task_instance=MockTaskInstance(task_id="find-srs-files"),
+    iterations = discover_srs_files(
+        airflow=mock_file_system[0]
     )
-    assert len(mocks.messages["find-srs-files"]["job-1"]) == 1
-    assert mocks.messages["find-srs-files"]["job-0"] == [str(mock_file_system[2])]
-    mocks.messages = {}
+
+    assert len(iterations) == 1
+    assert iterations[0] == str(airflow / "migration/iterations/manual_2022-03-05")
 
 
 def test_extract_856s():
@@ -298,56 +296,6 @@ def test_extract_956s():
     assert output[0]["LIBRARY"] == "SUL"
 
 
-def test_handle_srs_files(
-    mock_file_system, mock_dag_run, srs_file, mock_srs_requests, caplog  # noqa
-):
-    airflow = mock_file_system[0]
-    iteration_dir = mock_file_system[2]
-    results_dir = mock_file_system[3]
-
-    mocks.messages["find-srs-files"] = {"job-0": [str(mock_file_system[2])]}
-
-    current_file = pathlib.Path(__file__)
-    db_init_file = current_file.parent.parent.parent / "qa.sql"
-    mock_db_init_file = airflow / "qa.sql"
-    mock_db_init_file.write_text(db_init_file.read_text())
-
-    setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
-
-    handle_srs_files(
-        task_instance=MockTaskInstance(task_id="find-srs-files"),
-        job=0,
-        folio_client=MockFOLIOClient(),
-    )
-
-    audit_db = sqlite3.connect(results_dir / "audit-remediation.db")
-    cur = audit_db.cursor()
-
-    assert "Starting Check/Add SRS Bibs files for 1" in caplog.text
-
-    total_records = cur.execute("SELECT count(id) FROM Record;").fetchone()[0]
-    assert total_records == 4
-    existing_records = cur.execute(
-        """SELECT count(id) FROM AuditLog WHERE status=1;"""
-    ).fetchone()[0]
-    assert existing_records == 1
-    missing_records = cur.execute(
-        """SELECT count(id) FROM AuditLog WHERE status=2;"""
-    ).fetchone()[0]
-    assert missing_records == 2
-    error_records = cur.execute(
-        """SELECT count(id) FROM AuditLog WHERE status=3;"""
-    ).fetchone()[0]
-    assert error_records == 1
-
-    cur.close()
-    audit_db.close()
-
-    assert (iteration_dir / "reports/report_srs-audit.md").exists()
-
-    mocks.messages = {}
-
-
 def test_filter_mhlds(tmp_path, caplog):
     mhld_mock = tmp_path / "mock-mhld.mrc"
 
@@ -384,6 +332,12 @@ def test_filter_mhlds(tmp_path, caplog):
     filter_mhlds(mhld_mock)
 
     assert "Finished filtering MHLD, start 3 removed 2" in caplog.text
+
+def test_get_snapshot_id(mock_srs_requests):
+    snapshot = get_snapshot_id(MockFOLIOClient())
+
+    assert len(snapshot) == 36
+    assert len(snapshot.split("-")) == 5
 
 
 def test_marc_only():
@@ -684,6 +638,34 @@ def test_missing_file_post_marc_to_srs(
     )
 
     assert "test-mhlds-srs.json does not exist, existing task" in caplog.text
+
+
+def test_srs_check_add(mock_file_system, mock_dag_run, srs_file, mock_srs_requests, caplog):  # noqa
+    airflow = mock_file_system[0]
+    results_dir = mock_file_system[3]
+
+    current_file = pathlib.Path(__file__)
+    db_init_file = current_file.parent.parent.parent / "qa.sql"
+    mock_db_init_file = airflow / "qa.sql"
+    mock_db_init_file.write_text(db_init_file.read_text())
+
+    setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
+
+    audit_db = sqlite3.connect(results_dir / "audit-remediation.db")
+
+    mock_srs_file = srs_file
+
+    bib_count = srs_check_add(
+            audit_connection=audit_db,
+            results_dir=results_dir,
+            srs_type=FOLIONamespaces.srs_records_bib.value,
+            file_name="folio_srs_instances_bibs-transformer.json",
+            snapshot_id="abcdefegrh",
+            folio_client=MockFOLIOClient(),
+            srs_label="SRS MARC BIBs",
+    )
+
+    assert bib_count == 4
 
 
 def test_process_marc():
