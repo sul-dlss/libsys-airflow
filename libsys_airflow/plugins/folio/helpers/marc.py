@@ -14,7 +14,7 @@ from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
 from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
-from libsys_airflow.plugins.folio.remediate import _save_error
+from libsys_airflow.plugins.folio.remediate import _save_error, _save_malformed_error
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,10 @@ def _check_add_srs_records(**kwargs) -> None:
     match check_record.status_code:
         case 200:
             add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
+            srs_properties = check_record.json().keys()
+            if not _valid_for_srs_properties(srs_properties):
+                message = f"SRS Record missing properties 'parsedRecord' or 'rawRecord' in {list(srs_properties)}"
+                _save_malformed_error(audit_connection, db_record_id, message)
             return
 
         case 404:
@@ -263,6 +267,12 @@ def _remove_unauthorized(record: pymarc.Record):
             continue
         if "UNAUTHORIZED" in field.get_subfields("?"):
             field.delete_subfield("?")
+
+
+def _valid_for_srs_properties(srs_record_keys: list) -> bool:
+    if "rawRecord" in srs_record_keys and "parsedRecord" in srs_record_keys:
+        return True
+    return False
 
 
 def srs_check_add(**kwargs) -> int:

@@ -28,7 +28,7 @@ from libsys_airflow.plugins.folio.helpers.marc import (
     _move_equals_subfield,
     post_marc_to_srs,
     _remove_unauthorized,
-    srs_check_add
+    srs_check_add,
 )
 
 from libsys_airflow.plugins.folio.helpers.marc import process as process_marc
@@ -80,6 +80,10 @@ def mock_srs_requests(monkeypatch, mocker: MockerFixture):
         get_response = mocker.stub(name="get-response")
         if args[0].endswith("e9a161b7-3541-54d6-bd1d-e4f2c3a3db79"):
             get_response.status_code = 200
+            get_response.json = lambda: records[0]
+        if args[0].endswith("3019a865-f60d-46b9-872e-74d67a1b72d7"):
+            get_response.status_code = 200
+            get_response.json = lambda: records[-1]
         if args[0].endswith("9cb89c9a-1184-4969-ae0d-19e4667bcea3") or args[0].endswith(
             "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4"
         ):
@@ -93,38 +97,47 @@ def mock_srs_requests(monkeypatch, mocker: MockerFixture):
     monkeypatch.setattr(requests, "get", mock_get)
 
 
+records = [
+    {
+        "id": "e9a161b7-3541-54d6-bd1d-e4f2c3a3db79",
+        "generation": "0",
+        "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "parsedRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "externalIdsHolder": {"instanceHrid": "a34567"},
+    },
+    {
+        "id": "9cb89c9a-1184-4969-ae0d-19e4667bcea3",
+        "generation": "0",
+        "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "parsedRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "externalIdsHolder": {"instanceHrid": "a13981569"},
+    },
+    {
+        "id": "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4",
+        "generation": "0",
+        "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "parsedRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "externalIdsHolder": {"instanceHrid": "a165578"},
+    },
+    {
+        "id": "d0c4f6ef-770d-44de-9d91-0bc6aa654391",
+        "generation": "0",
+        "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
+        "externalIdsHolder": {"instanceHrid": "a11665261"},
+    },
+    {
+        "id": "3019a865-f60d-46b9-872e-74d67a1b72d7",
+        "generation": "0",
+        "externalIdsHolder": {"instanceHrid": "a8705476"},
+    },
+]
+
+
 @pytest.fixture
 def srs_file(mock_file_system):  # noqa
     results_dir = mock_file_system[3]
 
     srs_filepath = results_dir / "folio_srs_instances_bibs-transformer.json"
-
-    records = [
-        {
-            "id": "e9a161b7-3541-54d6-bd1d-e4f2c3a3db79",
-            "generation": "0",
-            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
-            "externalIdsHolder": {"instanceHrid": "a34567"},
-        },
-        {
-            "id": "9cb89c9a-1184-4969-ae0d-19e4667bcea3",
-            "generation": "0",
-            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
-            "externalIdsHolder": {"instanceHrid": "a13981569"},
-        },
-        {
-            "id": "c9198b05-8d7e-4769-b0cf-a8ca579c0fb4",
-            "generation": "0",
-            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
-            "externalIdsHolder": {"instanceHrid": "a165578"},
-        },
-        {
-            "id": "d0c4f6ef-770d-44de-9d91-0bc6aa654391",
-            "generation": "0",
-            "rawRecord": {"content": {"leader": "01634pam a2200433 i 4500"}},
-            "externalIdsHolder": {"instanceHrid": "a11665261"},
-        },
-    ]
 
     with srs_filepath.open("w+") as fo:
         for record in records:
@@ -181,9 +194,7 @@ def test_discover_srs_files(mock_file_system, srs_file):  # noqa
     iteration_two_results = airflow / "migration/iterations/manual_2023-03-09/results/"
     iteration_two_results.mkdir(parents=True)
 
-    iterations = discover_srs_files(
-        airflow=mock_file_system[0]
-    )
+    iterations = discover_srs_files(airflow=mock_file_system[0])
 
     assert len(iterations) == 1
     assert iterations[0] == str(airflow / "migration/iterations/manual_2022-03-05")
@@ -332,6 +343,7 @@ def test_filter_mhlds(tmp_path, caplog):
     filter_mhlds(mhld_mock)
 
     assert "Finished filtering MHLD, start 3 removed 2" in caplog.text
+
 
 def test_get_snapshot_id(mock_srs_requests):
     snapshot = get_snapshot_id(MockFOLIOClient())
@@ -640,7 +652,9 @@ def test_missing_file_post_marc_to_srs(
     assert "test-mhlds-srs.json does not exist, existing task" in caplog.text
 
 
-def test_srs_check_add(mock_file_system, mock_dag_run, srs_file, mock_srs_requests, caplog):  # noqa
+def test_srs_check_add(
+    mock_file_system, mock_dag_run, srs_file, mock_srs_requests, caplog  # noqa
+):
     airflow = mock_file_system[0]
     results_dir = mock_file_system[3]
 
@@ -653,19 +667,45 @@ def test_srs_check_add(mock_file_system, mock_dag_run, srs_file, mock_srs_reques
 
     audit_db = sqlite3.connect(results_dir / "audit-remediation.db")
 
-    mock_srs_file = srs_file
-
     bib_count = srs_check_add(
-            audit_connection=audit_db,
-            results_dir=results_dir,
-            srs_type=FOLIONamespaces.srs_records_bib.value,
-            file_name="folio_srs_instances_bibs-transformer.json",
-            snapshot_id="abcdefegrh",
-            folio_client=MockFOLIOClient(),
-            srs_label="SRS MARC BIBs",
+        audit_connection=audit_db,
+        results_dir=results_dir,
+        srs_type=FOLIONamespaces.srs_records_bib.value,
+        file_name="folio_srs_instances_bibs-transformer.json",
+        snapshot_id="abcdefegrh",
+        folio_client=MockFOLIOClient(),
+        srs_label="SRS MARC BIBs",
     )
 
-    assert bib_count == 4
+    cur = audit_db.cursor()
+
+    assert bib_count == 5
+    existing_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=1;"""
+    ).fetchone()[0]
+    assert existing_records == 2
+    missing_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=2;"""
+    ).fetchone()[0]
+    assert missing_records == 2
+
+    error_records = cur.execute(
+        """SELECT count(id) FROM AuditLog WHERE status=3;"""
+    ).fetchone()[0]
+    assert error_records == 1
+
+    missing_properties_message = cur.execute(
+        """SELECT Errors.message FROM Errors, Record
+        WHERE Errors.log_id = Record.id AND
+        Record.hrid=?;""",
+        ('a8705476',),
+    ).fetchone()[0]
+
+    assert (
+        missing_properties_message
+        == "SRS Record missing properties 'parsedRecord' or 'rawRecord' in ['id', 'generation', 'externalIdsHolder']"
+    )
+    cur.close()
 
 
 def test_process_marc():

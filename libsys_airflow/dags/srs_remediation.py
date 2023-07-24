@@ -26,6 +26,7 @@ def _get_audit_db(results_dir: str) -> sqlite3.Connection:
         raise ValueError(f"{audit_db_path} does not exist")
     return sqlite3.connect(audit_db_path)
 
+
 def _folio_client():
     return FolioClient(
         Variable.get("okapi_url"),
@@ -51,7 +52,6 @@ with DAG(
     tags=["bib_import", "folio"],
     max_active_runs=4,
 ) as dag:
-    
 
     @task(multiple_outputs=True)
     def start_srs_check_remediation(**kwargs):
@@ -80,7 +80,7 @@ with DAG(
             srs_type=FOLIONamespaces.srs_records_holdingsrecord.value,
             file_name="folio_srs_holdings_mhld-transformer.json",
             snapshot_id=kwargs["snapshot"],
-            folio_client=FOLIO_CLIENT,
+            folio_client=_folio_client(),
             srs_label="SRS MHLDs",
         )
         audit_connection.close()

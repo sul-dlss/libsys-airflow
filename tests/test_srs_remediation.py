@@ -17,7 +17,7 @@ def mock_context(mocker: MockerFixture) -> MockerFixture:
     def mock_get(*args):
         return {"iteration": "/opt/airflow/migration/iterations/manual_2023-07-21"}
 
-    mocker.get = mock_get
+    mocker.get = mock_get  # type: ignore
     return mocker
 
 
