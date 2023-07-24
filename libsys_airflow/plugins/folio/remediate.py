@@ -71,6 +71,13 @@ def _save_error(
     cur.close()
 
 
+def _save_malformed_error(con: sqlite3.Connection, db_id: int, message: str):
+    """Saves specific error with Malformed"""
+    cur = con.cursor()
+    cur.execute("INSERT INTO Errors (log_id, message) VALUES (?,?);", (db_id, message))
+    cur.close()
+
+
 def _add_missing_holdings(con: sqlite3.Connection, folio_client: FolioClient):
     """Adds Missing Holdings Records"""
     logger.info("Starting POSTs for Missing Holdings to FOLIO")

@@ -14,8 +14,7 @@ from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
 from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
-from libsys_airflow.plugins.folio.reports import srs_audit_report
-from libsys_airflow.plugins.folio.remediate import _save_error
+from libsys_airflow.plugins.folio.remediate import _save_error, _save_malformed_error
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +105,10 @@ def _check_add_srs_records(**kwargs) -> None:
     match check_record.status_code:
         case 200:
             add_audit_log(db_record_id, audit_connection, AuditStatus.EXISTS.value)
+            srs_properties = check_record.json().keys()
+            if not _valid_for_srs_properties(srs_properties):
+                message = f"SRS Record missing properties 'parsedRecord' or 'rawRecord' in {list(srs_properties)}"
+                _save_malformed_error(audit_connection, db_record_id, message)
             return
 
         case 404:
@@ -189,7 +192,7 @@ def _get_library(fields596: list) -> str:
     return library
 
 
-def _get_snapshot_id(folio_client):
+def get_snapshot_id(folio_client):
     snapshot_id = str(uuid.uuid4())
     snapshot_result = requests.post(
         f"{folio_client.okapi_url}/source-storage/snapshots",
@@ -266,7 +269,13 @@ def _remove_unauthorized(record: pymarc.Record):
             field.delete_subfield("?")
 
 
-def _srs_check_add(**kwargs) -> int:
+def _valid_for_srs_properties(srs_record_keys: list) -> bool:
+    if "rawRecord" in srs_record_keys and "parsedRecord" in srs_record_keys:
+        return True
+    return False
+
+
+def srs_check_add(**kwargs) -> int:
     """
     Runs audit/remediation for a single SRS file
     """
@@ -304,56 +313,12 @@ def _srs_check_add(**kwargs) -> int:
     return srs_count
 
 
-def _handle_srs_iteration(**kwargs):
-    iteration = kwargs["iteration"]
-    folio_client = kwargs["folio_client"]
-    iteration_name = iteration.split("/")[-1]
-    results_dir = pathlib.Path(f"{iteration}/results/")
-
-    audit_db_path = results_dir / "audit-remediation.db"
-    audit_connection = sqlite3.connect(str(audit_db_path))
-
-    snapshot = _get_snapshot_id(folio_client)
-
-    logger.info(f"Starting {iteration_name} iteration")
-
-    mhld_count = _srs_check_add(
-        audit_connection=audit_connection,
-        results_dir=results_dir,
-        srs_type=FOLIONamespaces.srs_records_holdingsrecord.value,
-        file_name="folio_srs_holdings_mhld-transformer.json",
-        snapshot_id=snapshot,
-        folio_client=folio_client,
-        srs_label="SRS MHLDs",
-    )
-
-    bib_count = _srs_check_add(
-        audit_connection=audit_connection,
-        results_dir=results_dir,
-        srs_type=FOLIONamespaces.srs_records_bib.value,
-        file_name="folio_srs_instances_bibs-transformer.json",
-        snapshot_id=snapshot,
-        folio_client=folio_client,
-        srs_label="SRS MARC BIBs",
-    )
-
-    srs_audit_report(audit_connection, iteration)
-
-    audit_connection.close()
-    total = mhld_count + bib_count
-    logger.info(f"Total SRS Records audited/remediated {total:,}")
-
-    return total
-
-
 def discover_srs_files(*args, **kwargs):
     """
     Iterates through migration iterations directory and checks for SRS file
     existence for later auditing/remediation
     """
     airflow = kwargs.get("airflow", "/opt/airflow/")
-    jobs = int(kwargs["jobs"])
-    task_instance = kwargs["task_instance"]
 
     iterations_dir = pathlib.Path(airflow) / "migration/iterations"
     srs_iterations = []
@@ -363,18 +328,8 @@ def discover_srs_files(*args, **kwargs):
         if srs_file.exists():
             srs_iterations.append(str(iteration))
 
-    shard_size = int(len(srs_iterations) / jobs)
-    for i in range(jobs):
-        start = i * shard_size
-        end = shard_size * (i + 1)
-        if i == jobs - 1:
-            end = len(srs_iterations)
-
-        task_instance.xcom_push(key=f"job-{i}", value=srs_iterations[start:end])
-
-    logger.info(
-        f"Finished SRS discovery, found {len(srs_iterations)} files and created {jobs} batches"
-    )
+    logger.info(f"Finished SRS discovery, found {len(srs_iterations)} migration loads")
+    return srs_iterations
 
 
 def filter_mhlds(mhld_path: pathlib.Path):
@@ -401,31 +356,6 @@ def filter_mhlds(mhld_path: pathlib.Path):
     logger.info(
         f"Finished filtering MHLD, start {start_total:,} removed {start_total - len(filtered_records):,} records"
     )
-
-
-def handle_srs_files(*args, **kwargs):
-    """
-    Using a list of iteration directories, calls function for checking/adding
-    SRS files.
-    """
-    task_instance = kwargs["task_instance"]
-    job = kwargs["job"]
-    folio_client = kwargs["folio_client"]
-
-    iterations = task_instance.xcom_pull(task_ids="find-srs-files", key=f"job-{job}")
-
-    logger.info(f"Starting Check/Add SRS Bibs files for {len(iterations):,}")
-
-    total_srs_count = 0
-    for iteration in iterations:
-        total_srs_count += _handle_srs_iteration(
-            iteration=iteration, folio_client=folio_client
-        )
-
-    logger.info(
-        f"Finished auditing/remediation of {total_srs_count:,} records for {len(iterations)}"
-    )
-    return total_srs_count
 
 
 def marc_only(*args, **kwargs):
