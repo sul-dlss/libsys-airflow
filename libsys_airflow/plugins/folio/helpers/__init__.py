@@ -88,6 +88,9 @@ def get_bib_files(**kwargs):
     task_instance.xcom_push(
         key="tsv-instatcode", value=bib_file_load.get("tsv-instatcode")
     )
+    task_instance.xcom_push(
+        key="tsv-holdingsnotes", value=bib_file_load.get("tsv-holdingsnotes")
+    )
 
 
 def post_to_okapi(**kwargs) -> dict:

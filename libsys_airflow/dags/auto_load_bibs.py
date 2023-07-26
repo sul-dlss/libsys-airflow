@@ -63,6 +63,8 @@ def auto_bib_loads(**kwargs):
                     record_group["tsv-dates"] = tsv_file_str
                 elif tsv_file.name.endswith("bwchild.tsv"):
                     record_group["tsv-bwchild"] = tsv_file_str
+                elif tsv_file.name.endswith("holdingsnote.tsv"):
+                    record_group["tsv-holdingsnotes"] = tsv_file_str
                 elif tsv_file.name.endswith("instatcode.tsv"):
                     record_group["tsv-instatcode"] = tsv_file_str
                 else:
