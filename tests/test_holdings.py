@@ -2,9 +2,12 @@ import json
 
 from copy import deepcopy
 
+import pandas as pd
+
 import pytest  # noqa
 import pydantic
 import pymarc
+
 
 from libsys_airflow.plugins.folio.holdings import (
     electronic_holdings,
@@ -15,6 +18,7 @@ from libsys_airflow.plugins.folio.holdings import (
     run_mhld_holdings_transformer,
     boundwith_holdings,
     _add_holdings_type_ids,
+    _add_note_to_holding,
     _alt_condition_remove_ending_punc,
     _alt_get_legacy_ids,
     _wrap_additional_mapping,
@@ -500,3 +504,61 @@ def test_holdings_only_notes(mock_file_system, mock_dag_run):  # noqa
         mod_holdings[2]["notes"][0]["note"]
         == "aRetain 856 even if there is a 956. (krt,6/16/2023)"
     )
+
+
+def test_add_note_to_holding():
+    note_types = {
+        "Circ Staff": "80cab8e6-7f76-4fc3-8fc6-54cfb8e659ee",
+        "HVSHELFLOC": "c1292ffe-3eaf-43d2-8eb1-50a2520da9bf",
+        "Public": "33e6216d-4088-4834-b840-ef13312ce6b8",
+    }
+    holding_one = {}
+    _add_note_to_holding(
+        pd.Series(["a note", "CIRCNOTE"], ["NOTE", "NOTE_TYPE"]),
+        holding_one,
+        note_types,
+    )
+    assert holding_one["notes"][0] == {
+        "note": "a note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["Circ Staff"],
+    }
+    holding_two = {}
+    _add_note_to_holding(
+        pd.Series(["second note", "CIRCSTAFF"], ["NOTE", "NOTE_TYPE"]),
+        holding_two,
+        note_types,
+    )
+    assert holding_two["notes"][0] == {
+        "note": "second note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["Circ Staff"],
+    }
+    holding_three = {}
+    _add_note_to_holding(
+        pd.Series(["Hoover note", "HVSHELFLOC"], ["NOTE", "NOTE_TYPE"]),
+        holding_three,
+        note_types,
+    )
+    assert holding_three["notes"][0] == {
+        "note": "Hoover note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["HVSHELFLOC"],
+    }
+    _add_note_to_holding(
+        pd.Series(["Very Public", "PUBLIC"], ["NOTE", "NOTE_TYPE"]),
+        holding_three,
+        note_types,
+    )
+    assert holding_three["notes"][1] == {
+        "note": "Very Public",
+        "staffOnly": False,
+        "holdingsNoteTypeId": note_types["Public"],
+    }
+    holding_four = {}
+    _add_note_to_holding(
+        pd.Series(["Unknown Note", "UNKNOWN"], ["NOTE", "NOTE_TYPE"]),
+        holding_four,
+        note_types,
+    )
+    assert holding_four["notes"][0] == {"note": "Unknown Note", "staffOnly": False}

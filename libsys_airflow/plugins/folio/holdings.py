@@ -7,6 +7,7 @@ import re
 import pandas as pd
 
 from functools import partialmethod
+from typing import Tuple
 
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 from folioclient import FolioClient
@@ -271,7 +272,7 @@ def _add_note_to_holding(row: pd.Series, holding: dict, note_types: dict):
     holding["notes"].append(note)
 
 
-def _get_holdings_lookups(**kwargs) -> dict:
+def _get_holdings_lookups(**kwargs) -> Tuple[dict, dict]:
     """
     Retrieves Holdings Note Types from FOLIO
     """
@@ -315,7 +316,7 @@ def _electronic_notes(notes_df: pd.DataFrame, holding: dict, notes_type_lookup: 
         _add_note_to_holding(row[1], holding, notes_type_lookup)
 
 
-def holdings_only_notes(**kwargs):
+def holdings_only_notes(**kwargs) -> None:
     """
     Creates notes for BASECALLNUM and Internet holdings that do not have FOLIO Items
     """
