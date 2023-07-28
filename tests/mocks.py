@@ -1,6 +1,7 @@
 import logging
 
 from datetime import datetime
+from typing import Optional, Callable
 
 import pydantic
 import pytest
@@ -8,6 +9,7 @@ import requests
 
 from airflow.models import Variable
 from pytest_mock import MockerFixture
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +134,7 @@ class MockFOLIOClient(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_headers: dict = {}
     locations: list = []
+    folio_get: Optional[Callable | None] = None
 
 
 class MockTaskInstance(pydantic.BaseModel):

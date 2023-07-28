@@ -1,17 +1,24 @@
 import json
 
+from copy import deepcopy
+
+import pandas as pd
+
 import pytest  # noqa
 import pydantic
 import pymarc
 
+
 from libsys_airflow.plugins.folio.holdings import (
     electronic_holdings,
+    holdings_only_notes,
     post_folio_holding_records,
     update_holdings,
     run_holdings_tranformer,
     run_mhld_holdings_transformer,
     boundwith_holdings,
     _add_holdings_type_ids,
+    _add_note_to_holding,
     _alt_condition_remove_ending_punc,
     _alt_get_legacy_ids,
     _wrap_additional_mapping,
@@ -300,6 +307,34 @@ def test_run_mhld_holdings_transformer(mock_file_system):  # noqa
     assert run_mhld_holdings_transformer  # type: ignore
 
 
+def _mock_folio_get(url: str) -> dict:
+    output = {}
+    if url.startswith("/holdings-note-types"):
+        output["holdingsNoteTypes"] = [
+            {
+                "id": "1c83e151-d1ef-4144-a52d-cc9762aa4923",
+                "name": "Tech Staff",
+            },
+        ]
+    if url.startswith("/holdings-types"):
+        output["holdingsTypes"] = [
+            {
+                "id": "5684e4a3-9279-4463-b6ee-20ae21bbec07",
+                "name": "Book",
+            },
+            {
+                "id": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
+                "name": "Bound-with",
+            },
+            {
+                "id": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
+                "name": "Electronic",
+            },
+            {"id": "f6ba0bff-5674-445b-9922-8451d0365814", "name": "Unknown"},
+        ]
+    return output
+
+
 def test_boundwith_holdings(
     mock_dag_run, mock_okapi_variable, mock_file_system  # noqa
 ):
@@ -318,6 +353,16 @@ def test_boundwith_holdings(
         for line in bw_tsv_lines:
             fo.write(f"{line}\n")
 
+    holdingsnotes_bw_tsv = mock_file_system[1] / "ckeys_.holdingsnote.tsv"
+    mocks.messages["bib-files-group"]["tsv-holdingsnotes"] = str(holdingsnotes_bw_tsv)
+
+    with holdingsnotes_bw_tsv.open("w+") as fo:
+        for line in [
+            "CATKEY\tCALL_SEQ\tCOPY\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tNOTE_TYPE\tNOTE",
+            "2956972\t2\t1\tGREEN\tFED-DOCS\tFED-DOCS\tNONCIRC\tBW-CHILD\tTECHSTAFF\tac:yd, 4/20/23",
+        ]:
+            fo.write(f"{line}\n")
+
     holdings_json = mock_file_system[3] / "folio_holdings_boundwith.json"
 
     mock_folio_client = MockFOLIOClient(
@@ -326,6 +371,8 @@ def test_boundwith_holdings(
             {"id": "58168a3-ede4-4cc1-8c98-61f4feeb22ea", "code": "SAL3-SEE-OTHER"},
         ]
     )
+
+    mock_folio_client.folio_get = _mock_folio_get
 
     boundwith_holdings(
         airflow=mock_file_system[0],
@@ -346,19 +393,12 @@ def test_boundwith_holdings(
 
     assert len(bw_part_rec) == 1
     assert holdings_records[0]["id"] == bw_part_rec[0]["holdingsRecordId"]
-
-
-class FolioClientMock(pydantic.BaseModel):
-    folio_get = lambda *args: {  # noqa
-        "holdingsTypes": [
-            {"id": "5684e4a3-9279-4463-b6ee-20ae21bbec07", "name": "Book"},
-            {"id": "f6ba0bff-5674-445b-9922-8451d0365814", "name": "Unknown"},
-        ]
-    }
+    assert holdings_records[0]["notes"][0]["note"] == "ac:yd, 4/20/23"
 
 
 def test_add_holdings_type_ids(mock_file_system, mock_dag_run):  # noqa
-    folio_client = FolioClientMock()
+    mock_folio_client = MockFOLIOClient()
+    mock_folio_client.folio_get = _mock_folio_get
 
     holdings_path = mock_file_system[3] / "folio_holdings_tsv-transformer.json"
 
@@ -374,7 +414,7 @@ def test_add_holdings_type_ids(mock_file_system, mock_dag_run):  # noqa
     _add_holdings_type_ids(
         airflow=mock_file_system[0],
         dag_run_id=mock_dag_run.run_id,
-        folio_client=folio_client,
+        folio_client=mock_folio_client,
     )
 
     with holdings_path.open() as fo:
@@ -407,3 +447,118 @@ def test_alt_get_legacy_ids():
     marc_record.add_field(field_852)
     legacy_id = _alt_get_legacy_ids(None, None, marc_record)
     assert legacy_id == ["1964746 SAL3 PAGE-GR"]
+
+
+def test_holdings_only_notes(mock_file_system, mock_dag_run):  # noqa
+    results_dir = mock_file_system[3]
+    holdings_json = results_dir / "folio_holdings.json"
+    holdingsnotes_tsv = mock_file_system[1] / "ckeys_.holdingsnote.tsv"
+
+    new_holdings = deepcopy(holdings)
+
+    new_holdings.append(
+        {
+            "id": "22f7534d-1808-5796-bfe5-c2071cda9bc9",
+            "holdingsTypeId": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
+            "hrid": "ah14717849_1",
+        }
+    )
+
+    # Sets holdingsTypeIds
+    new_holdings[0]["holdingsTypeId"] = "5684e4a3-9279-4463-b6ee-20ae21bbec07"
+    new_holdings[1]["holdingsTypeId"] = "5684e4a3-9279-4463-b6ee-20ae21bbec07"
+
+    with holdings_json.open("w+") as fo:
+        for holding in new_holdings:
+            fo.write(f"{json.dumps(holding)}\n")
+
+    mock_folio_client = MockFOLIOClient()
+    mock_folio_client.folio_get = _mock_folio_get
+
+    with holdingsnotes_tsv.open("w+") as fo:
+        for line in [
+            "CATKEY\tCALL_SEQ\tCOPY\tLIBRARY\tHOMELOCATION\tCURRENTLOCATION\tITEM_TYPE\tITEM_CAT1\tNOTE_TYPE\tNOTE",
+            "14717849\t1\t1\tSUL\tINTERNET\tINTERNET\tSUL\t\tTECHSTAFF\taRetain 856 even if there is a 956. (krt,6/16/2023)",
+            "123345\t2\t1\tGREEN\tBASECALNUM\tBASECALNUM\tSTKS-PERI\t\tTECHSTAFF\taBASE CALL NUMBER. DO NOT REMOVE OR USE.",
+            "123345\t1\t1\tGREEN\tBASECALNUM\tBASECALNUM\tSTKS-PERI\t\tTECHSTAFF\tai:yd, 5/10/23",
+        ]:
+            fo.write(f"{line}\n")
+
+    holdings_only_notes(
+        airflow=mock_file_system[0],
+        dag_run=mock_dag_run,
+        holdingsnotes_tsv=str(holdingsnotes_tsv),
+        folio_client=mock_folio_client,
+    )
+
+    with holdings_json.open() as fo:
+        mod_holdings = [json.loads(line) for line in fo.readlines()]
+
+    assert (
+        mod_holdings[0]["notes"][0]["note"]
+        == "aBASE CALL NUMBER. DO NOT REMOVE OR USE."
+    )
+    assert mod_holdings[0]["notes"][1]["note"] == "ai:yd, 5/10/23"
+    assert "notes" not in mod_holdings[1]
+    assert (
+        mod_holdings[2]["notes"][0]["note"]
+        == "aRetain 856 even if there is a 956. (krt,6/16/2023)"
+    )
+
+
+def test_add_note_to_holding():
+    note_types = {
+        "Circ Staff": "80cab8e6-7f76-4fc3-8fc6-54cfb8e659ee",
+        "HVSHELFLOC": "c1292ffe-3eaf-43d2-8eb1-50a2520da9bf",
+        "Public": "33e6216d-4088-4834-b840-ef13312ce6b8",
+    }
+    holding_one = {}
+    _add_note_to_holding(
+        pd.Series(["a note", "CIRCNOTE"], ["NOTE", "NOTE_TYPE"]),
+        holding_one,
+        note_types,
+    )
+    assert holding_one["notes"][0] == {
+        "note": "a note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["Circ Staff"],
+    }
+    holding_two = {}
+    _add_note_to_holding(
+        pd.Series(["second note", "CIRCSTAFF"], ["NOTE", "NOTE_TYPE"]),
+        holding_two,
+        note_types,
+    )
+    assert holding_two["notes"][0] == {
+        "note": "second note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["Circ Staff"],
+    }
+    holding_three = {}
+    _add_note_to_holding(
+        pd.Series(["Hoover note", "HVSHELFLOC"], ["NOTE", "NOTE_TYPE"]),
+        holding_three,
+        note_types,
+    )
+    assert holding_three["notes"][0] == {
+        "note": "Hoover note",
+        "staffOnly": True,
+        "holdingsNoteTypeId": note_types["HVSHELFLOC"],
+    }
+    _add_note_to_holding(
+        pd.Series(["Very Public", "PUBLIC"], ["NOTE", "NOTE_TYPE"]),
+        holding_three,
+        note_types,
+    )
+    assert holding_three["notes"][1] == {
+        "note": "Very Public",
+        "staffOnly": False,
+        "holdingsNoteTypeId": note_types["Public"],
+    }
+    holding_four = {}
+    _add_note_to_holding(
+        pd.Series(["Unknown Note", "UNKNOWN"], ["NOTE", "NOTE_TYPE"]),
+        holding_four,
+        note_types,
+    )
+    assert holding_four["notes"][0] == {"note": "Unknown Note", "staffOnly": False}

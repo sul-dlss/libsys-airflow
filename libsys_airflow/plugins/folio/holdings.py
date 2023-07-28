@@ -4,7 +4,10 @@ import logging
 import pathlib
 import re
 
+import pandas as pd
+
 from functools import partialmethod
+from typing import Tuple
 
 from folio_uuid.folio_uuid import FOLIONamespaces, FolioUUID
 from folioclient import FolioClient
@@ -235,6 +238,128 @@ def _update_srs_ids(
         srs_record["parsedRecord"]["content"]
     )
     return srs_record
+
+
+def _add_note_to_holding(row: pd.Series, holding: dict, note_types: dict):
+    if "notes" not in holding.keys():
+        holding["notes"] = []
+
+    note = {"note": row["NOTE"]}
+    match row["NOTE_TYPE"]:
+        case "CIRCNOTE":
+            note["staffOnly"] = True
+            note["holdingsNoteTypeId"] = note_types.get("Circ Staff")
+
+        case "CIRCSTAFF":
+            note["staffOnly"] = True
+            note["holdingsNoteTypeId"] = note_types.get("Circ Staff")
+
+        case "HVSHELFLOC":
+            note["staffOnly"] = True
+            note["holdingsNoteTypeId"] = note_types.get("HVSHELFLOC")
+
+        case "PUBLIC":
+            note["staffOnly"] = False
+            note["holdingsNoteTypeId"] = note_types.get("Public")
+
+        case "TECHSTAFF":
+            note["staffOnly"] = True
+            note["holdingsNoteTypeId"] = note_types.get("Tech Staff")
+
+        case _:
+            note["staffOnly"] = False
+
+    holding["notes"].append(note)
+
+
+def _get_holdings_lookups(**kwargs) -> Tuple[dict, dict]:
+    """
+    Retrieves Holdings Note Types from FOLIO
+    """
+    folio_client = kwargs.get("folio_client")
+
+    if folio_client is None:
+        folio_client = FolioClient(
+            Variable.get("okapi_url"),
+            "sul",
+            Variable.get("migration_user"),
+            Variable.get("migration_password"),
+        )
+
+    note_types, holdings_types = {}, {}
+
+    for row in folio_client.folio_get("/holdings-note-types?limit=100").get(
+        'holdingsNoteTypes', []
+    ):
+        note_types[row["name"]] = row["id"]
+
+    for row in folio_client.folio_get("/holdings-types?limit=100").get(
+        'holdingsTypes', []
+    ):
+        holdings_types[row['id']] = row['name']
+
+    return note_types, holdings_types
+
+
+def _basecallnum_notes(notes_df: pd.DataFrame, holding: dict, notes_type_lookup: dict):
+    for row in notes_df.loc[
+        (
+            (notes_df["HOMELOCATION"] == "BASECALNUM")
+            | (notes_df["CURRENTLOCATION"] == "BASECALNUM")
+        )
+    ].iterrows():
+        _add_note_to_holding(row[1], holding, notes_type_lookup)
+
+
+def _electronic_notes(notes_df: pd.DataFrame, holding: dict, notes_type_lookup: dict):
+    for row in notes_df.loc[notes_df["HOMELOCATION"] == "INTERNET"].iterrows():
+        _add_note_to_holding(row[1], holding, notes_type_lookup)
+
+
+def holdings_only_notes(**kwargs) -> None:
+    """
+    Creates notes for BASECALLNUM and Internet holdings that do not have FOLIO Items
+    """
+    airflow: str = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs["dag_run"]
+
+    holdingsnotes_path = pathlib.Path(kwargs["holdingsnotes_tsv"])
+    iteration_dir = pathlib.Path(f"{airflow}/migration/iterations/{dag.run_id}")
+
+    holdings_path = iteration_dir / "results/folio_holdings.json"
+
+    holdings_note_types, holding_types = _get_holdings_lookups(**kwargs)
+
+    with holdings_path.open() as fo:
+        holdings = [json.loads(line) for line in fo.readlines()]
+
+    holdingsnote_df = pd.read_csv(holdingsnotes_path, sep="\t", dtype=object)
+
+    logger.info(f"Addings notes from {holdingsnotes_path}")
+
+    existing_basenums, existing_electronic = set(), set()
+    for holding in holdings:
+        hrid = holding["hrid"]
+        hrid_base, holding_count = hrid.split("_")
+        catkey = hrid_base[2:]
+        holding_notes_df = holdingsnote_df.loc[holdingsnote_df["CATKEY"] == catkey]
+        if len(holding_notes_df) < 1:
+            continue
+        if holding_count == "1" and catkey not in existing_basenums:
+            _basecallnum_notes(holding_notes_df, holding, holdings_note_types)
+            existing_basenums.add(catkey)
+        if (
+            holding_types.get(holding["holdingsTypeId"]) == "Electronic"
+            and catkey not in existing_electronic
+        ):
+            _electronic_notes(holding_notes_df, holding, holdings_note_types)
+            existing_electronic.add(catkey)
+
+    with holdings_path.open("w+") as fo:
+        for holding in holdings:
+            fo.write(f"{json.dumps(holding)}\n")
+
+    holdingsnotes_path.unlink()
 
 
 def update_holdings(**kwargs):
@@ -501,10 +626,17 @@ def boundwith_holdings(*args, **kwargs):
     bwchild_file = task_instance.xcom_pull(
         task_ids="bib-files-group", key="bwchild-file"
     )
+
     if bwchild_file is None:
         logger.error("Boundwidth child file does not exist, exiting")
         return
     bw_tsv_path = pathlib.Path(bwchild_file)
+
+    holdingsnotes_file = task_instance.xcom_pull(
+        task_ids="bib-files-group", key="tsv-holdingsnotes"
+    )
+
+    holdingsnotes_df = pd.read_csv(holdingsnotes_file, sep="\t", dtype=object)
 
     bw_holdings_json_path = iteration_dir / "results/folio_holdings_boundwith.json"
     bw_parts_json_path = iteration_dir / "results/boundwith_parts.json"
@@ -516,6 +648,8 @@ def boundwith_holdings(*args, **kwargs):
             Variable.get("migration_user"),
             Variable.get("migration_password"),
         )
+
+    holdings_note_types, _ = _get_holdings_lookups(folio_client=folio_client)
 
     locations_lookup = {}
     for location in folio_client.locations:
@@ -564,6 +698,19 @@ def boundwith_holdings(*args, **kwargs):
                     "permanentLocationId": perm_loc_id,
                     "holdingsTypeId": "5b08b35d-aaa3-4806-998c-9cd85e5bc406",
                 }
+
+                bw_holdings_notes = holdingsnotes_df.loc[
+                    (
+                        (holdingsnotes_df["CATKEY"] == row["CATKEY"])
+                        & (holdingsnotes_df["CALL_SEQ"] == row["CALL_SEQ"])
+                        & (holdingsnotes_df["COPY"] == row["COPY"])
+                        & (holdingsnotes_df["ITEM_CAT1"] == "BW-CHILD")
+                    )
+                ]
+                if len(bw_holdings_notes) > 0:
+                    holdings["notes"] = []
+                    for note_row in bw_holdings_notes.iterrows():
+                        _add_note_to_holding(note_row[1], holdings, holdings_note_types)
 
                 logger.info(f"Writing holdings id {holdings_id} to file")
                 bwh.write(f"{json.dumps(holdings)}\n")

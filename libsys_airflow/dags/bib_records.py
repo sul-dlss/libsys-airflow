@@ -41,6 +41,7 @@ from libsys_airflow.plugins.folio.helpers.folio_ids import (
 
 from libsys_airflow.plugins.folio.holdings import (
     electronic_holdings,
+    holdings_only_notes,
     update_holdings,
     post_folio_holding_records,
     run_holdings_tranformer,
@@ -245,14 +246,22 @@ with DAG(
             python_callable=update_holdings,
         )
 
+        add_holdings_notes = PythonOperator(
+            task_id="add-holdings-notes",
+            python_callable=holdings_only_notes,
+            op_kwargs={
+                "holdingsnotes_tsv": "{{ ti.xcom_pull('bib-files-group', key='tsv-holdingsnotes') }}"
+            },
+        )
+
         update_items = PythonOperator(
             task_id="update-items-idents", python_callable=generate_item_identifiers
         )
 
         finish_hrid_updates = EmptyOperator(task_id="finish-hrid-updates")
 
-        update_holdings_hrids >> merge_all_holdings >> update_items
-        update_items >> finish_hrid_updates
+        update_holdings_hrids >> merge_all_holdings >> add_holdings_notes
+        add_holdings_notes >> update_items >> finish_hrid_updates
 
     with TaskGroup(group_id="records-to-valid-json") as records_valid_json:
         start_records_to_valid_json = EmptyOperator(task_id="start-recs-to-valid-json")
