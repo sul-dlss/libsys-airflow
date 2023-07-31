@@ -23,26 +23,27 @@ def _generate_record_lookups(
     Generates record lookup dictionary based on values in tsv
     """
     record_lookups: dict = {}
-    logger.info(f"Base {base_tsv}")
-    with base_tsv.open() as fo:
-        tsv_reader = csv.DictReader(fo, delimiter="\t")
-        for row in tsv_reader:
-            catkey = row['CATKEY']
-            discovery_suppress = False
-            if int(row['CATALOG_SHADOW']) > 0:
-                discovery_suppress = True
-            stat_codes = []
-            for item_cat in [row['ITEM_CAT1'], row['ITEM_CAT2']]:
-                if item_cat in lookup_stat_codes:
-                    stat_codes.append(lookup_stat_codes[item_cat])
-            if catkey in record_lookups:
-                record_lookups[catkey]["stat_codes"].extend(stat_codes)
-                record_lookups[catkey]["suppress"] = discovery_suppress
-            else:
-                record_lookups[catkey] = {
-                    "stat_codes": stat_codes,
-                    "suppress": discovery_suppress,
-                }
+    if base_tsv.exists():
+        logger.info(f"Base {base_tsv}")
+        with base_tsv.open() as fo:
+            tsv_reader = csv.DictReader(fo, delimiter="\t")
+            for row in tsv_reader:
+                catkey = row['CATKEY']
+                discovery_suppress = False
+                if int(row['CATALOG_SHADOW']) > 0:
+                    discovery_suppress = True
+                stat_codes = []
+                for item_cat in [row['ITEM_CAT1'], row['ITEM_CAT2']]:
+                    if item_cat in lookup_stat_codes:
+                        stat_codes.append(lookup_stat_codes[item_cat])
+                if catkey in record_lookups:
+                    record_lookups[catkey]["stat_codes"].extend(stat_codes)
+                    record_lookups[catkey]["suppress"] = discovery_suppress
+                else:
+                    record_lookups[catkey] = {
+                        "stat_codes": stat_codes,
+                        "suppress": discovery_suppress,
+                    }
 
     if instatcodes_tsv.exists():
         logger.info(f"Instance Stat Codes {instatcodes_tsv}")

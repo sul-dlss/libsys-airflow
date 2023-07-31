@@ -333,6 +333,10 @@ def holdings_only_notes(**kwargs) -> None:
     with holdings_path.open() as fo:
         holdings = [json.loads(line) for line in fo.readlines()]
 
+    if not holdingsnotes_path.exists():
+        logger.info(f"{holdingsnotes_path} doesn't exist; exiting")
+        return
+
     holdingsnote_df = pd.read_csv(holdingsnotes_path, sep="\t", dtype=object)
 
     logger.info(f"Addings notes from {holdingsnotes_path}")
@@ -471,6 +475,10 @@ def run_holdings_tranformer(*args, **kwargs):
         library_config.base_folder
         / f"iterations/{dag.run_id}/source_data/items/{holdings_stem}.tsv"
     )
+
+    if not holdings_filepath.exists():
+        logger.info(f"{holdings_filepath} doesn't exist; exiting")
+        return
 
     holdings_configuration = HoldingsCsvTransformer.TaskConfiguration(
         name="tsv-transformer",

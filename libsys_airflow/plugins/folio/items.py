@@ -280,6 +280,10 @@ def run_items_transformer(*args, **kwargs) -> None:
     items_stem = kwargs["items_stem"]
     items_tsv = f"{items_stem}.tsv"
 
+    if not pathlib.Path(items_tsv).exists():
+        logger.info(f"{items_tsv} doesn't exist; exiting")
+        return
+
     if items_stem.startswith("ON-ORDER"):
         mapping_file = "item_mapping_on_order.json"
     else:
