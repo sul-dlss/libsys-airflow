@@ -136,7 +136,11 @@ to see changes in the running Airflow environment.
 ## Running the DAGs to load Folio Inventory
 
 ### Optionally turn off archiving for bulk loading
-
+```
+Issue a [puppet PR](https://github.com/sul-dlss/puppet) to set `archive_command` to `/bin/true`
+and to turn off load balancing, set pgpool's `load_balance_mode` to `off`
+```
+BELOW IS DEPRECATED
 ```
 echo $OKAPI_PASSWORD
 ssh folio@$PG_DB_HOST
