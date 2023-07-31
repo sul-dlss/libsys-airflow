@@ -98,6 +98,10 @@ def generate_item_identifiers(**kwargs) -> None:
 
     items_path = results_dir / "folio_items_transformer.json"
 
+    if not items_path.exists():
+        logger.info(f"{items_path} doesn't exist; exiting")
+        return
+
     items = []
     with items_path.open() as fo:
         items = [json.loads(line) for line in fo.readlines()]

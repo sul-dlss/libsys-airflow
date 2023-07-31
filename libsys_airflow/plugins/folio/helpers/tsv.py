@@ -127,6 +127,9 @@ def transform_move_tsvs(*args, **kwargs):
         task_ids="bib-files-group", key="tsv-files"
     )
     tsv_base_file = task_instance.xcom_pull(task_ids="bib-files-group", key="tsv-base")
+    if tsv_base_file is None:
+        logger.info("Missing base tsv file")
+        return
 
     tsv_notes = [pathlib.Path(filename) for filename in tsv_notes_files]
     tsv_base = pathlib.Path(tsv_base_file)
