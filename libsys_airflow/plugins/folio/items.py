@@ -280,7 +280,11 @@ def run_items_transformer(*args, **kwargs) -> None:
     items_stem = kwargs["items_stem"]
     items_tsv = f"{items_stem}.tsv"
 
-    if not pathlib.Path(items_tsv).exists():
+    items_tsv_path = pathlib.Path(
+        f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}"
+    )
+
+    if not items_tsv_path.exists():
         logger.info(f"{items_tsv} doesn't exist; exiting")
         return
 
@@ -289,11 +293,7 @@ def run_items_transformer(*args, **kwargs) -> None:
     else:
         mapping_file = "item_mapping.json"
 
-    _remove_on_order_items(
-        pathlib.Path(
-            f"{airflow}/migration/iterations/{dag.run_id}/source_data/items/{items_tsv}"
-        )
-    )
+    _remove_on_order_items(items_tsv_path)
 
     item_config = ItemsTransformer.TaskConfiguration(
         name="transformer",
