@@ -726,23 +726,12 @@ def boundwith_holdings(*args, **kwargs):
                 if len(row["BARCODE"]) < 1:
                     continue
 
-                bw_id = str(
-                    FolioUUID(
-                        okapi_url,
-                        FOLIONamespaces.other,
-                        row["CATKEY"] + row["BARCODE"],
-                    )
-                )
-
                 bw_parts = {
-                    "id": bw_id,
                     "holdingsRecordId": holdings_id,
                     "itemId": str(
                         FolioUUID(okapi_url, FOLIONamespaces.items, row["BARCODE"])
                     ),
                 }
-
-                logger.info(f"Writing bound-with part id {bw_id} to file")
                 bwp.write(f"{json.dumps(bw_parts)}\n")
 
     bw_tsv_path.unlink()
