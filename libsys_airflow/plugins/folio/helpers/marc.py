@@ -217,7 +217,7 @@ def _move_001_to_035(record: pymarc.Record) -> str | None:
             field035 = pymarc.Field(
                 tag="035",
                 indicators=[" ", " "],
-                subfields=[pymarc.Subfield(code="a", value=f"(Sirsi){field001.data}")],
+                subfields=[pymarc.Subfield(code="a", value=f"(Sirsi) {field001.data}")],
             )
             record.add_field(field035)
             record.remove_field(field001)
