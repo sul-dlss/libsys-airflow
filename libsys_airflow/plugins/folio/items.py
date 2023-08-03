@@ -16,7 +16,9 @@ from libsys_airflow.plugins.folio.helpers import post_to_okapi, setup_data_loggi
 logger = logging.getLogger(__name__)
 
 # TODO: once on python >= 3.11, can mark "codes" specifically as NotRequired; for now, total=False makes all keys optional
-BarcodeDict = TypedDict('BarcodeDict', {"suppress?": bool, "codes": list}, total=False)
+BarcodeDict = TypedDict(
+    'BarcodeDict', {"suppress?": bool, "codes": list, "withdrawn?": bool}, total=False
+)
 
 
 def _determine_discovery_suppress(row: dict, suppressed_locations: dict) -> bool:
@@ -45,6 +47,15 @@ def _determine_stat_codes(row: dict, stat_codes: dict) -> list:
     if len(row["ITEM_CAT2"]) > 0 and row["ITEM_CAT2"] in stat_codes:
         codes.append(stat_codes[row["ITEM_CAT2"]])
     return codes
+
+
+def _determine_withdrawn(row: dict) -> bool:
+    """
+    Determines if Item is withdrawn
+    """
+    return row["HOMELOCATION"].startswith("WITHDRAWN") or row[
+        "CURRENTLOCATION"
+    ].startswith("WITHDRAWN")
 
 
 def _generate_item_notes(
@@ -124,6 +135,9 @@ def _generate_items_lookups(
             if len(codes) > 0:
                 items_lookup[row["BARCODE"]]["codes"] = codes
 
+            # Withdrawn
+            items_lookup[row["BARCODE"]]["withdrawn?"] = _determine_withdrawn(row)
+
     return items_lookup
 
 
@@ -195,6 +209,20 @@ def _retrieve_item_notes_ids(folio_client) -> dict:
     return note_types
 
 
+def _set_withdrawn_note(item: dict, item_lookups: dict, note_types: dict) -> None:
+    """
+    Adds Withdrawn Note based on lookup
+    """
+    if item_lookups.get(item.get('barcode'), {}).get("withdrawn?", False):
+        note = {"note": "Withdrawn in Symphony", "type": note_types.get("Withdrawn")}
+        if "notes" in item:
+            item["notes"].append(note)
+        else:
+            item["notes"] = [
+                note,
+            ]
+
+
 def _add_additional_info(**kwargs) -> None:
     """Generates notes from tsv files"""
     airflow: str = kwargs["airflow"]
@@ -213,7 +241,7 @@ def _add_additional_info(**kwargs) -> None:
         tsv_notes_path = pathlib.Path(tsv_notes_path)
         tsv_notes_df = pd.read_csv(tsv_notes_path, sep="\t", dtype=object)
 
-        item_note_types = _retrieve_item_notes_ids(folio_client)
+    item_note_types = _retrieve_item_notes_ids(folio_client)
 
     items_lookup = _generate_items_lookups(airflow, items_tsv_path, folio_client)
 
@@ -229,6 +257,7 @@ def _add_additional_info(**kwargs) -> None:
             _set_discovery_suppress(item, items_lookup)
             if "codes" in items_lookup.get(item.get("barcode"), {}):
                 item["statisticalCodeIds"] = items_lookup[item.get("barcode")]["codes"]
+            _set_withdrawn_note(item, items_lookup, item_note_types)
             items.append(item)
 
             if not len(items) % 1000:

@@ -15,6 +15,7 @@ from libsys_airflow.plugins.folio.items import (
     run_items_transformer,
     _add_additional_info,
     _generate_item_notes,
+    _set_withdrawn_note,
     _remove_on_order_items,
 )
 
@@ -35,6 +36,7 @@ item_note_types = {
         {"id": "e9f6de86-e564-4095-a61a-38c9e0e6b2fc", "name": "Tech Staff"},
         {"id": "62fd6fcc-5cde-4a74-849a-66e2d77a1f12", "name": "Public"},
         {"id": "1d14675c-c163-4502-98f9-961cd3d17ab2", "name": "Circ Staff"},
+        {"id": "abeebfcc-53f9-4aea-ad80-561bebd99754", "name": "Withdrawn"},
     ]
 }
 
@@ -92,7 +94,8 @@ items_notes = [
     "1233455\ta note\tCIRCSTAFF\n",
     "1233455\ta note for the public\tCIRCNOTE\n",
     "55678446243\tavailable for checkout\tPUBLIC\n",
-    "55678446243\ttf:green, hbr 9/20/2013\tTECHSTAFF",
+    "55678446243\ttf:green, hbr 9/20/2013\tTECHSTAFF\n",
+    "8772580-1001\tAt Hoover\tHVSHELFLOC",
 ]
 
 items_recs = [
@@ -116,6 +119,10 @@ items_recs = [
         "holdingsRecordId": "fc473c74-c811-4ae9-bcd9-387a1d10b967",
         "barcode": "0267132027",
     },
+    {
+        "holdingsRecordId": "a36e1aa4-e965-522a-8afb-dceac63f4206",
+        "barcode": "8772580-1001",
+    },
 ]
 
 items_tsv = [
@@ -125,6 +132,7 @@ items_tsv = [
     "145623\t1\t1\t4614642357\tSAL3\tSPECB-S\tINPROCESS\tSTKS-MONO\t\tFED-WEED\t0\tLC\tRH640 .I34 1996\t\t0\tMARC\t0",
     "262345\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\t\t\t1\tLC\tYU40 .J4 2096\t\t0\tMARC\t0",  # ITEM SHADOW
     "5559991\t1\t1\t7659908473\tSAL3\tINPROCESS\tINPROCESS\tSTKS-MONO\tDIGI-SENT\tFED-WEED\t0\tLC\tEG640 .J4 1796\t\t1\tMARC\t0",  # CALL SHADOW
+    "8772580\t1\t1\t8772580-1001\tSUL\tSTACKS\tWITHDRAWN\tSTKS\t\t\t0\t1\tLC\tXX(8772580.1)\t0\tMARC\t0",
 ]
 
 
@@ -237,10 +245,11 @@ def test_add_additional_info(
     assert "discoverySuppress" not in new_items_recs[1]
     assert new_items_recs[2]["discoverySuppress"] is True
     assert new_items_recs[3]["discoverySuppress"] is True
-    assert new_items_recs[-2]["statisticalCodeIds"] == [
+    assert new_items_recs[-3]["statisticalCodeIds"] == [
         "8be8d577-1cd7-4b84-ae71-d9472fc4d2b1",
         "9c98fbcc-1728-41f5-9382-038d9fa45c0f",
     ]
+    assert new_items_recs[-1]["notes"][1]["note"] == "Withdrawn in Symphony"
 
 
 def test_add_additional_info_missing_barcode(
@@ -308,3 +317,11 @@ def test_remove_on_order_items(tmp_path):
     _remove_on_order_items(source_path)
     filtered_df = pd.read_csv(source_path, sep="\t")
     assert len(filtered_df) == 1
+
+
+def test_set_withdrawn_note_no_prior_notes():
+    item = {"barcode": "295013344"}
+    item_lookups = {"295013344": {"withdrawn?": True}}
+    _set_withdrawn_note(item, item_lookups, item_note_types)
+    assert item["notes"][0]["note"] == "Withdrawn in Symphony"
+    assert item["notes"][0]["type"] == item_note_types.get("Withdrawn")
