@@ -157,21 +157,12 @@ def _wrap_additional_mapping(func):
     return wrapper
 
 
-def _adjust_coded_holdings_statements(*args):
+def _ignore_coded_holdings_statements(*args):
     """
     This function overrides RulesMapperHolding method for mapping
-    various 85x and 86x fields to HoldingsStatements. This function
-    breaks out the holdingsStatement from the note properities
+    various 85x and 86x fields to notes and HoldingsStatements
     """
-    existing_852_entity = args[0].mappings['852'][0]["entity"]
-    args[0].mappings['852'][0]["entity"] = existing_852_entity[1:]
-    args[0].mappings['852'].append(
-        {
-            "entity": [
-                existing_852_entity[0],
-            ]
-        }
-    )
+    pass
 
 
 def _ignore_fix_853_bug_in_rules(*args):
@@ -564,7 +555,7 @@ def run_mhld_holdings_transformer(*args, **kwargs):
 
     # Overrides method that applies default mappings for 85x and 86x fields
     RulesMapperHoldings.parse_coded_holdings_statements = partialmethod(
-        _adjust_coded_holdings_statements, RulesMapperHoldings
+        _ignore_coded_holdings_statements, RulesMapperHoldings
     )
 
     # Overrides method that handles 852 field
