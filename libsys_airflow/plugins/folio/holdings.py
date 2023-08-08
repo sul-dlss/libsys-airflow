@@ -136,17 +136,21 @@ def _wrap_additional_mapping(func):
         "copyNumber",
     }
 
+    def _filter_property(holdings, holding_property):
+        filtered_holdings = []
+        for row in holdings.get(holding_property, []):
+            existing_props = top_level_props.intersection(set(row.keys()))
+            for prop in list(existing_props):
+                holdings[prop] = row.pop(prop)
+            if len(row) > 0:
+                filtered_holdings.append(row)
+        if len(filtered_holdings) > 0:
+            holdings[holding_property] = filtered_holdings
+
     def wrapper(*args, **kwargs):
         holdings_record = args[1]
-        filtered_holdings = []
-        for statement in holdings_record.get("holdingsStatements", []):
-            existing_props = top_level_props.intersection(set(statement.keys()))
-            for prop in list(existing_props):
-                holdings_record[prop] = statement.pop(prop)
-            if len(statement) > 0:
-                filtered_holdings.append(statement)
-        if len(filtered_holdings) > 0:
-            holdings_record["holdingsStatements"] = filtered_holdings
+        _filter_property(holdings_record, "holdingsStatements")
+        _filter_property(holdings_record, "notes")
         holdings_record["callNumber"] = "MARC Holdings"
         func(*args, **kwargs)
 
@@ -156,8 +160,7 @@ def _wrap_additional_mapping(func):
 def _ignore_coded_holdings_statements(*args):
     """
     This function overrides RulesMapperHolding method for mapping
-    various 85x and 86x fields to HoldingsStatements, we want to just
-    use the MARC Holdings map from the FOLIO server
+    various 85x and 86x fields to notes and HoldingsStatements
     """
     pass
 
