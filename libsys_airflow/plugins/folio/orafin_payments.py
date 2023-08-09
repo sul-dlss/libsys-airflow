@@ -71,14 +71,14 @@ def _get_invoice(
     # Retrieves Invoice Details
     invoice = folio_client.get(f"/invoice/invoices/{invoice_id}")
     # Retrieves Invoices Lines and Purchase Order
-    invoice["lines"] = _get_invoice_lines(invoice_id, folio_client)
+    invoice["lines"], exclude_invoice = _get_invoice_lines(invoice_id, folio_client)
     # Call to Okapi organization endpoint to see VAT is applicable
     invoice["vendor"] = folio_client.get(
         f"/organizations/organizations/{invoice['vendorId']}"
     )
     # Converts to Invoice Object
     invoice = converter.structure(invoice, Invoice)
-    return invoice
+    return invoice, exclude_invoice
 
 
 def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
@@ -86,6 +86,7 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
         "/invoice/invoice-lines", params={"query": f"invoiceId=={invoice_id}"}
     )
     invoice_lines = invoice_lines_result.get("invoiceLines", [])
+    exclude_invoice = False
     for row in invoice_lines:
         if "poLineId" in row:
             po_line_id = row['poLineId']
@@ -98,8 +99,11 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
             elif "physical" in po_result:
                 po_line["materialType"] = po_result["physical"].get("materialType")
             row["poLine"] = po_line
-        _get_fund(row.get("fundDistributions", []), folio_client)
-    return invoice_lines
+        fund_distributions = row.get("fundDistributions", [])
+        if any([fund_dist["distributionType"] == "amount" for fund_dist in fund_distributions]):
+            exclude_invoice = True
+        _get_fund(fund_distributions, folio_client)
+    return invoice_lines, exclude_invoice
 
 
 @task
