@@ -5,7 +5,7 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.folio.helpers.orafin_models import (
+from libsys_airflow.plugins.orafin.models import (
     FeederFile,
     Fund,
     fundDistribution,

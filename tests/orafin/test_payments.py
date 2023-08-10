@@ -3,13 +3,13 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.folio.orafin_payments import (
-    _get_invoice,
-    _init_feeder_file,
-    _models_converter,
+from libsys_airflow.plugins.orafin.payments import (
+    get_invoice,
+    init_feeder_file,
+    models_converter,
 )
 
-from libsys_airflow.plugins.folio.helpers.orafin_models import Invoice, FeederFile
+from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
 
 invoice = {
     "id": "a6452c96-53ef-4e51-bd7b-aa67ac971133",
@@ -101,12 +101,13 @@ def mock_folio_client():
 
 
 def test_get_invoice(mock_folio_client):
-    converter = _models_converter()
-    invoice = _get_invoice(
+    converter = models_converter()
+    invoice, exclude = get_invoice(
         "a6452c96-53ef-4e51-bd7b-aa67ac971133", mock_folio_client, converter
     )
 
     assert isinstance(invoice, Invoice)
+    assert exclude is False
     assert invoice.subTotal == 135.19
     assert len(invoice.lines) == 1
     assert invoice.amount == invoice.subTotal
@@ -136,8 +137,8 @@ def test_get_invoice(mock_folio_client):
 
 def test_init_feeder_file(mock_folio_client):
     invoices = [invoice]
-    converter = _models_converter()
-    feeder_file = _init_feeder_file(invoices, mock_folio_client, converter)
+    converter = models_converter()
+    feeder_file = init_feeder_file(invoices, mock_folio_client, converter)
 
     assert isinstance(feeder_file, FeederFile)
     assert feeder_file.batch_total_amount == 135.19

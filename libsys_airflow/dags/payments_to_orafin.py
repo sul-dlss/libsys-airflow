@@ -10,7 +10,7 @@ from libsys_airflow.plugins.folio.invoices import (
     invoices_pending_payment_task,
 )
 
-from libsys_airflow.plugins.folio.orafin_payments import (
+from libsys_airflow.plugins.orafin.tasks import (
     transform_folio_data_task,
     email_excluded_task,
     feeder_file_task,
