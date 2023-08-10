@@ -12,7 +12,9 @@ from libsys_airflow.plugins.folio.invoices import (
 
 from libsys_airflow.plugins.folio.orafin_payments import (
     transform_folio_data_task,
+    email_excluded_task,
     feeder_file_task,
+    filter_invoices_task,
     sftp_file_task,
 )
 
@@ -42,8 +44,12 @@ with DAG(
 
     orafin_data = transform_folio_data_task.expand(invoice_id=folio_invoice_ids)
 
-    feeder_file = feeder_file_task(orafin_data)
+    filtered_invoices = filter_invoices_task(orafin_data)
+
+    feeder_file = feeder_file_task(filtered_invoices["feed"])
 
     upload_status = sftp_file_task(feeder_file)
+
+    email_excluded_invoices = email_excluded_task(filtered_invoices["excluded"])
 
     invoices_pending_payment_task(folio_invoice_ids, upload_status)

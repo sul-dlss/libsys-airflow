@@ -1,8 +1,10 @@
 import logging
 
 from datetime import datetime
+from typing import Union
 from airflow.decorators import task
 from airflow.models import Variable
+from airflow.utils.email import send_email
 from cattrs import Converter
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
@@ -36,6 +38,54 @@ def _models_converter():
     return converter
 
 
+@task
+def email_excluded_task(invoices: list):
+    _generate_excluded_email(invoices)
+    return f"Emailed report for {len(invoices):,} invoices"
+
+
+def _invoice_line_links(invoice: Invoice, folio_url)->str:
+    html_output = "<ol>"
+    for line in invoice.lines:
+        if any([fund_dist.distributionType == "amount" for fund_dist in line.fundDistributions]):
+            line_url = f"{folio_url}/invoice/invoice-lines/{line.id}"
+            html_output = f""""<li><a href="{line_url}">{line.id}</a></li>"""
+    html_output += "</ol>"
+    return html_output
+
+
+def _generate_excluded_email(invoices: list):
+    """
+    Generates emails for excluded invoices
+    """
+    converter = _models_converter()
+    folio_url = Variable("FOLIO_URL")
+    html_content = """<h2>Amount Split</h2><ul>"""
+    for invoice_dict in invoices:
+        invoice = converter.structure(invoice_dict, Invoice)
+        html_content += f"""<li>
+        Vendor Invoice Number: {invoice.internal_number}
+        {_invoice_line_links(invoice, folio_url)}</li>"""
+    html_content += "</ul>"
+    send_email(
+        # to=["sa-payments@lists.stanford.edu"],
+        to=["jpnelson@stanford.edu"],
+        subject="Rejected Invoices for SUL",
+        html_content=html_content
+    )
+
+
+@task(multiple_outputs=True)
+def filter_invoices_task(invoices: list):
+    feeder_file, excluded = [], []
+    for row in invoices:
+        if row['exclude'] == True:
+            excluded.append(row['invoice'])
+        else:
+            feeder_file.append(row['invoice'])
+    return {"feed": feeder_file, "excluded": excluded} 
+
+
 @task(max_active_tis_per_dag=5)
 def transform_folio_data_task(invoice_id: str):
     """
@@ -45,8 +95,8 @@ def transform_folio_data_task(invoice_id: str):
     folio_client = _folio_client()
     converter = _models_converter()
     # Call to Okapi invoice endpoint
-    invoice = _get_invoice(invoice_id, folio_client, converter)
-    return converter.unstructure(invoice)
+    invoice, exclude = _get_invoice(invoice_id, folio_client, converter)
+    return {"invoice": converter.unstructure(invoice), "exclude": exclude}
 
 
 def _get_fund(fund_distributions: list, folio_client: FolioClient):
@@ -64,7 +114,7 @@ def _get_fund(fund_distributions: list, folio_client: FolioClient):
 
 def _get_invoice(
     invoice_id: str, folio_client: FolioClient, converter: Converter
-) -> Invoice:
+) -> tuple:
     """
     Retrieves Invoice, Invoice Lines, and Vendor
     """
@@ -83,7 +133,7 @@ def _get_invoice(
 
 def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
     invoice_lines_result = folio_client.get(
-        "/invoice/invoice-lines", params={"query": f"invoiceId=={invoice_id}"}
+        "/invoice/invoice-lines", params={"query": f"invoiceId=={invoice_id}", "limit": 250}
     )
     invoice_lines = invoice_lines_result.get("invoiceLines", [])
     exclude_invoice = False
