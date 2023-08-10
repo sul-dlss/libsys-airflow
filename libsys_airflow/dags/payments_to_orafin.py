@@ -52,4 +52,4 @@ with DAG(
 
     email_excluded_invoices = email_excluded_task(filtered_invoices["excluded"])
 
-    invoices_pending_payment_task(folio_invoice_ids, upload_status)
+    invoices_pending_payment_task(filtered_invoices["feed"], upload_status)

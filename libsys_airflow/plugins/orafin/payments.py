@@ -2,7 +2,6 @@ import logging
 
 from datetime import datetime
 
-from airflow.utils.email import send_email
 from cattrs import Converter
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
@@ -13,26 +12,6 @@ logger = logging.getLogger(__name__)
 
 def _convert_ts_class(timestamp, cls):
     return cls.fromisoformat(timestamp)
-
-
-def generate_excluded_email(invoices: list, folio_url: str):
-    """
-    Generates emails for excluded invoices
-    """
-    converter = models_converter()
-    html_content = """<h2>Amount Split</h2><ul>"""
-    for invoice_dict in invoices:
-        invoice = converter.structure(invoice_dict, Invoice)
-        html_content += f"""<li>
-        Vendor Invoice Number: {invoice.internal_number}
-        {_invoice_line_links(invoice, folio_url)}</li>"""
-    html_content += "</ul>"
-    send_email(
-        # to=["sa-payments@lists.stanford.edu"],
-        to=["jpnelson@stanford.edu"],
-        subject="Rejected Invoices for SUL",
-        html_content=html_content,
-    )
 
 
 def _get_fund(fund_distributions: list, folio_client: FolioClient):
@@ -59,7 +38,9 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
         if "poLineId" in row:
             po_line_id = row['poLineId']
             po_line = {"id": po_line_id}
-            po_result = folio_client.get(f"/orders/order-lines/{po_line_id}")
+            po_result = folio_client.get(
+                f"/orders/order-lines/{po_line_id}", params={"limit": 250}
+            )
             po_line["acquisitionMethod"] = po_result["acquisitionMethod"]
             po_line["orderFormat"] = po_result.get("orderFormat")
             if "eresource" in po_result:
@@ -96,21 +77,6 @@ def get_invoice(
     # Converts to Invoice Object
     invoice = converter.structure(invoice, Invoice)
     return invoice, exclude_invoice
-
-
-def _invoice_line_links(invoice: Invoice, folio_url) -> str:
-    html_output = "<ol>"
-    for line in invoice.lines:
-        if any(
-            [
-                fund_dist.distributionType == "amount"
-                for fund_dist in line.fundDistributions
-            ]
-        ):
-            line_url = f"{folio_url}/invoice/invoice-lines/{line.id}"
-            html_output = f""""<li><a href="{line_url}">{line.id}</a></li>"""
-    html_output += "</ol>"
-    return html_output
 
 
 def init_feeder_file(
