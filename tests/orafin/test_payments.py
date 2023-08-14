@@ -3,15 +3,15 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.folio.orafin_payments import (
-    _get_invoice,
-    _init_feeder_file,
-    _models_converter,
+from libsys_airflow.plugins.orafin.payments import (
+    get_invoice,
+    init_feeder_file,
+    models_converter,
 )
 
-from libsys_airflow.plugins.folio.helpers.orafin_models import Invoice, FeederFile
+from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
 
-invoice = {
+invoice_dict = {
     "id": "a6452c96-53ef-4e51-bd7b-aa67ac971133",
     "accountingCode": "804584FEEDER",
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
@@ -26,6 +26,7 @@ invoice_lines = [
     {
         "adjustmentsTotal": 2.12,
         "id": "484d045a-dcec-40c0-bd1b-2420997df4da",
+        "invoiceLineNumber": "1",
         "subTotal": 23.19,
         "total": 25.31,
         "poLineId": "b793afc-904b-4daf-94e9-9b7ac0445113",
@@ -44,6 +45,31 @@ po_line = {
     "acquisitionMethod": "df26d81b-9d63-4ff8-bf41-49bf75cfa70e",
     "orderFormat": "Physical Resource",
     "physical": {"materialType": "1a54b431-2e4f-452d-9cae-9cee66c9a892"},
+}
+
+amount_invoice_lines = [
+    {
+        "adjustmentsTotal": 6.7,
+        "id": "453e5789-afe9-480a-8af2-05c57acd08ed",
+        "invoiceLineNumber": "3",
+        "subTotal": 50.0,
+        "total": 56.7,
+        "poLineId": "da1009a8-68ef-4eb3-aaba-8d0e51c6a4ae",
+        "fundDistributions": [
+            {
+                "fundId": "698876aa-180c-4cb8-b865-6e91321122c8",
+                "distributionType": "amount",
+                "value": 50,
+            }
+        ],
+    }
+]
+
+eresource_po_line = {
+    "id": "da1009a8-68ef-4eb3-aaba-8d0e51c6a4ae",
+    "acquisitionMethod": "e723e091-1d0a-48f4-9065-61427e723174",
+    "eresource": {"materialType": "1a54b431-2e4f-452d-9cae-9cee66c9a892"},
+    "orderFormat": "Electronic Resource",
 }
 
 acquisition_methods = [
@@ -68,11 +94,15 @@ vendor = {
 def mock_folio_client():
     def mock_get(*args, **kwargs):
         # Invoice
-        if args[0].endswith("aa67ac971133"):
-            return invoice
+        if args[0].startswith("/invoice/invoices/"):
+            return invoice_dict
         # Invoice Lines
         if args[0].endswith("invoice-lines"):
-            return {"invoiceLines": invoice_lines}
+            if kwargs['params']['query'].endswith("aa67ac971133"):
+                payload = {"invoiceLines": invoice_lines}
+            else:
+                payload = {"invoiceLines": amount_invoice_lines}
+            return payload
         # Fund
         if args[0].endswith("6e91321122c8"):
             return {
@@ -84,6 +114,8 @@ def mock_folio_client():
         # PO Line
         if args[0].endswith("9b7ac0445113"):
             return po_line
+        if args[0].endswith("8d0e51c6a4ae"):
+            return eresource_po_line
         # Organization
         if args[0].endswith("dcc04d26477b"):
             return vendor
@@ -101,12 +133,13 @@ def mock_folio_client():
 
 
 def test_get_invoice(mock_folio_client):
-    converter = _models_converter()
-    invoice = _get_invoice(
+    converter = models_converter()
+    invoice, exclude = get_invoice(
         "a6452c96-53ef-4e51-bd7b-aa67ac971133", mock_folio_client, converter
     )
 
     assert isinstance(invoice, Invoice)
+    assert exclude is False
     assert invoice.subTotal == 135.19
     assert len(invoice.lines) == 1
     assert invoice.amount == invoice.subTotal
@@ -134,10 +167,23 @@ def test_get_invoice(mock_folio_client):
     assert invoice.attachment_flag == "Y"
 
 
+def test_exclude_invoice(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice(
+        "e5662732-489e-489d-96b9-199cabe66a87", mock_folio_client, converter
+    )
+    assert exclude is True
+    assert invoice.lines[0].poLine.orderFormat == "Electronic Resource"
+
+
 def test_init_feeder_file(mock_folio_client):
-    invoices = [invoice]
-    converter = _models_converter()
-    feeder_file = _init_feeder_file(invoices, mock_folio_client, converter)
+    converter = models_converter()
+    invoice_dict["vendor"] = vendor
+    invoice_dict["lines"] = invoice_lines
+
+    invoices = [invoice_dict]
+
+    feeder_file = init_feeder_file(invoices, mock_folio_client, converter)
 
     assert isinstance(feeder_file, FeederFile)
     assert feeder_file.batch_total_amount == 135.19

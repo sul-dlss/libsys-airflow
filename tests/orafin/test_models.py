@@ -5,7 +5,7 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.folio.helpers.orafin_models import (
+from libsys_airflow.plugins.orafin.models import (
     FeederFile,
     Fund,
     fundDistribution,
@@ -122,6 +122,7 @@ def mock_invoice():
                         ),
                     )
                 ],
+                invoiceLineNumber="2",
                 poLine=PurchaseOrderLine(
                     id=str(uuid.uuid4()),
                     acquisitionMethod="e723e091-1d0a-48f4-9065-61427e723174",
@@ -231,6 +232,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="1",
                 subTotal=0.00,
                 total=0.00,
                 poLine=db_electronic_purchase,
@@ -238,6 +240,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="2",
                 subTotal=0.00,
                 total=0.00,
                 poLine=db_electronic_subscription,
@@ -245,6 +248,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="3",
                 subTotal=0.00,
                 total=0.00,
                 poLine=book_electronic_approval_plan,
@@ -252,6 +256,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="4",
                 subTotal=0.00,
                 total=0.00,
                 poLine=book_electronic_subscription,
@@ -259,6 +264,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="5",
                 subTotal=0.00,
                 total=0.00,
                 poLine=periodical_electronic_purchase,
@@ -266,6 +272,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="6",
                 subTotal=0.00,
                 total=0.00,
                 poLine=maintenance_fee_electronic,
@@ -273,6 +280,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="7",
                 subTotal=0.00,
                 total=0.00,
                 poLine=sound_recording_physical_purchase,
@@ -280,6 +288,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="8",
                 subTotal=0.00,
                 total=0.00,
                 poLine=software_physical_subscription,
@@ -287,6 +296,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="9",
                 subTotal=0.00,
                 total=0.00,
                 poLine=shipping,
@@ -294,6 +304,7 @@ def test_expense_codes(mock_folio_client):
             InvoiceLine(
                 id=str(uuid.uuid4()),
                 adjustmentsTotal=0.00,
+                invoiceLineNumber="10",
                 subTotal=0.00,
                 total=0.00,
                 poLine=match_default,
@@ -421,6 +432,7 @@ def test_split_percentage_invoice_lines():
     invoice_line = InvoiceLine(
         adjustmentsTotal=41.08,
         id='eb96354a-c3d7-4faf-b6aa-21e10c0dc5c4',
+        invoiceLineNumber="1",
         subTotal=450.0,
         total=491.08,
         expense_code='53245',
@@ -469,6 +481,7 @@ def test_invoice_line_fund_dist_amt():
     invoice_line = InvoiceLine(
         id=str(uuid.uuid4()),
         adjustmentsTotal=0.00,
+        invoiceLineNumber="1",
         subTotal=40.00,
         total=0.00,
         expense_code="53245",
@@ -492,6 +505,7 @@ def test_invoice_line_fund_dist_amt():
 def test_invoice_line_tax_code():
     invoice_line = InvoiceLine(
         id=str(uuid.uuid4()),
+        invoiceLineNumber="1",
         adjustmentsTotal=0.00,
         subTotal=0.00,
         total=0.00,

@@ -48,6 +48,7 @@ class PurchaseOrderLine:
 class InvoiceLine:
     adjustmentsTotal: float
     id: str
+    invoiceLineNumber: str
     subTotal: float
     total: float
 
