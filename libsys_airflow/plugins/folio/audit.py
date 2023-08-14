@@ -47,19 +47,23 @@ def _audit_instances(
         "SELECT creation_date FROM sul_mod_inventory_storage.instance WHERE id=%s;"
     )
     instance_count = 0
-    with (results_path / "folio_instances_bibs-transformer.json").open() as fo:
-        for line in fo.readlines():
-            instance = json.loads(line)
-            _audit_record(
-                record=instance,
-                record_type=FOLIONamespaces.instances.value,
-                audit_con=audit_connection,
-                pg_cursor=pg_cursor,
-                sql=select_sql,
-            )
-            if not instance_count % 1_000:
-                logger.info(f"Audited {instance_count:,} instances")
-            instance_count += 1
+    instance_path = results_path / "folio_instances_bibs-transformer.json"
+    if not instance_path.exists():
+        logger.info(f"{instance_path} does not exist.")
+    else:
+        with instance_path.open() as fo:
+            for line in fo.readlines():
+                instance = json.loads(line)
+                _audit_record(
+                    record=instance,
+                    record_type=FOLIONamespaces.instances.value,
+                    audit_con=audit_connection,
+                    pg_cursor=pg_cursor,
+                    sql=select_sql,
+                )
+                if not instance_count % 1_000:
+                    logger.info(f"Audited {instance_count:,} instances")
+                instance_count += 1
     logger.info(f"Finished Auditing {instance_count:,} Instances")
     return instance_count
 
@@ -72,20 +76,23 @@ def _audit_holdings_records(
     select_sql = """SELECT creation_date FROM sul_mod_inventory_storage.holdings_record
      WHERE id=%s"""
     holdings_count = 0
-
-    with (results_path / "folio_holdings.json").open() as fo:
-        for line in fo.readlines():
-            holdings = json.loads(line)
-            _audit_record(
-                record=holdings,
-                record_type=FOLIONamespaces.holdings.value,
-                audit_con=audit_connection,
-                pg_cursor=pg_cursor,
-                sql=select_sql,
-            )
-            if not holdings_count % 1_000:
-                logger.info(f"Audited {holdings_count:,} holdings")
-            holdings_count += 1
+    holdings_path = results_path / "folio_holdings.json"
+    if not holdings_path.exists():
+        logger.info(f"{holdings_path} does not exist.")
+    else:
+        with holdings_path.open() as fo:
+            for line in fo.readlines():
+                holdings = json.loads(line)
+                _audit_record(
+                    record=holdings,
+                    record_type=FOLIONamespaces.holdings.value,
+                    audit_con=audit_connection,
+                    pg_cursor=pg_cursor,
+                    sql=select_sql,
+                )
+                if not holdings_count % 1_000:
+                    logger.info(f"Audited {holdings_count:,} holdings")
+                holdings_count += 1
     logger.info(f"Finished Auditing {holdings_count:,} Holdings")
     return holdings_count
 
@@ -97,19 +104,23 @@ def _audit_items(
     logger.info("Starting Items Audit")
     select_sql = "SELECT * FROM sul_mod_inventory_storage.item WHERE id=%s"
     item_count = 0
-    with (results_path / "folio_items_transformer.json").open() as fo:
-        for line in fo.readlines():
-            item = json.loads(line)
-            _audit_record(
-                record=item,
-                record_type=FOLIONamespaces.items.value,
-                audit_con=audit_connection,
-                pg_cursor=pg_cursor,
-                sql=select_sql,
-            )
-            if not item_count % 1_000:
-                logger.info(f"Audited {item_count:,} items")
-            item_count += 1
+    items_path = results_path / "folio_items_transformer.json"
+    if not items_path.exists():
+        logger.info(f"{items_path} does not exist.")
+    else:
+        with items_path.open() as fo:
+            for line in fo.readlines():
+                item = json.loads(line)
+                _audit_record(
+                    record=item,
+                    record_type=FOLIONamespaces.items.value,
+                    audit_con=audit_connection,
+                    pg_cursor=pg_cursor,
+                    sql=select_sql,
+                )
+                if not item_count % 1_000:
+                    logger.info(f"Audited {item_count:,} items")
+                item_count += 1
     logger.info(f"Finished Auditing {item_count:,} Items")
     return item_count
 
