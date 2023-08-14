@@ -262,3 +262,26 @@ def test_add_json_record_uniqueness(mock_dag_run, mock_file_system, caplog):  # 
     assert "Unknown record format <class 'list'>" in caplog.text
 
     con.close()
+
+
+def test_missing_files(
+    mock_airflow_connection,
+    mock_psycopg2,
+    mock_dag_run,  # noqa
+    mock_file_system,  # noqa
+    caplog,
+):
+    airflow = mock_file_system[0]
+
+    _init_mock_db(airflow)
+
+    setup_audit_db(airflow=airflow, iteration_id=mock_dag_run.run_id)
+
+    audit_instance_views(
+        airflow=str(airflow),
+        task_instance=MockTaskInstance(),
+    )
+
+    assert "folio_instances_bibs-transformer.json does not exist." in caplog.text
+    assert "folio_holdings.json does not exist." in caplog.text
+    assert "folio_items_transformer.json does not exist." in caplog.text
