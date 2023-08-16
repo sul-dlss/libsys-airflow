@@ -84,7 +84,6 @@
         {% endif %}
       </div>
     </div>
-  </div>
   {% if file.dag_run_id or file.status == FileStatus.loaded %}
   <div class="form-group">
     <label for="loaded-timestamp" class="col-sm-2 col-form-label">Load Time:</label>
@@ -99,26 +98,29 @@
         </ul> 
       {% endif %}
     </div>
-    <div class="form-group">
-      <label for="dag-run-id" class="col-sm-2 col-form-label">DAG Run ID:</label>
-      <div class="col-sm-8" id="dag-run-id">
-        {{ file.dag_run_id }}
-      </div>
+  </div>
+  <div class="form-group">
+    <label for="dag-run-id" class="col-sm-2 col-form-label">DAG Run ID:</label>
+    <div class="col-sm-8" id="dag-run-id">
+      {{ file.dag_run_id }}
     </div>
-    {% else %}
-    <div class="form-group">
-      <label for="expected-processing-time" class="col-sm-2 col-form-label">Expected Load:</label>
-      <div class="col-sm-8" id="expected-processing-time">
-        <input id="expected-processing-time-input" type="datetime-local" name="expected-processing-time" value="{{ file.expected_processing_time.isoformat(timespec='seconds') if file.expected_processing_time else '' }}" />
-        UTC
-      </div>
+  </div>
+  {% else %}
+  <div class="form-group">
+    <label for="expected-processing-time" class="col-sm-2 col-form-label">Expected Load:</label>
+    <div class="col-sm-8" id="expected-processing-time">
+      <input id="expected-processing-time-input" type="datetime-local" name="expected-processing-time" value="{{ file.expected_processing_time.isoformat(timespec='seconds') if file.expected_processing_time else '' }}" />
+      UTC
     </div>
-    <div class="form-group">
-      <div class="col-sm-1">
-        <button class="btn btn-success">Save</button>
-      </div>
+  </div>
+  {% endif %}
+  {% if file.status.can_set_loaded() %}
+  <div class="form-group">
+    <div class="col-sm-1">
+      <button class="btn btn-success">Save</button>
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
   </form>
 </main>
 
