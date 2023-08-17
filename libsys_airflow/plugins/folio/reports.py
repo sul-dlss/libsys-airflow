@@ -82,11 +82,16 @@ def inventory_audit_report(**kwargs):
     report_path.write_text(audit_report)
 
 
-def srs_audit_report(db_connection: sqlite3.Connection, iteration: str):
+def srs_audit_report(
+    db_connection: sqlite3.Connection, iteration: str, airflow: str = "/opt/airflow"
+):
     """
     Generates a SRS Audit Report
     """
-    report_path = pathlib.Path(iteration) / "reports/report_srs-audit.md"
+    report_path = (
+        pathlib.Path(airflow)
+        / f"migration/iterations/{iteration}/reports/report_srs-audit.md"
+    )
     report_template = report_template = Template(
         (pathlib.Path(__file__).parent / "templates/folio/srs.tmpl").read_text()
     )

@@ -313,25 +313,6 @@ def srs_check_add(**kwargs) -> int:
     return srs_count
 
 
-def discover_srs_files(*args, **kwargs):
-    """
-    Iterates through migration iterations directory and checks for SRS file
-    existence for later auditing/remediation
-    """
-    airflow = kwargs.get("airflow", "/opt/airflow/")
-
-    iterations_dir = pathlib.Path(airflow) / "migration/iterations"
-    srs_iterations = []
-    # Checks for SRS bibs, sorts to make iteration deterministic
-    for iteration in sorted(iterations_dir.iterdir()):
-        srs_file = iteration / "results/folio_srs_instances_bibs-transformer.json"
-        if srs_file.exists():
-            srs_iterations.append(str(iteration))
-
-    logger.info(f"Finished SRS discovery, found {len(srs_iterations)} migration loads")
-    return srs_iterations
-
-
 def filter_mhlds(mhld_path: pathlib.Path):
     """
     Filters MHLD records based on strings in 852 fields
