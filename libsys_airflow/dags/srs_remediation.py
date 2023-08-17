@@ -14,6 +14,7 @@ from airflow.operators.python import get_current_context
 from folioclient import FolioClient
 from folio_uuid.folio_uuid import FOLIONamespaces
 
+from libsys_airflow.plugins.folio.audit import setup_audit_db
 from libsys_airflow.plugins.folio.helpers.marc import get_snapshot_id, srs_check_add
 from libsys_airflow.plugins.folio.reports import srs_audit_report
 
@@ -60,9 +61,10 @@ with DAG(
             context = get_current_context()
         params = context.get("params")
         iteration = params.get("iteration")
-        results_dir = f"{iteration}/results/"
+        airflow = kwargs.get("airflow", "/opt/airflow")
+        results_dir = f"{airflow}/migration/iterations/{iteration}/results/"
         logger.info(f"{iteration}")
-        # return results_dir, iteration
+        setup_audit_db(iteration_id=iteration, airflow=airflow)
         return {"results_dir": results_dir, "iteration": iteration}
 
     @task

@@ -267,7 +267,7 @@ def run_bibs_transformer(*args, **kwargs):
     logger.error(f"Base tsv path {base_tsv_path} {base_tsv_path.exists()}")
 
     stat_codes = _get_statistical_codes(folio_client)
-    logger.error(f"Stat codes {stat_codes}")
+    logger.debug(f"Stat codes {stat_codes}")
 
     _adjust_records(
         instances_record_path=instances_record_path,

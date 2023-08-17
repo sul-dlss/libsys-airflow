@@ -4,10 +4,11 @@ from datetime import datetime
 
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
 from airflow.models import Variable
 
 from folio_migration_tools.library_configuration import LibraryConfiguration
-
 from libsys_airflow.plugins.folio.helpers.marc import post_marc_to_srs
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,16 @@ def add_marc_to_srs():
         return posted_srs_files
 
     @task
-    def finish():
-        logger.info("Finished migration")
+    def finish(**kwargs):
+        logger.info("Finished migration; starting SRS audit check")
+        context = get_current_context()
+        params = context.get("params")
+        iteration_id = params.get("iteration_id")
+        TriggerDagRunOperator(
+            task_id="srs_audit_checks",
+            trigger_dag_id="srs_audit_checks",
+            conf={"iteration": iteration_id},
+        ).execute(kwargs)
 
     ingestion_marc() >> finish()
 

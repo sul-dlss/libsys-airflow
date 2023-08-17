@@ -16,7 +16,6 @@ from libsys_airflow.plugins.folio.audit import setup_audit_db
 from libsys_airflow.plugins.folio.helpers.marc import (
     _add_electronic_holdings,
     BatchPoster,
-    discover_srs_files,
     _extract_e_holdings_fields,
     filter_mhlds,
     _get_library,
@@ -187,17 +186,6 @@ def test_add_electronic_holdings():
         subfields=[Subfield(code="u", value="http://example.com/")],
     )
     assert _add_electronic_holdings(field_856) is True
-
-
-def test_discover_srs_files(mock_file_system, srs_file):  # noqa
-    airflow = mock_file_system[0]
-    iteration_two_results = airflow / "migration/iterations/manual_2023-03-09/results/"
-    iteration_two_results.mkdir(parents=True)
-
-    iterations = discover_srs_files(airflow=mock_file_system[0])
-
-    assert len(iterations) == 1
-    assert iterations[0] == str(airflow / "migration/iterations/manual_2022-03-05")
 
 
 def test_extract_856s():
