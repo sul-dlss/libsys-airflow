@@ -238,9 +238,14 @@ def test_marc8_to_unicode(encoding_marc_path):
     assert marc_records[1].leader[9] == "a"
     mod_record2 = _marc8_to_unicode(marc_records[1])
 
-    assert marc_records[1].leader[9] == " "
     # Confirms that other records are encoded correctly
     assert (
         mod_record2.title
         == "Signal. image. architecture. : everything is already an image /"
+    )
+
+    mod_record3 = _marc8_to_unicode(marc_records[2])
+    assert (
+        mod_record3.title
+        == "Au cœur de l'État : le secrétariat général de la Défense et de la Sécurité nationale (XIXe-XXIe siècles) /"
     )
