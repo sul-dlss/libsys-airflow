@@ -1,5 +1,8 @@
 import logging
 import pathlib
+import sys
+
+from io import StringIO
 from typing import Optional
 
 import pymarc
@@ -309,13 +312,56 @@ def _field_match(field: MarcField, check_field: pymarc.Field):
     return True
 
 
+def _convert_marc_fields(record: pymarc.Record) -> pymarc.Record:
+    """
+    Function turns RawFields to Fields and decodes bytes as utf8
+    """
+    new_fields = []
+    for field in record.fields:
+        if field.is_control_field():
+            new_fields.append(
+                pymarc.Field(tag=field.tag, data=field.data.decode('utf8'))
+            )
+        else:
+            new_subfields = []
+            for subfield in field.subfields:
+                new_subfields.append(
+                    pymarc.Subfield(
+                        code=subfield.code, value=subfield.value.decode('utf8')
+                    )
+                )
+            field.subfields = new_subfields
+            new_fields.append(
+                pymarc.Field(
+                    tag=field.tag, indicators=field.indicators, subfields=new_subfields
+                )
+            )
+    record.fields = new_fields
+    return record
+
+
 def _marc8_to_unicode(record: pymarc.Record) -> pymarc.Record:
     """
     Handle MARC records that are encoded as MARC8 but have incorrect bit
     set for utf-8 encoding in leader or have mixed MARC8 and UTF-8 encodings
     in different fields
     """
-    modified_leader = record.leader[0:9] + " " + record.leader[10:]
-    record.leader = modified_leader
-    raw_marc = record.as_marc()
-    return pymarc.Record(data=raw_marc, to_unicode=True)
+    try:
+        old_stderr = sys.stderr
+        temp_stderr = StringIO()
+        sys.stderr = temp_stderr
+        original_leader = record.leader
+        modified_leader = record.leader[0:9] + " " + record.leader[10:]
+        record.leader = modified_leader
+        raw_marc = record.as_marc()
+        new_record = pymarc.Record(data=raw_marc, to_unicode=True)
+        # pymarc logs encoding errors to std error
+        if "Unable to parse character" not in temp_stderr.getvalue():
+            try:
+                new_record = _convert_marc_fields(record)
+                new_record.leader = original_leader
+            except UnicodeDecodeError:  # Failed to decode as UTF
+                pass
+    finally:
+        sys.stderr = old_stderr
+    return new_record
