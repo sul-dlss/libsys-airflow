@@ -60,7 +60,7 @@ def check_add_bw(**kwargs):
                 if post_result.status_code != 201:
                     errors += 1
                     logger.error(
-                        f"Failed to post {record['id']} from {file_path} error: {post_result.text}"
+                        f"Failed to post {record.get('id', 'NO ID')} from {file_path} error: {post_result.text}"
                     )
                 bw += 1
 
