@@ -214,7 +214,7 @@ def _set_withdrawn_note(item: dict, item_lookups: dict, note_types: dict) -> Non
     Adds Withdrawn Note based on lookup
     """
     if item_lookups.get(item.get('barcode'), {}).get("withdrawn?", False):
-        note = {"note": "Withdrawn in Symphony", "type": note_types.get("Withdrawn")}
+        note = {"note": "Withdrawn in Symphony", "itemNoteTypeId": note_types.get("Withdrawn")}
         if "notes" in item:
             item["notes"].append(note)
         else:
