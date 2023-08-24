@@ -324,4 +324,4 @@ def test_set_withdrawn_note_no_prior_notes():
     item_lookups = {"295013344": {"withdrawn?": True}}
     _set_withdrawn_note(item, item_lookups, item_note_types)
     assert item["notes"][0]["note"] == "Withdrawn in Symphony"
-    assert item["notes"][0]["type"] == item_note_types.get("Withdrawn")
+    assert item["notes"][0]["itemNoteTypeId"] == item_note_types.get("Withdrawn")
