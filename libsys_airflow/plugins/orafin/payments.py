@@ -62,6 +62,7 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
         _get_fund(fund_distributions, folio_client)
     return invoice_lines, exclude_invoice
 
+
 def generate_file(feeder_file: dict, folio_client: FolioClient) -> str:
     converter = models_converter()
     feeder_file_instance = converter.structure(feeder_file, FeederFile)
@@ -108,12 +109,10 @@ def models_converter():
     converter.register_unstructure_hook(datetime, datetime.isoformat)
     return converter
 
+
 def transfer_to_orafin(feeder_file_path: pathlib.Path, sftp_connection: str):
     sftp_hook = SFTPHook(sftp_connection)
 
     with feeder_file_path.open() as fo:
-        sftp_hook.store_file("/inbound/data/xxdl_ap_lib.dat",
-                             fo)
+        sftp_hook.store_file("/inbound/data/xxdl_ap_lib.dat", fo)
     logger.info(f"Uploaded {feeder_file_path.name} with {sftp_connection} connection")
-
-
