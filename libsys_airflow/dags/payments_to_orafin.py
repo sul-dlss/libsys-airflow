@@ -48,11 +48,8 @@ with DAG(
 
     feeder_file = feeder_file_task(filtered_invoices["feed"])
 
-<<<<<<< Updated upstream
-    upload_status = sftp_file_task(feeder_file)
-=======
+
     upload_status = sftp_file_task(feeder_file, "sftp-orafin")
->>>>>>> Stashed changes
 
     email_excluded_invoices = email_excluded_task(filtered_invoices["excluded"])
 

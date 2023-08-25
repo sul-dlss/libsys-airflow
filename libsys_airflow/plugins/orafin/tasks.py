@@ -76,7 +76,7 @@ def feeder_file_task(invoices: list):
 
 @task
 def sftp_file_task(
-    feeder_file: task, sftp_connection: str, airflow: str = "/opt/airflow"
+    feeder_file, sftp_connection: str, airflow: str = "/opt/airflow"
 ):  # type: ignore
     folio_client = _folio_client()
     # Initialize Feeder File Task

@@ -219,6 +219,13 @@ class FeederFile:
         return sum([invoice.amount for invoice in self.invoices])
 
     @property
+    def file_name(self) -> str:
+        sorted_invoices = sorted(self.invoices, key=lambda obj: obj.invoiceDate)
+        first_date = sorted_invoices[0].invoiceDate.strftime("%Y%m%d")
+        last_date = sorted_invoices[-1].invoiceDate.strftime("%Y%m%d%H%M")
+        return f"feeder{first_date}_{last_date}"
+
+    @property
     def number_of_invoices(self) -> int:
         return len(self.invoices)
 
