@@ -112,14 +112,13 @@ def process_marc(
     logger.info(f"Processing from {marc_path}")
     records = []
     with marc_path.open("rb") as fo:
-        reader = _marc_reader(fo, to_unicode=False)
+        reader = _marc_reader(fo, to_unicode=True)
         for record in reader:
             if record is None:
                 logger.info(
                     f"Error reading MARC. Current chunk: {reader.current_chunk}. Error: {reader.current_exception}"
                 )
             else:
-                record = _marc8_to_unicode(record)
                 if remove_fields:
                     record.remove_fields(*remove_fields)
                 if change_fields:
@@ -345,6 +344,12 @@ def _marc8_to_unicode(record: pymarc.Record) -> pymarc.Record:
     Handle MARC records that are encoded as MARC8 but have incorrect bit
     set for utf-8 encoding in leader or have mixed MARC8 and UTF-8 encodings
     in different fields
+
+    NOTE (8/24/2023): Keeping this function as we plan to extend the VMA
+    app by adding a new MARC Processing Rule for MARC handling for marcit
+    ckj loads that this function handled but caused errors for other vendors
+    that had parsing errors but were still utf-8 encoded.
+    https://github.com/sul-dlss/libsys-airflow/issues/744#issuecomment-1690452884
     """
     try:
         old_stderr = sys.stderr
