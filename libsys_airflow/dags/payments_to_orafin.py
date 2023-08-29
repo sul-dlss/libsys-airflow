@@ -48,7 +48,6 @@ with DAG(
 
     feeder_file = feeder_file_task(filtered_invoices["feed"])
 
-
     upload_status = sftp_file_task(feeder_file, "sftp-orafin")
 
     email_excluded_invoices = email_excluded_task(filtered_invoices["excluded"])
