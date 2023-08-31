@@ -5,6 +5,7 @@ import urllib.parse
 
 import requests
 
+from typing import Union
 from airflow.operators.python import get_current_context
 from jsonpath_ng.ext import parse
 
@@ -46,6 +47,20 @@ def _friendly_name(**kwargs):
     if len(matches) > 0:
         return matches[0].value
     return fallback
+
+
+def _handle_no_winning_policy(policies: dict) -> Union[str, None]:
+    winning_policy = None
+    for key in policies.keys():
+        if key.startswith("totalRecords"):
+            continue
+        for policy in policies[key]:
+            if policy.get('name', "").startswith("No"):
+                winning_policy = policy['name']
+                break
+        if winning_policy is not None:
+            break
+    return winning_policy
 
 
 def _library_location_names(**kwargs):
@@ -318,9 +333,8 @@ def policy_report(**kwargs):
             break
 
     if winning_policy is None:
-        for policy in policies:
-            if policy.get('name', "").startswith("No"):
-                winning_policy = policy['name']
+        winning_policy = _handle_no_winning_policy(policies)
+
     instance.xcom_push(key=f"winning-policy{row_count}", value=winning_policy)
     instance.xcom_push(key=f"losing-policies{row_count}", value=losing_policies)
     logger.info("Finished Policy Report")

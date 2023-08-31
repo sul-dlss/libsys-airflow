@@ -15,6 +15,7 @@ import mocks
 from libsys_airflow.plugins.folio.circ_rules import (
     friendly_report,
     friendly_batch_report,
+    _handle_no_winning_policy,
     generate_report,
     generate_batch_report,
     generate_urls,
@@ -279,6 +280,22 @@ def test_generate_batch_urls(caplog):
     assert "single-policy-url2" in mocks.messages[task_id]
 
     mocks.messages = setup_circ_rules.copy()
+
+
+def test_handle_no_winning_policy():
+    winning_policy = _handle_no_winning_policy(
+        {
+            "totalRecords": 3,
+            "loanPolicies": [
+                {"name": "2hour-norenew-1hourgrace"},
+                {"name": "No loan"},
+                {"name": "7day-2renew-3daygrace"},
+            ],
+        }
+    )
+    assert winning_policy == "No loan"
+    winning_policy = _handle_no_winning_policy({})
+    assert winning_policy is None
 
 
 def test_policy_report(mock_requests):
