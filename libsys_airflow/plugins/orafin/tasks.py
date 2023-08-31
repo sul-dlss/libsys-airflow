@@ -75,16 +75,21 @@ def feeder_file_task(invoices: list):
 
 
 @task
-def sftp_file_task(
-    feeder_file, sftp_connection: str, airflow: str = "/opt/airflow"
-):  # type: ignore
-    folio_client = _folio_client()
+def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
     # Initialize Feeder File Task
+    folio_client = _folio_client()
     orafin_path = pathlib.Path(f"{airflow}/orafin/data")
     orafin_path.mkdir(exist_ok=True, parents=True)
     feeder_file_instance = generate_file(feeder_file, folio_client)
     feeder_file_path = orafin_path / feeder_file_instance.file_name
     with feeder_file_path.open("w+") as fo:
         fo.write(feeder_file_instance.generate())
-    transfer_status = transfer_to_orafin(feeder_file_path, sftp_connection)
+    return str(feeder_file_path.resolve())
+
+
+@task
+def sftp_file_task(feeder_file_path: str, sftp_connection: str):  # type: ignore
+    transfer_status = transfer_to_orafin(
+        pathlib.Path(feeder_file_path), sftp_connection
+    )
     return transfer_status
