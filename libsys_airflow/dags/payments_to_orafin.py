@@ -15,6 +15,7 @@ from libsys_airflow.plugins.orafin.tasks import (
     email_excluded_task,
     feeder_file_task,
     filter_invoices_task,
+    generate_feeder_file_task,
     sftp_file_task,
 )
 
@@ -48,7 +49,9 @@ with DAG(
 
     feeder_file = feeder_file_task(filtered_invoices["feed"])
 
-    upload_status = sftp_file_task(feeder_file)
+    generate_file = generate_feeder_file_task(feeder_file)
+
+    upload_status = sftp_file_task(generate_file, "sftp-orafin")
 
     email_excluded_invoices = email_excluded_task(filtered_invoices["excluded"])
 

@@ -4,6 +4,7 @@ import pytest  # noqa
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.orafin.payments import (
+    generate_file,
     get_invoice,
     init_feeder_file,
     models_converter,
@@ -174,6 +175,14 @@ def test_exclude_invoice(mock_folio_client):
     )
     assert exclude is True
     assert invoice.lines[0].poLine.orderFormat == "Electronic Resource"
+
+
+def test_generate_file(mock_folio_client):
+    feeder_file_dict = {"invoices": [invoice_dict]}
+
+    feeder_file = generate_file(feeder_file_dict, mock_folio_client)
+
+    assert isinstance(feeder_file, FeederFile)
 
 
 def test_init_feeder_file(mock_folio_client):

@@ -1,4 +1,5 @@
 import logging
+import pathlib
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -8,9 +9,11 @@ from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.orafin.emails import generate_excluded_email
 
 from libsys_airflow.plugins.orafin.payments import (
+    generate_file,
     get_invoice,
     init_feeder_file,
     models_converter,
+    transfer_to_orafin,
 )
 
 
@@ -71,7 +74,22 @@ def feeder_file_task(invoices: list):
     return converter.unstructure(feeder_file)
 
 
-# TODO: can un-ignore type checking here once this function is less of a stub
 @task
-def sftp_file_task(feeder_file: task):  # type: ignore
-    return "foo"
+def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
+    # Initialize Feeder File Task
+    folio_client = _folio_client()
+    orafin_path = pathlib.Path(f"{airflow}/orafin/data")
+    orafin_path.mkdir(exist_ok=True, parents=True)
+    feeder_file_instance = generate_file(feeder_file, folio_client)
+    feeder_file_path = orafin_path / feeder_file_instance.file_name
+    with feeder_file_path.open("w+") as fo:
+        fo.write(feeder_file_instance.generate())
+    return str(feeder_file_path.resolve())
+
+
+@task
+def sftp_file_task(feeder_file_path: str, sftp_connection: str):  # type: ignore
+    transfer_status = transfer_to_orafin(
+        pathlib.Path(feeder_file_path), sftp_connection
+    )
+    return transfer_status

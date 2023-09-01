@@ -527,6 +527,7 @@ def test_feeder_file(mock_invoice, mock_folio_client):
 
     assert feeder_file.batch_total_amount == 1442.03
     assert feeder_file.number_of_invoices == 1
+    assert feeder_file.file_name == "feeder20230712_202307120000"
 
     feeder_file.add_expense_lines(mock_folio_client)
 
