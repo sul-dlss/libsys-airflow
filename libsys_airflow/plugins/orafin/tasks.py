@@ -78,7 +78,7 @@ def feeder_file_task(invoices: list):
 def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
     # Initialize Feeder File Task
     folio_client = _folio_client()
-    orafin_path = pathlib.Path(f"{airflow}/orafin/data")
+    orafin_path = pathlib.Path(f"{airflow}/orafin-files/data")
     orafin_path.mkdir(exist_ok=True, parents=True)
     feeder_file_instance = generate_file(feeder_file, folio_client)
     feeder_file_path = orafin_path / feeder_file_instance.file_name

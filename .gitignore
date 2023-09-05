@@ -10,7 +10,7 @@ seed_vendors.log
 circ/
 dist/
 .python-version
-orafin/
+orafin-files/
 vendor-data/
 virtual-env/
 vendor-keys/
