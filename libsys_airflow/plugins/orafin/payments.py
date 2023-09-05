@@ -114,5 +114,5 @@ def transfer_to_orafin(feeder_file_path: pathlib.Path, sftp_connection: str):
     sftp_hook = SFTPHook(sftp_connection)
 
     with feeder_file_path.open() as fo:
-        sftp_hook.store_file("/inbound/data/xxdl_ap_lib.dat", fo.read())
+        sftp_hook.store_file("/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat", fo.read())
     logger.info(f"Uploaded {feeder_file_path.name} with {sftp_connection} connection")
