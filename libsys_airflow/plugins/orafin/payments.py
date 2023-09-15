@@ -33,7 +33,10 @@ def _get_fund(fund_distributions: list, folio_client: FolioClient):
 def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
     invoice_lines_result = folio_client.get(
         "/invoice/invoice-lines",
-        params={"query": f"invoiceId=={invoice_id}", "limit": 250},
+        params={
+            "query": f"invoiceId=={invoice_id} sortBy metadata.createdDate invoiceLineNumber",
+            "limit": 250,
+        },
     )
     invoice_lines = invoice_lines_result.get("invoiceLines", [])
     exclude_invoice = False
@@ -114,5 +117,7 @@ def transfer_to_orafin(feeder_file_path: pathlib.Path, sftp_connection: str):
     sftp_hook = SFTPHook(sftp_connection)
 
     with feeder_file_path.open() as fo:
-        sftp_hook.store_file("/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat", fo.read())
+        sftp_hook.store_file(
+            "/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat", fo.read()
+        )
     logger.info(f"Uploaded {feeder_file_path.name} with {sftp_connection} connection")

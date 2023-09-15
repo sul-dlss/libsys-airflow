@@ -3,11 +3,14 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
+from airflow.providers.sftp.hooks.sftp import SFTPHook
+
 from libsys_airflow.plugins.orafin.payments import (
     generate_file,
     get_invoice,
     init_feeder_file,
     models_converter,
+    transfer_to_orafin,
 )
 
 from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
@@ -99,7 +102,7 @@ def mock_folio_client():
             return invoice_dict
         # Invoice Lines
         if args[0].endswith("invoice-lines"):
-            if kwargs['params']['query'].endswith("aa67ac971133"):
+            if kwargs['params']['query'].startswith("invoiceId==a6452c96"):
                 payload = {"invoiceLines": invoice_lines}
             else:
                 payload = {"invoiceLines": amount_invoice_lines}
@@ -200,3 +203,26 @@ def test_init_feeder_file(mock_folio_client):
 
     feeder_file.add_expense_lines(mock_folio_client)
     assert feeder_file.invoices[0].lines[0].expense_code == '53245'
+
+
+@pytest.fixture
+def mock_sftp_hook(mocker):
+    def mockstore_file(*args):
+        pass
+
+    mock_hook = mocker.patch("libsys_airflow.plugins.orafin.payments.SFTPHook")
+    mock_hook.__class__ = SFTPHook
+    mock_hook.store_file = mockstore_file
+    return mock_hook
+
+
+def test_transfer_to_orafin(mock_sftp_hook, tmp_path):
+    feeder_file_path = tmp_path / "feeder20210823_202309240000"
+    feeder_file_path.write_text(
+        """LIB376992    HD006169FEEDER         23-13094 376992                         20230503000000000385.52DR                              N30
+LIB376992    DR000000000023.95USE_CA              1065087-101-AALIB-53245
+LIB376992    TX000000000002.19USE_CA              1065087-101-AALIB-53245"""
+    )
+    transfer_to_orafin(feeder_file_path, "sftp-orafin")
+
+    assert feeder_file_path.exists()

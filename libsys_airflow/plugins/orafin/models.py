@@ -344,6 +344,7 @@ class FeederFile:
         for invoice in self.invoices:
             raw_file += f"{invoice.header()}\n"
             raw_file += invoice.line_data()
+            raw_file += "\n"
         raw_file += "\n"
         raw_file += "".join(
             [

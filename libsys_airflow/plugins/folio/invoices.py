@@ -40,20 +40,28 @@ def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) ->
     success, failures = [], []
     for invoice in invoice_ids:
         logger.info(f"Invoice {invoice}")
-        voucher_result = folio_client.get(f"/voucher/vouchers?query=(invoiceId=={invoice['id']})")
+        voucher_result = folio_client.get(
+            f"/voucher-storage/vouchers?query=(invoiceId=={invoice['id']})"
+        )
         for voucher in voucher_result.get("vouchers", []):
             voucher_id = voucher["id"]
             voucher["disbursementNumber"] = "Pending"
-            put_result = httpx.put(f"{folio_client.okapi_url}/voucher/vouchers/{voucher_id}",
-                                   headers=folio_client.okapi_headers,
-                                   json=voucher)
+            put_result = httpx.put(
+                f"{folio_client.okapi_url}/voucher-storage/vouchers/{voucher_id}",
+                headers=folio_client.okapi_headers,
+                json=voucher,
+            )
             if put_result.status_code == 204:
-                logger.info(f"Successfully set disbursementNumber for voucher {voucher_id}")
+                logger.info(
+                    f"Successfully set disbursementNumber for voucher {voucher_id}"
+                )
                 success.append(voucher_id)
             else:
-                logger.error(f"Failed to update {voucher_id} HTTP Error {put_result.status_code} {put_result.text}")
+                logger.error(
+                    f"Failed to update {voucher_id} HTTP Error {put_result.status_code} {put_result.text}"
+                )
                 failures.append(voucher_id)
-    return { "success": success, "failures": failures}
+    return {"success": success, "failures": failures}
 
 
 @task
