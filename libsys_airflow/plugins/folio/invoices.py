@@ -39,7 +39,7 @@ def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) ->
     """
     success, failures = [], []
     for invoice in invoice_ids:
-        logger.info(f"Invoice {invoice}")
+        logger.info(f"Processing Invoice {invoice['id']}")
         voucher_result = folio_client.get(
             f"/voucher-storage/vouchers?query=(invoiceId=={invoice['id']})"
         )
