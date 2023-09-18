@@ -98,7 +98,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/circ:/opt/airflow/circ
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-data:/opt/airflow/vendor-data
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-keys:/opt/airflow/vendor-keys
-    - ${AIRFLOW_PROJ_DIR:-.}/orafin:/opt/airflow/orafin
+    - ${AIRFLOW_PROJ_DIR:-.}/orafin-files:/opt/airflow/orafin-files
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
