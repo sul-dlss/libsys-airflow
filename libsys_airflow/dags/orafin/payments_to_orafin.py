@@ -40,7 +40,7 @@ with DAG(
     ),
     start_date=datetime(2023, 1, 1),
     catchup=False,
-    tags=["folio"],
+    tags=["folio", "orafin"],
 ) as dag:
     folio_invoice_ids = invoices_awaiting_payment_task()
 
