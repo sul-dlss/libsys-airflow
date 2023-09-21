@@ -11,6 +11,14 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_summary_email,
 )
 
+from libsys_airflow.plugins.orafin.ap_reports import (
+    retrieve_invoice,
+    retrieve_rows,
+    retrieve_voucher,
+    update_invoice,
+    update_voucher,
+)
+
 from libsys_airflow.plugins.orafin.payments import (
     generate_file,
     get_invoice,
@@ -49,6 +57,10 @@ def email_summary_task(invoices: list):
     folio_url = Variable.get("FOLIO_URL")
     generate_summary_email(invoices, folio_url)
     return f"Emailed summary report for {len(invoices):,} invoices"
+
+
+def extract_rows_task(retrieved_csv: str):
+    return retrieve_rows(retrieved_csv)
 
 
 @task(multiple_outputs=True)
@@ -102,3 +114,44 @@ def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") 
 def sftp_file_task(feeder_file_path: str, sftp_connection: str = None):  # type: ignore
     bash_operator = transfer_to_orafin(feeder_file_path)
     return bash_operator
+
+@task
+def retrieve_report_task(sftp_connection: str):
+    return "xxdl_ap_payment_09282023161640.csv"
+
+
+@task(max_active_tis_per_dagrun=5)
+def retrieve_invoice_task(row: dict):
+    """
+    Retrieves invoice from a row dictionary
+    """
+    folio_client = _folio_client()
+    return retrieve_invoice(row, folio_client)
+
+
+@task
+def retrieve_voucher_task(invoice_id: str):
+    """
+    Retrieves voucher based on invoice id
+    """
+    folio_client = _folio_client()
+    return retrieve_voucher(invoice_id, folio_client)
+
+
+@task
+def update_invoices_task(invoice: dict):
+    if invoice:
+        logger.info(f"Updating Invoice {invoice['id']}")
+        update_invoice(invoice)
+        return invoice['id']
+    else:
+        logger.error("Invoice is None")
+
+
+@task
+def update_vouchers_task(voucher: dict):
+    if voucher:
+        logger.info(f"Updating voucher {voucher['id']}")
+        update_voucher(voucher)
+    else:
+        logger.error("Voucher is None")
