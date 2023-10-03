@@ -8,6 +8,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.orafin.tasks import (
+    email_errors_task,
     extract_rows_task,
     retrieve_invoice_task,
     retrieve_report_task,
@@ -53,7 +54,5 @@ with DAG(
 
     invoices = retrieve_invoice_task.expand(row=report_rows)
 
-    update_folio.expand(record=invoices) >> finish_updates
+    update_folio.expand(record=invoices) >> email_errors_task() >> finish_updates
 
-    # [update_invoices_task.expand(invoice=records["invoice"]),
-    #  update_vouchers_task.expand(voucher=records["voucher"])] >> finish_updates

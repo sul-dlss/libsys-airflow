@@ -55,6 +55,28 @@ def _retrieve_invoice(
             task_instance.xcom_push(key="duplicates", value=msg)
 
 
+def email_reporting_errors(folio_url: str) -> int:
+    """
+    Retrieves Errors from upstream tasks and emails report
+    """
+    task_instance = get_current_context()["ti"]
+    logger.info("Generating Email Report")
+    missing_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='missing')
+    if missing_invoices is None:
+        missing_invoices = []
+    logger.info(f"Missing {len(missing_invoices):,}")
+    cancelled_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='cancelled')
+    if cancelled_invoices is None:
+        cancelled_invoices = []
+    logger.info(f"Cancelled {len(cancelled_invoices):,}")
+    paid_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='paid')
+    if paid_invoices is None:
+        paid_invoices = []
+    logger.info(f"Paid {len(paid_invoices):,}")
+    
+    return len(missing_invoices) + len(cancelled_invoices) + len(paid_invoices)
+
+
 def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, None]:
     """
     Retrieves voucher based on the invoice id

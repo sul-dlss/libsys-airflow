@@ -12,6 +12,7 @@ from libsys_airflow.plugins.orafin.emails import (
 )
 
 from libsys_airflow.plugins.orafin.ap_reports import (
+    email_reporting_errors,
     retrieve_invoice,
     retrieve_rows,
     retrieve_voucher,
@@ -51,6 +52,11 @@ def email_excluded_task(invoices: list):
         generate_excluded_email(invoices, folio_url)
     return f"Emailed report for {len(invoices):,} invoices"
 
+@task
+def email_errors_task():
+    folio_url = Variable.get("FOLIO_URL")
+    total_errors = email_reporting_errors(folio_url)
+    return f"Email {total_errors:,} error reports"
 
 @task
 def email_summary_task(invoices: list):
@@ -94,6 +100,10 @@ def feeder_file_task(invoices: list):
     feeder_file = init_feeder_file(invoices, folio_client, converter)
 
     return converter.unstructure(feeder_file)
+
+
+
+
 
 
 @task
