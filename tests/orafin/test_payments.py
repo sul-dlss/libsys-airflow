@@ -90,7 +90,6 @@ vendor = {
     "code": "HEIN-SUL",
     "erpCode": "012957FEEDER",
     "id": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
-    "liableForVat": False,
 }
 
 

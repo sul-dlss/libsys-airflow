@@ -15,7 +15,8 @@ class Vendor:
     code: str
     erpCode: str
     id: str
-    liableForVat: bool
+    # liableForVat: Union[None, bool] = False
+    liableForVat: bool = False
 
     @property
     def vendor_number(self) -> str:
