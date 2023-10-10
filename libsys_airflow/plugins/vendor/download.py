@@ -85,7 +85,7 @@ def ftp_download_task(
     else:
         filter_strategy = _null_filter_strategy()
 
-    download_days_ago = Variable.get("download_days_ago")
+    download_days_ago = Variable.get("download_days_ago", 10)
     mod_date_after = None
     if download_days_ago:
         mod_date_after = datetime.utcnow() - timedelta(days=int(download_days_ago))
