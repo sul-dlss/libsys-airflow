@@ -5,7 +5,9 @@ from datetime import datetime
 
 from cattrs import Converter
 
+from airflow.operators.bash import BashOperator
 from airflow.providers.sftp.hooks.sftp import SFTPHook
+
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
@@ -113,7 +115,21 @@ def models_converter():
     return converter
 
 
-def transfer_to_orafin(feeder_file_path: pathlib.Path, sftp_connection: str):
+def transfer_to_orafin(feeder_file: str):
+    command = [
+        "scp",
+        "-i /opt/airflow/vendor-keys/apdrop.key",
+        "-o KexAlgorithms=diffie-hellman-group14-sha1",
+        "-o StrictHostKeyChecking=no",
+        str(feeder_file),
+        "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat",
+    ]
+    logger.info(f"Command {command}")
+    return BashOperator(task_id="sftp_feederfile", bash_command=" ".join(command))
+
+
+# We should switch to using this function when the AP server is upgraded
+def hook_transfer_to_orafin(feeder_file_path: pathlib.Path, sftp_connection: str):
     sftp_hook = SFTPHook(sftp_connection)
 
     with feeder_file_path.open() as fo:
