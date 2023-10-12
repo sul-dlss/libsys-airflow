@@ -78,9 +78,6 @@ def invoices_awaiting_payment_task() -> list:
 
 
 @task
-def invoices_pending_payment_task(invoice_ids: list, upload_status: bool):
-    if upload_status is False:
-        logger.error("Failed to upload Feeder file")
-        return
+def invoices_pending_payment_task(invoice_ids: list):
     folio_client = _folio_client()
     return _update_vouchers_to_pending(invoice_ids, folio_client)

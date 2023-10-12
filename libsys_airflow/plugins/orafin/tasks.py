@@ -84,12 +84,11 @@ def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") 
     feeder_file_path = orafin_path / feeder_file_instance.file_name
     with feeder_file_path.open("w+") as fo:
         fo.write(feeder_file_instance.generate())
+    logger.info(f"Feeder-file {feeder_file_path.resolve()}")
     return str(feeder_file_path.resolve())
 
 
-@task
-def sftp_file_task(feeder_file_path: str, sftp_connection: str):  # type: ignore
-    transfer_status = transfer_to_orafin(
-        pathlib.Path(feeder_file_path), sftp_connection
-    )
-    return transfer_status
+# @task -- When SFTP is available on AP server, uncomment this line to make a taskflow task
+def sftp_file_task(feeder_file_path: str, sftp_connection: str = None):  # type: ignore
+    bash_operator = transfer_to_orafin(feeder_file_path)
+    return bash_operator
