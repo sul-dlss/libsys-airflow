@@ -98,6 +98,8 @@ def get_invoice(
     # Check for invoice-level exclusions
     if invoice.invoiceDate > datetime.now(timezone.utc):
         exclude_invoice = True
+    if "FEEDER" not in invoice.accountingCode:
+        exclude_invoice = True
     return invoice, exclude_invoice
 
 
