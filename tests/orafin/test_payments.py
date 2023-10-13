@@ -50,6 +50,17 @@ no_feeder_invoice_dict = {
     "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
 }
 
+too_long_invoice_dict = {
+    "id": "toolong",
+    "accountingCode": "804584FEEDER",
+    "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "folioInvoiceNo": "10596",
+    "vendorInvoiceNo": "242428ZP1abcdefghijklmnopqrstuvwxyz0123456789",
+    "subTotal": 135.19,
+    "total": 147.53,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+}
+
 invoice_lines = [
     {
         "adjustmentsTotal": 2.12,
@@ -145,6 +156,8 @@ def mock_folio_client():
             return future_invoice_dict
         elif args[0].startswith("/invoice/invoices/nofeeder"):
             return no_feeder_invoice_dict
+        elif args[0].startswith("/invoice/invoices/toolong"):
+            return too_long_invoice_dict
         elif args[0].startswith("/invoice/invoices/"):
             return invoice_dict
         # Invoice Lines
@@ -244,6 +257,12 @@ def test_exclude_future_invoice(mock_folio_client):
 def test_exclude_nofeeder_invoice(mock_folio_client):
     converter = models_converter()
     invoice, exclude = get_invoice("nofeeder", mock_folio_client, converter)
+    assert exclude is True
+
+
+def test_exclude_toolong_invoice(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice("toolong", mock_folio_client, converter)
     assert exclude is True
 
 

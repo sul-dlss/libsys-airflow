@@ -100,6 +100,8 @@ def get_invoice(
         exclude_invoice = True
     if "FEEDER" not in invoice.accountingCode:
         exclude_invoice = True
+    if len(f"{invoice.vendorInvoiceNo} {invoice.folioInvoiceNo}") > 40:
+        exclude_invoice = True
     return invoice, exclude_invoice
 
 
