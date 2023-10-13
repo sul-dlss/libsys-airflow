@@ -64,6 +64,8 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
             ]
         ):
             exclude_invoice = True
+        if row["subTotal"] == 0.0:
+            exclude_invoice = True
         _get_fund(fund_distributions, folio_client)
     return invoice_lines, exclude_invoice
 
