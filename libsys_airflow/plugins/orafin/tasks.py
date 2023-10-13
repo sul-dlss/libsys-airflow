@@ -7,14 +7,16 @@ from airflow.models import Variable
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
 from libsys_airflow.plugins.orafin.emails import (
+    generate_ap_error_report_email,
     generate_excluded_email,
     generate_summary_email,
 )
 
+
 from libsys_airflow.plugins.orafin.ap_reports import (
-    email_reporting_errors,
+    extract_rows,
+    filter_files,
     retrieve_invoice,
-    retrieve_rows,
     retrieve_voucher,
     update_invoice,
     update_voucher,
@@ -55,7 +57,7 @@ def email_excluded_task(invoices: list):
 @task
 def email_errors_task():
     folio_url = Variable.get("FOLIO_URL")
-    total_errors = email_reporting_errors(folio_url)
+    total_errors = generate_ap_error_report_email(folio_url)
     return f"Email {total_errors:,} error reports"
 
 @task
@@ -69,6 +71,22 @@ def extract_rows_task(retrieved_csv: str):
     return retrieve_rows(retrieved_csv)
 
 
+def extract_rows_task(ti=None):
+    new_reports = ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
+    all_rows = []
+    for report in new_reports:
+        all_rows.extend(extract_rows(report.get("file_name")))
+    return all_rows
+
+
+@task
+def filter_files_task(ti=None):
+    ls_output = ti.xcom_pull(task_ids="find_files")
+    existing_reports, new_reports = filter_files(ls_output)
+    ti.xcom_push(key="existing_reports", value=existing_reports)
+    ti.xcom_push(key="new_reports", value=new_reports)
+
+
 @task(multiple_outputs=True)
 def filter_invoices_task(invoices: list):
     feeder_file, excluded = [], []
@@ -79,6 +97,9 @@ def filter_invoices_task(invoices: list):
             feeder_file.append(row['invoice'])
     return {"feed": feeder_file, "excluded": excluded}
 
+@task
+def get_new_reports_task(ti=None):
+    return ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
 
 @task(max_active_tis_per_dag=5)
 def transform_folio_data_task(invoice_id: str):
@@ -102,10 +123,6 @@ def feeder_file_task(invoices: list):
     return converter.unstructure(feeder_file)
 
 
-
-
-
-
 @task
 def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
     # Initialize Feeder File Task
@@ -124,10 +141,6 @@ def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") 
 def sftp_file_task(feeder_file_path: str, sftp_connection: str = None):  # type: ignore
     bash_operator = transfer_to_orafin(feeder_file_path)
     return bash_operator
-
-@task
-def retrieve_report_task(sftp_connection: str):
-    return "xxdl_ap_payment_09282023161640.csv"
 
 
 @task(max_active_tis_per_dagrun=5)

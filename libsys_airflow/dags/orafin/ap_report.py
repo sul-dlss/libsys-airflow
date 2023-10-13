@@ -10,11 +10,17 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 from libsys_airflow.plugins.orafin.tasks import (
     email_errors_task,
     extract_rows_task,
+    filter_files_task,
+    get_new_reports_task,
     retrieve_invoice_task,
-    retrieve_report_task,
     retrieve_voucher_task,
     update_invoices_task,
     update_vouchers_task,
+)
+
+from libsys_airflow.plugins.orafin.ap_reports import (
+    find_reports,
+    retrieve_reports
 )
 
 logger = logging.getLogger(__name__)
@@ -46,11 +52,21 @@ with DAG(
     catchup=False,
     tags=["folio", "orafin"],
 ) as dag:
-    finish_updates = EmptyOperator(task_id="end", trigger_rule="all_done")
+    start = EmptyOperator(task_id="start")
 
-    retrieve_payment_csv = retrieve_report_task("sftp-orafin")
+    finish_updates = EmptyOperator(task_id="end")
 
-    report_rows = extract_rows_task(retrieve_payment_csv)
+    ap_reports = filter_files_task()
+
+    report_rows = extract_rows_task()
+
+    new_reports = get_new_reports_task()
+
+    retrieve_new_reports = retrieve_reports().expand(env=new_reports)
+
+    start >> find_reports() >> ap_reports >> new_reports
+    
+    retrieve_new_reports >> report_rows
 
     invoices = retrieve_invoice_task.expand(row=report_rows)
 

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from typing import Union
+from airflow.operators.bash import BashOperator
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
@@ -18,8 +19,8 @@ def _retrieve_invoice(
     invoice_number: str, folio_client: FolioClient, task_instance
 ) -> Union[dict, None]:
     """
-    Takes InvoiceNum, separates into vendorInvoiceNo and folioInvoiceNo
-    values to retrieve invoice
+    Takes InvoiceNum and parses out the folioInvoiceNo values to retrieve invoice from
+    Okapi
     """
     parts = shlex.split(invoice_number)
     _, folio_invoice_number = parts[0], parts[1]
@@ -55,26 +56,70 @@ def _retrieve_invoice(
             task_instance.xcom_push(key="duplicates", value=msg)
 
 
-def email_reporting_errors(folio_url: str) -> int:
+def extract_rows(retrieved_csv: str, airflow: str = "/opt/airflow") -> list:
     """
-    Retrieves Errors from upstream tasks and emails report
+    Process AP csv file and returns a dictionary of updated
     """
+    report_path = pathlib.Path(airflow) / f"orafin-files/reports/{retrieved_csv}"
+    with report_path.open() as fo:
+        raw_report = fo.readlines()
+    field_names = [name.strip() for name in raw_report[0].split(",")]
+    report = []
+    for row in raw_report[1:]:
+        fields = [field.strip() for field in row.split(",")]
+        if len(fields) > len(field_names):
+            # Combines Supplier Names because name has a comma
+            supplier_name = ", ".join([fields[1], fields.pop(2)])
+            fields[1] = supplier_name
+        report_line = {}
+        for name, value in zip(field_names, fields):
+            report_line[name] = value
+        report.append(report_line)
+    report_df = pd.DataFrame(report)
+    return report_df.replace({np.nan: None}).to_dict(orient='records')
+
+
+def filter_files(ls_output, airflow="/opt/airflow") -> tuple:
+    """
+    Filters files based if they already exist in the orafin-
+    """
+    reports = [row.strip() for row in ls_output.split(",") if row.endswith(".csv")]
+    existing_reports, new_reports = [], []
+    for report in reports:
+        report_path = pathlib.Path(airflow) /  f"orafin-files/reports/{report}"
+        if report_path.exists():
+            existing_reports.append({"file_name": report_path.name})
+        else:
+            new_reports.append({"file_name": report_path.name})
+    return existing_reports, new_reports
+
+
+def find_reports():
+    """
+    Looks for reports using ssh with the BashOperator
+    """
+    command = [
+        # "ssh",
+        # "-i /opt/airflow/vendor-keys/apdrop.key",
+        # "-o KexAlgorithms=diffie-hellman-group14-sha1",
+        # "-o StrictHostKeyChecking=no",
+        # "of_aplib@extxfer.stanford.edu"
+        # "ls -m /home/of_aplib/OF1_PRD/outbound/data/"
+        "echo xxdl_ap_payment_09272023104725.csv, xxdl_ap_payment_09282023161640.csv"
+    ]
+    return BashOperator(
+        task_id="find_files",
+        bash_command=" ".join(command),
+        do_xcom_push=True
+    )
+
+
+def retrieve_invoice(row: dict, folio_client: FolioClient) -> dict:
     task_instance = get_current_context()["ti"]
-    logger.info("Generating Email Report")
-    missing_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='missing')
-    if missing_invoices is None:
-        missing_invoices = []
-    logger.info(f"Missing {len(missing_invoices):,}")
-    cancelled_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='cancelled')
-    if cancelled_invoices is None:
-        cancelled_invoices = []
-    logger.info(f"Cancelled {len(cancelled_invoices):,}")
-    paid_invoices = task_instance.xcom_pull(task_ids='retrieve_invoice_task', key='paid')
-    if paid_invoices is None:
-        paid_invoices = []
-    logger.info(f"Paid {len(paid_invoices):,}")
-    
-    return len(missing_invoices) + len(cancelled_invoices) + len(paid_invoices)
+    invoice = _retrieve_invoice(row["InvoiceNum"], folio_client, task_instance)
+    if invoice:
+        task_instance.xcom_push(key=invoice["id"], value=row)
+    return invoice
 
 
 def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, None]:
@@ -104,6 +149,25 @@ def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, 
             msg = f"Multiple vouchers {','.join([voucher['id'] for voucher in voucher_result['vouchers']])} found for invoice {invoice_id}"
             logger.error(msg)
             task_instance.xcom_push(key="duplicates", value=msg)
+    
+
+def retrieve_reports():
+    """
+    scp AP Reports from server
+    """
+    command = [
+        # "scp "
+        # "-i /opt/airflow/orafin-files/apdrop.key",
+        # "-o KexAlgorithms=diffie-hellman-group14-sha1",
+        # "-o StrictHostKeyChecking=no",
+        # "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/outbound/data/$file_name",
+        # "/opt/airflow/orafin-files/reports/",
+        "echo scp $file_name"
+    ]
+    return BashOperator.partial(
+        task_id="scp_report",
+        bash_command=" ".join(command)
+    )
 
 
 def update_invoice(invoice: dict):
@@ -128,34 +192,3 @@ def update_voucher(voucher: dict) -> dict:
     voucher["disbursementDate"] = disbursement_date.isoformat()
 
     logger.info(f"Need to PUT {voucher['id']} to FOLIO\n{voucher}")
-
-
-def retrieve_invoice(row: dict, folio_client: FolioClient) -> dict:
-    task_instance = get_current_context()["ti"]
-    invoice = _retrieve_invoice(row["InvoiceNum"], folio_client, task_instance)
-    if invoice:
-        task_instance.xcom_push(key=invoice["id"], value=row)
-    return invoice
-
-
-def retrieve_rows(retrieved_csv: str, airflow: str = "/opt/airflow") -> list:
-    """
-    Process AP csv file and returns a dictionary of updated
-    """
-    report_path = pathlib.Path(airflow) / f"orafin-files/reports/{retrieved_csv}"
-    with report_path.open() as fo:
-        raw_report = fo.readlines()
-    field_names = [name.strip() for name in raw_report[0].split(",")]
-    report = []
-    for row in raw_report[1:]:
-        fields = [field.strip() for field in row.split(",")]
-        if len(fields) > len(field_names):
-            # Combines Supplier Names because name has a comma
-            supplier_name = ", ".join([fields[1], fields.pop(2)])
-            fields[1] = supplier_name
-        report_line = {}
-        for name, value in zip(field_names, fields):
-            report_line[name] = value
-        report.append(report_line)
-    report_df = pd.DataFrame(report)
-    return report_df.replace({np.nan: None}).to_dict(orient='records')
