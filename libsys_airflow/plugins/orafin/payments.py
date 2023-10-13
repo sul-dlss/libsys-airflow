@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from cattrs import Converter
 
@@ -64,6 +64,8 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
             ]
         ):
             exclude_invoice = True
+        if row["subTotal"] == 0.0:
+            exclude_invoice = True
         _get_fund(fund_distributions, folio_client)
     return invoice_lines, exclude_invoice
 
@@ -93,6 +95,13 @@ def get_invoice(
     )
     # Converts to Invoice Object
     invoice = converter.structure(invoice, Invoice)
+    # Check for invoice-level exclusions
+    if invoice.invoiceDate > datetime.now(timezone.utc):
+        exclude_invoice = True
+    if "FEEDER" not in invoice.accountingCode:
+        exclude_invoice = True
+    if len(f"{invoice.vendorInvoiceNo} {invoice.folioInvoiceNo}") > 40:
+        exclude_invoice = True
     return invoice, exclude_invoice
 
 

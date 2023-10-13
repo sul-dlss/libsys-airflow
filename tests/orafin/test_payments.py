@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytest  # noqa
 
 from unittest.mock import MagicMock
@@ -21,6 +21,41 @@ invoice_dict = {
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
+    "subTotal": 135.19,
+    "total": 147.53,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+}
+
+future_invoice_dict = {
+    "id": "futureinvoice",
+    "accountingCode": "804584FEEDER",
+    "invoiceDate": (datetime.utcnow() + timedelta(days=2)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000+00:00"
+    ),
+    "folioInvoiceNo": "10596",
+    "vendorInvoiceNo": "242428ZP1",
+    "subTotal": 135.19,
+    "total": 147.53,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+}
+
+no_feeder_invoice_dict = {
+    "id": "nofeeder",
+    "accountingCode": "804584",
+    "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "folioInvoiceNo": "10596",
+    "vendorInvoiceNo": "242428ZP1",
+    "subTotal": 135.19,
+    "total": 147.53,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+}
+
+too_long_invoice_dict = {
+    "id": "toolong",
+    "accountingCode": "804584FEEDER",
+    "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "folioInvoiceNo": "10596",
+    "vendorInvoiceNo": "242428ZP1abcdefghijklmnopqrstuvwxyz0123456789",
     "subTotal": 135.19,
     "total": 147.53,
     "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
@@ -69,6 +104,24 @@ amount_invoice_lines = [
     }
 ]
 
+zero_subtotal_invoice_lines = [
+    {
+        "adjustmentsTotal": 6.7,
+        "id": "453e5789-afe9-480a-8af2-05c57acd08ed",
+        "invoiceLineNumber": "3",
+        "subTotal": 0.0,
+        "total": 0.0,
+        "poLineId": "da1009a8-68ef-4eb3-aaba-8d0e51c6a4ae",
+        "fundDistributions": [
+            {
+                "fundId": "698876aa-180c-4cb8-b865-6e91321122c8",
+                "distributionType": "amount",
+                "value": 50,
+            }
+        ],
+    }
+]
+
 eresource_po_line = {
     "id": "da1009a8-68ef-4eb3-aaba-8d0e51c6a4ae",
     "acquisitionMethod": "e723e091-1d0a-48f4-9065-61427e723174",
@@ -97,14 +150,24 @@ vendor = {
 def mock_folio_client():
     def mock_get(*args, **kwargs):
         # Invoice
-        if args[0].startswith("/invoice/invoices/"):
+        if args[0].startswith("/invoice/invoices/a6452c96"):
+            return invoice_dict
+        elif args[0].startswith("/invoice/invoices/futureinvoice"):
+            return future_invoice_dict
+        elif args[0].startswith("/invoice/invoices/nofeeder"):
+            return no_feeder_invoice_dict
+        elif args[0].startswith("/invoice/invoices/toolong"):
+            return too_long_invoice_dict
+        elif args[0].startswith("/invoice/invoices/"):
             return invoice_dict
         # Invoice Lines
         if args[0].endswith("invoice-lines"):
-            if kwargs['params']['query'].startswith("invoiceId==a6452c96"):
-                payload = {"invoiceLines": invoice_lines}
-            else:
+            if kwargs['params']['query'].startswith("invoiceId==e5662732"):
                 payload = {"invoiceLines": amount_invoice_lines}
+            elif kwargs['params']['query'].startswith("invoiceId==zerosubtotal"):
+                payload = {"invoiceLines": zero_subtotal_invoice_lines}
+            else:
+                payload = {"invoiceLines": invoice_lines}
             return payload
         # Fund
         if args[0].endswith("6e91321122c8"):
@@ -177,6 +240,30 @@ def test_exclude_invoice(mock_folio_client):
     )
     assert exclude is True
     assert invoice.lines[0].poLine.orderFormat == "Electronic Resource"
+
+
+def test_exclude_zero_subtotal(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice("zerosubtotal", mock_folio_client, converter)
+    assert exclude is True
+
+
+def test_exclude_future_invoice(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice("futureinvoice", mock_folio_client, converter)
+    assert exclude is True
+
+
+def test_exclude_nofeeder_invoice(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice("nofeeder", mock_folio_client, converter)
+    assert exclude is True
+
+
+def test_exclude_toolong_invoice(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude = get_invoice("toolong", mock_folio_client, converter)
+    assert exclude is True
 
 
 def test_generate_file(mock_folio_client):
