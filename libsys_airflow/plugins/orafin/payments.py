@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from cattrs import Converter
 
@@ -95,6 +95,9 @@ def get_invoice(
     )
     # Converts to Invoice Object
     invoice = converter.structure(invoice, Invoice)
+    # Check for invoice-level exclusions
+    if invoice.invoiceDate > datetime.now(timezone.utc):
+        exclude_invoice = True
     return invoice, exclude_invoice
 
 
