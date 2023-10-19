@@ -57,7 +57,7 @@ def file_loaded_sensor(
             f"/change-manager/jobExecutions/{job_execution_id}"
         )
     except requests.exceptions.HTTPError as error:
-        if error.response.status_code == 404:
+        if error.response.status_code == 404:  # type: ignore
             logger.info(
                 f"Processing job for file ('{vendor_interface_uuid} - {filename}') has not started yet."
             )
