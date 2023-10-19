@@ -6,7 +6,10 @@ from airflow.models import Variable
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
-from libsys_airflow.plugins.orafin.emails import generate_excluded_email
+from libsys_airflow.plugins.orafin.emails import (
+    generate_excluded_email,
+    generate_summary_email,
+)
 
 from libsys_airflow.plugins.orafin.payments import (
     generate_file,
@@ -39,6 +42,13 @@ def email_excluded_task(invoices: list):
     if len(invoices) > 0:
         generate_excluded_email(invoices, folio_url)
     return f"Emailed report for {len(invoices):,} invoices"
+
+
+@task
+def email_summary_task(invoices: list):
+    folio_url = Variable.get("FOLIO_URL")
+    generate_summary_email(invoices, folio_url)
+    return f"Emailed summary report for {len(invoices):,} invoices"
 
 
 @task(multiple_outputs=True)
