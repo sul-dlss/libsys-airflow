@@ -2,7 +2,7 @@ import pytest  # noqa
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.orafin.ap_reports import (
+from libsys_airflow.plugins.orafin.reports import (
     retrieve_invoice,
     retrieve_rows,
     retrieve_voucher,
@@ -41,7 +41,10 @@ def mock_folio_client():
             case """/invoice/invoices?query=(folioInvoiceNo == "10204")""":
                 return {
                     "invoices": [
-                        {'id': "f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a", "status": "Cancelled"}
+                        {
+                            'id': "f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a",
+                            "status": "Cancelled",
+                        }
                     ]
                 }
 
@@ -72,12 +75,10 @@ def mock_folio_client():
                         {"id": "d49924fd-6153-4894-bdbf-997126b0a55", 'status': 'Paid'}
                     ]
                 }
-            
+
             case "/voucher-storage/vouchers?query=(invoiceId==3379cf1d-dd47-4f7f-9b04-7ace791e75c8)":
-                return {
-                    "vouchers": []
-                }
-            
+                return {"vouchers": []}
+
             case "/voucher-storage/vouchers?query=(invoiceId==e2e8344d-2ad6-44f2-bf56-f3cd04f241b3)":
                 return {
                     "vouchers": [
@@ -85,8 +86,6 @@ def mock_folio_client():
                         {'id': '0321fbc6-8714-411a-9619-9c2b43e0df05'},
                     ]
                 }
-            
-
 
     mock_client = MagicMock()
     mock_client.get = mock_get
@@ -121,7 +120,9 @@ def test_retrieve_paid_invoice(mock_folio_client, mock_current_context, caplog):
 def test_retrieve_cancelled_invoice(mock_folio_client, mock_current_context, caplog):
     row = {"InvoiceNum": "4785466 10204"}
     retrieve_invoice(row, mock_folio_client)
-    assert "Invoice f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a has been Cancelled" in caplog.text
+    assert (
+        "Invoice f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a has been Cancelled" in caplog.text
+    )
 
 
 def test_retrieve_no_invoice(mock_folio_client, mock_current_context, caplog):
@@ -164,16 +165,21 @@ def test_retrieve_voucher(mock_folio_client, mock_current_context):
 
 
 def test_retrieve_paid_voucher(mock_folio_client, mock_current_context, caplog):
-    retrieve_voucher(
-        "587c922a-5be1-4de8-a268-2a5859d62779", mock_folio_client
-    )
+    retrieve_voucher("587c922a-5be1-4de8-a268-2a5859d62779", mock_folio_client)
     assert "Voucher d49924fd-6153-4894-bdbf-997126b0a55 already Paid" in caplog.text
 
 
 def test_retrieve_no_voucher(mock_folio_client, mock_current_context, caplog):
     retrieve_voucher("3379cf1d-dd47-4f7f-9b04-7ace791e75c8", mock_folio_client)
-    assert "No voucher found for invoice 3379cf1d-dd47-4f7f-9b04-7ace791e75c8" in caplog.text
+    assert (
+        "No voucher found for invoice 3379cf1d-dd47-4f7f-9b04-7ace791e75c8"
+        in caplog.text
+    )
+
 
 def test_retrieve_duplicate_vouchers(mock_folio_client, mock_current_context, caplog):
     retrieve_voucher("e2e8344d-2ad6-44f2-bf56-f3cd04f241b3", mock_folio_client)
-    assert "Multiple vouchers b6f0407c-4929-4831-8f2b-ef1aa5a26163,0321fbc6-8714-411a-9619-9c2b43e0df05" in caplog.text
+    assert (
+        "Multiple vouchers b6f0407c-4929-4831-8f2b-ef1aa5a26163,0321fbc6-8714-411a-9619-9c2b43e0df05"
+        in caplog.text
+    )

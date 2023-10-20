@@ -5,23 +5,18 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.decorators import task_group
 from airflow.operators.empty import EmptyOperator
-from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.orafin.tasks import (
     email_errors_task,
+    email_paid_task,
     extract_rows_task,
-    filter_files_task,
-    get_new_reports_task,
+    init_processing_task,
     retrieve_invoice_task,
     retrieve_voucher_task,
     update_invoices_task,
     update_vouchers_task,
 )
 
-from libsys_airflow.plugins.orafin.ap_reports import (
-    find_reports,
-    retrieve_reports
-)
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +37,16 @@ def update_folio(record):
     update_vouchers_task(voucher=voucher)
 
 
+@task_group(group_id="email-group")
+def email_group():
+    email_errors_task()
+    email_paid_task()
+
+
 with DAG(
     "ap_payment_report",
     default_args=default_args,
-    schedule=CronDataIntervalTimetable(
-        cron="00 18 * * 2,4", timezone="America/Los_Angeles"
-    ),
+    schedule=None,
     start_date=datetime(2023, 9, 19),
     catchup=False,
     tags=["folio", "orafin"],
@@ -56,19 +55,12 @@ with DAG(
 
     finish_updates = EmptyOperator(task_id="end")
 
-    ap_reports = filter_files_task()
+    report_path = init_processing_task()
 
-    report_rows = extract_rows_task()
+    report_rows = extract_rows_task(report_path)
 
-    new_reports = get_new_reports_task()
-
-    retrieve_new_reports = retrieve_reports().expand(env=new_reports)
-
-    start >> find_reports() >> ap_reports >> new_reports
-    
-    retrieve_new_reports >> report_rows
+    start >> report_path
 
     invoices = retrieve_invoice_task.expand(row=report_rows)
 
-    update_folio.expand(record=invoices) >> email_errors_task() >> finish_updates
-
+    update_folio.expand(record=invoices) >> email_group() >> finish_updates

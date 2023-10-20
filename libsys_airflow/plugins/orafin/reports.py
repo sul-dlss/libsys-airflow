@@ -10,9 +10,16 @@ from typing import Union
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import get_current_context
 
+
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
 logger = logging.getLogger(__name__)
+
+ap_server_options = [
+    "-i /opt/airflow/vendor-keys/apdrop.key",
+    "-o KexAlgorithms=diffie-hellman-group14-sha1",
+    "-o StrictHostKeyChecking=no",
+]
 
 
 def _retrieve_invoice(
@@ -36,7 +43,6 @@ def _retrieve_invoice(
         case 1:
             invoice = invoice_result["invoices"][0]
             match invoice["status"]:
-
                 case "Cancelled":
                     msg = f"Invoice {invoice['id']} has been Cancelled"
                     logger.error(msg)
@@ -46,7 +52,7 @@ def _retrieve_invoice(
                     msg = f"Invoice {invoice['id']} already Paid"
                     logger.error(msg)
                     task_instance.xcom_push(key="paid", value=invoice['id'])
-            
+
                 case _:
                     return invoice
 
@@ -56,13 +62,17 @@ def _retrieve_invoice(
             task_instance.xcom_push(key="duplicates", value=msg)
 
 
-def extract_rows(retrieved_csv: str, airflow: str = "/opt/airflow") -> list:
+def extract_rows(retrieved_csv: str) -> list:
     """
     Process AP csv file and returns a dictionary of updated
     """
-    report_path = pathlib.Path(airflow) / f"orafin-files/reports/{retrieved_csv}"
+    report_path = pathlib.Path(retrieved_csv)
     with report_path.open() as fo:
         raw_report = fo.readlines()
+    if len(raw_report) == 1:
+        # Blank report, delete and return empty list
+        report_path.unlink()
+        return []
     field_names = [name.strip() for name in raw_report[0].split(",")]
     report = []
     for row in raw_report[1:]:
@@ -86,7 +96,7 @@ def filter_files(ls_output, airflow="/opt/airflow") -> tuple:
     reports = [row.strip() for row in ls_output.split(",") if row.endswith(".csv")]
     existing_reports, new_reports = [], []
     for report in reports:
-        report_path = pathlib.Path(airflow) /  f"orafin-files/reports/{report}"
+        report_path = pathlib.Path(airflow) / f"orafin-files/reports/{report}"
         if report_path.exists():
             existing_reports.append({"file_name": report_path.name})
         else:
@@ -98,19 +108,33 @@ def find_reports():
     """
     Looks for reports using ssh with the BashOperator
     """
-    command = [
-        # "ssh",
-        # "-i /opt/airflow/vendor-keys/apdrop.key",
-        # "-o KexAlgorithms=diffie-hellman-group14-sha1",
-        # "-o StrictHostKeyChecking=no",
-        # "of_aplib@extxfer.stanford.edu"
-        # "ls -m /home/of_aplib/OF1_PRD/outbound/data/"
-        "echo xxdl_ap_payment_09272023104725.csv, xxdl_ap_payment_09282023161640.csv"
-    ]
+    command = (
+        ["ssh"]
+        + ap_server_options
+        + [
+            "of_aplib@extxfer.stanford.edu"
+            "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv"
+        ]
+    )
     return BashOperator(
-        task_id="find_files",
-        bash_command=" ".join(command),
-        do_xcom_push=True
+        task_id="find_files", bash_command=" ".join(command), do_xcom_push=True
+    )
+
+
+def remove_reports():
+    """
+    Removes all ap reports from the server
+    """
+    command = (
+        ["ssh"]
+        + ap_server_options
+        + [
+            "of_aplib@extxfer.stanford.edu",
+            "rm /home/of_aplib/OF1_PRD/outbound/data/$file_name",
+        ]
+    )
+    return BashOperator.partial(
+        task_id="remove_files", bash_command=" ".join(command), do_xcom_push=True
     )
 
 
@@ -149,25 +173,21 @@ def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, 
             msg = f"Multiple vouchers {','.join([voucher['id'] for voucher in voucher_result['vouchers']])} found for invoice {invoice_id}"
             logger.error(msg)
             task_instance.xcom_push(key="duplicates", value=msg)
-    
+
 
 def retrieve_reports():
     """
     scp AP Reports from server
     """
-    command = [
-        # "scp "
-        # "-i /opt/airflow/orafin-files/apdrop.key",
-        # "-o KexAlgorithms=diffie-hellman-group14-sha1",
-        # "-o StrictHostKeyChecking=no",
-        # "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/outbound/data/$file_name",
-        # "/opt/airflow/orafin-files/reports/",
-        "echo scp $file_name"
-    ]
-    return BashOperator.partial(
-        task_id="scp_report",
-        bash_command=" ".join(command)
+    command = (
+        ["scp"]
+        + ap_server_options
+        + [
+            "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/outbound/data/$file_name",
+            "/opt/airflow/orafin-files/reports/",
+        ]
     )
+    return BashOperator.partial(task_id="scp_report", bash_command=" ".join(command))
 
 
 def update_invoice(invoice: dict):

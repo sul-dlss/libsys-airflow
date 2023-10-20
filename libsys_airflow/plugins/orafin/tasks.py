@@ -3,6 +3,8 @@ import pathlib
 
 from airflow.decorators import task
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
@@ -13,7 +15,7 @@ from libsys_airflow.plugins.orafin.emails import (
 )
 
 
-from libsys_airflow.plugins.orafin.ap_reports import (
+from libsys_airflow.plugins.orafin.reports import (
     extract_rows,
     filter_files,
     retrieve_invoice,
@@ -48,17 +50,39 @@ def _folio_client():
 
 
 @task
+def consolidate_reports_task(ti=None):
+    existing_reports = ti.xcom_pull(
+        task_ids="filter_files_task", key="existing_reports"
+    )
+    new_reports = ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
+    all_files = [
+        {"file_name": row['file_name']} for row in existing_reports + new_reports
+    ]
+    logger.info(f"Removing {all_files}")
+    return all_files
+
+
+@task
 def email_excluded_task(invoices: list):
     folio_url = Variable.get("FOLIO_URL")
     if len(invoices) > 0:
         generate_excluded_email(invoices, folio_url)
     return f"Emailed report for {len(invoices):,} invoices"
 
+
 @task
 def email_errors_task():
     folio_url = Variable.get("FOLIO_URL")
     total_errors = generate_ap_error_report_email(folio_url)
     return f"Email {total_errors:,} error reports"
+
+
+@task
+def email_paid_task():
+    folio_url = Variable.get("FOLIO_URL")
+
+    return f"Emailed all paid invoices for {folio_url}"
+
 
 @task
 def email_summary_task(invoices: list):
@@ -67,16 +91,9 @@ def email_summary_task(invoices: list):
     return f"Emailed summary report for {len(invoices):,} invoices"
 
 
-def extract_rows_task(retrieved_csv: str):
-    return retrieve_rows(retrieved_csv)
-
-
-def extract_rows_task(ti=None):
-    new_reports = ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
-    all_rows = []
-    for report in new_reports:
-        all_rows.extend(extract_rows(report.get("file_name")))
-    return all_rows
+@task
+def extract_rows_task(report_path):
+    return extract_rows(report_path)
 
 
 @task
@@ -97,9 +114,33 @@ def filter_invoices_task(invoices: list):
             feeder_file.append(row['invoice'])
     return {"feed": feeder_file, "excluded": excluded}
 
+
 @task
 def get_new_reports_task(ti=None):
     return ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
+
+
+@task
+def init_processing_task():
+    context = get_current_context()
+    params = context.get("params")
+    return params.get("ap_report_path")
+
+
+@task
+def launch_report_processing_task(**kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    ti = kwargs.get("ti")
+    new_reports = ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
+    for i, report in enumerate(new_reports):
+        TriggerDagRunOperator(
+            task_id=f"ap_payment_report-{i}",
+            trigger_dag_id="ap_payment_report",
+            conf={
+                "ap_report_path": f"{airflow}/orafin-files/reports/{report['file_name']}"
+            },
+        ).execute(kwargs)
+
 
 @task(max_active_tis_per_dag=5)
 def transform_folio_data_task(invoice_id: str):
