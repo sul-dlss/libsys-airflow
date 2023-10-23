@@ -1,6 +1,7 @@
 import logging
 import pathlib
 
+from airflow.models.mappedoperator import OperatorPartial
 from airflow.operators.bash import BashOperator
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def filter_files(ls_output, airflow="/opt/airflow") -> tuple:
     return existing_reports, new_reports
 
 
-def find_reports():
+def find_reports() -> BashOperator:
     """
     Looks for reports using ssh with the BashOperator
     """
@@ -44,7 +45,7 @@ def find_reports():
     )
 
 
-def remove_reports():
+def remove_reports() -> OperatorPartial:
     """
     Removes all ap reports from the server
     """
@@ -61,7 +62,7 @@ def remove_reports():
     )
 
 
-def retrieve_reports():
+def retrieve_reports() -> OperatorPartial:
     """
     scp AP Reports from server
     """

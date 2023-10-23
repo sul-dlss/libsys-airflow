@@ -48,10 +48,10 @@ def consolidate_reports_task(ti=None):
         task_ids="filter_files_task", key="existing_reports"
     )
     new_reports = ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
-    all_files = [
-        {"file_name": row['file_name']} for row in existing_reports + new_reports
-    ]
-    logger.info(f"Removing {all_files}")
+    all_files = []
+    for row in existing_reports + new_reports:
+        all_files.append(row)
+    logger.info(f"Consolidated {all_files}")
     return all_files
 
 
