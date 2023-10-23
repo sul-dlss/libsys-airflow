@@ -50,7 +50,9 @@ def ap_report_management():
 
     start >> find_reports() >> ap_reports
     ap_reports >> new_reports >> retrieve_new_reports
-    retrieve_new_reports >> all_reports >> [remove_all_reports, launch_dag_runs] >> end
+    retrieve_new_reports >> [all_reports, launch_dag_runs]
+    launch_dag_runs >> end
+    all_reports >> remove_all_reports >> end
 
 
 ap_report_management()
