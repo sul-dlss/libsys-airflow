@@ -61,6 +61,7 @@ def _retrieve_invoice(
             msg = f"Multiple invoices {','.join([invoice['id'] for invoice in invoice_result['invoices']])} found for folioInvoiceNo {folio_invoice_number}"
             logger.error(msg)
             task_instance.xcom_push(key="duplicates", value=msg)
+    return None
 
 
 def extract_rows(retrieved_csv: str) -> list:
@@ -139,12 +140,13 @@ def remove_reports() -> OperatorPartial:
     )
 
 
-def retrieve_invoice(row: dict, folio_client: FolioClient) -> dict:
+def retrieve_invoice(row: dict, folio_client: FolioClient) -> Union[None, dict]:
     task_instance = get_current_context()["ti"]
     invoice = _retrieve_invoice(row["InvoiceNum"], folio_client, task_instance)
     if invoice:
         task_instance.xcom_push(key=invoice["id"], value=row)
-    return invoice
+        return invoice
+    return None
 
 
 def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, None]:
@@ -174,6 +176,7 @@ def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, 
             msg = f"Multiple vouchers {','.join([voucher['id'] for voucher in voucher_result['vouchers']])} found for invoice {invoice_id}"
             logger.error(msg)
             task_instance.xcom_push(key="duplicates", value=msg)
+    return None
 
 
 def retrieve_reports() -> OperatorPartial:
@@ -213,7 +216,7 @@ def update_voucher(voucher: dict, task_instance, folio_client: FolioClient) -> d
     voucher["disbursementNumber"] = row["PaymentNumber"]
     disbursement_date = datetime.strptime(row["PaymentDate"], "%m/%d/%Y")
     voucher["disbursementDate"] = disbursement_date.isoformat()
-    folio_client.put(f"/voucher-storage/vouchers/{voucher['id']}")
+    folio_client.put(f"/voucher-storage/vouchers/{voucher['id']}", voucher)
 
     logger.info(f"Updated {voucher['id']}")
     return voucher
