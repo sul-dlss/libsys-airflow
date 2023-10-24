@@ -1,6 +1,9 @@
 import logging
 import pathlib
 
+import numpy as np
+import pandas as pd
+
 from airflow.models.mappedoperator import OperatorPartial
 from airflow.operators.bash import BashOperator
 
@@ -11,6 +14,33 @@ ap_server_options = [
     "-o KexAlgorithms=diffie-hellman-group14-sha1",
     "-o StrictHostKeyChecking=no",
 ]
+
+
+def extract_rows(retrieved_csv: str) -> list:
+    """
+    Process AP csv file and returns a dictionary of updated
+    """
+    report_path = pathlib.Path(retrieved_csv)
+    with report_path.open() as fo:
+        raw_report = fo.readlines()
+    if len(raw_report) == 1:
+        # Blank report, delete and return empty list
+        report_path.unlink()
+        return []
+    field_names = [name.strip() for name in raw_report[0].split(",")]
+    report = []
+    for row in raw_report[1:]:
+        fields = [field.strip() for field in row.split(",")]
+        if len(fields) > len(field_names):
+            # Combines Supplier Names because name has a comma
+            supplier_name = ", ".join([fields[1], fields.pop(2)])
+            fields[1] = supplier_name
+        report_line = {}
+        for name, value in zip(field_names, fields):
+            report_line[name] = value
+        report.append(report_line)
+    report_df = pd.DataFrame(report)
+    return report_df.replace({np.nan: None}).to_dict(orient='records')
 
 
 def filter_files(ls_output, airflow="/opt/airflow") -> tuple:

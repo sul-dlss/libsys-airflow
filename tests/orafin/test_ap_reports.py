@@ -4,6 +4,7 @@ from airflow.operators.bash import BashOperator
 
 from libsys_airflow.plugins.orafin.reports import (
     ap_server_options,
+    extract_rows,
     filter_files,
     find_reports,
     retrieve_reports,
@@ -15,6 +16,42 @@ report = [
     "910092,ALVARADO, JANET MARY,2384230,09/19/2023,50000,ALVARADOJM09052023 10103,08/23/2021,50000,50000,",
     "001470,AMERICAN MATHEMATICAL SOCIETY,3098367,09/02/2023,11405.42,2991432678 379587,08/03/2023,11405.42,11405.42,",
 ]
+
+
+def test_extract_rows(tmp_path):
+    airflow = tmp_path / "airflow"
+    orafin_reports = airflow / "orafin-files/reports/"
+    orafin_reports.mkdir(parents=True)
+    existing_csv = orafin_reports / "xxdl_ap_payment_09282023161640.csv"
+
+    with existing_csv.open('w+') as fo:
+        for row in report:
+            fo.write(f"{row}\n")
+
+    invoices = extract_rows(str(existing_csv))
+
+    assert len(invoices) == 2
+    assert invoices[0]["SupplierName"] == "ALVARADO, JANET MARY"
+    assert invoices[0]["PaymentDate"] == "09/19/2023"
+    assert invoices[0]["InvoiceAmt"] == "50000"
+    assert invoices[1]["SupplierNumber"] == "001470"
+    assert invoices[1]["InvoiceNum"] == "2991432678 379587"
+    assert invoices[1]["AmountPaid"] == "11405.42"
+    assert invoices[1]["PoNumber"] == ""
+
+
+def test_extract_rows_empty_file(tmp_path):
+    airflow = tmp_path / "airflow"
+    orafin_reports = airflow / "orafin-files/reports/"
+    orafin_reports.mkdir(parents=True)
+    existing_csv = orafin_reports / "xxdl_ap_payment_09282023161640.csv"
+    with existing_csv.open('w+') as fo:
+        fo.write(f"{report[0]}\n")
+
+    assert existing_csv.exists()
+    invoices = extract_rows(str(existing_csv))
+    assert len(invoices) == 0
+    assert existing_csv.exists() is False
 
 
 def test_filter_files(tmp_path):

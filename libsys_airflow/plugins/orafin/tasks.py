@@ -3,6 +3,7 @@ import pathlib
 
 from airflow.decorators import task
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
@@ -16,6 +17,7 @@ from libsys_airflow.plugins.orafin.emails import (
 
 
 from libsys_airflow.plugins.orafin.reports import (
+    extract_rows,
     filter_files,
 )
 
@@ -71,17 +73,24 @@ def email_excluded_task(invoices: list):
         generate_excluded_email(invoices, folio_url)
     return f"Emailed report for {len(invoices):,} invoices"
 
+
 @task
 def email_paid_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     total_invoices = generate_ap_paid_report_email(folio_url, ti)
     return f"Emailed all paid invoices for {folio_url} {total_invoices}"
 
+
 @task
 def email_summary_task(invoices: list):
     folio_url = Variable.get("FOLIO_URL")
     generate_summary_email(invoices, folio_url)
     return f"Emailed summary report for {len(invoices):,} invoices"
+
+
+@task
+def extract_rows_task(report_path):
+    return extract_rows(report_path)
 
 
 @task
@@ -106,6 +115,13 @@ def filter_invoices_task(invoices: list):
 @task
 def get_new_reports_task(ti=None):
     return ti.xcom_pull(task_ids="filter_files_task", key="new_reports")
+
+
+@task
+def init_processing_task():
+    context = get_current_context()
+    params = context.get("params")
+    return params.get("ap_report_path")
 
 
 @task
