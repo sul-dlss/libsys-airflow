@@ -159,3 +159,12 @@ def retrieve_reports() -> OperatorPartial:
         ]
     )
     return BashOperator.partial(task_id="scp_report", bash_command=" ".join(command))
+
+
+def update_invoice(invoice: dict, folio_client: FolioClient) -> dict:
+    """
+    Updates Invoice
+    """
+    invoice["status"] = "Paid"
+    folio_client.put(f"/invoice-storage/invoices/{invoice['id']}", invoice)
+    logger.info(f"Updated {invoice['id']} to status of Paid")

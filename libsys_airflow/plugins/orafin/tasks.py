@@ -20,6 +20,7 @@ from libsys_airflow.plugins.orafin.reports import (
     extract_rows,
     filter_files,
     retrieve_invoice,
+    update_invoice,
 )
 
 from libsys_airflow.plugins.orafin.payments import (
@@ -95,6 +96,15 @@ def extract_rows_task(report_path):
 
 
 @task
+def feeder_file_task(invoices: list):
+    converter = models_converter()
+    folio_client = _folio_client()
+    feeder_file = init_feeder_file(invoices, folio_client, converter)
+
+    return converter.unstructure(feeder_file)
+
+
+@task
 def filter_files_task(ti=None):
     ls_output = ti.xcom_pull(task_ids="find_files")
     existing_reports, new_reports = filter_files(ls_output)
@@ -111,6 +121,20 @@ def filter_invoices_task(invoices: list):
         else:
             feeder_file.append(row['invoice'])
     return {"feed": feeder_file, "excluded": excluded}
+
+
+@task
+def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
+    # Initialize Feeder File Task
+    folio_client = _folio_client()
+    orafin_path = pathlib.Path(f"{airflow}/orafin-files/data")
+    orafin_path.mkdir(exist_ok=True, parents=True)
+    feeder_file_instance = generate_file(feeder_file, folio_client)
+    feeder_file_path = orafin_path / feeder_file_instance.file_name
+    with feeder_file_path.open("w+") as fo:
+        fo.write(feeder_file_instance.generate())
+    logger.info(f"Feeder-file {feeder_file_path.resolve()}")
+    return str(feeder_file_path.resolve())
 
 
 @task
@@ -149,6 +173,12 @@ def retrieve_invoice_task(row: dict):
     return retrieve_invoice(row, folio_client)
 
 
+# @task -- When SFTP is available on AP server, uncomment this line to make a taskflow task
+def sftp_file_task(feeder_file_path: str, sftp_connection: str = None):  # type: ignore
+    bash_operator = transfer_to_orafin(feeder_file_path)
+    return bash_operator
+
+
 @task(max_active_tis_per_dag=5)
 def transform_folio_data_task(invoice_id: str):
     """
@@ -163,29 +193,11 @@ def transform_folio_data_task(invoice_id: str):
 
 
 @task
-def feeder_file_task(invoices: list):
-    converter = models_converter()
+def update_invoices_task(invoice: dict):
     folio_client = _folio_client()
-    feeder_file = init_feeder_file(invoices, folio_client, converter)
-
-    return converter.unstructure(feeder_file)
-
-
-@task
-def generate_feeder_file_task(feeder_file: dict, airflow: str = "/opt/airflow") -> str:
-    # Initialize Feeder File Task
-    folio_client = _folio_client()
-    orafin_path = pathlib.Path(f"{airflow}/orafin-files/data")
-    orafin_path.mkdir(exist_ok=True, parents=True)
-    feeder_file_instance = generate_file(feeder_file, folio_client)
-    feeder_file_path = orafin_path / feeder_file_instance.file_name
-    with feeder_file_path.open("w+") as fo:
-        fo.write(feeder_file_instance.generate())
-    logger.info(f"Feeder-file {feeder_file_path.resolve()}")
-    return str(feeder_file_path.resolve())
-
-
-# @task -- When SFTP is available on AP server, uncomment this line to make a taskflow task
-def sftp_file_task(feeder_file_path: str, sftp_connection: str = None):  # type: ignore
-    bash_operator = transfer_to_orafin(feeder_file_path)
-    return bash_operator
+    if invoice:
+        logger.info(f"Updating Invoice {invoice['id']}")
+        update_invoice(invoice, folio_client)
+        return invoice['id']
+    else:
+        logger.error("Invoice is None")

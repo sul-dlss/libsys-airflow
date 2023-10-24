@@ -12,6 +12,7 @@ from libsys_airflow.plugins.orafin.reports import (
     retrieve_invoice,
     retrieve_reports,
     remove_reports,
+    update_invoice,
 )
 
 
@@ -85,8 +86,12 @@ def mock_folio_client(mocker):
                     ]
                 }
 
+    def mock_put(*args, **kwargs):
+        return None
+
     mock_client = mocker.MagicMock()
     mock_client.get = mock_get
+    mock_client.put = mock_put
     return mock_client
 
 
@@ -224,3 +229,11 @@ def test_remove_reports():
     assert bash_command.startswith("ssh")
     assert ap_server_options[0] in bash_command
     assert bash_command.endswith("rm /home/of_aplib/OF1_PRD/outbound/data/$file_name")
+
+
+def test_update_invoice(mock_folio_client, caplog):
+    invoice = {"id": "3cf0ebad-6e86-4374-a21d-daf2227b09cd"}
+    update_invoice(invoice, mock_folio_client)
+    assert (
+        "Updated 3cf0ebad-6e86-4374-a21d-daf2227b09cd to status of Paid" in caplog.text
+    )
