@@ -146,6 +146,35 @@ def retrieve_invoice(row: dict, folio_client: FolioClient) -> dict:
     return invoice
 
 
+def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, None]:
+    """
+    Retrieves voucher based on the invoice id
+    """
+    voucher_result = folio_client.get(
+        f"/voucher-storage/vouchers?query=(invoiceId=={invoice_id})"
+    )
+    task_instance = get_current_context()["ti"]
+    match len(voucher_result["vouchers"]):
+        case 0:
+            msg = f"No voucher found for invoice {invoice_id}"
+            logger.error(msg)
+            task_instance.xcom_push(key="missing", value=msg)
+
+        case 1:
+            voucher = voucher_result["vouchers"][0]
+            if voucher["status"] == "Paid":
+                msg = f"Voucher {voucher['id']} already Paid"
+                logger.error(msg)
+                task_instance.xcom_push(key="paid", value=msg)
+            else:
+                return voucher
+
+        case _:
+            msg = f"Multiple vouchers {','.join([voucher['id'] for voucher in voucher_result['vouchers']])} found for invoice {invoice_id}"
+            logger.error(msg)
+            task_instance.xcom_push(key="duplicates", value=msg)
+
+
 def retrieve_reports() -> OperatorPartial:
     """
     scp AP Reports from server

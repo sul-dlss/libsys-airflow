@@ -15,11 +15,11 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_summary_email,
 )
 
-
 from libsys_airflow.plugins.orafin.reports import (
     extract_rows,
     filter_files,
     retrieve_invoice,
+    retrieve_voucher,
     update_invoice,
 )
 
@@ -171,6 +171,15 @@ def retrieve_invoice_task(row: dict):
     """
     folio_client = _folio_client()
     return retrieve_invoice(row, folio_client)
+
+
+@task
+def retrieve_voucher_task(invoice_id: str):
+    """
+    Retrieves voucher based on invoice id
+    """
+    folio_client = _folio_client()
+    return retrieve_voucher(invoice_id, folio_client)
 
 
 # @task -- When SFTP is available on AP server, uncomment this line to make a taskflow task

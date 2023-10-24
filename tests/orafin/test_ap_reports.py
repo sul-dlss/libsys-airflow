@@ -11,6 +11,7 @@ from libsys_airflow.plugins.orafin.reports import (
     find_reports,
     retrieve_invoice,
     retrieve_reports,
+    retrieve_voucher,
     remove_reports,
     update_invoice,
 )
@@ -211,6 +212,34 @@ def test_retrieve_duplicate_invoices(mock_folio_client, mock_current_context, ca
     retrieve_invoice(row, mock_folio_client)
     assert (
         "Multiple invoices 91c0dd9d-d906-4f08-8321-2a2f58a9a35f,bcc5b35c-3e89-4c48-b721-9ab0cbda91a9"
+        in caplog.text
+    )
+
+
+def test_retrieve_voucher(mock_folio_client, mock_current_context):
+    voucher = retrieve_voucher(
+        "3cf0ebad-6e86-4374-a21d-daf2227b09cd", mock_folio_client
+    )
+    assert voucher["id"] == "3f94f17b-3251-4eb0-849a-d57a76ac3f03"
+
+
+def test_retrieve_paid_voucher(mock_folio_client, mock_current_context, caplog):
+    retrieve_voucher("587c922a-5be1-4de8-a268-2a5859d62779", mock_folio_client)
+    assert "Voucher d49924fd-6153-4894-bdbf-997126b0a55 already Paid" in caplog.text
+
+
+def test_retrieve_no_voucher(mock_folio_client, mock_current_context, caplog):
+    retrieve_voucher("3379cf1d-dd47-4f7f-9b04-7ace791e75c8", mock_folio_client)
+    assert (
+        "No voucher found for invoice 3379cf1d-dd47-4f7f-9b04-7ace791e75c8"
+        in caplog.text
+    )
+
+
+def test_retrieve_duplicate_vouchers(mock_folio_client, mock_current_context, caplog):
+    retrieve_voucher("e2e8344d-2ad6-44f2-bf56-f3cd04f241b3", mock_folio_client)
+    assert (
+        "Multiple vouchers b6f0407c-4929-4831-8f2b-ef1aa5a26163,0321fbc6-8714-411a-9619-9c2b43e0df05"
         in caplog.text
     )
 
