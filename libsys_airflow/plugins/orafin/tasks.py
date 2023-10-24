@@ -19,6 +19,7 @@ from libsys_airflow.plugins.orafin.emails import (
 from libsys_airflow.plugins.orafin.reports import (
     extract_rows,
     filter_files,
+    retrieve_invoice,
 )
 
 from libsys_airflow.plugins.orafin.payments import (
@@ -137,6 +138,15 @@ def launch_report_processing_task(**kwargs):
                 "ap_report_path": f"{airflow}/orafin-files/reports/{report['file_name']}"
             },
         ).execute(kwargs)
+
+
+@task(max_active_tis_per_dagrun=5)
+def retrieve_invoice_task(row: dict):
+    """
+    Retrieves invoice from a row dictionary
+    """
+    folio_client = _folio_client()
+    return retrieve_invoice(row, folio_client)
 
 
 @task(max_active_tis_per_dag=5)

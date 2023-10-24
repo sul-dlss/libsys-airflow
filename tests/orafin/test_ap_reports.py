@@ -2,14 +2,106 @@ import pytest  # noqa
 
 from airflow.operators.bash import BashOperator
 
+from mocks import MockTaskInstance
+
 from libsys_airflow.plugins.orafin.reports import (
     ap_server_options,
     extract_rows,
     filter_files,
     find_reports,
+    retrieve_invoice,
     retrieve_reports,
     remove_reports,
 )
+
+
+@pytest.fixture
+def mock_folio_client(mocker):
+    def mock_get(*args, **kwargs):
+        match args[0]:
+            case """/invoice/invoices?query=(folioInvoiceNo == "10103")""":
+                return {
+                    "invoices": [
+                        {
+                            "id": "3cf0ebad-6e86-4374-a21d-daf2227b09cd",
+                            "status": "Approved",
+                        }
+                    ]
+                }
+
+            case """/invoice/invoices?query=(folioInvoiceNo == "10156")""":
+                return {
+                    "invoices": [
+                        {'id': '587c922a-5be1-4de8-a268-2a5859d62779', "status": "Paid"}
+                    ]
+                }
+
+            case """/invoice/invoices?query=(folioInvoiceNo == "10204")""":
+                return {
+                    "invoices": [
+                        {
+                            'id': "f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a",
+                            "status": "Cancelled",
+                        }
+                    ]
+                }
+
+            case """/invoice/invoices?query=(folioInvoiceNo == "379529")""":
+                return {"invoices": []}
+
+            case """/invoice/invoices?query=(folioInvoiceNo == "10157")""":
+                return {
+                    "invoices": [
+                        {"id": "91c0dd9d-d906-4f08-8321-2a2f58a9a35f"},
+                        {"id": "bcc5b35c-3e89-4c48-b721-9ab0cbda91a9"},
+                    ]
+                }
+
+            case "/voucher-storage/vouchers?query=(invoiceId==3cf0ebad-6e86-4374-a21d-daf2227b09cd)":
+                return {
+                    "vouchers": [
+                        {
+                            'id': '3f94f17b-3251-4eb0-849a-d57a76ac3f03',
+                            'status': 'Awaiting payment',
+                        }
+                    ]
+                }
+
+            case "/voucher-storage/vouchers?query=(invoiceId==587c922a-5be1-4de8-a268-2a5859d62779)":
+                return {
+                    "vouchers": [
+                        {"id": "d49924fd-6153-4894-bdbf-997126b0a55", 'status': 'Paid'}
+                    ]
+                }
+
+            case "/voucher-storage/vouchers?query=(invoiceId==3379cf1d-dd47-4f7f-9b04-7ace791e75c8)":
+                return {"vouchers": []}
+
+            case "/voucher-storage/vouchers?query=(invoiceId==e2e8344d-2ad6-44f2-bf56-f3cd04f241b3)":
+                return {
+                    "vouchers": [
+                        {'id': 'b6f0407c-4929-4831-8f2b-ef1aa5a26163'},
+                        {'id': '0321fbc6-8714-411a-9619-9c2b43e0df05'},
+                    ]
+                }
+
+    mock_client = mocker.MagicMock()
+    mock_client.get = mock_get
+    return mock_client
+
+
+@pytest.fixture
+def mock_current_context(mocker, monkeypatch):
+    def mock_get_current_context():
+        context = mocker.MagicMock()
+        context.get = lambda arg: {"ti": MockTaskInstance()}
+        return context
+
+    monkeypatch.setattr(
+        "libsys_airflow.plugins.orafin.reports.get_current_context",
+        mock_get_current_context,
+    )
+
 
 report = [
     "SupplierNumber,SupplierName,PaymentNumber,PaymentDate,PaymentAmount,InvoiceNum,InvoiceDate,InvoiceAmt,AmountPaid,PoNumber",
@@ -80,6 +172,41 @@ def test_find_reports():
     assert ap_server_options[1] in bash_operator.bash_command
     assert bash_operator.bash_command.endswith(
         "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv"
+    )
+
+
+def test_retrieve_invoice(mock_folio_client, mock_current_context):
+    row = {"InvoiceNum": "ALVARADOJM09052023 10103"}
+    invoice = retrieve_invoice(row, mock_folio_client)
+    assert invoice['id'] == "3cf0ebad-6e86-4374-a21d-daf2227b09cd"
+
+
+def test_retrieve_paid_invoice(mock_folio_client, mock_current_context, caplog):
+    row = {'InvoiceNum': '1K3M-7P1J-HL9M 10156'}
+    retrieve_invoice(row, mock_folio_client)
+    assert "Invoice 587c922a-5be1-4de8-a268-2a5859d62779 already Paid" in caplog.text
+
+
+def test_retrieve_cancelled_invoice(mock_folio_client, mock_current_context, caplog):
+    row = {"InvoiceNum": "4785466 10204"}
+    retrieve_invoice(row, mock_folio_client)
+    assert (
+        "Invoice f8d51ddc-b47c-4f83-ad7d-e60ac2081a9a has been Cancelled" in caplog.text
+    )
+
+
+def test_retrieve_no_invoice(mock_folio_client, mock_current_context, caplog):
+    row = {"InvoiceNum": "11FC-KXN3-P7XG 379529"}
+    retrieve_invoice(row, mock_folio_client)
+    assert "No Invoice found for folioInvoiceNo 379529" in caplog.text
+
+
+def test_retrieve_duplicate_invoices(mock_folio_client, mock_current_context, caplog):
+    row = {"InvoiceNum": "1WGV-71F4-4D4V 10157"}
+    retrieve_invoice(row, mock_folio_client)
+    assert (
+        "Multiple invoices 91c0dd9d-d906-4f08-8321-2a2f58a9a35f,bcc5b35c-3e89-4c48-b721-9ab0cbda91a9"
+        in caplog.text
     )
 
 

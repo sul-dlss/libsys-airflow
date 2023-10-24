@@ -1,11 +1,17 @@
 import logging
 import pathlib
+import shlex
 
 import numpy as np
 import pandas as pd
 
+from typing import Union
+
 from airflow.models.mappedoperator import OperatorPartial
 from airflow.operators.bash import BashOperator
+from airflow.operators.python import get_current_context
+
+from libsys_airflow.plugins.folio.folio_client import FolioClient
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +20,46 @@ ap_server_options = [
     "-o KexAlgorithms=diffie-hellman-group14-sha1",
     "-o StrictHostKeyChecking=no",
 ]
+
+
+def _retrieve_invoice(
+    invoice_number: str, folio_client: FolioClient, task_instance
+) -> Union[dict, None]:
+    """
+    Takes InvoiceNum and parses out the folioInvoiceNo values to retrieve invoice from
+    Okapi
+    """
+    parts = shlex.split(invoice_number)
+    _, folio_invoice_number = parts[0], parts[1]
+    invoice_result = folio_client.get(
+        f"""/invoice/invoices?query=(folioInvoiceNo == "{folio_invoice_number}")""",
+    )
+    match len(invoice_result["invoices"]):
+        case 0:
+            msg = f"No Invoice found for folioInvoiceNo {folio_invoice_number}"
+            logger.error(msg)
+            task_instance.xcom_push(key="missing", value=msg)
+
+        case 1:
+            invoice = invoice_result["invoices"][0]
+            match invoice["status"]:
+                case "Cancelled":
+                    msg = f"Invoice {invoice['id']} has been Cancelled"
+                    logger.error(msg)
+                    task_instance.xcom_push(key="cancelled", value=invoice['id'])
+
+                case "Paid":
+                    msg = f"Invoice {invoice['id']} already Paid"
+                    logger.error(msg)
+                    task_instance.xcom_push(key="paid", value=invoice['id'])
+
+                case _:
+                    return invoice
+
+        case _:
+            msg = f"Multiple invoices {','.join([invoice['id'] for invoice in invoice_result['invoices']])} found for folioInvoiceNo {folio_invoice_number}"
+            logger.error(msg)
+            task_instance.xcom_push(key="duplicates", value=msg)
 
 
 def extract_rows(retrieved_csv: str) -> list:
@@ -90,6 +136,14 @@ def remove_reports() -> OperatorPartial:
     return BashOperator.partial(
         task_id="remove_files", bash_command=" ".join(command), do_xcom_push=True
     )
+
+
+def retrieve_invoice(row: dict, folio_client: FolioClient) -> dict:
+    task_instance = get_current_context()["ti"]
+    invoice = _retrieve_invoice(row["InvoiceNum"], folio_client, task_instance)
+    if invoice:
+        task_instance.xcom_push(key=invoice["id"], value=row)
+    return invoice
 
 
 def retrieve_reports() -> OperatorPartial:
