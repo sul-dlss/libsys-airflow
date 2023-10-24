@@ -5,6 +5,7 @@ import shlex
 import numpy as np
 import pandas as pd
 
+from datetime import datetime
 from typing import Union
 
 from airflow.models.mappedoperator import OperatorPartial
@@ -197,3 +198,22 @@ def update_invoice(invoice: dict, folio_client: FolioClient) -> dict:
     invoice["status"] = "Paid"
     folio_client.put(f"/invoice-storage/invoices/{invoice['id']}", invoice)
     logger.info(f"Updated {invoice['id']} to status of Paid")
+    return invoice
+
+
+def update_voucher(voucher: dict, task_instance, folio_client: FolioClient) -> dict:
+    """
+    Updates Voucher based on row values
+    """
+    row = task_instance.xcom_pull(
+        task_ids="retrieve_invoice_task", key=voucher["invoiceId"]
+    )[0]
+    voucher["status"] = "Paid"
+    voucher["amount"] = row["PaymentAmount"]
+    voucher["disbursementNumber"] = row["PaymentNumber"]
+    disbursement_date = datetime.strptime(row["PaymentDate"], "%m/%d/%Y")
+    voucher["disbursementDate"] = disbursement_date.isoformat()
+    folio_client.put(f"/voucher-storage/vouchers/{voucher['id']}")
+
+    logger.info(f"Updated {voucher['id']}")
+    return voucher

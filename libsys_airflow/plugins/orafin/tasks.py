@@ -21,6 +21,7 @@ from libsys_airflow.plugins.orafin.reports import (
     retrieve_invoice,
     retrieve_voucher,
     update_invoice,
+    update_voucher,
 )
 
 from libsys_airflow.plugins.orafin.payments import (
@@ -203,10 +204,21 @@ def transform_folio_data_task(invoice_id: str):
 
 @task
 def update_invoices_task(invoice: dict):
-    folio_client = _folio_client()
     if invoice:
+        folio_client = _folio_client()
         logger.info(f"Updating Invoice {invoice['id']}")
         update_invoice(invoice, folio_client)
         return invoice['id']
     else:
         logger.error("Invoice is None")
+
+
+@task
+def update_vouchers_task(voucher: dict, ti=None):
+    if voucher:
+        folio_client = _folio_client()
+        logger.info(f"Updating voucher {voucher['id']}")
+        voucher = update_voucher(voucher, ti, folio_client)
+        return voucher['id']
+    else:
+        logger.error("Voucher is None")

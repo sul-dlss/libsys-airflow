@@ -14,6 +14,7 @@ from libsys_airflow.plugins.orafin.reports import (
     retrieve_voucher,
     remove_reports,
     update_invoice,
+    update_voucher,
 )
 
 
@@ -262,7 +263,37 @@ def test_remove_reports():
 
 def test_update_invoice(mock_folio_client, caplog):
     invoice = {"id": "3cf0ebad-6e86-4374-a21d-daf2227b09cd"}
-    update_invoice(invoice, mock_folio_client)
+    invoice = update_invoice(invoice, mock_folio_client)
     assert (
         "Updated 3cf0ebad-6e86-4374-a21d-daf2227b09cd to status of Paid" in caplog.text
     )
+    assert invoice["status"] == "Paid"
+
+
+def test_update_voucher(mocker, mock_folio_client, caplog):
+    def _xcom_pull(*args, **kwargs):
+        return [
+            {
+                "PaymentAmount": "2498.63",
+                "PaymentDate": "10/24/2023",
+                "PaymentNumber": "2983835",
+            }
+        ]
+
+    mock_task_instance = mocker.MagicMock()
+    mock_task_instance.xcom_pull = _xcom_pull
+
+    voucher = {
+        "id": "e681116d-68ce-419e-aab6-3562759a7fab",
+        "amount": 2901.0,
+        "disbursementNumber": "Pending",
+        "invoiceId": "06108f44-b03d-49c4-a2c6-1cfe3984a6d3",
+    }
+
+    changed_voucher = update_voucher(voucher, mock_task_instance, mock_folio_client)
+
+    assert "Updated e681116d-68ce-419e-aab6-3562759a7fab" in caplog.text
+    assert changed_voucher["amount"] == "2498.63"
+    assert changed_voucher["disbursementDate"] == "2023-10-24T00:00:00"
+    assert changed_voucher["disbursementNumber"] == "2983835"
+    assert changed_voucher["status"] == "Paid"
