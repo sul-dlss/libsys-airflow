@@ -8,8 +8,10 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
 from libsys_airflow.plugins.orafin.emails import (
-    generate_summary_email,
+    generate_ap_error_report_email,
+    generate_ap_paid_report_email,
     generate_excluded_email,
+    generate_summary_email,
 )
 
 
@@ -56,12 +58,24 @@ def consolidate_reports_task(ti=None):
 
 
 @task
+def email_errors_task(ti=None):
+    folio_url = Variable.get("FOLIO_URL")
+    total_errors = generate_ap_error_report_email(folio_url, ti)
+    return f"Email {total_errors:,} error reports"
+
+
+@task
 def email_excluded_task(invoices: list):
     folio_url = Variable.get("FOLIO_URL")
     if len(invoices) > 0:
         generate_excluded_email(invoices, folio_url)
     return f"Emailed report for {len(invoices):,} invoices"
 
+@task
+def email_paid_task(ti=None):
+    folio_url = Variable.get("FOLIO_URL")
+    total_invoices = generate_ap_paid_report_email(folio_url, ti)
+    return f"Emailed all paid invoices for {folio_url} {total_invoices}"
 
 @task
 def email_summary_task(invoices: list):
