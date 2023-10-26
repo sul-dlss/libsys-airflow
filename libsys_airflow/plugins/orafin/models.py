@@ -10,6 +10,50 @@ from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.helpers.constants import expense_codes
 
 
+def _reconcile_amount(amount_lookup: dict, key: str, total: float) -> dict:
+    """
+    Reconciles the amounts for each row in reverse order
+    """
+    raw_total = sum([row[key] for row in amount_lookup.values()])
+    amount_total = round(raw_total, 2)
+    reverse_idx = sorted([key for key in amount_lookup.keys()], reverse=True)
+    operator = None
+    if amount_total > total:
+        operator = lambda x: x - 0.01  # noqa
+    elif amount_total < total:
+        operator = lambda x: x + 0.01  # noqa
+    else:
+        return amount_lookup
+    for idx in reverse_idx:
+        amount_lookup[idx][key] = operator(amount_lookup[idx][key])
+        raw_total = sum([row[key] for row in amount_lookup.values()])
+        amount_total = round(raw_total, 2)
+        if amount_total == total:
+            break
+    return amount_lookup
+
+
+def _calculate_percentage_amounts(
+    subtotal: float, adjustments_total: float, fund_distributions: list
+) -> dict:
+    """
+    Helper function generates a dictionary lookup for percentage amounts for
+    fund distributions that adds/substracts the lines in reverse order to reconcile the
+    total amounts for the lines with the subtotal and adjustment total
+    """
+    amount_lookup = {}
+    for i, fund_distribution in enumerate(fund_distributions):
+        if fund_distribution.distributionType.startswith('percentage'):
+            percentage = fund_distribution.value / 100
+            amount_lookup[i] = {
+                "amount": round(subtotal * percentage, 2),
+                "adjusted_amt": round(adjustments_total * percentage, 2),
+            }
+    _reconcile_amount(amount_lookup, "amount", subtotal)
+    _reconcile_amount(amount_lookup, "adjusted_amt", adjustments_total)
+    return amount_lookup
+
+
 @define
 class Vendor:
     code: str
@@ -91,12 +135,14 @@ class InvoiceLine:
         output = []
         tax_code = self.tax_code(liable_for_vat)
 
-        for fund_distribution in self.fundDistributions:
+        amount_lookup = _calculate_percentage_amounts(
+            self.subTotal, self.adjustmentsTotal, self.fundDistributions
+        )
+        for i, fund_distribution in enumerate(self.fundDistributions):
             rows = []
             if fund_distribution.distributionType.startswith('percentage'):
-                percentage = fund_distribution.value / 100
-                amount = self.subTotal * percentage
-                adjusted_amt = self.adjustmentsTotal * percentage
+                amount = amount_lookup[i]["amount"]
+                adjusted_amt = amount_lookup[i]["adjusted_amt"]
             else:
                 amount = fund_distribution.value
                 adjusted_amt = self.adjustmentsTotal
