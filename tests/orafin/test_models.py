@@ -6,6 +6,7 @@ import pytest  # noqa
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.orafin.models import (
+    _calculate_percentage_amounts,
     FeederFile,
     Fund,
     fundDistribution,
@@ -537,3 +538,107 @@ def test_feeder_file(mock_invoice, mock_folio_client):
     last_line = f"LIB9999999999TR{current_date_str}1000000001442.03"
 
     assert raw_feeder_file.splitlines()[-1] == last_line
+
+
+def test_calculate_percentage_amounts():
+    sub_total = 857.85
+    adjusted_amount = 858.01
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=50),
+        fundDistribution(distributionType="percentage", value=50),
+    ]
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+    # Note rounding the amount to simulate what occurs in the
+    # model when padding the amount string
+    amount_total = sum([round(row["amount"], 2) for row in amount_lookup.values()])
+    assert round(amount_total, 2) == sub_total
+    assert amount_lookup[0]["amount"] == 428.93
+    assert amount_lookup[1]["amount"] == 428.92
+
+    adjusted_amount_total = sum(
+        [round(row["adjusted_amt"], 2) for row in amount_lookup.values()]
+    )
+    assert round(adjusted_amount_total, 2) == adjusted_amount
+    assert amount_lookup[0]["adjusted_amt"] == 429.0
+    assert amount_lookup[1]["adjusted_amt"] == 429.01
+
+
+def test_calculate_percentage_amounts_multiple_percentages():
+    sub_total = 858.07
+    adjusted_amount = 858.11
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=49),
+        fundDistribution(distributionType="percentage", value=35),
+        fundDistribution(distributionType="percentage", value=11),
+        fundDistribution(distributionType="percentage", value=5),
+    ]
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+    amount_total = sum([round(row["amount"], 2) for row in amount_lookup.values()])
+    assert round(amount_total, 2) == sub_total
+    assert amount_lookup[0]["amount"] == 420.45
+    assert amount_lookup[1]["amount"] == 300.32
+    assert amount_lookup[2]["amount"] == 94.39
+    assert amount_lookup[3]["amount"] == 42.91
+
+    adjusted_amount_total = sum(
+        [round(row["adjusted_amt"], 2) for row in amount_lookup.values()]
+    )
+    assert round(adjusted_amount_total, 2) == adjusted_amount
+    assert amount_lookup[0]["adjusted_amt"] == 420.47
+    assert amount_lookup[1]["adjusted_amt"] == 300.34
+    assert amount_lookup[2]["adjusted_amt"] == 94.39
+    assert amount_lookup[3]["adjusted_amt"] == 42.91
+
+
+def test_calculate_percentage_amounts_multi_adjustments():
+    sub_total = 10.01
+    adjusted_amount = 0.91
+
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=33.33),
+        fundDistribution(distributionType="percentage", value=33.33),
+        fundDistribution(distributionType="percentage", value=33.34),
+    ]
+
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+
+    amount_total = sum([round(row["amount"], 2) for row in amount_lookup.values()])
+    assert round(amount_total, 2) == sub_total
+    assert amount_lookup[0]["amount"] == 3.34
+    assert amount_lookup[1]["amount"] == 3.34
+    assert amount_lookup[2]["amount"] == 3.33
+
+    adjusted_amount_total = sum(
+        [round(row["adjusted_amt"], 2) for row in amount_lookup.values()]
+    )
+
+    assert round(adjusted_amount_total, 2) == adjusted_amount
+    assert amount_lookup[0]["adjusted_amt"] == 0.30
+    assert amount_lookup[1]["adjusted_amt"] == 0.30
+    assert amount_lookup[2]["adjusted_amt"] == 0.31
+
+
+def test_calculate_percentage_amounts_happy_path():
+    sub_total = 200.00
+    adjusted_amount = 0.0
+
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=50),
+        fundDistribution(distributionType="percentage", value=50),
+    ]
+
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+    amount_total = sum([row["amount"] for row in amount_lookup.values()])
+
+    assert amount_total == sub_total
+
+    adjusted_amount_total = sum([row["adjusted_amt"] for row in amount_lookup.values()])
+    assert adjusted_amount_total == 0
