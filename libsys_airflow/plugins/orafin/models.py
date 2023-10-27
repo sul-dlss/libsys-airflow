@@ -39,7 +39,8 @@ def _calculate_percentage_amounts(
     """
     Helper function generates a dictionary lookup for percentage amounts for
     fund distributions that adds/substracts the lines in reverse order to reconcile the
-    total amounts for the lines with the subtotal and adjustment total
+    total amounts for the lines with the subtotal and adjustment total. Based, in part,
+    on approach outlined here https://wiki.folio.org/display/DD/Prorated+Invoice+Adjustments#ProratedInvoiceAdjustments-FractionalPennies
     """
     amount_lookup = {}
     for i, fund_distribution in enumerate(fund_distributions):
