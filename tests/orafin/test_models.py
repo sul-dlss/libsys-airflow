@@ -592,3 +592,53 @@ def test_calculate_percentage_amounts_multiple_percentages():
     assert amount_lookup[1]["adjusted_amt"] == 300.34
     assert amount_lookup[2]["adjusted_amt"] == 94.39
     assert amount_lookup[3]["adjusted_amt"] == 42.91
+
+
+def test_calculate_percentage_amounts_multi_adjustments():
+    sub_total = 10.01
+    adjusted_amount = 0.91
+
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=33.33),
+        fundDistribution(distributionType="percentage", value=33.33),
+        fundDistribution(distributionType="percentage", value=33.34),
+    ]
+
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+
+    amount_total = sum([round(row["amount"], 2) for row in amount_lookup.values()])
+    assert round(amount_total, 2) == sub_total
+    assert amount_lookup[0]["amount"] == 3.34
+    assert amount_lookup[1]["amount"] == 3.34
+    assert amount_lookup[2]["amount"] == 3.33
+
+    adjusted_amount_total = sum(
+        [round(row["adjusted_amt"], 2) for row in amount_lookup.values()]
+    )
+
+    assert round(adjusted_amount_total, 2) == adjusted_amount
+    assert amount_lookup[0]["adjusted_amt"] == 0.30
+    assert amount_lookup[1]["adjusted_amt"] == 0.30
+    assert amount_lookup[2]["adjusted_amt"] == 0.31
+
+
+def test_calculate_percentage_amounts_happy_path():
+    sub_total = 200.00
+    adjusted_amount = 0.0
+
+    fund_distributions = [
+        fundDistribution(distributionType="percentage", value=50),
+        fundDistribution(distributionType="percentage", value=50),
+    ]
+
+    amount_lookup = _calculate_percentage_amounts(
+        sub_total, adjusted_amount, fund_distributions
+    )
+    amount_total = sum([row["amount"] for row in amount_lookup.values()])
+
+    assert amount_total == sub_total
+
+    adjusted_amount_total = sum([row["adjusted_amt"] for row in amount_lookup.values()])
+    assert adjusted_amount_total == 0
