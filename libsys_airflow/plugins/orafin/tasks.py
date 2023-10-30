@@ -70,11 +70,11 @@ def email_errors_task(ti=None):
 
 
 @task
-def email_excluded_task(invoices: list):
+def email_excluded_task(invoices_exlusion_reasons: list):
     folio_url = Variable.get("FOLIO_URL")
-    if len(invoices) > 0:
-        generate_excluded_email(invoices, folio_url)
-    return f"Emailed report for {len(invoices):,} invoices"
+    if len(invoices_exlusion_reasons) > 0:
+        generate_excluded_email(invoices_exlusion_reasons, folio_url)
+    return f"Emailed report for {len(invoices_exlusion_reasons):,} invoices"
 
 
 @task
@@ -118,7 +118,9 @@ def filter_invoices_task(invoices: list):
     feeder_file, excluded = [], []
     for row in invoices:
         if row['exclude'] is True:
-            excluded.append(row['invoice'])
+            excluded.append(
+                {"invoice": row["invoice"], "reason": row["exclusion_reason"]}
+            )
         else:
             feeder_file.append(row['invoice'])
     return {"feed": feeder_file, "excluded": excluded}

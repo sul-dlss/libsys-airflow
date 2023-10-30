@@ -72,11 +72,14 @@ def _invoice_line_links(invoice: Invoice, folio_url) -> str:
     )
     lines = []
     for i, line in enumerate(invoice.lines):
-        if any(
-            [
-                fund_dist.distributionType == "amount"
-                for fund_dist in line.fundDistributions
-            ]
+        if (
+            any(
+                [
+                    fund_dist.distributionType == "amount"
+                    for fund_dist in line.fundDistributions
+                ]
+            )
+            or line.subTotal == 0
         ):
             lines.append(
                 {
@@ -108,36 +111,65 @@ def _ap_report_paid_email_body(
     )
 
 
-def _excluded_email_body(invoices: list, folio_url: str) -> str:
-    converter = models_converter()
+def _excluded_email_body(grouped_reasons: list, folio_url: str) -> str:
     jinja_env = Environment()
     jinja_env.filters["invoice_line_links"] = _invoice_line_links
 
     template = jinja_env.from_string(
         """
-    <h2>Amount Split</h2>
-    <ol>
-      {% for invoice in invoices %}
-       <li>
+        {% for reason, invoices in grouped_reasons.items() %}
+        <h2>{{ reason }}</h2>
+        <ol>
+          {% for invoice in invoices %}
+          {% if reason == "Amount split" or reason == "Zero subtotal" %}
+          <li>
             Vendor Invoice Number: {{ invoice.vendorInvoiceNo }}
             {{ invoice|invoice_line_links(folio_url) }}
-       </li>
-      {% endfor %}
-    </ol>
-    """
+          </li>
+          {% else %}
+          <li>
+             <a href="{{ folio_url}}/invoice/view/{{invoice.id }}">Vendor Invoice Number: {{ invoice.vendorInvoiceNo }}</a>
+          </li>
+          {% endif %}
+          {% endfor %}
+        </ol>
+        {% endfor %}
+        """
     )
-    invoice_instances = [converter.structure(invoice, Invoice) for invoice in invoices]
-    return template.render(invoices=invoice_instances, folio_url=folio_url)
+    return template.render(grouped_reasons=grouped_reasons, folio_url=folio_url)
 
 
-def generate_excluded_email(invoices: list, folio_url: str):
+def _group_invoices(invoices_reasons: list):
+    """
+    Groups invoices by exclusion reason
+    """
+    grouped_reasons: dict = {}
+    converter = models_converter()
+    for row in invoices_reasons:
+        if row["reason"] in grouped_reasons:
+            grouped_reasons[row["reason"]].append(
+                converter.structure(row["invoice"], Invoice)
+            )
+        else:
+            grouped_reasons[row["reason"]] = [
+                converter.structure(row["invoice"], Invoice)
+            ]
+    # {'Amount split': [Invoice, Invoice], 'Future date': [Invoice]}
+    return grouped_reasons
+
+
+def generate_excluded_email(invoices_reasons: list, folio_url: str):
     """
     Generates emails for excluded invoices
     """
     to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
 
-    html_content = _excluded_email_body(invoices, folio_url)
-    logger.info(f"Sending email to {to_email_addr} for {len(invoices):,} invoices")
+    grouped_invoices_by_reason = _group_invoices(invoices_reasons)
+
+    html_content = _excluded_email_body(grouped_invoices_by_reason, folio_url)
+    logger.info(
+        f"Sending email to {to_email_addr} for {len(invoices_reasons):,} invoices"
+    )
     send_email(
         to=[
             to_email_addr,

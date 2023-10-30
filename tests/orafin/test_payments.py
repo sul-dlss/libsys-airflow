@@ -200,12 +200,13 @@ def mock_folio_client():
 
 def test_get_invoice(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice(
+    invoice, exclude, exclusion_reason = get_invoice(
         "a6452c96-53ef-4e51-bd7b-aa67ac971133", mock_folio_client, converter
     )
 
     assert isinstance(invoice, Invoice)
     assert exclude is False
+    assert exclusion_reason == ""
     assert invoice.subTotal == 135.19
     assert len(invoice.lines) == 1
     assert invoice.amount == invoice.subTotal
@@ -235,35 +236,48 @@ def test_get_invoice(mock_folio_client):
 
 def test_exclude_invoice(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice(
+    invoice, exclude, exclusion_reason = get_invoice(
         "e5662732-489e-489d-96b9-199cabe66a87", mock_folio_client, converter
     )
     assert exclude is True
+    assert exclusion_reason == "Amount split"
     assert invoice.lines[0].poLine.orderFormat == "Electronic Resource"
 
 
 def test_exclude_zero_subtotal(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice("zerosubtotal", mock_folio_client, converter)
+    invoice, exclude, exclusion_reason = get_invoice(
+        "zerosubtotal", mock_folio_client, converter
+    )
     assert exclude is True
+    assert exclusion_reason == "Zero subtotal"
 
 
 def test_exclude_future_invoice(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice("futureinvoice", mock_folio_client, converter)
+    invoice, exclude, exclusion_reason = get_invoice(
+        "futureinvoice", mock_folio_client, converter
+    )
     assert exclude is True
+    assert exclusion_reason == "Future invoice date"
 
 
 def test_exclude_nofeeder_invoice(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice("nofeeder", mock_folio_client, converter)
+    invoice, exclude, exclusion_reason = get_invoice(
+        "nofeeder", mock_folio_client, converter
+    )
     assert exclude is True
+    assert exclusion_reason == "Not FEEDER vendor"
 
 
 def test_exclude_toolong_invoice(mock_folio_client):
     converter = models_converter()
-    invoice, exclude = get_invoice("toolong", mock_folio_client, converter)
+    invoice, exclude, exclusion_reason = get_invoice(
+        "toolong", mock_folio_client, converter
+    )
     assert exclude is True
+    assert exclusion_reason == "Invoice number too long"
 
 
 def test_generate_file(mock_folio_client):

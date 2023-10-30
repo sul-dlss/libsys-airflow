@@ -42,6 +42,7 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
     )
     invoice_lines = invoice_lines_result.get("invoiceLines", [])
     exclude_invoice = False
+    exclusion_reason = ""
     for row in invoice_lines:
         if "poLineId" in row:
             po_line_id = row['poLineId']
@@ -64,10 +65,12 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
             ]
         ):
             exclude_invoice = True
+            exclusion_reason = "Amount split"
         if row["subTotal"] == 0.0:
             exclude_invoice = True
+            exclusion_reason = "Zero subtotal"
         _get_fund(fund_distributions, folio_client)
-    return invoice_lines, exclude_invoice
+    return invoice_lines, exclude_invoice, exclusion_reason
 
 
 def generate_file(feeder_file: dict, folio_client: FolioClient) -> FeederFile:
@@ -88,7 +91,9 @@ def get_invoice(
     # Retrieves Invoice Details
     invoice = folio_client.get(f"/invoice/invoices/{invoice_id}")
     # Retrieves Invoices Lines and Purchase Order
-    invoice["lines"], exclude_invoice = _get_invoice_lines(invoice_id, folio_client)
+    invoice["lines"], exclude_invoice, exclusion_reason = _get_invoice_lines(
+        invoice_id, folio_client
+    )
     # Call to Okapi organization endpoint to see VAT is applicable
     invoice["vendor"] = folio_client.get(
         f"/organizations/organizations/{invoice['vendorId']}"
@@ -98,11 +103,14 @@ def get_invoice(
     # Check for invoice-level exclusions
     if invoice.invoiceDate > datetime.now(timezone.utc):
         exclude_invoice = True
+        exclusion_reason = "Future invoice date"
     if "FEEDER" not in invoice.accountingCode:
         exclude_invoice = True
+        exclusion_reason = "Not FEEDER vendor"
     if len(f"{invoice.vendorInvoiceNo} {invoice.folioInvoiceNo}") > 40:
         exclude_invoice = True
-    return invoice, exclude_invoice
+        exclusion_reason = "Invoice number too long"
+    return invoice, exclude_invoice, exclusion_reason
 
 
 def init_feeder_file(
