@@ -197,7 +197,9 @@ def test_generate_excluded_email(mocker):
 
     generate_excluded_email(
         [
-            invoice_dict,
+            {"invoice": invoice_dict, "reason": "Amount split"},
+            {"invoice": invoice_dict, "reason": "Zero subtotal"},
+            {"invoice": invoice_dict, "reason": "Future invoice date"},
         ],
         "https://folio.stanford.edu",
     )
@@ -209,11 +211,17 @@ def test_generate_excluded_email(mocker):
         mock_send_email.call_args[1]['html_content'], 'html.parser'
     )
 
-    assert html_body.find("h2").text == "Amount Split"
+    found_h2s = html_body.findAll("h2")
+    assert found_h2s[0].text == "Amount split"
     list_items = html_body.findAll("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Invoice line number: 1"
+
+    assert found_h2s[1].text == "Zero subtotal"
+    assert "Vendor Invoice Number: 242428ZP1" in list_items[2].text
+
+    assert found_h2s[2].text == "Future invoice date"
 
 
 def test_generate_summary_email(mocker):
