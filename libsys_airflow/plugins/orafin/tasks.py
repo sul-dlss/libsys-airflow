@@ -70,11 +70,11 @@ def email_errors_task(ti=None):
 
 
 @task
-def email_excluded_task(invoices_exlusion_reasons: list):
+def email_excluded_task(invoices_exclusion_reasons: list):
     folio_url = Variable.get("FOLIO_URL")
-    if len(invoices_exlusion_reasons) > 0:
-        generate_excluded_email(invoices_exlusion_reasons, folio_url)
-    return f"Emailed report for {len(invoices_exlusion_reasons):,} invoices"
+    if len(invoices_exclusion_reasons) > 0:
+        generate_excluded_email(invoices_exclusion_reasons, folio_url)
+    return f"Emailed report for {len(invoices_exclusion_reasons):,} invoices"
 
 
 @task
