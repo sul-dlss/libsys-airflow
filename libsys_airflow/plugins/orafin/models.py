@@ -122,9 +122,6 @@ class InvoiceLine:
         amount: float = kwargs["amount"]
         tax_code: str = kwargs["tax_code"]
         external_account_number: str = kwargs["external_account_number"]
-        expense_code = self.expense_code
-        if expense_code is None:
-            expense_code = ""
 
         return "".join(
             [
@@ -133,7 +130,7 @@ class InvoiceLine:
                 f"{amount:015.2f}",
                 f"{tax_code: <20}",
                 f"{external_account_number}",
-                f"-{expense_code: <51}",
+                f"-{self.expense_code: <51}",
             ]
         )
 
