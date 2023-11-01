@@ -16,6 +16,7 @@ def _reconcile_amount(amount_lookup: dict, key: str, total: float) -> dict:
     """
     raw_total = sum([row[key] for row in amount_lookup.values()])
     amount_total = round(raw_total, 2)
+    total = round(total, 2)
     reverse_idx = sorted([key for key in amount_lookup.keys()], reverse=True)
     operator = None
     if amount_total > total:
@@ -121,6 +122,7 @@ class InvoiceLine:
         amount: float = kwargs["amount"]
         tax_code: str = kwargs["tax_code"]
         external_account_number: str = kwargs["external_account_number"]
+
         return "".join(
             [
                 f"{internal_number: <13}",
@@ -132,12 +134,23 @@ class InvoiceLine:
             ]
         )
 
-    def generate_lines(self, internal_number: str, liable_for_vat: bool) -> list:
+    def generate_lines(
+        self,
+        internal_number: str,
+        liable_for_vat: bool,
+        exchange_rate: Union[float, None] = None,
+    ) -> list:
         output = []
         tax_code = self.tax_code(liable_for_vat)
 
+        sub_total = self.subTotal
+        adjustments_total = self.adjustmentsTotal
+        if exchange_rate:
+            sub_total = exchange_rate * self.subTotal
+            adjustments_total = exchange_rate * self.adjustmentsTotal
+
         amount_lookup = _calculate_percentage_amounts(
-            self.subTotal, self.adjustmentsTotal, self.fundDistributions
+            sub_total, adjustments_total, self.fundDistributions
         )
         for i, fund_distribution in enumerate(self.fundDistributions):
             rows = []
@@ -200,6 +213,8 @@ class Invoice:
 
     lines: list[InvoiceLine]
     vendor: Vendor
+    currency: Union[str, None] = None
+    exchangeRate: Union[float, None] = None
     paymentDue: Union[datetime, None] = None
     paymentTerms: Union[str, None] = None
 
@@ -233,13 +248,17 @@ class Invoice:
 
     def header(self):
         invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
+        amount = self.amount
+        if self.exchangeRate:
+            amount = amount * self.exchangeRate
+
         return "".join(
             [
                 f"{self.internal_number: <13}",
                 f"HD{self.accountingCode: <21}",
                 f"{invoice_number: <40}",
                 f"{self.invoiceDate.strftime('%Y%m%d')}",
-                f"{self.amount:015.2f}",
+                f"{amount:015.2f}",
                 f"{self.invoice_type: <32}",
                 f"{self.terms_name: <15}",
                 f"{self.attachment_flag}",
@@ -250,7 +269,9 @@ class Invoice:
         rows = []
         for line in self.lines:
             rows.extend(
-                line.generate_lines(self.internal_number, self.vendor.liableForVat)
+                line.generate_lines(
+                    self.internal_number, self.vendor.liableForVat, self.exchangeRate
+                )
             )
         return "\n".join(rows)
 

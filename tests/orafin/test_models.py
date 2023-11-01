@@ -642,3 +642,222 @@ def test_calculate_percentage_amounts_happy_path():
 
     adjusted_amount_total = sum([row["adjusted_amt"] for row in amount_lookup.values()])
     assert adjusted_amount_total == 0
+
+
+yen_invoice = Invoice(
+    id='169eaee5-974e-47ca-afdf-71b4430549aa',
+    accountingCode='011033FEEDER',
+    currency='JPY',
+    exchangeRate=0.006678211586901763,
+    invoiceDate=datetime.datetime(2023, 10, 2),
+    subTotal=11200.0,
+    total=12085.0,
+    folioInvoiceNo='11110',
+    vendor=Vendor(
+        code='GANNANDO-JPY-SUL',
+        erpCode='011033FEEDER',
+        id='8301ba35-6170-513f-b676-3b1df56157c1',
+        liableForVat=False,
+    ),
+    vendorInvoiceNo='789-test',
+    lines=[
+        InvoiceLine(
+            adjustmentsTotal=502.0,
+            id='20a70748-443a-4551-905b-a46ad3ef0403',
+            invoiceLineNumber='1',
+            subTotal=5500.0,
+            total=6002.0,
+            expense_code="53245",
+            poLine=PurchaseOrderLine(
+                id='40980372-0b7a-423f-bd31-9c69c29e2929',
+                acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                orderFormat='Physical Resource',
+                materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+            ),
+            fundDistributions=[
+                fundDistribution(
+                    distributionType='percentage',
+                    value=65.0,
+                    fund=Fund(
+                        id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                        externalAccountNo='1065032-114-AALIB',
+                    ),
+                ),
+                fundDistribution(
+                    distributionType='percentage',
+                    value=35.0,
+                    fund=Fund(
+                        id='b96b33b6-1122-40e2-8e86-9097e440b11b',
+                        externalAccountNo='1065031-105-KAUOZ',
+                    ),
+                ),
+            ],
+        ),
+        InvoiceLine(
+            adjustmentsTotal=383.0,
+            id='98710f49-9f62-4e13-9d34-da2c90be6ad0',
+            invoiceLineNumber='2',
+            subTotal=4200.0,
+            total=4583.0,
+            expense_code="53245",
+            poLine=PurchaseOrderLine(
+                id='1b5262db-1333-4dd1-8aba-aeee0feaba70',
+                acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                orderFormat='Physical Resource',
+                materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+            ),
+            fundDistributions=[
+                fundDistribution(
+                    distributionType='percentage',
+                    value=55.0,
+                    fund=Fund(
+                        id='3453bb7f-4d56-4368-94fc-901129c9740a',
+                        externalAccountNo='1065031-105-KAUPI',
+                    ),
+                ),
+                fundDistribution(
+                    distributionType='percentage',
+                    value=45.0,
+                    fund=Fund(
+                        id='5e142508-64cf-4dd5-ae90-6b97830e28fb',
+                        externalAccountNo='1065031-116-KAQZQ',
+                    ),
+                ),
+            ],
+        ),
+        InvoiceLine(
+            adjustmentsTotal=0.0,
+            id='3c7c3ae3-7b4b-45c3-97f3-72e7019c3eea',
+            invoiceLineNumber='3',
+            subTotal=1500.0,
+            total=1500.0,
+            expense_code="53245",
+            poLine=PurchaseOrderLine(
+                id='0c60730e-146c-443f-929b-404bdaf6106e',
+                acquisitionMethod='d279b030-4c9f-4038-8bf3-3e02e1c28bf0',
+                orderFormat='Physical Resource',
+                materialType=None,
+            ),
+            fundDistributions=[
+                fundDistribution(
+                    distributionType='percentage',
+                    value=100.0,
+                    fund=Fund(
+                        id='28cfbac4-3374-4112-a8ba-b1f4b99b23c9',
+                        externalAccountNo='1065084-101-AALIB',
+                    ),
+                )
+            ],
+        ),
+    ],
+)
+
+
+def test_exchange_rate_invoice_yen_header():
+    header = yen_invoice.header()
+    assert header[84:99] == "000000000074.80"
+    assert round(yen_invoice.amount * yen_invoice.exchangeRate, 2) == 74.80
+
+
+def test_exchange_rate_invoice_yen_lines():
+    lines = yen_invoice.line_data().splitlines()
+    assert lines[0][15:30] == "000000000023.87"
+    dollar_total_line_1 = yen_invoice.lines[0].subTotal * yen_invoice.exchangeRate
+    assert (
+        round(
+            dollar_total_line_1
+            * (yen_invoice.lines[0].fundDistributions[0].value / 100),
+            2,
+        )
+        == 23.87
+    )
+    assert lines[1][15:30] == "000000000002.18"
+    assert lines[2][15:30] == "-00000000002.18"
+    assert lines[3][15:30] == "000000000012.86"
+    assert (
+        round(
+            dollar_total_line_1
+            * (yen_invoice.lines[0].fundDistributions[1].value / 100),
+            2,
+        )
+        == 12.86
+    )
+
+    assert lines[6][15:30] == "000000000015.43"
+    dollar_total_line_2 = yen_invoice.lines[1].subTotal * yen_invoice.exchangeRate
+    assert (
+        round(
+            dollar_total_line_2
+            * (yen_invoice.lines[1].fundDistributions[0].value / 100),
+            2,
+        )
+        == 15.43
+    )
+
+
+def test_pounds_invoice_exchange_rates():
+    exchange_rate = 1.214150781384166
+    pounds_invoice_line = InvoiceLine(
+        adjustmentsTotal=8.21,
+        id='4aa9c4aa-3b7a-493d-8d68-98e350f8781c',
+        invoiceLineNumber='1',
+        subTotal=90.0,
+        total=98.21,
+        expense_code="53245",
+        poLine=PurchaseOrderLine(
+            id='255f5029-57bf-4cab-8a85-e93647b2d974',
+            acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+            orderFormat='Physical Resource',
+            materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+        ),
+        fundDistributions=[
+            fundDistribution(
+                distributionType='percentage',
+                value=100.0,
+                fund=Fund(
+                    id='0d31bca0-67a9-4ed8-8a9e-d52941850185',
+                    externalAccountNo='1065090-101-KARLP',
+                ),
+            )
+        ],
+    )
+
+    pounds_lines = pounds_invoice_line.generate_lines('LIB11109', False, exchange_rate)
+
+    assert pounds_lines[0][15:30] == "000000000109.27"
+    assert round((90.0 * exchange_rate), 2) == 109.27
+    assert pounds_lines[1][15:30] == "000000000009.97"
+    assert round((8.21 * exchange_rate), 2) == 9.97
+
+
+def test_euros_invoice_exchange_rates():
+    exchange_rate = 1.0605
+    euros_invoice_line = InvoiceLine(
+        adjustmentsTotal=0.0,
+        id='bf5b2ea8-5415-44ae-a76e-fcfa23f36aea',
+        invoiceLineNumber='3',
+        subTotal=77.85,
+        total=77.85,
+        expense_code="53245",
+        poLine=PurchaseOrderLine(
+            id='c71923a6-4f62-4a09-8aae-090b7dee9e9c',
+            acquisitionMethod='aff5fd81-e597-40d1-86eb-671f6e0900cd',
+            orderFormat='Physical Resource',
+            materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+        ),
+        fundDistributions=[
+            fundDistribution(
+                distributionType='percentage',
+                value=100.0,
+                fund=Fund(
+                    id='48421be9-7145-4a8d-8ec8-a7a013b6519f',
+                    externalAccountNo='1065032-103-AALIB',
+                ),
+            )
+        ],
+    )
+
+    euro_lines = euros_invoice_line.generate_lines('LIB11111', False, exchange_rate)
+
+    assert euro_lines[0][15:30] == "000000000082.56"
+    assert round((77.85 * exchange_rate), 2) == 82.56
