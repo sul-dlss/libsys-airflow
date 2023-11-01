@@ -61,7 +61,6 @@ class Vendor:
     code: str
     erpCode: str
     id: str
-    # liableForVat: Union[None, bool] = False
     liableForVat: bool = False
 
     @property
