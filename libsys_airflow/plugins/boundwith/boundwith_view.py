@@ -33,11 +33,19 @@ class BoundWithView(AppBuilderBaseView):
     def run_bw_creation(self):
         if "upload-boundwith" not in request.files:
             flash("Missing Boundwith Relationship File")
-            return self.render_template("boundwith/index.html")
-        bw_df = pd.read_csv(request.files.get("upload-boundwith"))
-        run_id = trigger_bw_dag(bw_df)
-        flash(f"DAG add_bw_relationships triggered with run id {run_id}")
-        return {}
+            rendered_page = self.render_template("boundwith/index.html")
+        else:
+            raw_csv = request.files.get("upload-boundwith")
+            try:
+                bw_df = pd.read_csv(raw_csv)
+                run_id, execution_date = trigger_bw_dag(bw_df)
+                rendered_page = self.render_template(
+                    "boundwith/index.html", run_id=run_id, execution_date=execution_date
+                )
+            except pd.errors.EmptyDataError:
+                flash("Warning! Empty CSV file for Boundwith Relationship DAG")
+                rendered_page = self.render_template("boundwith/index.html")
+        return rendered_page
 
     @expose("/")
     def bw_home(self):

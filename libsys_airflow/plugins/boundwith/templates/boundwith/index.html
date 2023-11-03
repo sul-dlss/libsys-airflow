@@ -3,6 +3,14 @@
 {% block content %}
 <div>
     <h2>Boundwith CSV Creator</h2>
+    {% if run_id %}
+    <div>
+        <p>
+            DAG add_bw_relationships triggered with
+            <a href="/dags/add_bw_relationships/graph?dag_run_id={{ run_id }}">Run ID</a>
+        </p>
+    </div>
+    {% else %}
     <div class="row">
         <div class="col-md-9">
 
@@ -23,5 +31,6 @@
             </form>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
