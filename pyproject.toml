@@ -25,6 +25,7 @@ honeybadger = "^0.15.2"
 blinker = "^1.6.2"
 folio-migration-tools = "^1.8.1"
 werkzeug = "2.3.7"
+connexion = "2.14.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
