@@ -22,7 +22,7 @@ def trigger_bw_dag(bw_df: pd.DataFrame) -> str:
         conf={"relationships": bw_df.to_dict(orient='records')},
         external_trigger=True,
     )
-    return run_id
+    return run_id, execution_date
 
 
 class BoundWithView(AppBuilderBaseView):

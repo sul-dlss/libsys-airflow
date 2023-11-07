@@ -69,3 +69,41 @@ def check_add_bw(**kwargs):
         total_bw += bw
 
     logger.info(f"Finished added {total_bw:,} boundwidths with {total_errors:,} errors")
+
+
+def create_bw_record(**kwargs) -> dict:
+    """
+    Creates a boundwidth record
+    """
+    folio_client = kwargs["folio_client"]
+    holdings_id = kwargs["holdings_id"]
+    barcode = kwargs["barcode"]
+
+    item_result = folio_client.get(
+        "/inventory/items", params={"query": f"""(barcode=="{barcode}")"""}
+    )
+
+    if len(item_result['items']) < 1:
+        logger.info(f"No items found for barcode {barcode}")
+        return {}
+
+    item_id = item_result["items"][0]["id"]
+
+    return {"holdingsRecordId": holdings_id, "itemId": item_id}
+
+
+def post_bw_record(**kwargs):
+    folio_client = kwargs["folio_client"]
+    record = kwargs["bw_parts"]
+    task_instance = kwargs["task_instance"]
+    post_result = requests.post(
+        f"{folio_client.okapi_url}/inventory-storage/bound-with-parts",
+        headers=folio_client.okapi_headers,
+        json=record,
+    )
+    if post_result.status_code != 201:
+        task_instance.xcom_push(
+            key="error", value={"record": record, "message": post_result.text}
+        )
+    else:
+        task_instance.xcom_push(key="success", value=post_result.json()["id"])
