@@ -204,6 +204,7 @@ class InvoiceLine:
 class Invoice:
     accountingCode: str
     id: str
+    acqUnitIds: list
     invoiceDate: datetime
     folioInvoiceNo: str
     subTotal: float
