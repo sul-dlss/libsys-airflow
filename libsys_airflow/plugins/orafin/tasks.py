@@ -200,8 +200,12 @@ def transform_folio_data_task(invoice_id: str):
     folio_client = _folio_client()
     converter = models_converter()
     # Call to Okapi invoice endpoint
-    invoice, exclude = get_invoice(invoice_id, folio_client, converter)
-    return {"invoice": converter.unstructure(invoice), "exclude": exclude}
+    invoice, exclude, reason = get_invoice(invoice_id, folio_client, converter)
+    return {
+        "invoice": converter.unstructure(invoice),
+        "exclude": exclude,
+        "exclusion_reason": reason,
+    }
 
 
 @task
