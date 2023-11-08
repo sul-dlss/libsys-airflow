@@ -248,9 +248,7 @@ class Invoice:
 
     def header(self):
         invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
-        amount = self.amount
-        if self.exchangeRate:
-            amount = amount * self.exchangeRate
+        amount = self.reconcile_amount()
 
         return "".join(
             [
@@ -274,6 +272,26 @@ class Invoice:
                 )
             )
         return "\n".join(rows)
+
+    def reconcile_amount(self):
+        amount = self.amount
+        if self.exchangeRate:
+            amount = amount * self.exchangeRate
+
+        line_amount_total = 0
+        for line in self.lines:
+            sub_total = line.subTotal
+            adj_amt = line.adjustmentsTotal
+            if self.exchangeRate:
+                sub_total = sub_total * self.exchangeRate
+                adj_amt = adj_amt * self.exchangeRate
+            lookup = _calculate_percentage_amounts(
+                sub_total, adj_amt, line.fundDistributions
+            )
+            line_amount_total += sum([row['amount'] for row in lookup.values()])
+        if amount != line_amount_total:
+            return line_amount_total
+        return amount
 
 
 @define
