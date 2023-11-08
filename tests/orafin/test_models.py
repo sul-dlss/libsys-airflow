@@ -134,7 +134,7 @@ def mock_invoice():
                 total=409.24,
             )
         ],
-        subTotal=375.03,
+        subTotal=1442.03,
         total=1572.1,
         vendor=Vendor(
             code="ANTIPODEAN-SUL",
@@ -350,7 +350,7 @@ def test_invoice_header(mock_invoice):
     assert raw_header[76:84] == "20230712"
 
     # Invoice Amount
-    assert raw_header[84:99] == "000000000375.03"
+    assert raw_header[84:99] == "000000001442.03"
 
     # Invoice Type
     assert raw_header[99:131] == "DR                              "
@@ -615,7 +615,7 @@ def test_invoice_header_reconcile_amount():
 
 
 def test_invoice_amount(mock_invoice):
-    assert mock_invoice.amount == 375.03
+    assert mock_invoice.amount == 1442.03
     mock_invoice.vendor.liableForVat = True
     assert mock_invoice.amount == 1572.1
 
@@ -778,7 +778,7 @@ def test_vendor_number(mock_invoice):
 def test_feeder_file(mock_invoice, mock_folio_client):
     feeder_file = FeederFile(invoices=[mock_invoice])
 
-    assert feeder_file.batch_total_amount == 375.03
+    assert feeder_file.batch_total_amount == 1442.03
     assert feeder_file.number_of_invoices == 1
     assert feeder_file.file_name == "feeder20230712_202307120000"
 
@@ -787,7 +787,7 @@ def test_feeder_file(mock_invoice, mock_folio_client):
     raw_feeder_file = feeder_file.generate()
 
     current_date_str = datetime.datetime.utcnow().strftime("%Y%m%d")
-    last_line = f"LIB9999999999TR{current_date_str}1000000000375.03"
+    last_line = f"LIB9999999999TR{current_date_str}1000000001442.03"
 
     assert raw_feeder_file.splitlines()[-1] == last_line
 

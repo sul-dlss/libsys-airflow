@@ -248,7 +248,10 @@ class Invoice:
 
     def header(self):
         invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
-        amount = self.reconcile_amount()
+        amount = self.amount
+
+        if self.exchangeRate:
+            amount = self.reconcile_amount()
 
         return "".join(
             [
