@@ -250,7 +250,7 @@ class Invoice:
         invoice_number = f"{self.vendorInvoiceNo} {self.folioInvoiceNo}"
         amount = self.amount
 
-        if self.exchangeRate:
+        if self.currency and not self.currency.startswith("USD"):
             amount = self.reconcile_amount()
 
         return "".join(
