@@ -111,7 +111,7 @@ def _ap_report_paid_email_body(
     )
 
 
-def _excluded_email_body(grouped_reasons: list, folio_url: str) -> str:
+def _excluded_email_body(grouped_reasons: dict, folio_url: str) -> str:
     jinja_env = Environment()
     jinja_env.filters["invoice_line_links"] = _invoice_line_links
 
@@ -139,47 +139,10 @@ def _excluded_email_body(grouped_reasons: list, folio_url: str) -> str:
     return template.render(grouped_reasons=grouped_reasons, folio_url=folio_url)
 
 
-def _group_invoices(invoices_reasons: list):
-    """
-    Groups invoices by exclusion reason
-    """
-    grouped_reasons: dict = {}
-    converter = models_converter()
-    for row in invoices_reasons:
-        if row["reason"] in grouped_reasons:
-            grouped_reasons[row["reason"]].append(
-                converter.structure(row["invoice"], Invoice)
-            )
-        else:
-            grouped_reasons[row["reason"]] = [
-                converter.structure(row["invoice"], Invoice)
-            ]
-    # {'Amount split': [Invoice, Invoice], 'Future date': [Invoice]}
-    return grouped_reasons
-
-
-def generate_excluded_email(invoices_reasons: list, folio_url: str):
-    """
-    Generates emails for excluded invoices
-    """
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-
-    grouped_invoices_by_reason = _group_invoices(invoices_reasons)
-
-    html_content = _excluded_email_body(grouped_invoices_by_reason, folio_url)
-    logger.info(
-        f"Sending email to {to_email_addr} for {len(invoices_reasons):,} invoices"
-    )
-    send_email(
-        to=[
-            to_email_addr,
-        ],
-        subject="Rejected Invoices for SUL",
-        html_content=html_content,
-    )
-
-
 def _summary_email_body(invoices: list, folio_url: str):
+    if len(invoices) < 1:
+        return ""
+
     converter = models_converter()
     jinja_env = Environment()
 
@@ -197,6 +160,83 @@ def _summary_email_body(invoices: list, folio_url: str):
     )
     invoice_instances = [converter.structure(invoice, Invoice) for invoice in invoices]
     return template.render(invoices=invoice_instances, folio_url=folio_url)
+
+
+def _group_excluded_invoices(invoices_reasons: list):
+    """
+    Groups excluded invoices by acq unit and exclusion reason
+    """
+    grouped_acqunits: dict = {}
+    converter = models_converter()
+    for row in invoices_reasons:
+        acq_unit = row["invoice"]["acqUnitIds"][0]
+        if acq_unit in grouped_acqunits:
+            if row["reason"] in grouped_acqunits[acq_unit]:
+                grouped_acqunits[acq_unit][row["reason"]].append(
+                    converter.structure(row["invoice"], Invoice)
+                )
+            else:
+                grouped_acqunits[acq_unit][row["reason"]] = [
+                    converter.structure(row["invoice"], Invoice)
+                ]
+        else:
+            grouped_acqunits[acq_unit] = {
+                row["reason"]: [converter.structure(row["invoice"], Invoice)]
+            }
+    return grouped_acqunits
+
+
+def _group_sent_invoices(invoices: list):
+    """
+    Groups invoices by acq unit ID
+    """
+    grouped_acqunits: dict = {}
+    for row in invoices:
+        acq_unit = row["acqUnitIds"][0]
+        if acq_unit in grouped_acqunits:
+            grouped_acqunits[acq_unit].append(row)
+        else:
+            grouped_acqunits[acq_unit] = [row]
+    return grouped_acqunits
+
+
+def generate_excluded_email(invoices_reasons: list, folio_url: str):
+    """
+    Generates emails for excluded invoices
+    """
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+
+    grouped_invoices = _group_excluded_invoices(invoices_reasons)
+
+    sul_html_content = _excluded_email_body(
+        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", {}), folio_url
+    )
+    if len(sul_html_content.strip()) > 0:
+        logger.info(f"Sending email to {sul_to_email_addr} for rejected invoices")
+        send_email(
+            to=[
+                sul_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Rejected Invoices for SUL",
+            html_content=sul_html_content,
+        )
+
+    law_html_content = _excluded_email_body(
+        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", {}), folio_url
+    )
+    if len(law_html_content.strip()) > 0:
+        logger.info(f"Sending email to {law_to_email_addr} for rejected invoices")
+        send_email(
+            to=[
+                law_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Rejected Invoices for LAW",
+            html_content=law_html_content,
+        )
 
 
 def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
@@ -229,9 +269,13 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     if total_errors < 1:
         return total_errors
 
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL")
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
-    logger.info(f"Sending email to {to_email_addr} for {total_errors} error reports")
+    logger.info(
+        f"Sending email to {sul_to_email_addr} and {law_to_email_addr} for {total_errors} error reports"
+    )
 
     html_content = _ap_report_errors_email_body(
         missing_invoices, cancelled_invoices, paid_invoices, folio_url
@@ -239,7 +283,9 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
 
     send_email(
         to=[
-            to_email_addr,
+            sul_to_email_addr,
+            law_to_email_addr,
+            devs_to_email_addr,
         ],
         subject="Invoice Errors from AP Report",
         html_content=html_content,
@@ -255,10 +301,14 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
     ap_report_name = pathlib.Path(ap_report_path).name
     html_content = _ap_report_paid_email_body(invoices, ap_report_name, folio_url)
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     send_email(
         to=[
-            to_email_addr,
+            sul_to_email_addr,
+            law_to_email_addr,
+            devs_to_email_addr,
         ],
         subject=f"Paid Invoices from {ap_report_name}",
         html_content=html_content,
@@ -270,14 +320,40 @@ def generate_summary_email(invoices: list, folio_url: str):
     """
     Generates emails that summarize invoices sent to AP
     """
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
-    html_content = _summary_email_body(invoices, folio_url)
-    logger.info(f"Sending email to {to_email_addr} for {len(invoices):,} invoices")
-    send_email(
-        to=[
-            to_email_addr,
-        ],
-        subject="Approved Invoices Sent to AP for SUL",
-        html_content=html_content,
+    grouped_invoices = _group_sent_invoices(invoices)
+
+    sul_html_content = _summary_email_body(
+        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", []), folio_url
     )
+    if len(sul_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {sul_to_email_addr} for {len(grouped_invoices.get('bd6c5f05-9ab3-41f7-8361-1c1e847196d3', [])):,} invoices"
+        )
+        send_email(
+            to=[
+                sul_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Approved Invoices Sent to AP for SUL",
+            html_content=sul_html_content,
+        )
+
+    law_html_content = _summary_email_body(
+        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", []), folio_url
+    )
+    if len(law_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {law_to_email_addr} for {len(grouped_invoices.get('556eb26f-dbea-41c1-a1de-9a88ad950d95', [])):,} invoices"
+        )
+        send_email(
+            to=[
+                law_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Approved Invoices Sent to AP for LAW",
+            html_content=law_html_content,
+        )

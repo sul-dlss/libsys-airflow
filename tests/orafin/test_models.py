@@ -107,6 +107,7 @@ def mock_invoice():
     return Invoice(
         id="fd6e5f34-101e-4dd2-8542-0fdaf7713a2b",
         accountingCode="668330FEEDER",
+        acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
         folioInvoiceNo="10592",
         invoiceDate=datetime.datetime(2023, 7, 12),
         lines=[
@@ -225,6 +226,7 @@ def test_expense_codes(mock_folio_client):
         invoiceDate=datetime.datetime(2023, 6, 28),
         folioInvoiceNo="12356",
         accountingCode="4567",
+        acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
         subTotal=100.00,
         total=110.00,
         vendorInvoiceNo="abc12345",
@@ -366,6 +368,7 @@ def test_invoice_header_reconcile_amount():
     invoice = Invoice(
         accountingCode='011033FEEDER',
         id='b88cc4cf-ba1e-4355-9f28-94ef624e7d14',
+        acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
         invoiceDate=datetime.datetime(2023, 9, 22),
         folioInvoiceNo='12265',
         subTotal=53790.0,
@@ -899,6 +902,7 @@ def test_calculate_percentage_amounts_happy_path():
 yen_invoice = Invoice(
     id='169eaee5-974e-47ca-afdf-71b4430549aa',
     accountingCode='011033FEEDER',
+    acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     currency='JPY',
     exchangeRate=0.006678211586901763,
     invoiceDate=datetime.datetime(2023, 10, 2),

@@ -61,7 +61,6 @@ class Vendor:
     code: str
     erpCode: str
     id: str
-    # liableForVat: Union[None, bool] = False
     liableForVat: bool = False
 
     @property
@@ -205,6 +204,7 @@ class InvoiceLine:
 class Invoice:
     accountingCode: str
     id: str
+    acqUnitIds: list
     invoiceDate: datetime
     folioInvoiceNo: str
     subTotal: float

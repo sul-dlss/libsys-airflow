@@ -18,6 +18,7 @@ from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
 invoice_dict = {
     "id": "a6452c96-53ef-4e51-bd7b-aa67ac971133",
     "accountingCode": "804584FEEDER",
+    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
@@ -29,6 +30,7 @@ invoice_dict = {
 future_invoice_dict = {
     "id": "futureinvoice",
     "accountingCode": "804584FEEDER",
+    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": (datetime.utcnow() + timedelta(days=2)).strftime(
         "%Y-%m-%dT%H:%M:%S.000+00:00"
     ),
@@ -42,6 +44,7 @@ future_invoice_dict = {
 no_feeder_invoice_dict = {
     "id": "nofeeder",
     "accountingCode": "804584",
+    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
@@ -53,6 +56,7 @@ no_feeder_invoice_dict = {
 too_long_invoice_dict = {
     "id": "toolong",
     "accountingCode": "804584FEEDER",
+    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1abcdefghijklmnopqrstuvwxyz0123456789",
@@ -208,6 +212,7 @@ def test_get_invoice(mock_folio_client):
     assert exclude is False
     assert exclusion_reason == ""
     assert invoice.subTotal == 135.19
+    assert invoice.acqUnitIds[0] == "bd6c5f05-9ab3-41f7-8361-1c1e847196d3"
     assert len(invoice.lines) == 1
     assert invoice.amount == invoice.subTotal
     assert invoice.internal_number == "LIB10596"
