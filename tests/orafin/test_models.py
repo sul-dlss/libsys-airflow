@@ -362,6 +362,258 @@ def test_invoice_header(mock_invoice):
     assert raw_header[146] == " "
 
 
+def test_invoice_header_reconcile_amount():
+    invoice = Invoice(
+        accountingCode='011033FEEDER',
+        id='b88cc4cf-ba1e-4355-9f28-94ef624e7d14',
+        invoiceDate=datetime.datetime(2023, 9, 22),
+        folioInvoiceNo='12265',
+        subTotal=53790.0,
+        vendorInvoiceNo='7786',
+        total=57402.0,
+        exchangeRate=0.00667681979237894,
+        currency='JPY',
+        lines=[
+            InvoiceLine(
+                adjustmentsTotal=411.0,
+                id='02fadfe4',
+                invoiceLineNumber='1',
+                subTotal=4500.0,
+                total=4911.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='3da2b2cf-d72e-4df8-8a25-e00678dbb05f',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=639.0,
+                id='b229210d',
+                invoiceLineNumber='2',
+                subTotal=7000.0,
+                total=7639.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='1ce818ff-b0c0-4c97-be0f-6b454ddc727d',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=383.0,
+                id='6974ba24',
+                invoiceLineNumber='3',
+                subTotal=4200.0,
+                total=4583.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='25c394a3-ef39-45b4-879e-980ef8add4f2',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=164.0,
+                id='cdde8e7e',
+                invoiceLineNumber='4',
+                subTotal=1800.0,
+                total=1964.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='88ece067-a130-461a-8fbb-b2ef5574352f',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=255.0,
+                id='62152e23',
+                invoiceLineNumber='5',
+                subTotal=2800.0,
+                total=3055.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='cd789a9c-f69f-4b2f-afa6-587cd96fd0c0',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=1277.0,
+                id='b5f267e4',
+                invoiceLineNumber='6',
+                subTotal=14000.0,
+                total=15277.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='f49ddee5-c00a-4e2c-a32e-815aaf95a9d0',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=228.0,
+                id='30b5ee9e',
+                invoiceLineNumber='7',
+                subTotal=2500.0,
+                total=2728.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='536cc37e-f031-46f4-9889-29226d0a2679',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=255.0,
+                id='8339841f',
+                invoiceLineNumber='8',
+                subTotal=2800.0,
+                total=3055.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='50671728-8496-4c29-a3d4-dca75c25dfb9',
+                    acquisitionMethod='df26d81b-9d63-4ff8-bf41-49bf75cfa70e',
+                    orderFormat='Physical Resource',
+                    materialType='1a54b431-2e4f-452d-9cae-9cee66c9a892',
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='95a0cc8c-5326-456f-81ff-5202650d4e88',
+                            externalAccountNo='1065032-114-AALIB',
+                        ),
+                    )
+                ],
+            ),
+            InvoiceLine(
+                adjustmentsTotal=0.0,
+                id='b1ead7cc',
+                invoiceLineNumber='9',
+                subTotal=14190.0,
+                total=14190.0,
+                expense_code=None,
+                poLine=PurchaseOrderLine(
+                    id='0c60730e-146c-443f-929b-404bdaf6106e',
+                    acquisitionMethod='d279b030-4c9f-4038-8bf3-3e02e1c28bf0',
+                    orderFormat='Physical Resource',
+                    materialType=None,
+                ),
+                fundDistributions=[
+                    fundDistribution(
+                        distributionType='percentage',
+                        value=100.0,
+                        fund=Fund(
+                            id='28cfbac4-3374-4112-a8ba-b1f4b99b23c9',
+                            externalAccountNo='1065084-101-AALIB',
+                        ),
+                    )
+                ],
+            ),
+        ],
+        vendor=Vendor(
+            code='GANNANDO-SUL',
+            erpCode='011033FEEDER',
+            id='8301ba35-6170-513f-b676-3b1df56157c1',
+            liableForVat=False,
+        ),
+    )
+    assert round((invoice.amount * invoice.exchangeRate), 2) == 359.15
+    # Sum of invoice lines subTotal in dollars
+    lines_subtotals = 0
+    for line in invoice.lines:
+        lookup = _calculate_percentage_amounts(
+            line.subTotal * invoice.exchangeRate,
+            line.adjustmentsTotal * invoice.exchangeRate,
+            line.fundDistributions,
+        )
+        lines_subtotals += sum([row['amount'] for row in lookup.values()])
+    # Rounding individual lines results in the total off by one
+    assert lines_subtotals == 359.16
+    assert invoice.reconcile_amount() == 359.16
+    assert invoice.header()[84:99] == "000000000359.16"
+
+
 def test_invoice_amount(mock_invoice):
     assert mock_invoice.amount == 1442.03
     mock_invoice.vendor.liableForVat = True
