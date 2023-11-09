@@ -58,7 +58,11 @@ def test_generate_ap_error_report_email(mocker):
 
     assert total_errors == 6
     assert mock_send_email.called
-    assert mock_send_email.call_args[1]['to'] == ['test@stanford.edu']
+    assert mock_send_email.call_args[1]['to'] == [
+        'test@stanford.edu',
+        'test@stanford.edu',
+        'test@stanford.edu',
+    ]
 
     html_body = BeautifulSoup(
         mock_send_email.call_args[1]['html_content'], 'html.parser'

@@ -269,9 +269,13 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     if total_errors < 1:
         return total_errors
 
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL")
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
-    logger.info(f"Sending email to {to_email_addr} for {total_errors} error reports")
+    logger.info(
+        f"Sending email to {sul_to_email_addr} and {law_to_email_addr} for {total_errors} error reports"
+    )
 
     html_content = _ap_report_errors_email_body(
         missing_invoices, cancelled_invoices, paid_invoices, folio_url
@@ -279,7 +283,9 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
 
     send_email(
         to=[
-            to_email_addr,
+            sul_to_email_addr,
+            law_to_email_addr,
+            devs_to_email_addr,
         ],
         subject="Invoice Errors from AP Report",
         html_content=html_content,
@@ -295,10 +301,14 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
     ap_report_name = pathlib.Path(ap_report_path).name
     html_content = _ap_report_paid_email_body(invoices, ap_report_name, folio_url)
-    to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     send_email(
         to=[
-            to_email_addr,
+            sul_to_email_addr,
+            law_to_email_addr,
+            devs_to_email_addr,
         ],
         subject=f"Paid Invoices from {ap_report_name}",
         html_content=html_content,
