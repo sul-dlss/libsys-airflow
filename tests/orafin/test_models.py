@@ -779,18 +779,18 @@ def test_vendor_number(mock_invoice):
 
 
 def test_feeder_file(mock_invoice, mock_folio_client):
-    feeder_file = FeederFile(invoices=[mock_invoice])
+    feeder_file = FeederFile(invoices=[mock_invoice, yen_invoice])
 
-    assert feeder_file.batch_total_amount == 1442.03
-    assert feeder_file.number_of_invoices == 1
-    assert feeder_file.file_name == "feeder20230712_202307120000"
+    assert feeder_file.batch_total_amount == 1516.83
+    assert feeder_file.number_of_invoices == 2
+    assert feeder_file.file_name == "feeder20230712_202310020000"
 
     feeder_file.add_expense_lines(mock_folio_client)
 
     raw_feeder_file = feeder_file.generate()
 
     current_date_str = datetime.datetime.utcnow().strftime("%Y%m%d")
-    last_line = f"LIB9999999999TR{current_date_str}1000000001442.03"
+    last_line = f"LIB9999999999TR{current_date_str}2000000001516.83"
 
     assert raw_feeder_file.splitlines()[-1] == last_line
 

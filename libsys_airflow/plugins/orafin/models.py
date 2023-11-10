@@ -225,6 +225,13 @@ class Invoice:
         return self.subTotal
 
     @property
+    def usd_amount(self):
+        amount = self.amount
+        if self.exchangeRate:
+            amount = amount * self.exchangeRate
+        return round(amount, 2)
+
+    @property
     def attachment_flag(self):
         if self.paymentTerms and self.paymentTerms.upper().startswith("WILLCALL"):
             return "Y"
@@ -277,9 +284,7 @@ class Invoice:
         return "\n".join(rows)
 
     def reconcile_amount(self):
-        amount = self.amount
-        if self.exchangeRate:
-            amount = amount * self.exchangeRate
+        amount = self.usd_amount
 
         line_amount_total = 0
         for line in self.lines:
@@ -306,7 +311,7 @@ class FeederFile:
 
     @property
     def batch_total_amount(self) -> float:
-        return sum([invoice.amount for invoice in self.invoices])
+        return sum([invoice.usd_amount for invoice in self.invoices])
 
     @property
     def file_name(self) -> str:
