@@ -36,7 +36,7 @@ with DAG(
     "payments_to_orafin",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron="00 18 * * 3,5", timezone="America/Los_Angeles"
+        cron="00 4 * * 3,5", timezone="America/Los_Angeles"
     ),
     start_date=datetime(2023, 1, 1),
     catchup=False,
