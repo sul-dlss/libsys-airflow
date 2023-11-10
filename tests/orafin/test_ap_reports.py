@@ -111,9 +111,9 @@ def mock_current_context(mocker, monkeypatch):
 
 
 report = [
-    "SupplierNumber,SupplierName,PaymentNumber,PaymentDate,PaymentAmount,InvoiceNum,InvoiceDate,InvoiceAmt,AmountPaid,PoNumber",
-    "910092,ALVARADO, JANET MARY,2384230,09/19/2023,50000,ALVARADOJM09052023 10103,08/23/2021,50000,50000,",
-    "001470,AMERICAN MATHEMATICAL SOCIETY,3098367,09/02/2023,11405.42,2991432678 379587,08/03/2023,11405.42,11405.42,",
+    "SupplierNumber\tSupplierName\tPaymentNumber\tPaymentDate\tPaymentAmount\tInvoiceNum\tInvoiceDate\tInvoiceAmt\tAmountPaid\tPoNumber",
+    "910092\tALVARADO, JANET MARY\t2384230\t09/19/2023\t50000\tALVARADOJM09052023 10103\t08/23/2021\t50000\t50000\t",
+    "001470\tAMERICAN MATHEMATICAL SOCIETY\t3098367\t09/02/2023\t11405.42\t2991432678 379587\t08/03/2023\t11405.42\t11405.42\t",
 ]
 
 
@@ -136,7 +136,7 @@ def test_extract_rows(tmp_path):
     assert invoices[1]["SupplierNumber"] == "001470"
     assert invoices[1]["InvoiceNum"] == "2991432678 379587"
     assert invoices[1]["AmountPaid"] == "11405.42"
-    assert invoices[1]["PoNumber"] == ""
+    assert invoices[1]["PoNumber"] is None
 
 
 def test_extract_rows_empty_file(tmp_path):

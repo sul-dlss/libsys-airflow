@@ -75,19 +75,7 @@ def extract_rows(retrieved_csv: str) -> list:
         # Blank report, delete and return empty list
         report_path.unlink()
         return []
-    field_names = [name.strip() for name in raw_report[0].split(",")]
-    report = []
-    for row in raw_report[1:]:
-        fields = [field.strip() for field in row.split(",")]
-        if len(fields) > len(field_names):
-            # Combines Supplier Names because name has a comma
-            supplier_name = ", ".join([fields[1], fields.pop(2)])
-            fields[1] = supplier_name
-        report_line = {}
-        for name, value in zip(field_names, fields):
-            report_line[name] = value
-        report.append(report_line)
-    report_df = pd.DataFrame(report)
+    report_df = pd.read_csv(report_path, sep="\t", dtype="object")
     return report_df.replace({np.nan: None}).to_dict(orient='records')
 
 
