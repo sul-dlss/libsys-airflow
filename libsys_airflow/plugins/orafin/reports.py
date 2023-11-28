@@ -86,7 +86,7 @@ def extract_rows(retrieved_csv: str) -> tuple:
         dag_run_operator = TriggerDagRunOperator(
             task_id="additional-rows",
             trigger_dag_id="ap_payment_report",
-            conf={"ap_report_path": str(remaining_path.absolute())}
+            conf={"ap_report_path": str(remaining_path.absolute())},
         )
     report_rows = report_df.replace({np.nan: None}).to_dict(orient='records')
     return report_rows, dag_run_operator
