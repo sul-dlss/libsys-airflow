@@ -11,6 +11,7 @@ from typing import Union
 from airflow.models.mappedoperator import OperatorPartial
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import get_current_context
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 
@@ -64,19 +65,31 @@ def _retrieve_invoice(
     return None
 
 
-def extract_rows(retrieved_csv: str) -> list:
+def extract_rows(retrieved_csv: str) -> tuple:
     """
     Process AP csv file and returns a dictionary of updated
     """
     report_path = pathlib.Path(retrieved_csv)
+    dag_run_operator = None
     with report_path.open() as fo:
         raw_report = fo.readlines()
     if len(raw_report) == 1:
         # Blank report, delete and return empty list
         report_path.unlink()
-        return []
+        return [], dag_run_operator
     report_df = pd.read_csv(report_path, sep="\t", dtype="object")
-    return report_df.replace({np.nan: None}).to_dict(orient='records')
+    if len(report_df) > 1_000:
+        remaining_df = report_df.iloc[1_000:]
+        report_df = report_df.iloc[0:1_000]
+        remaining_path = report_path.parent / f"{report_path.stem}_01.csv"
+        remaining_df.to_csv(remaining_path, sep="\t")
+        dag_run_operator = TriggerDagRunOperator(
+            task_id="additional-rows",
+            trigger_dag_id="ap_payment_report",
+            conf={"ap_report_path": str(remaining_path.absolute())}
+        )
+    report_rows = report_df.replace({np.nan: None}).to_dict(orient='records')
+    return report_rows, dag_run_operator
 
 
 def filter_files(ls_output, airflow="/opt/airflow") -> tuple:

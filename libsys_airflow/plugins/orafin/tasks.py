@@ -92,8 +92,12 @@ def email_summary_task(invoices: list):
 
 
 @task
-def extract_rows_task(report_path):
-    return extract_rows(report_path)
+def extract_rows_task(**kwargs):
+    report_path = kwargs["report_path"]
+    report_rows, dag_trigger = extract_rows(report_path)
+    if dag_trigger:
+        dag_trigger.execute(kwargs)
+    return report_rows
 
 
 @task
