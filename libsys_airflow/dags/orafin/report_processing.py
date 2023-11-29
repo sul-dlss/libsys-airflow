@@ -46,6 +46,7 @@ with DAG(
     start_date=datetime(2023, 9, 19),
     catchup=False,
     tags=["folio", "orafin"],
+    max_active_runs=2,
 ) as dag:
     start = EmptyOperator(task_id="start")
 
