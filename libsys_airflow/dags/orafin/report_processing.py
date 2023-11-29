@@ -46,6 +46,7 @@ with DAG(
     start_date=datetime(2023, 9, 19),
     catchup=False,
     tags=["folio", "orafin"],
+    max_active_runs=2,
 ) as dag:
     start = EmptyOperator(task_id="start")
 
@@ -53,7 +54,7 @@ with DAG(
 
     report_path = init_processing_task()
 
-    report_rows = extract_rows_task(report_path)
+    report_rows = extract_rows_task(report_path=report_path)
 
     start >> report_path
 

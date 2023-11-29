@@ -1,6 +1,7 @@
 import pytest  # noqa
 
 from airflow.operators.bash import BashOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from mocks import MockTaskInstance
 
@@ -127,7 +128,7 @@ def test_extract_rows(tmp_path):
         for row in report:
             fo.write(f"{row}\n")
 
-    invoices = extract_rows(str(existing_csv))
+    invoices, dag_trigger = extract_rows(str(existing_csv))
 
     assert len(invoices) == 2
     assert invoices[0]["SupplierName"] == "ALVARADO, JANET MARY"
@@ -137,6 +138,7 @@ def test_extract_rows(tmp_path):
     assert invoices[1]["InvoiceNum"] == "2991432678 379587"
     assert invoices[1]["AmountPaid"] == "11405.42"
     assert invoices[1]["PoNumber"] is None
+    assert dag_trigger is None
 
 
 def test_extract_rows_empty_file(tmp_path):
@@ -148,9 +150,28 @@ def test_extract_rows_empty_file(tmp_path):
         fo.write(f"{report[0]}\n")
 
     assert existing_csv.exists()
-    invoices = extract_rows(str(existing_csv))
+    invoices, dag_trigger = extract_rows(str(existing_csv))
     assert len(invoices) == 0
     assert existing_csv.exists() is False
+    assert dag_trigger is None
+
+
+def test_extract_rows_large_file(tmp_path):
+    airflow = tmp_path / "airflow"
+    orafin_reports = airflow / "orafin-files/reports/"
+    orafin_reports.mkdir(parents=True)
+    existing_csv = orafin_reports / "xxdl_ap_payment_112820231000.csv"
+    with existing_csv.open('w+') as fo:
+        fo.write(f"{report[0]}\n")
+        for i in range(1200):
+            fo.write(f"{report[1]}\n")
+
+    assert existing_csv.exists()
+    invoices, dag_trigger = extract_rows(str(existing_csv))
+    assert len(invoices) == 1_000
+    assert isinstance(dag_trigger, TriggerDagRunOperator)
+    next_csv = orafin_reports / "xxdl_ap_payment_112820231000_01.csv"
+    assert next_csv.exists()
 
 
 def test_filter_files(tmp_path):
