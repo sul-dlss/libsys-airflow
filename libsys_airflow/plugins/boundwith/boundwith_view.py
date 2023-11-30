@@ -1,3 +1,5 @@
+from typing import Union
+
 import pandas as pd
 
 from airflow.models import DagBag
@@ -10,7 +12,7 @@ from airflow.utils.state import State
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 
-def trigger_bw_dag(bw_df: pd.DataFrame) -> str:
+def trigger_bw_dag(bw_df: pd.DataFrame, user_email: Union[str, None]) -> str:
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("add_bw_relationships")
     execution_date = timezone.utcnow()
@@ -19,7 +21,8 @@ def trigger_bw_dag(bw_df: pd.DataFrame) -> str:
         run_id=run_id,
         execution_date=execution_date,
         state=State.RUNNING,
-        conf={"relationships": bw_df.to_dict(orient='records')},
+        conf={"relationships": bw_df.to_dict(orient='records'), 
+              "email": user_email},
         external_trigger=True,
     )
     return run_id, execution_date
@@ -36,12 +39,17 @@ class BoundWithView(AppBuilderBaseView):
             rendered_page = self.render_template("boundwith/index.html")
         else:
             raw_csv = request.files.get("upload-boundwith")
+            email_addr = request.form.get("user-email")
             try:
                 bw_df = pd.read_csv(raw_csv)
-                run_id, execution_date = trigger_bw_dag(bw_df)
-                rendered_page = self.render_template(
-                    "boundwith/index.html", run_id=run_id, execution_date=execution_date
-                )
+                if len(bw_df) > 1_000:
+                    flash("Warning! CSV file has {len(bw_df)} rows, limit is 1,000")
+                    rendered_page = self.render_template("boundwith/index.html")
+                else:
+                    run_id, execution_date = trigger_bw_dag(bw_df)
+                    rendered_page = self.render_template(
+                        "boundwith/index.html", run_id=run_id, execution_date=execution_date, user_email=email_addr
+                    )
             except pd.errors.EmptyDataError:
                 flash("Warning! Empty CSV file for Boundwith Relationship DAG")
                 rendered_page = self.render_template("boundwith/index.html")
