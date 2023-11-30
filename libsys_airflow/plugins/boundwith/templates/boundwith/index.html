@@ -23,6 +23,12 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <p class="help-block">
+                        SUNID 
+                    </p>
+                    <input id="sunid" name="sunid" class="form-control"></input>
+                </div>
+                <div class="form-group">
+                    <p class="help-block">
                         Upload csv file with the following columns:
                         <ul>
                             <li>child_holdings_id</li>
@@ -30,7 +36,7 @@
                         </ul> 
                         <b>NOTE:</b> Maximum number of rows is 1,000
                     </p>
-                    <input type="file" id="upload-boundwith" name="upload-boundwith">
+                    <input type="file" class="form-control" id="upload-boundwith" name="upload-boundwith">
                 </div>
             </div>
             <div class="col-md-3">
@@ -38,7 +44,7 @@
                     <p class="help-block">
                         (Optional) Include email address to get summary email
                     </p>
-                    <input type="email" id="user-email" name="user-email"></input>
+                    <input type="email" class="form-control" id="user-email" name="user-email"></input>
                 </div>
             </div>
         </div>
