@@ -56,7 +56,7 @@ class BoundWithView(AppBuilderBaseView):
                     flash("Warning! CSV file has {len(bw_df)} rows, limit is 1,000")
                     rendered_page = self.render_template("boundwith/index.html")
                 else:
-                    run_id, execution_date = trigger_bw_dag(bw_df, email_addr, sunid)
+                    run_id, execution_date = trigger_bw_dag(bw_df, sunid, email_addr)
                     rendered_page = self.render_template(
                         "boundwith/index.html",
                         run_id=run_id,

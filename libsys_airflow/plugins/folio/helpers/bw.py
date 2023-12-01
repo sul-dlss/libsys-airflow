@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import pathlib
@@ -5,6 +6,31 @@ import pathlib
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def add_admin_notes(note: str, task_instance, folio_client):
+    logger.info(f"Adding note {note} to holdings and items")
+    count = 0
+    for record in task_instance.xcom_pull(task_ids="new_bw_record", key="success"):
+        holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
+        holdings_record = folio_client.get(holdings_endpoint)
+        holdings_record["administrativeNotes"].append(note)
+        folio_client.put(holdings_endpoint, holdings_record)
+
+        item_endpoint = f"/item-storage/items/{record['itemId']}"
+        item_record = folio_client.get(item_endpoint)
+        item_record["administrativeNotes"].append(note)
+        folio_client.put(item_endpoint, item_record)
+
+        if not count % 25:
+            logger.info(f"Updated {count*2:,} Holdings and Items")
+        count += 1
+    logger.info(f"Total {count:,} Item/Holding pairs administrative notes")
+
+
+def create_admin_note(sunid) -> str:
+    date = datetime.datetime.utcnow().strftime("%Y%m%d")
+    return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
 
 
 def discover_bw_parts_files(**kwargs):
@@ -106,4 +132,5 @@ def post_bw_record(**kwargs):
             key="error", value={"record": record, "message": post_result.text}
         )
     else:
-        task_instance.xcom_push(key="success", value=post_result.json()["id"])
+        record["id"] = post_result.json()["id"]
+        task_instance.xcom_push(key="success", value=record)
