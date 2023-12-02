@@ -12,6 +12,7 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     add_admin_notes,
     create_admin_note,
     create_bw_record,
+    email_bw_summary,
     post_bw_record,
 )
 
@@ -64,7 +65,12 @@ def add_bw_relationships(**kwargs):
 
     @task
     def generate_emails(**kwargs):
-        pass
+        task_instance = kwargs["ti"]
+        context = get_current_context()
+        params = context.get("params")
+        user_email = params.get("email")
+        devs_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+        email_bw_summary(user_email, devs_email_addr, task_instance)
 
     @task
     def new_bw_record(**kwargs):

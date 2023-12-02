@@ -5,13 +5,51 @@ import pathlib
 
 import requests
 
+from jinja2 import Template
+
+from airflow.utils.email import send_email
+
 logger = logging.getLogger(__name__)
+
+
+def _bw_summary_body(task_instance) -> str:
+
+    errors = []
+    for row in task_instance.xcom_pull(task_ids="new_bw_record", key="error"):
+        errors.append(row)
+    total_success = 0
+    for row in task_instance.xcom_pull(task_ids="new_bw_record", key="success"):
+        total_success += 1
+    template = Template(
+        """
+    <h2>Successful Relationships</h2>
+    <p>{{ total_success:, }} boundwith relationships created</p>
+    {% if len(errors) > 0 %}
+    <h2>Failed Boundwidth Relationships</h2>
+    <dl>
+      {% for error in errors %}
+       <dt>{{ error.message }}</dt>
+       <dd>
+          <ul>
+            <li>Child Holding ID {{ error.record.holdingsRecordId}}</li>
+            <li>Parent Item ID {{ error.record.itemId }}</li>
+          </ul>
+        </dd>
+      {% endfor %}
+    </dl>
+    {% endif %}
+    """
+    )
+
+    return template.render(total_success=total_success, errors=errors)
 
 
 def add_admin_notes(note: str, task_instance, folio_client):
     logger.info(f"Adding note {note} to holdings and items")
     count = 0
-    for record in task_instance.xcom_pull(task_ids="new_bw_record", key="success"):
+    for record in task_instance.xcom_pull(
+        task_ids="new_bw_record", key="success", default=[]
+    ):
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
         holdings_record = folio_client.get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
@@ -31,6 +69,16 @@ def add_admin_notes(note: str, task_instance, folio_client):
 def create_admin_note(sunid) -> str:
     date = datetime.datetime.utcnow().strftime("%Y%m%d")
     return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
+
+
+def email_bw_summary(user_email, devs_email, task_instance):
+    html_content = _bw_summary_body(task_instance)
+    to_addresses = [
+        devs_email,
+    ]
+    if user_email and len(user_email) > 0:
+        to_addresses.append(user_email)
+    send_email(to=to_addresses, subject="Boundwith Summary", html_content=html_content)
 
 
 def discover_bw_parts_files(**kwargs):
