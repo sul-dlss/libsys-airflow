@@ -43,8 +43,8 @@ def add_bw_relationships(**kwargs):
     @task
     def init_bw_relationships(**kwargs) -> list:
         context = get_current_context()
-        params = context.get("params")
-        return params["relationships"]
+        params = context.get("params", {})  # type: ignore
+        return params.get("relationships", [])  # type: ignore
 
     @task
     def add_bw_record(row: dict):

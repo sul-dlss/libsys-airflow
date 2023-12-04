@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def _bw_summary_body(task_instance) -> str:
-
     errors = []
     for row in task_instance.xcom_pull(task_ids="new_bw_record", key="error"):
         errors.append(row)
@@ -23,8 +22,8 @@ def _bw_summary_body(task_instance) -> str:
     template = Template(
         """
     <h2>Successful Relationships</h2>
-    <p>{{ total_success:, }} boundwith relationships created</p>
-    {% if len(errors) > 0 %}
+    <p>{{ total_success }} boundwith relationships created</p>
+    {% if errors|length > 0 %}
     <h2>Failed Boundwidth Relationships</h2>
     <dl>
       {% for error in errors %}
@@ -170,15 +169,14 @@ def post_bw_record(**kwargs):
     folio_client = kwargs["folio_client"]
     record = kwargs["bw_parts"]
     task_instance = kwargs["task_instance"]
-    post_result = requests.post(
-        f"{folio_client.okapi_url}/inventory-storage/bound-with-parts",
-        headers=folio_client.okapi_headers,
-        json=record,
-    )
-    if post_result.status_code != 201:
-        task_instance.xcom_push(
-            key="error", value={"record": record, "message": post_result.text}
+    try:
+        post_result = folio_client.post(
+            "/inventory-storage/bound-with-parts",
+            payload=record,
         )
-    else:
-        record["id"] = post_result.json()["id"]
+        record["id"] = post_result["id"]
         task_instance.xcom_push(key="success", value=record)
+    except requests.exceptions.HTTPError as e:
+        task_instance.xcom_push(
+            key="error", value={"record": record, "message": str(e)}
+        )

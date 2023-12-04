@@ -14,7 +14,7 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 def trigger_bw_dag(
     bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None]
-) -> str:
+) -> tuple:
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("add_bw_relationships")
     execution_date = timezone.utcnow()
