@@ -95,6 +95,14 @@ def mock_folio_client(mocker):
                 return {"items": []}
             if "00032200" in query:
                 return {"items": [{"id": "cc8dc750-3ca9-4cbc-a94a-709cd78d3d49"}]}
+        if args[0] == "/holdings-storage/holdings":
+            query = kwargs.get("params").get("query")
+            output = {"holdingsRecords": []}
+            if "ah1598042_1" in query:
+                output["holdingsRecords"].append(
+                    {"id": "d32d28d3-e14c-4b69-8993-ce8640a91dc1"}
+                )
+            return output
         return {"administrativeNotes": []}
 
     def mock_put(*args, **kwargs):
@@ -134,7 +142,7 @@ def test_create_admin_note():
 def test_create_bw_record(mock_folio_client):
     bw_parts = create_bw_record(
         folio_client=mock_folio_client,
-        holdings_id="d32d28d3-e14c-4b69-8993-ce8640a91dc1",
+        holdings_hrid="ah1598042_1",
         barcode="00032200",
     )
 
@@ -145,7 +153,17 @@ def test_create_bw_record(mock_folio_client):
 def test_create_bw_record_no_item(mock_folio_client):
     bw_parts = create_bw_record(
         folio_client=mock_folio_client,
-        holdings_id="d32d28d3-e14c-4b69-8993-ce8640a91dc1",
+        holdings_hrid="ah1598042_1",
+        barcode="23456",
+    )
+
+    assert bw_parts == {}
+
+
+def test_create_bw_record_no_holdings(mock_folio_client):
+    bw_parts = create_bw_record(
+        folio_client=mock_folio_client,
+        holdings_hrid="ah1598042_2",
         barcode="23456",
     )
 

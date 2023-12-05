@@ -149,7 +149,7 @@ def create_bw_record(**kwargs) -> dict:
     Creates a boundwidth record
     """
     folio_client = kwargs["folio_client"]
-    holdings_id = kwargs["holdings_id"]
+    holdings_hrid = kwargs["holdings_hrid"]
     barcode = kwargs["barcode"]
 
     item_result = folio_client.get(
@@ -160,7 +160,16 @@ def create_bw_record(**kwargs) -> dict:
         logger.info(f"No items found for barcode {barcode}")
         return {}
 
+    holdings_result = folio_client.get(
+        "/holdings-storage/holdings", params={"query": f"""(hrid=="{holdings_hrid}")"""}
+    )
+
+    if len(holdings_result["holdingsRecords"]) < 1:
+        logger.info(f"No Holdings found for HRID {holdings_hrid}")
+        return {}
+
     item_id = item_result["items"][0]["id"]
+    holdings_id = holdings_result["holdingsRecords"][0]["id"]
 
     return {"holdingsRecordId": holdings_id, "itemId": item_id}
 
