@@ -14,10 +14,14 @@ logger = logging.getLogger(__name__)
 
 def _bw_summary_body(task_instance) -> str:
     errors = []
-    for row in task_instance.xcom_pull(task_ids="new_bw_record", key="error"):
+    for row in task_instance.xcom_pull(
+        task_ids="new_bw_record", key="error", default=[]
+    ):
         errors.append(row)
     total_success = 0
-    for row in task_instance.xcom_pull(task_ids="new_bw_record", key="success"):
+    for row in task_instance.xcom_pull(
+        task_ids="new_bw_record", key="success", default=[]
+    ):
         total_success += 1
     template = Template(
         """
