@@ -134,7 +134,12 @@ def test_generate_ap_paid_report_email(mocker):
         if task_ids.startswith("init_processing_task"):
             return "/opt/airflow/orafin-data/reports/xxdl_ap_payment_09282023161640.csv"
         if task_ids.startswith("retrieve_invoice_task"):
-            return ["9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"]
+            return [
+                {
+                    "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+                    "accountingCode": "031134FEEDER",
+                }
+            ]
 
     mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
 
@@ -162,6 +167,7 @@ def test_generate_ap_paid_report_email(mocker):
 
     li = html_body.find("li")
     assert li.find("a").text == "Invoice 9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"
+    assert "031134FEEDER" not in li.find("a").text
 
 
 def test_generate_excluded_email(mocker):
