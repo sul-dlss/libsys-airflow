@@ -41,13 +41,13 @@ class FolioClient:
     def put(self, path, payload):
         """Performs a PUT and turns it into a json object"""
         url = self.okapi_url + path
-        resp = requests.put(url, headers=self.okapi_headers, json=payload)
+        resp = requests.put(url, headers=self.okapi_headers, json=payload, timeout=60)
         return self._handle_response(resp)
 
     def post(self, path, payload):
         """Performs a POST and turns it into a json object"""
         url = self.okapi_url + path
-        resp = requests.post(url, headers=self.okapi_headers, json=payload)
+        resp = requests.post(url, headers=self.okapi_headers, json=payload, timeout=60)
         return self._handle_response(resp)
 
     def post_file(self, path, filepath, content_type="application/octet-stream"):
