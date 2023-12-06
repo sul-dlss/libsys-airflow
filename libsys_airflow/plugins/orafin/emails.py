@@ -98,9 +98,9 @@ def _ap_report_paid_email_body(
         <h2>Paid Invoices</h2>
         <p>From ap report {{ ap_report_name }}</p>
         <ul>
-        {% for invoice_id in invoices %}
+        {% for invoice in invoices %}
         <li>
-            <a href="{{ folio_url}}/invoice/view/{{invoice_id }}">Invoice {{invoice_id }}</a>
+            <a href="{{ folio_url}}/invoice/view/{{invoice.id}}">Invoice {{invoice.id}}</a>
         </li>
         {% endfor %}
         </ul>
