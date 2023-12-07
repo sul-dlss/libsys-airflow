@@ -9,28 +9,51 @@
             DAG add_bw_relationships triggered with
             <a href="/dags/add_bw_relationships/graph?dag_run_id={{ run_id }}">Run ID</a>
         </p>
+        {% if user_email %}
+        <p>
+            Summary report will be emailed to {{ user_email }}.
+        </p>
+        {% endif %}
     </div>
     {% else %}
-    <div class="row">
-        <div class="col-md-9">
+    <form enctype="multipart/form-data" method="POST" action="{{ url_for('BoundWithView.run_bw_creation') }}">
+        <div class="row">
+            <div class="col-md-3">
 
-            <form enctype="multipart/form-data" method="POST" action="{{ url_for('BoundWithView.run_bw_creation') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <p class="help-block">
+                        SUNID 
+                    </p>
+                    <input id="sunid" name="sunid" class="form-control"></input>
+                </div>
                 <div class="form-group">
                     <p class="help-block">
                         Upload csv file with the following columns:
                         <ul>
-                            <li>child_holdings_id</li>
+                            <li>child_holdings_hrid</li>
                             <li>parent_barcode</li>
                         </ul> 
+                        <b>NOTE:</b> Maximum number of rows is 1,000
                     </p>
-                    <input type="file" id="upload-boundwith" name="upload-boundwith">
-
+                    <input type="file" class="form-control" id="upload-boundwith" name="upload-boundwith">
                 </div>
-                <input type="submit" class="btn btn-default" value="Create Boundwith Relationships">
-            </form>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <p class="help-block">
+                        (Optional) Include email address to get summary email
+                    </p>
+                    <input type="email" class="form-control" id="user-email" name="user-email"></input>
+                </div>
+            </div>
         </div>
-    </div>
+        <div class="row">
+            <div class="col-md-9">
+                <input type="submit" class="btn btn-default" value="Create Boundwith Relationships">
+            </div>
+        </div>
+    </form>
     {% endif %}
 </div>
 {% endblock %}

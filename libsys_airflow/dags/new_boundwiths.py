@@ -1,64 +1,110 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow.decorators import dag, task
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import get_current_context
+from airflow.operators.empty import EmptyOperator
 
-from folioclient import FolioClient
+from libsys_airflow.plugins.folio.folio_client import FolioClient
 
 from libsys_airflow.plugins.folio.helpers.bw import (
-    check_add_bw,
-    discover_bw_parts_files,
+    add_admin_notes,
+    create_admin_note,
+    create_bw_record,
+    email_bw_summary,
+    post_bw_record,
 )
 
 logger = logging.getLogger(__name__)
 
-folio_client = FolioClient(
-    Variable.get("okapi_url"),
-    "sul",
-    Variable.get("migration_user"),
-    Variable.get("migration_password"),
-)
 
-default_args = {
-    "owner": "folio",
-    "depends_on_past": False,
-    "email_on_failure": False,
-    "email_on_retry": False,
-    "retries": 1,
-    "retry_delay": timedelta(minutes=5),
-}
-
-parallel_posts = Variable.get("parallel_posts", 3)
-
-with DAG(
-    "boundwith_relationships",
-    default_args=default_args,
-    schedule=None,
-    start_date=datetime(2023, 2, 22),
-    catchup=False,
-    tags=["bib_import", "folio"],
-    max_active_runs=1,
-) as dag:
-    discovery_bw_files = PythonOperator(
-        task_id="discovery-bw-parts",
-        python_callable=discover_bw_parts_files,
-        op_kwargs={"jobs": parallel_posts},
+def _folio_client():
+    return FolioClient(
+        Variable.get("okapi_url"),
+        "sul",
+        Variable.get("migration_user"),
+        Variable.get("migration_password"),
     )
 
-    start_checks_add = EmptyOperator(task_id="start-check-add")
 
-    finished_checks_add = EmptyOperator(task_id="finished-check-add")
+@dag(
+    schedule=None,
+    start_date=datetime(2023, 11, 7),
+    catchup=False,
+    tags=["folio", "boundwith"],
+)
+def add_bw_relationships(**kwargs):
+    """
+    ## Creates Boundwith Relationships between Holdings and Items
+    DAG is triggered by Plugin UI with an uploaded CSV
+    """
 
-    for i in range(int(parallel_posts)):
-        check_add_relationships = PythonOperator(
-            task_id=f"check-add-{i}",
-            python_callable=check_add_bw,
-            op_kwargs={"job": i, "folio_client": folio_client},
+    @task
+    def init_bw_relationships(**kwargs) -> list:
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        return params.get("relationships", [])  # type: ignore
+
+    @task
+    def add_bw_record(row: dict):
+        folio_client = _folio_client()
+        holdings_hrid = row['child_holdings_hrid']
+        barcode = row["parent_barcode"]
+        bw_parts = create_bw_record(
+            folio_client=folio_client, holdings_hrid=holdings_hrid, barcode=barcode
+        )
+        return bw_parts
+
+    @task
+    def generate_admin_note(**kwargs):
+        context = get_current_context()
+        params = context.get("params")
+        admin_note = create_admin_note(params['sunid'])
+        return admin_note
+
+    @task
+    def generate_emails(**kwargs):
+        task_instance = kwargs["ti"]
+        context = get_current_context()
+        params = context.get("params")
+        user_email = params.get("email")
+        devs_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+        email_bw_summary(user_email, devs_email_addr, task_instance)
+
+    @task
+    def new_bw_record(**kwargs):
+        bw_parts = kwargs["bw_parts"]
+        task_instance = kwargs["ti"]
+        folio_client = _folio_client()
+        post_bw_record(
+            folio_client=folio_client, bw_parts=bw_parts, task_instance=task_instance
         )
 
-        start_checks_add >> check_add_relationships >> finished_checks_add
+    @task
+    def new_admin_notes(**kwargs):
+        note = kwargs["admin_note"]
+        task_instance = kwargs['ti']
+        folio_client = _folio_client()
+        add_admin_notes(note, task_instance, folio_client)
 
-    discovery_bw_files >> start_checks_add
+    start = EmptyOperator(task_id="start-bw-relationships")
+
+    finished_bw_relationshps = EmptyOperator(task_id="finished-bw-relationships")
+
+    rows = init_bw_relationships()
+
+    admin_note = generate_admin_note()
+
+    start >> [rows, admin_note]
+
+    bw_records = add_bw_record.expand(row=rows)
+
+    (
+        new_bw_record.expand(bw_parts=bw_records)
+        >> [new_admin_notes(admin_note=admin_note), generate_emails()]
+        >> finished_bw_relationshps
+    )
+
+
+add_bw_relationships()
