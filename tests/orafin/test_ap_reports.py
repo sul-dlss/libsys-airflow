@@ -295,6 +295,7 @@ def test_update_voucher(mocker, mock_folio_client, caplog):
     def _xcom_pull(*args, **kwargs):
         return [
             {
+                "AmountPaid": "2499.01",
                 "PaymentAmount": "2498.63",
                 "PaymentDate": "10/24/2023",
                 "PaymentNumber": "2983835",
@@ -306,15 +307,15 @@ def test_update_voucher(mocker, mock_folio_client, caplog):
 
     voucher = {
         "id": "e681116d-68ce-419e-aab6-3562759a7fab",
-        "amount": 2901.0,
         "disbursementNumber": "Pending",
+        "disbursementAmount": 0,
         "invoiceId": "06108f44-b03d-49c4-a2c6-1cfe3984a6d3",
     }
 
     changed_voucher = update_voucher(voucher, mock_task_instance, mock_folio_client)
 
     assert "Updated e681116d-68ce-419e-aab6-3562759a7fab" in caplog.text
-    assert changed_voucher["amount"] == "2498.63"
+    assert changed_voucher["disbursementAmount"] == "2499.01"
     assert changed_voucher["disbursementDate"] == "2023-10-24T00:00:00"
     assert changed_voucher["disbursementNumber"] == "2983835"
     assert changed_voucher["status"] == "Paid"

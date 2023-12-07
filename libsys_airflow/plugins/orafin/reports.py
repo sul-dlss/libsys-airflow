@@ -213,7 +213,7 @@ def update_voucher(voucher: dict, task_instance, folio_client: FolioClient) -> d
         task_ids="retrieve_invoice_task", key=voucher["invoiceId"]
     )[0]
     voucher["status"] = "Paid"
-    voucher["amount"] = row["PaymentAmount"]
+    voucher["disbursementAmount"] = row["AmountPaid"]
     voucher["disbursementNumber"] = row["PaymentNumber"]
     disbursement_date = datetime.strptime(row["PaymentDate"], "%m/%d/%Y")
     voucher["disbursementDate"] = disbursement_date.isoformat()
