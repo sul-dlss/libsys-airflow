@@ -66,6 +66,9 @@ class BoundWithView(AppBuilderBaseView):
             except pd.errors.EmptyDataError:
                 flash("Warning! Empty CSV file for Boundwith Relationship DAG")
                 rendered_page = self.render_template("boundwith/index.html")
+            except Exception as e:
+                flash(f"Error with CSV {e}")
+                rendered_page = self.render_template("boundwith/index.html")
         return rendered_page
 
     @expose("/")
