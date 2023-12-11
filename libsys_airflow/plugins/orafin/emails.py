@@ -100,7 +100,7 @@ def _ap_report_paid_email_body(
         <ul>
         {% for invoice in invoices %}
         <li>
-            <a href="{{ folio_url}}/invoice/view/{{invoice.id}}">Invoice {{invoice.id}}</a>
+            <a href="{{ folio_url}}/invoice/view/{{invoice.id}}">Vendor Invoice Number: {{ invoice.vendorInvoiceNo }}</a>
         </li>
         {% endfor %}
         </ul>
