@@ -14,6 +14,7 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     create_admin_note,
     create_bw_record,
     discover_bw_parts_files,
+    email_failure,
     email_bw_summary,
     post_bw_record,
 )
@@ -234,6 +235,60 @@ def test_discover_bw_parts_files(mock_file_system, caplog):  # noqa
     assert "Discovered 1 boundwidth part files for processing" in caplog.text
 
     mocks.messages = {}
+
+
+def test_email_failure(mocker, mock_task_instance):
+    def mock_get(*args):
+        response = mocker
+        response.status_code = 200
+        response.text = """<html>
+        <pre>
+        <code>
+        [2023-12-12, 00:32:43 UTC] {standard_task_runner.py:57} INFO - Started process 15352 to run task
+        [2023-12-12, 00:32:43 UTC] {standard_task_runner.py:85} INFO - Job 17319: Subtask add_bw_record
+        [2023-12-12, 00:32:45 UTC] {taskinstance.py:1824} ERROR - Task failed with exception
+        Traceback (most recent call last):
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/decorators/base.py", line 220, in execute
+            return_value = super().execute(context)
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/operators/python.py", line 181, in execute
+            return_value = self.execute_callable()
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/operators/python.py", line 198, in execute_callable
+            return self.python_callable(*self.op_args, **self.op_kwargs)
+        File "/opt/airflow/libsys_airflow/dags/new_boundwiths.py", line 59, in add_bw_record
+            raise ValueError("Add bw records")
+        ValueError: Add bw records
+        [2023-12-12, 00:32:45 UTC] {taskinstance.py:1345} INFO - Marking task as FAILED. dag_id=add_bw_relationships
+        </code>
+        </pre>
+        </html>"""
+        return response
+
+    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests.get = mock_get
+    mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
+    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+
+    mock_context = {
+        "task_instance": mock_task_instance,
+        "params": {"email": "jstanford@stanford.edu"},
+    }
+
+    email_failure(mock_context)
+    assert mock_send_email.called
+
+    assert mock_send_email.call_args[1]['to'] == [
+        'libsys-lists@stanford.edu',
+        'jstanford@stanford.edu',
+    ]
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    h2 = html_body.find("h2")
+
+    assert "Error with File" in h2.text
 
 
 def test_email_bw_summary(mocker, mock_task_instance):

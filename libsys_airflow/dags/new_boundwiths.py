@@ -13,6 +13,7 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     create_admin_note,
     create_bw_record,
     email_bw_summary,
+    email_failure,
     post_bw_record,
 )
 
@@ -33,6 +34,7 @@ def _folio_client():
     start_date=datetime(2023, 11, 7),
     catchup=False,
     tags=["folio", "boundwith"],
+    on_failure_callback=email_failure,
 )
 def add_bw_relationships(**kwargs):
     """
