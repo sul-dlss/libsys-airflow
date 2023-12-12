@@ -249,7 +249,35 @@ def test_discover_bw_parts_files(mock_file_system, caplog):  # noqa
     mocks.messages = {}
 
 
-def test_email_failure(mocker, mock_task_instance):
+@pytest.fixture
+def mock_context():
+    return {
+        "params": {
+            "email": "jstanford@stanford.edu",
+            "file_name": "bw-errors.csv",
+            "relationships": [
+                {
+                    'child_holdings_hrid': 'ah1135444_2',
+                    'parent_barcode': '36105042288113',
+                },
+                {
+                    'child_holdings_hrid': 'ah787483_1',
+                    'parent_barcode': '36105010089238',
+                },
+                {
+                    'child_holdings_hrid': 'ah1545187_1',
+                    'parent_barcode': '36105042353974',
+                },
+                {
+                    'child_holdings_hrid': 'ah1598042_1',
+                    'parent_barcode': '36105042353974',
+                },
+            ],
+        },
+    }
+
+
+def test_email_failure(mocker, mock_context, mock_task_instance):
     def mock_get(*args):
         response = mocker
         response.status_code = 200
@@ -281,10 +309,7 @@ def test_email_failure(mocker, mock_task_instance):
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
 
-    mock_context = {
-        "task_instance": mock_task_instance,
-        "params": {"email": "jstanford@stanford.edu", "file_name": "bw-errors.csv"},
-    }
+    mock_context["task_instance"] = mock_task_instance
 
     email_failure(mock_context)
     assert mock_send_email.called
@@ -307,7 +332,7 @@ def test_email_failure(mocker, mock_task_instance):
     assert "ValueError: Add bw records" in code.text
 
 
-def test_email_failure_bad_log_url(mocker, mock_task_instance):
+def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
     def mock_get(*args):
         response = mocker
         response.status_code = 500
@@ -320,10 +345,7 @@ def test_email_failure_bad_log_url(mocker, mock_task_instance):
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
 
-    mock_context = {
-        "task_instance": mock_task_instance,
-        "params": {"email": "jstanford@stanford.edu", "file_name": "bw-errors.csv"},
-    }
+    mock_context["task_instance"] = mock_task_instance
 
     email_failure(mock_context)
 
@@ -338,7 +360,7 @@ def test_email_failure_bad_log_url(mocker, mock_task_instance):
     assert "Error Internal Server Error trying to retrieve log" in div.text
 
 
-def test_email_failure_no_log(mocker, mock_task_instance):
+def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
     def mock_get(*args):
         response = mocker
         response.status_code = 200
@@ -351,10 +373,7 @@ def test_email_failure_no_log(mocker, mock_task_instance):
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
 
-    mock_context = {
-        "task_instance": mock_task_instance,
-        "params": {"email": "jstanford@stanford.edu", "file_name": "bw-errors.csv"},
-    }
+    mock_context["task_instance"] = mock_task_instance
 
     email_failure(mock_context)
 
@@ -369,7 +388,7 @@ def test_email_failure_no_log(mocker, mock_task_instance):
     assert "Could not extract log" in div.text
 
 
-def test_email_bw_summary(mocker, mock_task_instance):
+def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
 
     email_bw_summary('libsys-lists@stanford.edu', mock_task_instance)

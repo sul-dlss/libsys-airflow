@@ -22,6 +22,15 @@ def _bw_error_body(task_instance, params) -> str:
         """
      <h2>Error with File {{ params.file_name }} in Task {{ ti.task_id }}</h2>
 
+     <h3>Relationships</h3>
+     <ul>
+     {% for row in params.relationships[0:25] %}
+     <li>Child Holdings HRID: {{ row.child_holdings_hrid}}<br>
+         Parent Barcode: {{ row.parent_barcode }}
+     </li>
+     {% endfor %}
+     </ul>
+     <h3>Log:</h3>
      {{ logs }}
     """
     )
