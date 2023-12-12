@@ -137,6 +137,7 @@ def test_generate_ap_paid_report_email(mocker):
             return [
                 {
                     "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+                    "vendorInvoiceNo": "23-24364",
                     "accountingCode": "031134FEEDER",
                 }
             ]
@@ -166,7 +167,7 @@ def test_generate_ap_paid_report_email(mocker):
     assert paragraph.text == "From ap report xxdl_ap_payment_09282023161640.csv"
 
     li = html_body.find("li")
-    assert li.find("a").text == "Invoice 9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"
+    assert li.find("a").text == "Vendor Invoice Number: 23-24364"
     assert "031134FEEDER" not in li.find("a").text
 
 
