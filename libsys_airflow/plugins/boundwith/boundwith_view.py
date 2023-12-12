@@ -13,7 +13,7 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 
 def trigger_bw_dag(
-    bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None]
+    bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None], file_name: str
 ) -> tuple:
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("add_bw_relationships")
@@ -27,6 +27,7 @@ def trigger_bw_dag(
             "relationships": bw_df.to_dict(orient='records'),
             "email": user_email,
             "sunid": sunid,
+            "file_name": file_name,
         },
         external_trigger=True,
     )
@@ -47,16 +48,17 @@ class BoundWithView(AppBuilderBaseView):
             flash("SUNID Required")
             rendered_page = self.render_template("boundwith/index.html")
         else:
-            raw_csv = request.files.get("upload-boundwith")
-            email_addr = request.form.get("user-email")
-
             try:
+                raw_csv = request.files["upload-boundwith"]
+                email_addr = request.form.get("user-email")
                 bw_df = pd.read_csv(raw_csv)
                 if len(bw_df) > 1_000:
                     flash(f"Warning! CSV file has {len(bw_df)} rows, limit is 1,000")
                     rendered_page = self.render_template("boundwith/index.html")
                 else:
-                    run_id, execution_date = trigger_bw_dag(bw_df, sunid, email_addr)
+                    run_id, execution_date = trigger_bw_dag(
+                        bw_df, sunid, email_addr, raw_csv.filename
+                    )
                     rendered_page = self.render_template(
                         "boundwith/index.html",
                         run_id=run_id,

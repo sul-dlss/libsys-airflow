@@ -20,7 +20,7 @@ def _bw_error_body(task_instance, params) -> str:
 
     email_template = Template(
         """
-     <h2>Error with File params.file_name  in Task {{ ti.task_id }}</h2>
+     <h2>Error with File {{ params.file_name }} in Task {{ ti.task_id }}</h2>
 
      {{ logs }}
     """
@@ -32,14 +32,14 @@ def _bw_error_body(task_instance, params) -> str:
         if code:
             logs = str(code)
         else:
-            logs = "Could not extract log"
+            logs = "<div>Could not extract log</div>"
     else:
-        logs = f"Error {log_result.text} trying to retrieve log"
+        logs = f"<div>Error {log_result.text} trying to retrieve log</div>"
     html_body = email_template.render(params=params, ti=task_instance, logs=logs)
     return html_body
 
 
-def _bw_summary_body(task_instance) -> str:
+def _bw_summary_body(task_instance, file_name) -> str:
     errors = []
     for row in task_instance.xcom_pull(
         task_ids="new_bw_record", key="error", default=[]
@@ -52,10 +52,10 @@ def _bw_summary_body(task_instance) -> str:
         total_success += 1
     template = Template(
         """
-    <h2>Successful Relationships</h2>
+    <h2>Successful Relationships for {{ file_name }}</h2>
     <p>{{ total_success }} boundwith relationships created</p>
     {% if errors|length > 0 %}
-    <h2>Failed Boundwidth Relationships</h2>
+    <h2>Failed Boundwidth Relationships {{ file_name }}</h2>
     <dl>
       {% for error in errors %}
        <dt>{{ error.message }}</dt>
@@ -71,7 +71,9 @@ def _bw_summary_body(task_instance) -> str:
     """
     )
 
-    return template.render(total_success=total_success, errors=errors)
+    return template.render(
+        total_success=total_success, errors=errors, file_name=file_name
+    )
 
 
 def add_admin_notes(note: str, task_instance, folio_client):
@@ -101,14 +103,24 @@ def create_admin_note(sunid) -> str:
     return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
 
 
-def email_bw_summary(user_email, devs_email, task_instance):
-    html_content = _bw_summary_body(task_instance)
+def email_bw_summary(devs_email, task_instance):
+    file_name = task_instance.xcom_pull(
+        task_ids="init_bw_relationships", key="file_name"
+    )
+    html_content = _bw_summary_body(task_instance, file_name)
     to_addresses = [
         devs_email,
     ]
+    user_email = task_instance.xcom_pull(
+        task_ids="init_bw_relationships", key="user_email"
+    )
     if user_email and len(user_email) > 0:
         to_addresses.append(user_email)
-    send_email(to=to_addresses, subject="Boundwith Summary", html_content=html_content)
+    send_email(
+        to=to_addresses,
+        subject=f"Boundwith Summary for file {file_name}",
+        html_content=html_content,
+    )
 
 
 def email_failure(context):
@@ -118,8 +130,6 @@ def email_failure(context):
     email = params.get("email")
     if email:
         to_addresses.append(email)
-    else:
-        logger.error(f"Params {params}")
 
     html_body = _bw_error_body(ti, params)
 
