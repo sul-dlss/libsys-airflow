@@ -5,14 +5,50 @@ import pathlib
 
 import requests
 
+from bs4 import BeautifulSoup
 from jinja2 import Template
 
+from airflow.models import Variable
 from airflow.utils.email import send_email
 
 logger = logging.getLogger(__name__)
 
 
-def _bw_summary_body(task_instance) -> str:
+def _bw_error_body(task_instance, params) -> str:
+    log_url = task_instance.log_url.replace("localhost", "airflow-webserver")
+    log_result = requests.get(log_url)
+
+    email_template = Template(
+        """
+     <h2>Error with File {{ params.file_name }} in Task {{ ti.task_id }}</h2>
+
+     <h3>Relationships</h3>
+     <ul>
+     {% for row in params.relationships[0:25] %}
+     <li>Child Holdings HRID: {{ row.child_holdings_hrid}}<br>
+         Parent Barcode: {{ row.parent_barcode }}
+     </li>
+     {% endfor %}
+     </ul>
+     <h3>Log:</h3>
+     {{ logs }}
+    """
+    )
+
+    if log_result.status_code == 200:
+        log_soup = BeautifulSoup(log_result.text, 'html.parser')
+        code = log_soup.find("code")
+        if code:
+            logs = str(code)
+        else:
+            logs = "<div>Could not extract log</div>"
+    else:
+        logs = f"<div>Error {log_result.text} trying to retrieve log</div>"
+    html_body = email_template.render(params=params, ti=task_instance, logs=logs)
+    return html_body
+
+
+def _bw_summary_body(task_instance, file_name) -> str:
     errors = []
     for row in task_instance.xcom_pull(
         task_ids="new_bw_record", key="error", default=[]
@@ -25,10 +61,10 @@ def _bw_summary_body(task_instance) -> str:
         total_success += 1
     template = Template(
         """
-    <h2>Successful Relationships</h2>
+    <h2>Successful Relationships for {{ file_name }}</h2>
     <p>{{ total_success }} boundwith relationships created</p>
     {% if errors|length > 0 %}
-    <h2>Failed Boundwidth Relationships</h2>
+    <h2>Failed Boundwidth Relationships {{ file_name }}</h2>
     <dl>
       {% for error in errors %}
        <dt>{{ error.message }}</dt>
@@ -44,7 +80,9 @@ def _bw_summary_body(task_instance) -> str:
     """
     )
 
-    return template.render(total_success=total_success, errors=errors)
+    return template.render(
+        total_success=total_success, errors=errors, file_name=file_name
+    )
 
 
 def add_admin_notes(note: str, task_instance, folio_client):
@@ -74,14 +112,37 @@ def create_admin_note(sunid) -> str:
     return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
 
 
-def email_bw_summary(user_email, devs_email, task_instance):
-    html_content = _bw_summary_body(task_instance)
+def email_bw_summary(devs_email, task_instance):
+    file_name = task_instance.xcom_pull(
+        task_ids="init_bw_relationships", key="file_name"
+    )
+    html_content = _bw_summary_body(task_instance, file_name)
     to_addresses = [
         devs_email,
     ]
+    user_email = task_instance.xcom_pull(
+        task_ids="init_bw_relationships", key="user_email"
+    )
     if user_email and len(user_email) > 0:
         to_addresses.append(user_email)
-    send_email(to=to_addresses, subject="Boundwith Summary", html_content=html_content)
+    send_email(
+        to=to_addresses,
+        subject=f"Boundwith Summary for file {file_name}",
+        html_content=html_content,
+    )
+
+
+def email_failure(context):
+    ti = context['task_instance']
+    params = context['params']
+    to_addresses = [Variable.get("ORAFIN_TO_EMAIL_DEVS")]
+    email = params.get("email")
+    if email:
+        to_addresses.append(email)
+
+    html_body = _bw_error_body(ti, params)
+
+    send_email(to=to_addresses, subject=f"Error {ti.task_id}", html_content=html_body)
 
 
 def discover_bw_parts_files(**kwargs):

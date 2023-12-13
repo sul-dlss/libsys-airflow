@@ -14,6 +14,7 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     create_admin_note,
     create_bw_record,
     discover_bw_parts_files,
+    email_failure,
     email_bw_summary,
     post_bw_record,
 )
@@ -57,20 +58,32 @@ def mock_task_instance(mocker):
     messages = {}
 
     def mock_xcom_pull(**kwargs):
-        match kwargs.get("key"):
-            case "success":
-                return [{"holdingsRecordId": "", "itemId": ""}]
+        task_id = kwargs.get("task_ids")
+        key = kwargs.get("key")
+        match task_id:
+            case "init_bw_relationships":
+                match key:
+                    case "file_name":
+                        return "bw-test-file.csv"
 
-            case "error":
-                return [
-                    {
-                        "message": "Aleady exists",
-                        "record": {
-                            "holdingsRecordId": "59f2bc54-793e-426b-8087-632c2a3430a7",
-                            "itemId": "4a5944f7-9d9f-427e-a510-3af7856241de",
-                        },
-                    }
-                ]
+                    case "user_email":
+                        return "jstanford@stanford.edu"
+
+            case "new_bw_record":
+                match key:
+                    case "success":
+                        return [{"holdingsRecordId": "", "itemId": ""}]
+
+                    case "error":
+                        return [
+                            {
+                                "message": "Aleady exists",
+                                "record": {
+                                    "holdingsRecordId": "59f2bc54-793e-426b-8087-632c2a3430a7",
+                                    "itemId": "4a5944f7-9d9f-427e-a510-3af7856241de",
+                                },
+                            }
+                        ]
 
     def mock_xcom_push(**kwargs):
         if mock_ti.task_ids in messages:
@@ -236,12 +249,149 @@ def test_discover_bw_parts_files(mock_file_system, caplog):  # noqa
     mocks.messages = {}
 
 
-def test_email_bw_summary(mocker, mock_task_instance):
+@pytest.fixture
+def mock_context():
+    return {
+        "params": {
+            "email": "jstanford@stanford.edu",
+            "file_name": "bw-errors.csv",
+            "relationships": [
+                {
+                    'child_holdings_hrid': 'ah1135444_2',
+                    'parent_barcode': '36105042288113',
+                },
+                {
+                    'child_holdings_hrid': 'ah787483_1',
+                    'parent_barcode': '36105010089238',
+                },
+                {
+                    'child_holdings_hrid': 'ah1545187_1',
+                    'parent_barcode': '36105042353974',
+                },
+                {
+                    'child_holdings_hrid': 'ah1598042_1',
+                    'parent_barcode': '36105042353974',
+                },
+            ],
+        },
+    }
+
+
+def test_email_failure(mocker, mock_context, mock_task_instance):
+    def mock_get(*args):
+        response = mocker
+        response.status_code = 200
+        response.text = """<html>
+        <pre>
+        <code>
+        [2023-12-12, 00:32:43 UTC] {standard_task_runner.py:57} INFO - Started process 15352 to run task
+        [2023-12-12, 00:32:43 UTC] {standard_task_runner.py:85} INFO - Job 17319: Subtask add_bw_record
+        [2023-12-12, 00:32:45 UTC] {taskinstance.py:1824} ERROR - Task failed with exception
+        Traceback (most recent call last):
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/decorators/base.py", line 220, in execute
+            return_value = super().execute(context)
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/operators/python.py", line 181, in execute
+            return_value = self.execute_callable()
+        File "/home/airflow/.local/lib/python3.10/site-packages/airflow/operators/python.py", line 198, in execute_callable
+            return self.python_callable(*self.op_args, **self.op_kwargs)
+        File "/opt/airflow/libsys_airflow/dags/new_boundwiths.py", line 59, in add_bw_record
+            raise ValueError("Add bw records")
+        ValueError: Add bw records
+        [2023-12-12, 00:32:45 UTC] {taskinstance.py:1345} INFO - Marking task as FAILED. dag_id=add_bw_relationships
+        </code>
+        </pre>
+        </html>"""
+        return response
+
+    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests.get = mock_get
+    mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
+    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+
+    mock_context["task_instance"] = mock_task_instance
+
+    email_failure(mock_context)
+    assert mock_send_email.called
+
+    assert mock_send_email.call_args[1]['to'] == [
+        'libsys-lists@stanford.edu',
+        'jstanford@stanford.edu',
+    ]
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    h2 = html_body.find("h2")
+
+    assert "Error with File bw-errors.csv" in h2.text
+
+    code = html_body.find("code")
+
+    assert "ValueError: Add bw records" in code.text
+
+
+def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
+    def mock_get(*args):
+        response = mocker
+        response.status_code = 500
+        response.text = """Internal Server Error"""
+        return response
+
+    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests.get = mock_get
+    mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
+    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+
+    mock_context["task_instance"] = mock_task_instance
+
+    email_failure(mock_context)
+
+    assert mock_send_email.called
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    div = html_body.find("div")
+
+    assert "Error Internal Server Error trying to retrieve log" in div.text
+
+
+def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
+    def mock_get(*args):
+        response = mocker
+        response.status_code = 200
+        response.text = """<div></div>"""
+        return response
+
+    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests.get = mock_get
+    mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
+    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+
+    mock_context["task_instance"] = mock_task_instance
+
+    email_failure(mock_context)
+
+    assert mock_send_email.called
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    div = html_body.find("div")
+
+    assert "Could not extract log" in div.text
+
+
+def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
 
-    email_bw_summary(
-        'jstanford@stanford.edu', 'libsys-lists@stanford.edu', mock_task_instance
-    )
+    email_bw_summary('libsys-lists@stanford.edu', mock_task_instance)
 
     assert mock_send_email.called
     assert mock_send_email.call_args[1]['to'] == [

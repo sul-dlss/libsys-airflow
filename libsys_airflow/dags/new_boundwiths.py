@@ -13,6 +13,7 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     create_admin_note,
     create_bw_record,
     email_bw_summary,
+    email_failure,
     post_bw_record,
 )
 
@@ -33,6 +34,7 @@ def _folio_client():
     start_date=datetime(2023, 11, 7),
     catchup=False,
     tags=["folio", "boundwith"],
+    on_failure_callback=email_failure,
 )
 def add_bw_relationships(**kwargs):
     """
@@ -42,8 +44,12 @@ def add_bw_relationships(**kwargs):
 
     @task
     def init_bw_relationships(**kwargs) -> list:
+        task_instance = kwargs["ti"]
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
+        task_instance.xcom_push(key="user_email", value=params.get("email"))
+        task_instance.xcom_push(key="sunid", value=params['sunid'])
+        task_instance.xcom_push(key="file_name", value=params["file_name"])
         return params.get("relationships", [])  # type: ignore
 
     @task
@@ -58,19 +64,16 @@ def add_bw_relationships(**kwargs):
 
     @task
     def generate_admin_note(**kwargs):
-        context = get_current_context()
-        params = context.get("params")
-        admin_note = create_admin_note(params['sunid'])
+        task_instance = kwargs['ti']
+        sunid = task_instance.xcom_pull(task_ids="init_bw_relationships", key="sunid")
+        admin_note = create_admin_note(sunid)
         return admin_note
 
     @task
     def generate_emails(**kwargs):
         task_instance = kwargs["ti"]
-        context = get_current_context()
-        params = context.get("params")
-        user_email = params.get("email")
         devs_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
-        email_bw_summary(user_email, devs_email_addr, task_instance)
+        email_bw_summary(devs_email_addr, task_instance)
 
     @task
     def new_bw_record(**kwargs):
