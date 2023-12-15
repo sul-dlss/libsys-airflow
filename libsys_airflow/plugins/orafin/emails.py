@@ -204,7 +204,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     """
     Generates emails for excluded invoices
     """
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
@@ -269,7 +269,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     if total_errors < 1:
         return total_errors
 
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
@@ -301,7 +301,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
     ap_report_name = pathlib.Path(ap_report_path).name
     html_content = _ap_report_paid_email_body(invoices, ap_report_name, folio_url)
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     send_email(
@@ -320,7 +320,7 @@ def generate_summary_email(invoices: list, folio_url: str):
     """
     Generates emails that summarize invoices sent to AP
     """
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 

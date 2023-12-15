@@ -72,7 +72,7 @@ def add_bw_relationships(**kwargs):
     @task
     def generate_emails(**kwargs):
         task_instance = kwargs["ti"]
-        devs_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+        devs_email_addr = Variable.get("EMAIL_DEVS")
         email_bw_summary(devs_email_addr, task_instance)
 
     @task
