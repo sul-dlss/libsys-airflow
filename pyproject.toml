@@ -26,6 +26,8 @@ blinker = "^1.6.2"
 folio-migration-tools = "^1.8.1"
 werkzeug = "2.3.7"
 connexion = "2.14.1"
+# Pinning until Airflow updates this dependency
+pendulum = "2.1.2"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
