@@ -93,6 +93,9 @@ def _invoice_line_links(invoice: Invoice, folio_url) -> str:
 def _ap_report_paid_email_body(
     invoices: list, ap_report_name: str, folio_url: str
 ) -> str:
+    if len(invoices) < 1:
+        return ""
+
     template = Template(
         """
         <h2>Paid Invoices</h2>
@@ -186,7 +189,7 @@ def _group_excluded_invoices(invoices_reasons: list):
     return grouped_acqunits
 
 
-def _group_sent_invoices(invoices: list):
+def _group_invoices_by_acqunit(invoices: list):
     """
     Groups invoices by acq unit ID
     """
@@ -204,7 +207,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     """
     Generates emails for excluded invoices
     """
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
@@ -269,7 +272,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     if total_errors < 1:
         return total_errors
 
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
@@ -300,19 +303,48 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     ap_report_path = task_instance.xcom_pull(task_ids="init_processing_task")
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
     ap_report_name = pathlib.Path(ap_report_path).name
-    html_content = _ap_report_paid_email_body(invoices, ap_report_name, folio_url)
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    grouped_invoices = _group_invoices_by_acqunit(invoices)
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
-    send_email(
-        to=[
-            sul_to_email_addr,
-            law_to_email_addr,
-            devs_to_email_addr,
-        ],
-        subject=f"Paid Invoices from {ap_report_name}",
-        html_content=html_content,
+
+    sul_html_content = _ap_report_paid_email_body(
+        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", []),
+        ap_report_name,
+        folio_url,
     )
+
+    if len(sul_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {sul_to_email_addr} for {len(grouped_invoices.get('bd6c5f05-9ab3-41f7-8361-1c1e847196d3', [])):,} invoices"
+        )
+        send_email(
+            to=[
+                sul_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject=f"Paid Invoices from {ap_report_name} for SUL",
+            html_content=sul_html_content,
+        )
+
+    law_html_content = _ap_report_paid_email_body(
+        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", []),
+        ap_report_name,
+        folio_url,
+    )
+    if len(law_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {law_to_email_addr} for {len(grouped_invoices.get('556eb26f-dbea-41c1-a1de-9a88ad950d95', [])):,} invoices"
+        )
+        send_email(
+            to=[
+                law_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject=f"Paid Invoices from {ap_report_name} for LAW",
+            html_content=law_html_content,
+        )
+
     return len(invoices)
 
 
@@ -320,11 +352,11 @@ def generate_summary_email(invoices: list, folio_url: str):
     """
     Generates emails that summarize invoices sent to AP
     """
-    devs_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_DEVS")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
 
-    grouped_invoices = _group_sent_invoices(invoices)
+    grouped_invoices = _group_invoices_by_acqunit(invoices)
 
     sul_html_content = _summary_email_body(
         grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", []), folio_url

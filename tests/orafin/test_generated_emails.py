@@ -138,6 +138,7 @@ def test_generate_ap_paid_report_email(mocker):
                 {
                     "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
                     "vendorInvoiceNo": "23-24364",
+                    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
                     "accountingCode": "031134FEEDER",
                 }
             ]

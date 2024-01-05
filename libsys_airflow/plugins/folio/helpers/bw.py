@@ -135,7 +135,7 @@ def email_bw_summary(devs_email, task_instance):
 def email_failure(context):
     ti = context['task_instance']
     params = context['params']
-    to_addresses = [Variable.get("ORAFIN_TO_EMAIL_DEVS")]
+    to_addresses = [Variable.get("EMAIL_DEVS")]
     email = params.get("email")
     if email:
         to_addresses.append(email)
