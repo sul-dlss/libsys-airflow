@@ -359,7 +359,7 @@ def _marc8_to_unicode(record: pymarc.Record) -> pymarc.Record:
         modified_leader = record.leader[0:9] + " " + record.leader[10:]
         record.leader = modified_leader
         raw_marc = record.as_marc()
-        new_record = pymarc.Record(data=raw_marc, to_unicode=True)
+        new_record = pymarc.Record(data=raw_marc, to_unicode=True)  # type: ignore
         # pymarc logs encoding errors to std error
         if "Unable to parse character" not in temp_stderr.getvalue():
             try:

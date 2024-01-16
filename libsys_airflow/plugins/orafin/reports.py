@@ -94,7 +94,7 @@ def extract_rows(retrieved_csv: str) -> tuple:
 
 def filter_files(ls_output, airflow="/opt/airflow") -> tuple:
     """
-    Filters files based if they already exist in the orafin-
+    Filters files based if they already exist in the orafin-data directory
     """
     reports = [row.strip() for row in ls_output.split(",") if row.endswith(".csv")]
     existing_reports, new_reports = [], []
@@ -116,7 +116,7 @@ def find_reports() -> BashOperator:
         + ap_server_options
         + [
             "of_aplib@extxfer.stanford.edu "
-            "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv"
+            "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv | tr '\n' ' '"
         ]
     )
     return BashOperator(

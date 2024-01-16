@@ -199,7 +199,7 @@ def test_find_reports():
     assert bash_operator.bash_command.startswith("ssh")
     assert ap_server_options[1] in bash_operator.bash_command
     assert bash_operator.bash_command.endswith(
-        "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv"
+        "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv | tr '\n' ' '"
     )
 
 
