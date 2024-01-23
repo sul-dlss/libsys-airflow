@@ -284,7 +284,7 @@ def test_remove_reports():
 
 def test_update_invoice(mock_folio_client, caplog):
     invoice = {"id": "3cf0ebad-6e86-4374-a21d-daf2227b09cd"}
-    invoice = update_invoice(invoice, mock_folio_client)
+    invoice = update_invoice(invoice, MockTaskInstance(), mock_folio_client)
     assert (
         "Updated 3cf0ebad-6e86-4374-a21d-daf2227b09cd to status of Paid" in caplog.text
     )

@@ -4,6 +4,7 @@ import shlex
 
 import numpy as np
 import pandas as pd
+import requests
 
 from datetime import datetime
 from typing import Union
@@ -22,6 +23,26 @@ ap_server_options = [
     "-o KexAlgorithms=diffie-hellman-group14-sha1",
     "-o StrictHostKeyChecking=no",
 ]
+
+
+def _handle_invoice_update_error(invoice: dict, folio_client: FolioClient):
+    """
+    Tries to handle errors when updating Invoice to "Paid" by first updating
+    the invoice, invoice lines, purchase order lines, and related transactions
+    """
+    if invoice["status"] != "Approved":
+        raise ValueError(f"""{invoice['id']} status is {invoice["status"]}, not updating to Paid""")
+    invoice["status"] = "Paid"
+    errors = []
+    try:
+        folio_client.put(f"/invoice-storage/invoices/{invoice['id']}")
+    except requests.HTTPError as e:
+        errors.append(f"""Failed to update Invoice {invoice['id']}. HTTP Error {e}""")
+        logger.error(errors[-1])
+    line_errors = _update_invoice_lines(invoice['id'], folio_client)
+    if len(line_errors) > 0:
+        errors.extend(line_errors)
+    return errors
 
 
 def _retrieve_invoice(
@@ -63,6 +84,47 @@ def _retrieve_invoice(
             logger.error(msg)
             task_instance.xcom_push(key="duplicates", value=msg)
     return None
+
+
+def _update_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
+    """
+    Updates Invoice Lines status for a Paid Invoice
+    """
+    invoice_lines = folio_client.get("/invoice-storage/invoice-lines",
+                                     params={"query": f"(invoiceId=={invoice_id})",
+                                             "limit": 1_000})
+    logger.info(f"Updating {len(invoice_lines):,} for Invoice {invoice_id}")
+    errors = []
+    for line in invoice_lines:
+        line["invoiceLineStatus"] = "Paid"
+        try:
+            folio_client.put(f"/invoice/invoice-lines/{line['id']}")
+        except requests.HTTPError as e:
+            errors.append(f"Failed to update Invoice Line {line['id']}. HTTPError {e}")
+            logger.error(errors[-1])
+            continue
+        if line.get("poLine"):
+            po_errors = _update_po_line(line["poLine"], folio_client)
+            if len(po_errors) > 0:
+                errors.extend(po_errors)
+    return errors
+
+
+def _update_po_line(po_line_id: str, folio_client: FolioClient) -> list:
+    """
+    Updates Purchase Order Line associated with an Invoice Line
+    """
+    errors = []
+    purchase_order = folio_client.get(f"/orders/order-lines/{po_line_id}")
+    if purchase_order.get("paymentStatus") == "Awaiting Payment":
+        purchase_order["paymentStatus"] = "Fully Paid"
+        try:
+            folio_client.put(f"/orders/order-lines/{po_line_id}",
+                            json=purchase_order)
+        except requests.HTTPError as e:
+            errors.append(f"Failed to update {po_line_id}. HTTPError {e}")
+            logger.error(errors[-1])
+    return errors
 
 
 def extract_rows(retrieved_csv: str) -> tuple:
@@ -195,13 +257,19 @@ def retrieve_reports() -> OperatorPartial:
     return BashOperator.partial(task_id="scp_report", bash_command=" ".join(command))
 
 
-def update_invoice(invoice: dict, folio_client: FolioClient) -> dict:
+def update_invoice(invoice: dict, task_instance, folio_client: FolioClient) -> dict:
     """
     Updates Invoice
     """
     invoice["status"] = "Paid"
-    folio_client.put(f"/invoice/invoices/{invoice['id']}", invoice)
-    logger.info(f"Updated {invoice['id']} to status of Paid")
+    try:
+        folio_client.put(f"/invoice/invoices/{invoice['id']}", invoice)
+        logger.info(f"Updated {invoice['id']} to status of Paid")
+    except requests.exceptions.HTTPError as e:
+        logger.info(f"Failed to update {invoice['id']}. HTTPError: {e}")
+        errors = _handle_invoice_update_error(invoice, folio_client)
+        if len(errors) > 0:
+            task_instance.xcom_push(key="errors", value=errors)
     return invoice
 
 
