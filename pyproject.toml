@@ -28,6 +28,8 @@ werkzeug = "2.3.7"
 connexion = "2.14.1"
 # Pinning until Airflow updates this dependency
 pendulum = "2.1.2"
+# Pinning until ticket https://github.com/apache/airflow/issues/36897
+flask-session = "<0.6.0"
 
 [tool.poetry.group.test.dependencies]
 black = "~23.3.0"
