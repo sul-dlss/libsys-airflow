@@ -213,11 +213,13 @@ def transform_folio_data_task(invoice_id: str):
 
 
 @task
-def update_invoices_task(invoice: dict):
+def update_invoices_task(**kwargs):
+    invoice = kwargs.get("invoice")
+    ti = kwargs["ti"]
     if invoice:
         folio_client = _folio_client()
         logger.info(f"Updating Invoice {invoice['id']}")
-        update_invoice(invoice, folio_client)
+        update_invoice(invoice, ti, folio_client)
         return invoice['id']
     else:
         logger.error("Invoice is None")
