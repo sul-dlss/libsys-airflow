@@ -1,4 +1,5 @@
 import pytest  # noqa
+import requests
 
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
@@ -6,6 +7,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from mocks import MockTaskInstance
 
 from libsys_airflow.plugins.orafin.reports import (
+    _handle_invoice_update_error,
     ap_server_options,
     extract_rows,
     filter_files,
@@ -59,6 +61,25 @@ def mock_folio_client(mocker):
                         {"id": "91c0dd9d-d906-4f08-8321-2a2f58a9a35f"},
                         {"id": "bcc5b35c-3e89-4c48-b721-9ab0cbda91a9"},
                     ]
+                }
+
+            case "/invoice-storage/invoice-lines":
+                return [
+                    {
+                        "id": "08933631-278d-45a9-94a8-4636297e8969",
+                        "invoiceLineStatus": "Approved",
+                        "poLine": "24a621fd-0df1-4cc8-951c-698643a7c356",
+                    },
+                    {
+                        "id": "85b5b236-2baf-419b-9dab-df78615e0d21",
+                        "invoiceLineStatus": "Approved",
+                    },
+                ]
+
+            case "/orders/order-lines/24a621fd-0df1-4cc8-951c-698643a7c356":
+                return {
+                    "id": "76e6f3b8-6ca5-40a5-b89f-ee2a6ea82d6d",
+                    "paymentStatus": "Awaiting Payment",
                 }
 
             case "/voucher-storage/vouchers?query=(invoiceId==3cf0ebad-6e86-4374-a21d-daf2227b09cd)":
@@ -319,3 +340,70 @@ def test_update_voucher(mocker, mock_folio_client, caplog):
     assert changed_voucher["disbursementDate"] == "2023-10-24T00:00:00"
     assert changed_voucher["disbursementNumber"] == "2983835"
     assert changed_voucher["status"] == "Paid"
+
+
+def test_handle_invoice_update_error_paid(mock_folio_client):
+    invoice = {"id": "4472f4c6-b099-4ea8-a825-151426b81baa", "status": "Paid"}
+    with pytest.raises(ValueError, match=" status is Paid, not updating to Paid"):
+        _handle_invoice_update_error(invoice, mock_folio_client)
+
+
+def test_handle_invoice_update(mock_folio_client):
+    invoice = {"id": "4472f4c6-b099-4ea8-a825-151426b81baa", "status": "Approved"}
+    errors = _handle_invoice_update_error(invoice, mock_folio_client)
+    assert len(errors) == 0
+
+
+@pytest.fixture
+def mock_folio_client_errors(mocker):
+    def mock_get(*args, **kwargs):
+        if args[0].startswith("/invoice-storage/invoice-lines"):
+            return [
+                {
+                    "id": "e30c2c1f-b522-49d4-a876-029a2ca753c3",
+                },
+                {
+                    "id": "55a4526b-2414-490e-964b-c8b171b4ef61",
+                    "poLine": "885d62c2-d161-466e-b052-a447721c4633",
+                },
+            ]
+        if args[0].startswith("/orders/order-lines/"):
+            return {
+                "id": "df3e511b-7aee-4b24-9306-6bb76165ef60",
+                "paymentStatus": "Awaiting Payment",
+            }
+
+    def mock_put(*args, **kwargs):
+        if args[0].startswith("/invoice-storage/invoices/4472f4c6"):
+            response = requests.Response()
+            response.status_code = 500
+            raise requests.HTTPError(request=requests.Request(), response=response)
+        if args[0].startswith("/invoice-storage/invoices/b14d632d"):
+            return None
+        if args[0].startswith("/invoice/invoice-lines/e30c2c1f"):
+            raise requests.HTTPError(
+                request=requests.Request(), response=requests.Response()
+            )
+        if args[0].startswith("/orders/order-lines/"):
+            raise requests.HTTPError(
+                request=requests.Request(), response=requests.Response()
+            )
+
+    mock_client = mocker.MagicMock()
+    mock_client.put = mock_put
+    mock_client.get = mock_get
+    return mock_client
+
+
+def test_handle_invoice_update_invoice_error_puts(mock_folio_client_errors):
+    invoice = {"id": "4472f4c6-b099-4ea8-a825-151426b81baa", "status": "Approved"}
+
+    errors = _handle_invoice_update_error(invoice, mock_folio_client_errors)
+
+    assert len(errors) == 3
+    assert errors[0].startswith(
+        "Failed to update Invoice 4472f4c6-b099-4ea8-a825-151426b81baa. HTTP Error"
+    )
+    assert errors[1].startswith(
+        "Failed to update Invoice Line e30c2c1f-b522-49d4-a876-029a2ca753c3. HTTPError"
+    )

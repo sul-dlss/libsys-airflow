@@ -31,7 +31,9 @@ def _handle_invoice_update_error(invoice: dict, folio_client: FolioClient):
     the invoice, invoice lines, purchase order lines, and related transactions
     """
     if invoice["status"] != "Approved":
-        raise ValueError(f"""{invoice['id']} status is {invoice["status"]}, not updating to Paid""")
+        raise ValueError(
+            f"""{invoice['id']} status is {invoice["status"]}, not updating to Paid"""
+        )
     invoice["status"] = "Paid"
     errors = []
     try:
@@ -90,9 +92,10 @@ def _update_invoice_lines(invoice_id: str, folio_client: FolioClient) -> list:
     """
     Updates Invoice Lines status for a Paid Invoice
     """
-    invoice_lines = folio_client.get("/invoice-storage/invoice-lines",
-                                     params={"query": f"(invoiceId=={invoice_id})",
-                                             "limit": 1_000})
+    invoice_lines = folio_client.get(
+        "/invoice-storage/invoice-lines",
+        params={"query": f"(invoiceId=={invoice_id})", "limit": 1_000},
+    )
     logger.info(f"Updating {len(invoice_lines):,} for Invoice {invoice_id}")
     errors = []
     for line in invoice_lines:
@@ -119,8 +122,7 @@ def _update_po_line(po_line_id: str, folio_client: FolioClient) -> list:
     if purchase_order.get("paymentStatus") == "Awaiting Payment":
         purchase_order["paymentStatus"] = "Fully Paid"
         try:
-            folio_client.put(f"/orders/order-lines/{po_line_id}",
-                            json=purchase_order)
+            folio_client.put(f"/orders/order-lines/{po_line_id}", json=purchase_order)
         except requests.HTTPError as e:
             errors.append(f"Failed to update {po_line_id}. HTTPError {e}")
             logger.error(errors[-1])
