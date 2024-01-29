@@ -6,11 +6,13 @@ from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.orafin.tasks import (
     email_errors_task,
+    email_invoice_errors_task,
     email_paid_task,
     extract_rows_task,
     init_processing_task,
     retrieve_invoice_task,
     retrieve_voucher_task,
+    update_email_branch,
     update_invoices_task,
     update_vouchers_task,
 )
@@ -29,8 +31,10 @@ default_args = {
 @task_group(group_id="update-folio")
 def update_folio(record):
     invoice_id = update_invoices_task(invoice=record)
-    voucher = retrieve_voucher_task(invoice_id)
-    update_vouchers_task(voucher=voucher)
+    voucher_result = retrieve_voucher_task()
+    update_email_branch(invoice_id) >> [voucher_result, email_invoice_errors_task()]
+
+    voucher_result >> update_vouchers_task()
 
 
 @task_group(group_id="email-group")

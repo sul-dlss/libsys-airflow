@@ -12,6 +12,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_ap_error_report_email,
     generate_ap_paid_report_email,
     generate_excluded_email,
+    generate_invoice_error_email,
     generate_summary_email,
 )
 
@@ -89,6 +90,14 @@ def email_summary_task(invoices: list):
     folio_url = Variable.get("FOLIO_URL")
     generate_summary_email(invoices, folio_url)
     return f"Emailed summary report for {len(invoices):,} invoices"
+
+
+@task
+def email_invoice_errors_task(ti=None):
+    folio_url = Variable.get("FOLIO_URL")
+    invoice_id = ti.xcom_pull(task_ids="update_invoices_task")
+    generate_invoice_error_email(invoice_id, folio_url, ti)
+    return f"Emailed Error for Invoice {invoice_id}"
 
 
 @task
@@ -181,10 +190,11 @@ def retrieve_invoice_task(row: dict):
 
 
 @task
-def retrieve_voucher_task(invoice_id: str):
+def retrieve_voucher_task(ti=None):
     """
     Retrieves voucher based on invoice id
     """
+    invoice_id: str = ti.xcom_pull(task_ids="update_folio.update_invoices_task")
     folio_client = _folio_client()
     return retrieve_voucher(invoice_id, folio_client)
 
@@ -223,8 +233,16 @@ def update_invoices_task(invoice: dict):
         logger.error("Invoice is None")
 
 
+@task.branch()
+def update_email_branch(update_result):
+    if update_result is False:
+        return "update-folio.email_invoice_errors"
+    return "update-folio.retrieve_voucher_task"
+
+
 @task
-def update_vouchers_task(voucher: dict, ti=None):
+def update_vouchers_task(ti=None):
+    voucher = ti.xcom_pull(task_ids="retrieve_voucher_task")
     if voucher:
         folio_client = _folio_client()
         logger.info(f"Updating voucher {voucher['id']}")

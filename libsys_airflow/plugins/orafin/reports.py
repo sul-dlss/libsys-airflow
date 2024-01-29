@@ -4,6 +4,7 @@ import shlex
 
 import numpy as np
 import pandas as pd
+import requests
 
 from datetime import datetime
 from typing import Union
@@ -195,13 +196,16 @@ def retrieve_reports() -> OperatorPartial:
     return BashOperator.partial(task_id="scp_report", bash_command=" ".join(command))
 
 
-def update_invoice(invoice: dict, folio_client: FolioClient) -> dict:
+def update_invoice(invoice: dict, folio_client: FolioClient) -> Union[dict, bool]:
     """
     Updates Invoice
     """
     invoice["status"] = "Paid"
-    folio_client.put(f"/invoice/invoices/{invoice['id']}", invoice)
-    logger.info(f"Updated {invoice['id']} to status of Paid")
+    try:
+        folio_client.put(f"/invoice/invoices/{invoice['id']}", invoice)
+        logger.info(f"Updated {invoice['id']} to status of Paid")
+    except requests.HTTPError:
+        return False
     return invoice
 
 
