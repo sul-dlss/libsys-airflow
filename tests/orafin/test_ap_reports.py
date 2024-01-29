@@ -1,5 +1,7 @@
 import pytest  # noqa
 
+import requests
+
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
@@ -90,6 +92,10 @@ def mock_folio_client(mocker):
                 }
 
     def mock_put(*args, **kwargs):
+        if args[0].endswith("b13c879f-7f5e-49e6-a522-abf04f66fa1b"):
+            raise requests.HTTPError(
+                request=requests.Request(), response=requests.Response()
+            )
         return None
 
     mock_client = mocker.MagicMock()
@@ -289,6 +295,13 @@ def test_update_invoice(mock_folio_client, caplog):
         "Updated 3cf0ebad-6e86-4374-a21d-daf2227b09cd to status of Paid" in caplog.text
     )
     assert invoice["status"] == "Paid"
+
+
+def test_update_invoice_failure(mock_folio_client):
+    invoice = {"id": "b13c879f-7f5e-49e6-a522-abf04f66fa1b"}
+    invoice_update_result = update_invoice(invoice, mock_folio_client)
+
+    assert invoice_update_result is False
 
 
 def test_update_voucher(mocker, mock_folio_client, caplog):

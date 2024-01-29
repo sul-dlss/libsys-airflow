@@ -273,7 +273,9 @@ def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
     """
     )
 
-    html_content = template.render(folio_url=folio_url, invoice_id=invoice_id, row=ap_report_row)
+    html_content = template.render(
+        folio_url=folio_url, invoice_id=invoice_id, row=ap_report_row
+    )
 
     send_email(
         to=[

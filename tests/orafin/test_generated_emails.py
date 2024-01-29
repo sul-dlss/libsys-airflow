@@ -7,6 +7,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_ap_error_report_email,
     generate_ap_paid_report_email,
     generate_excluded_email,
+    generate_invoice_error_email,
     generate_summary_email,
 )
 
@@ -237,6 +238,59 @@ def test_generate_excluded_email(mocker):
     assert "Vendor Invoice Number: 242428ZP1" in list_items[2].text
 
     assert found_h2s[2].text == "Future invoice date"
+
+
+def test_generate_invoice_error_email(mocker):
+    def mock_xcom_pull(*args, **kwargs):
+        return {
+            'SupplierNumber': '610612',
+            'SupplierName': 'ASKART INC',
+            'PaymentNumber': '2402586',
+            'PaymentDate': '01/25/2024',
+            'PaymentAmount': '3500',
+            'InvoiceNum': '149449_20231024 14198',
+            'InvoiceDate': '10/24/2023',
+            'InvoiceAmt': '3500',
+            'AmountPaid': '3500',
+            'PoNumber': None,
+        }
+
+    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.Variable.get",
+        return_value="test@stanford.edu",
+    )
+
+    task_instance = mocker.MagicMock()
+
+    task_instance.xcom_pull = mock_xcom_pull
+
+    invoice_uuid = "63550e23-968d-43d3-9bd8-a2d6d60ff1a3"
+
+    generate_invoice_error_email(
+        invoice_uuid, "http://folio.stanford.edu", task_instance
+    )
+
+    assert mock_send_email.called
+
+    assert len(mock_send_email.call_args[1]['to']) == 3
+
+    assert mock_send_email.call_args[1]['to'][1] == "test@stanford.edu"
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    assert html_body.find("a").text == invoice_uuid
+
+    table_rows = html_body.findAll("tr")
+
+    ap_report_row_tds = table_rows[1].findAll("td")
+
+    assert ap_report_row_tds[0].text == "3500"
+    assert ap_report_row_tds[1].text == "2402586"
+    assert ap_report_row_tds[2].text == "01/25/2024"
 
 
 def test_generate_summary_email(mocker):
