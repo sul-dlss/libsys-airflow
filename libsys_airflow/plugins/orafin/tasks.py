@@ -63,7 +63,7 @@ def consolidate_reports_task(ti=None):
     return all_files
 
 
-@task
+@task(trigger_rule='none_failed')
 def email_errors_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     total_errors = generate_ap_error_report_email(folio_url, ti)
@@ -78,7 +78,7 @@ def email_excluded_task(invoices_exclusion_reasons: list):
     return f"Emailed report for {len(invoices_exclusion_reasons):,} invoices"
 
 
-@task
+@task(trigger_rule='none_failed')
 def email_paid_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     total_invoices = generate_ap_paid_report_email(folio_url, ti)
