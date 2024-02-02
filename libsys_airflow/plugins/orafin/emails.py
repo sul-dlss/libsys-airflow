@@ -242,6 +242,52 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
         )
 
 
+def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
+    """
+    Retrieves AP report information for invoice that failed to update and
+    emails report
+    """
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    ap_report_row = ti.xcom_pull(task_ids="retrieve_invoice_task", key=invoice_id)
+
+    template = Template(
+        """<h1>Error Updating Invoice</h1>
+        <p>
+            Failed to update <a href="{{ folio_url}}/invoice/view/{{invoice_id}}">{{invoice_id}}</a>.
+        </p>
+        From AP Report
+        <table>
+          <tr>
+            <th>Amount Paid</th>
+            <th>Payment Number</th>
+            <th>Payment Date</th>
+          </tr>
+          <tr>
+            <td>{{row["AmountPaid"]}}</td>
+            <td>{{row["PaymentNumber"]}}</td>
+            <td>{{row["PaymentDate"]}}</td>
+          </tr>
+        </table>
+    """
+    )
+
+    html_content = template.render(
+        folio_url=folio_url, invoice_id=invoice_id, row=ap_report_row
+    )
+
+    send_email(
+        to=[
+            sul_to_email_addr,
+            law_to_email_addr,
+            devs_to_email_addr,
+        ],
+        subject=f"Error Updating Invoice {invoice_id}",
+        html_content=html_content,
+    )
+
+
 def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     """
     Retrieves Errors from upstream tasks and emails report
