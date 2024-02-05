@@ -3,9 +3,12 @@ import json
 import logging
 import pandas as pd
 import requests
+import sqlite3
 
 from datetime import datetime
 from pathlib import Path
+
+from airflow.models import Variable
 
 from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.bibs_transformer import BibsTransformer
@@ -185,6 +188,38 @@ def _get_statistical_codes(folio_client: FolioClient) -> dict:
                 stat_code_lookup["MARCIVE"] = row["id"]
 
     return stat_code_lookup
+
+
+def get_instances_ids(
+    batch_number: int, batch_size: int, db_path: str, folio_client: FolioClient = None
+) -> int:
+    if folio_client is None:
+        folio_client = FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
+    con = sqlite3.connect(f"{db_path}/results-{batch_number}.db")
+    cur = con.cursor()
+    offset = batch_number * batch_size
+    instances_result = folio_client.folio_get(
+        f"/instance-storage/instances?limit=5000&offset={offset}"
+    )
+    for i, instance in enumerate(instances_result["instances"]):
+        if instance["source"] != "MARC":
+            continue
+        cur.execute(
+            """INSERT INTO Instance (uuid, version) VALUES (?,?);""",
+            (instance['id'], instance['_version']),
+        )
+        if not i % 100:
+            con.commit()
+            logger.info(f"Processed {i:,} instances")
+    con.commit()
+    cur.close()
+    con.close()
+    return batch_number
 
 
 def post_folio_instance_records(**kwargs):

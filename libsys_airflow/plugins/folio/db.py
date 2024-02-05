@@ -1,4 +1,7 @@
 import logging
+import sqlite3
+
+from pathlib import Path
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
@@ -51,3 +54,44 @@ def drop_inventory_triggers(**kwargs):
     cursor.execute(sql)
     connection.commit()
     logger.info("Finished dropping mod_inventory_storage triggers")
+
+
+marc_to_db_init = """
+CREATE TABLE Instance (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    uuid VARCHAR NOT NULL UNIQUE,
+    version INTEGER NOT NULL,
+    srs VARCHAR
+);
+
+CREATE TABLE SRSUpdate (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    updated_on DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    instance INTEGER NOT NULL,
+    http_status INTEGER NOT NULL,
+    http_error VARCHAR,
+
+    FOREIGN KEY (instance) REFERENCES Instance (id)
+);
+"""
+
+
+def initilize_marc_to_instances_db(**kwargs):
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    dag = kwargs["dag_run"]
+    batches = kwargs["batches"]
+
+    iteration_dir = Path(f"{airflow}/migration/iterations/{dag.run_id}")
+
+    iteration_dir.mkdir(parents=True, exist_ok=True)
+
+    for batch_number in batches:
+        db_path = iteration_dir / f"results-{batch_number}.db"
+
+        con = sqlite3.connect(db_path)
+        cur = con.cursor()
+        cur.executescript(marc_to_db_init)
+        cur.close()
+        con.close()
+
+    return str(iteration_dir.absolute())
