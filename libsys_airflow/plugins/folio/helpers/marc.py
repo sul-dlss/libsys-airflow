@@ -359,7 +359,7 @@ def process_srs_records(
             con=con,
             folio_client=folio_client,
         )
-        if not i % 100 and i > 0:
+        if not i % 1_000 and i > 0:
             logger.info(f"Processed {i:,} srs records")
 
 

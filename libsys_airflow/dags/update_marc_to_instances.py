@@ -43,8 +43,8 @@ def marc_to_instances_updates():
 
     @task
     def email_report_task(ti=None):
-        db_path = ti.xcom_pull(task_ids="setup_results_db_task")
-        generate_mapping_email(db_path)
+        instances, errors = ti.xcom_pull(task_ids="setup_results_db_task")
+        generate_mapping_email(instances, errors)
 
     @task
     def generate_report_task(ti=None):

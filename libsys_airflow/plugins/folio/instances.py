@@ -204,7 +204,7 @@ def get_instances_ids(
     cur = con.cursor()
     offset = batch_number * batch_size
     instances_result = folio_client.folio_get(
-        f"/instance-storage/instances?limit=5000&offset={offset}"
+        f"/instance-storage/instances?limit={batch_size}&offset={offset}"
     )
     for i, instance in enumerate(instances_result["instances"]):
         if instance["source"] != "MARC":
@@ -213,7 +213,7 @@ def get_instances_ids(
             """INSERT INTO Instance (uuid, version) VALUES (?,?);""",
             (instance['id'], instance['_version']),
         )
-        if not i % 100:
+        if not i % 1_000:
             con.commit()
             logger.info(f"Processed {i:,} instances")
     con.commit()
