@@ -81,7 +81,7 @@ def initilize_marc_to_instances_db(**kwargs):
     dag = kwargs["dag_run"]
     batches = kwargs["batches"]
 
-    iteration_dir = Path(f"{airflow}/migration/iterations/{dag.run_id}")
+    iteration_dir = Path(f"{airflow}/migration/marc2instances/{dag.run_id}")
 
     iteration_dir.mkdir(parents=True, exist_ok=True)
 

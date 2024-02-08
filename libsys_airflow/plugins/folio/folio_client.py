@@ -64,7 +64,7 @@ class FolioClient:
 
     def _handle_response(self, resp):
         resp.raise_for_status()
-        if resp.status_code == 204:
+        if resp.status_code in [202, 204]:
             return None
         else:
             return resp.json()

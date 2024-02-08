@@ -306,7 +306,7 @@ def _get_srs_record(
         "/change-manager/parsedRecords", params={"externalId": instance_uuid}
     )
     cur.execute(
-        """UPDATE Instance SET srs=? WHERE id=?""", (srs_record['id'], instance_id)
+        """UPDATE Instance SET srs=? WHERE id=?;""", (srs_record['id'], instance_id)
     )
     con.commit()
     srs_record["relatedRecordVersion"] = version
@@ -322,7 +322,6 @@ def _put_srs_record(**kwargs):
     con: sqlite3.Connection = kwargs["con"]
     folio_client: FolioClient = kwargs["folio_client"]
     instance_id: int = kwargs["instance_id"]
-
     cur = con.cursor()
     try:
         folio_client.put(
@@ -330,7 +329,7 @@ def _put_srs_record(**kwargs):
         )
         cur.execute(
             """INSERT INTO SRSUpdate (instance, http_status) VALUES (?,?);""",
-            (instance_id, 204),
+            (instance_id, 202),
         )
     except requests.HTTPError as e:
         cur.execute(
@@ -342,13 +341,15 @@ def _put_srs_record(**kwargs):
 
 
 def process_srs_records(
-    batch_id: int, db_path: str, folio_client: Union[FolioClient, None] = None
+    batch: int, db_path: str, folio_client: Union[FolioClient, None] = None
 ):
     if folio_client is None:
         folio_client = _folio_client()
-    con = sqlite3.connect(f"{db_path}/results-{batch_id}.db")
+    db_path = f"{db_path}/results-{batch}.db"
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
-    cur.execute("""SELECT instance FROM Instances;""")
+    logger.info(f"Batch {batch} with db_path {db_path}")
+    cur.execute("""SELECT id FROM Instance;""")
     for i, row in enumerate(cur.fetchall()):
         instance_id = row[0]
         srs_record = _get_srs_record(instance_id, con, folio_client)
