@@ -293,6 +293,16 @@ def _valid_for_srs_properties(srs_record_keys: list) -> bool:
     return False
 
 
+def _check_srs_exists_in_db(instance_id: int, con: sqlite3.Connection) -> bool:
+    cur = con.cursor()
+    cur.execute("""SELECT id FROM SRSUpdate WHERE instance=?;""", (instance_id,))
+    exists_result = cur.fetchone()
+    cur.close()
+    if exists_result is None:
+        return False
+    return True
+
+
 def _get_srs_record(
     instance_id: int, con: sqlite3.Connection, folio_client: FolioClient
 ) -> dict:
@@ -302,12 +312,18 @@ def _get_srs_record(
     cur = con.cursor()
     cur.execute("""SELECT uuid, version FROM Instance WHERE id=?;""", (instance_id,))
     instance_uuid, version = cur.fetchone()
-    srs_record = folio_client.get(
-        "/change-manager/parsedRecords", params={"externalId": instance_uuid}
-    )
-    cur.execute(
-        """UPDATE Instance SET srs=? WHERE id=?;""", (srs_record['id'], instance_id)
-    )
+    try:
+        srs_record = folio_client.get(
+            "/change-manager/parsedRecords", params={"externalId": instance_uuid}
+        )
+        cur.execute(
+            """UPDATE Instance SET srs=? WHERE id=?;""", (srs_record['id'], instance_id)
+        )
+    except requests.HTTPError as e:
+        cur.execute(
+            """INSERT INTO SRSUpdate (instance, http_status, http_error) VALUES (?,?,?);""",
+            (instance_id, e.response.status_code, e.response.text),
+        )
     con.commit()
     srs_record["relatedRecordVersion"] = version
     cur.close()
@@ -351,7 +367,11 @@ def process_srs_records(
     logger.info(f"Batch {batch} with db_path {db_path}")
     cur.execute("""SELECT id FROM Instance;""")
     for i, row in enumerate(cur.fetchall()):
+        if not i % 1_000 and i > 0:
+            logger.info(f"Processed {i:,} srs records")
         instance_id = row[0]
+        if _check_srs_exists_in_db(instance_id, con) is True:
+            continue
         srs_record = _get_srs_record(instance_id, con, folio_client)
         _put_srs_record(
             srs_record=srs_record,
@@ -359,8 +379,6 @@ def process_srs_records(
             con=con,
             folio_client=folio_client,
         )
-        if not i % 1_000 and i > 0:
-            logger.info(f"Processed {i:,} srs records")
 
 
 def srs_check_add(**kwargs) -> int:
