@@ -6,7 +6,7 @@ where id in (
   where id in (
     select (jsonb->>'holdingsRecordId')::uuid
     from sul_mod_inventory_storage.item
-    where jsonb->'metadata'->>'updatedDate' between '2024-02-20' and '2024-02-21'
+    where jsonb->'metadata'->>'updatedDate' between %s and %s
   )
 )
 and (jsonb->>'discoverySuppress')::boolean is false
