@@ -6,7 +6,7 @@ where id in (
   where record_type = 'MARC_BIB'
   and generation > 0
   and state = 'ACTUAL'
-  and created_date > %s
+  and updated_date > %s
 )
 and (jsonb->>'statusId')::uuid in (
   select id
