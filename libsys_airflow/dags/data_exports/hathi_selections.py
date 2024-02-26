@@ -22,7 +22,6 @@ with DAG(
     catchup=False,
     tags=["data_exports"],
 ) as dag:
-
     # Sample methods to be removed and replaced by real methods, along with imports when they are coded.
     def fetch_marc_record_ids():
         "Replace this with method from record selection module"
