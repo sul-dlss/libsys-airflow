@@ -2,8 +2,10 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 
-from airflow.operators.python import PythonOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
+from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 default_args = {
     "owner": "libsys",
@@ -17,7 +19,7 @@ default_args = {
 with DAG(
     "select_sharevde_records",
     default_args=default_args,
-    schedule=timedelta(days=(Variable.get("schedule_sharevde_days", 1))),
+    schedule=timedelta(days=int(Variable.get("schedule_sharevde_days", 1))),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data_exports"],
@@ -59,5 +61,17 @@ with DAG(
         op_kwargs={},
     )
 
+    send_to_vendor = TriggerDagRunOperator(
+        task_id="send_sharevde_records",
+        trigger_dag_id="send_sharevde_records",
+        conf={"iteration_id": "{{ dag_run.run_id }}"},
+    )
 
-fetch_record_ids >> fetch_marc_records >> transform_marc_record >> write_marc_to_fs
+    finish_fetching_marc = EmptyOperator(
+        task_id="finish_marc",
+    )
+
+
+fetch_record_ids >> fetch_marc_records >> transform_marc_record
+transform_marc_record >> write_marc_to_fs >> finish_fetching_marc
+finish_fetching_marc >> send_to_vendor
