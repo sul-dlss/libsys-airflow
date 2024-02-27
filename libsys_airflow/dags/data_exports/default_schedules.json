@@ -2,10 +2,9 @@
   "schedule_gobi_days": 7,
   "schedule_google_days": 1,
   "schedule_hathi_days": 1,
-  "schedule_nielson_days": 1,
+  "schedule_nielsen_days": 1,
   "schedule_oclc_days": 7,
   "schedule_pod_days": 1,
   "schedule_sharevde_days": 1,
-  "schedule_west_days": 1,
-  "schedule_ybp_days": 1
+  "schedule_west_days": 1
 }
