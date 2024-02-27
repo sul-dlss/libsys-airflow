@@ -1,11 +1,15 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
-
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
+from libsys_airflow.plugins.data_exports.instance_ids import (
+    fetch_record_ids,
+    save_ids_to_fs,
+)
 
 default_args = {
     "owner": "libsys",
@@ -22,12 +26,9 @@ with DAG(
     schedule=timedelta(days=int(Variable.get("schedule_pod_days", 1))),
     start_date=datetime(2024, 2, 26),
     catchup=False,
-    tags=["data_exports"],
+    tags=["data export"],
 ) as dag:
     # Sample methods to be removed and replaced by real methods, along with imports when they are coded.
-    def fetch_marc_record_ids():
-        "Replace this with method from record selection module"
-
     def folio_marc_records_for_id():
         "Replace this with method from marc module"
 
@@ -37,10 +38,15 @@ with DAG(
     def save_transformed_marc():
         "Replace this with method from marc writing module"
 
-    fetch_record_ids = PythonOperator(
+    fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
-        python_callable=fetch_marc_record_ids,
-        op_kwargs={},
+        python_callable=fetch_record_ids,
+    )
+
+    save_ids_to_file = PythonOperator(
+        task_id="save_ids_to_file",
+        python_callable=save_ids_to_fs,
+        op_kwargs={"vendor": "pod"},
     )
 
     fetch_marc_records = PythonOperator(
@@ -72,6 +78,6 @@ with DAG(
     )
 
 
-fetch_record_ids >> fetch_marc_records >> transform_marc_record
-transform_marc_record >> write_marc_to_fs >> finish_fetching_marc
-finish_fetching_marc >> send_to_vendor
+fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
+fetch_marc_records >> transform_marc_record >> write_marc_to_fs
+write_marc_to_fs >> finish_fetching_marc >> send_to_vendor
