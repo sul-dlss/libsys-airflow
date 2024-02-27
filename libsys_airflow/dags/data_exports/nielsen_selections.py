@@ -17,9 +17,9 @@ default_args = {
 }
 
 with DAG(
-    "select_nielson_records",
+    "select_nielsen_records",
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_nielson_days", 1))),
+    schedule=timedelta(days=int(Variable.get("schedule_nielsen_days", 1))),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data_exports"],

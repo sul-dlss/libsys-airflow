@@ -17,9 +17,9 @@ default_args = {
 }
 
 with DAG(
-    "select_ybp_records",
+    "select_gobi_records",
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_ybp_days", 1))),
+    schedule=timedelta(days=int(Variable.get("schedule_gobi_days", 7))),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data_exports"],
