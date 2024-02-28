@@ -119,7 +119,7 @@ def fetch_marc(**kwargs) -> str:
             Variable.get("FOLIO_PASSWORD"),
         )
 
-    marc_directory = instance_file.parent.parent / "Marc files"
+    marc_directory = instance_file.parent.parent / "marc-files"
     marc_directory.mkdir(parents=True, exist_ok=True)
 
     marc_file = marc_directory / f"{stem}.mrc"
