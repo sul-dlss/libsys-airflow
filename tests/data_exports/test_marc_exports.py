@@ -176,3 +176,10 @@ def test_exclude_marc_by_vendor_pod():
     marc_record.add_field(field_590, field_915)
 
     assert _exclude_marc_by_vendor(marc_record, 'pod')
+
+
+def test_exclude_marc_by_vendor_sharevde():
+    marc_record = pymarc.Record()
+    marc_record.add_field(field_590, field_915)
+
+    assert _exclude_marc_by_vendor(marc_record, 'sharevde')

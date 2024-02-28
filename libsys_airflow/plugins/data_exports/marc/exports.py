@@ -56,15 +56,7 @@ def _exclude_marc_by_vendor(marc_record: pymarc.Record, vendor: str):
                 ]
             )
 
-        case "oclc":
-            exclude = any(
-                [
-                    _check_590(marc_record.get_fields("590")),
-                    _check_915(marc_record.get_fields("915")),
-                ]
-            )
-
-        case "pod":
+        case "oclc" | "pod" | "sharevde":
             exclude = any(
                 [
                     _check_590(marc_record.get_fields("590")),
