@@ -5,7 +5,7 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc import _exclude_marc_by_vendor, fetch_marc
+from libsys_airflow.plugins.data_exports.marc.exports import _exclude_marc_by_vendor, fetch_marc
 
 
 @pytest.fixture
