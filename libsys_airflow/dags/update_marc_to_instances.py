@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 @dag(
     start_date=datetime(2024, 2, 2),
-    retries=1,
     catchup=False,
     schedule=None,
     tags=["folio", "update"],
