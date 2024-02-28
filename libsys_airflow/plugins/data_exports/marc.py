@@ -11,7 +11,7 @@ def _check_001(field001s: list) -> bool:
     reject = False
     for field in field001s:
         if field.value() == "gls":
-            reject = False
+            reject = True
     return reject
 
 
