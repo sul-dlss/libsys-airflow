@@ -187,7 +187,7 @@ def _locations_lookup(folio_client: FolioClient) -> dict:
 
 def add_holdings_items(marc_file: str, folio_client: FolioClient = None):
     """
-    Adds FOLIO Holdings and Items information to
+    Adds FOLIO Holdings and Items information to MARC records
     """
     if folio_client is None:
         folio_client = FolioClient(
