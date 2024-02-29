@@ -102,8 +102,8 @@ def test_fetch_marc(tmp_path, mock_folio_client):
 
     with instance_file.open("w+") as fo:
         for instance_uuid in [
-            "1,4e66ce0d-4a1d-41dc-8b35-0914df20c7fb",
-            "2,fe2e581f-9767-442a-ae3c-a421ac655fe2",
+            "4e66ce0d-4a1d-41dc-8b35-0914df20c7fb",
+            "fe2e581f-9767-442a-ae3c-a421ac655fe2",
         ]:
             fo.write(f"{instance_uuid}\n")
 

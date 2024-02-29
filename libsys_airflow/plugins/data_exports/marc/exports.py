@@ -120,7 +120,7 @@ def fetch_marc(**kwargs) -> str:
     with instance_file.open() as fo:
         instance_reader = csv.reader(fo)
         for row in instance_reader:
-            uuid = row[1]
+            uuid = row[0]
             marc_record = _marc_from_srs(uuid, folio_client)
             if _exclude_marc_by_vendor(marc_record, vendor_name):
                 continue
