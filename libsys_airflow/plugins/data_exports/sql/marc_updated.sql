@@ -1,4 +1,4 @@
-select id
+(select id
 from sul_mod_inventory_storage.instance
 where id in (
   select external_id
@@ -6,7 +6,7 @@ where id in (
   where record_type = 'MARC_BIB'
   and generation > 0
   and state = 'ACTUAL'
-  and updated_date > %s
+  and updated_date between %(from_date)s and %(to_date)s
 )
 and (jsonb->>'statusId')::uuid in (
   select id
@@ -14,4 +14,4 @@ and (jsonb->>'statusId')::uuid in (
   where jsonb->>'name' = 'Cataloged'
 )
 and jsonb->>'catalogedDate' similar to '\d{4}-\d{2}-\d{2}'
-and (jsonb->>'discoverySuppress')::boolean is false;
+and (jsonb->>'discoverySuppress')::boolean is false)

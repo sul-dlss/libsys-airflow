@@ -1,4 +1,4 @@
-select id
+(select id
 from sul_mod_inventory_storage.instance
 where id in (
   select (jsonb->>'instanceId')::uuid
@@ -6,7 +6,7 @@ where id in (
   where id in (
     select (jsonb->>'holdingsRecordId')::uuid
     from sul_mod_inventory_storage.item
-    where jsonb->'metadata'->>'updatedDate' between %s and %s
+    where jsonb->'metadata'->>'updatedDate' between %(from_date)s and %(to_date)s
   )
 )
 and (jsonb->>'discoverySuppress')::boolean is false
@@ -15,4 +15,4 @@ and (jsonb->>'statusId')::uuid in (
   select id
   from sul_mod_inventory_storage.instance_status
   where jsonb->>'name' = 'Cataloged'
-);
+))
