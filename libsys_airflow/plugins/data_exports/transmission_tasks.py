@@ -32,9 +32,10 @@ def transmit_data_task(connection_details):
 
 
 @task
-def archive_transmitted_data_task():
+def archive_transmitted_data_task(**kwargs):
     """
     Looks at date-stamp filename once we know that the transmission was a success
     Then also move the instanceid file with the same vendor and filename
     Make a 'transmitted' folder under each data-export-files/{vendor}.
     """
+    logger.info("Moving transmitted files to archive directory")

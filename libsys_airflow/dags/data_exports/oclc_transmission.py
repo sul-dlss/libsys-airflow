@@ -9,6 +9,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     connection_details_task,
     gather_files_task,
     transmit_data_task,
+    archive_transmitted_data_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,9 @@ def send_oclc_records():
 
     transmit_data = transmit_data_task(connection_details)
 
-    start >> gather_files >> transmit_data >> end
+    archive_data = archive_transmitted_data_task()
+
+    start >> gather_files >> transmit_data >> archive_data >> end
 
 
 send_oclc_records()
