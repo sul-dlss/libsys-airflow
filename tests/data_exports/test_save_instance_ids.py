@@ -19,7 +19,10 @@ def mock_task_instance():
 def mock_xcom_pull(**kwargs):
     return [
         [],
-        [('4e66ce0d-4a1d-41dc-8b35-0914df20c7fb',), ('fe2e581f-9767-442a-ae3c-a421ac655fe2',),],
+        [
+            ('4e66ce0d-4a1d-41dc-8b35-0914df20c7fb',),
+            ('fe2e581f-9767-442a-ae3c-a421ac655fe2',),
+        ],
         [],
     ]
 
