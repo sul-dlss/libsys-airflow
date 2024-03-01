@@ -5,7 +5,10 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc import _exclude_marc_by_vendor, fetch_marc
+from libsys_airflow.plugins.data_exports.marc.exports import (
+    _exclude_marc_by_vendor,
+    fetch_marc,
+)
 
 
 @pytest.fixture
@@ -102,8 +105,8 @@ def test_fetch_marc(tmp_path, mock_folio_client):
 
     with instance_file.open("w+") as fo:
         for instance_uuid in [
-            "1,4e66ce0d-4a1d-41dc-8b35-0914df20c7fb",
-            "2,fe2e581f-9767-442a-ae3c-a421ac655fe2",
+            "4e66ce0d-4a1d-41dc-8b35-0914df20c7fb",
+            "fe2e581f-9767-442a-ae3c-a421ac655fe2",
         ]:
             fo.write(f"{instance_uuid}\n")
 
@@ -176,3 +179,10 @@ def test_exclude_marc_by_vendor_pod():
     marc_record.add_field(field_590, field_915)
 
     assert _exclude_marc_by_vendor(marc_record, 'pod')
+
+
+def test_exclude_marc_by_vendor_sharevde():
+    marc_record = pymarc.Record()
+    marc_record.add_field(field_590, field_915)
+
+    assert _exclude_marc_by_vendor(marc_record, 'sharevde')
