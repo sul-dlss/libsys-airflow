@@ -26,7 +26,6 @@ with DAG(
     default_args=default_args,
     schedule=timedelta(days=int(Variable.get("schedule_gobi_days", 7))),
     start_date=datetime(2024, 2, 26),
-    template_searchpath="/opt/airflow/libsys_airflow/plugins/data-export/sql",
     catchup=False,
     tags=["data export"],
 ) as dag:
