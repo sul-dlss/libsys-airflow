@@ -1,10 +1,13 @@
 import csv
+import logging
 import pathlib
 
 import pymarc
 
 from airflow.models import Variable
 from folioclient import FolioClient
+
+logger = logging.getLogger(__name__)
 
 
 def _check_001(field001s: list) -> bool:
@@ -67,13 +70,28 @@ def _exclude_marc_by_vendor(marc_record: pymarc.Record, vendor: str):
     return exclude
 
 
-def _marc_from_srs(instance_uuid: str, folio_client: FolioClient) -> pymarc.Record:
+def _folio_client(**kwargs):
+    _client = kwargs.get("client")
+
+    if _client is None:
+        _client = FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
+
+    return _client
+
+
+def _marc21_from_srs(instance_uuid: str, folio_client: FolioClient) -> pymarc.Record:
     """
     Retrieve MARC JSON from SRS based instance UUID, converts and returns
     MARC21 record
     """
     srs_result = folio_client.folio_get(
-        f"/change-manager/parsedRecords?externalId={instance_uuid}"
+        #  f"/change-manager/parsedRecords?externalId={instance_uuid}"
+        f"/source-storage/records/{instance_uuid}/formatted?idType=INSTANCE"
     )
 
     marc_json_record = srs_result["parsedRecord"]["content"]
@@ -87,44 +105,82 @@ def _marc_from_srs(instance_uuid: str, folio_client: FolioClient) -> pymarc.Reco
     return marc21
 
 
-def fetch_marc(**kwargs) -> str:
+def instance_files_dir(**kwargs) -> list[pathlib.Path]:
     """
-    Opens list of instances UUID, retrieves MARC JSON from SRS,
-    and writes records as MARC21
+    Finds the instance id directory for a vendor
     """
-    instance_filepath = kwargs["instance_file"]
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    vendor = kwargs.get("vendor")
+    instance_dir = pathlib.Path(airflow) / f"data-export-files/{vendor}/instanceids"
+    instance_files = list(instance_dir.glob("*.csv"))
 
-    instance_file = pathlib.Path(instance_filepath)
+    if not instance_files:
+        raise ValueError("Vendor instance files do not exist")
 
-    if not instance_file.exists():
-        raise ValueError(f"{instance_filepath} does not exist")
+    return instance_files
 
-    stem, vendor_name = instance_file.stem, instance_file.parent.parent.name
 
-    folio_client = kwargs.get("folio_client")
+def marc_for_instances(**kwargs) -> list[str]:
+    """
+    Retrieves the converted marc for each instance id file in vendor directory
+    """
+    instance_files = instance_files_dir(
+        airflow=kwargs.get("airflow", "/opt/airflow"), vendor=kwargs.get("vendor")
+    )
 
-    if folio_client is None:
-        folio_client = FolioClient(
-            Variable.get("OKAPI_URL"),
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
+    for file_datename in instance_files:
+        retrieve_marc_for_instances(
+            instance_file=file_datename,
+            folio_client=_folio_client(client=kwargs.get("folio_client")),
         )
 
-    marc_directory = instance_file.parent.parent / "marc-files"
-    marc_directory.mkdir(parents=True, exist_ok=True)
+    return [str(f) for f in instance_files]
 
-    marc_file = marc_directory / f"{stem}.mrc"
-    marc_writer = pymarc.MARCWriter(marc_file.open("wb+"))
+
+def retrieve_marc_for_instances(**kwargs) -> None:
+    """
+    Writes and returns converted MARC from SRS
+    """
+
+    instance_file = pathlib.Path(kwargs.get("instance_file", ""))
+    if not instance_file.exists():
+        raise ValueError("Instance file does not exist for retrieve_marc_for_instances")
+
+    vendor_name = instance_file.parent.parent.name
 
     with instance_file.open() as fo:
         instance_reader = csv.reader(fo)
         for row in instance_reader:
             uuid = row[0]
-            marc_record = _marc_from_srs(uuid, folio_client)
-            if _exclude_marc_by_vendor(marc_record, vendor_name):
+            try:
+                marc_record = _marc21_from_srs(
+                    uuid, _folio_client(client=kwargs.get("folio_client"))
+                )
+            except Exception as e:
+                logger.warning(e)
                 continue
-            marc_writer.write(marc_record)
 
+            if _exclude_marc_by_vendor(marc_record, vendor_name):
+                logger.info(f"Excluding {vendor_name}")
+                continue
+
+            write_marc(
+                instance_file=instance_file,
+                marc_directory=instance_file.parent.parent,
+                marc_record=marc_record,
+            )
+
+
+def write_marc(**kwargs):
+    """
+    Writes marc record to file system
+    """
+    instance_file = kwargs.get("instance_file")
+    marc_file_name = instance_file.stem
+    marc_directory = kwargs.get("marc_directory") / "marc-files"
+    marc_directory.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_directory / f"{marc_file_name}.mrc"
+    marc_writer = pymarc.MARCWriter(marc_file.open("ab"))
+    marc_writer.write(kwargs.get("marc_record"))
     marc_writer.close()
     return str(marc_file.absolute())
