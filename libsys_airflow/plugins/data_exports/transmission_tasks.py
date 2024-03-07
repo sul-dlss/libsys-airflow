@@ -41,8 +41,8 @@ def transmit_data_task(connection_details) -> dict:
 @task
 def archive_transmitted_data_task(files):
     """
-    Give list of successfully transmitted files, move to
-    'transmitted' folder under each data-export-files/{vendor}
+    Given a list of successfully transmitted files, move files to
+    'transmitted' folder under each data-export-files/{vendor}.
     Also moves the instanceid file with the same vendor and filename
     """
     logger.info("Moving transmitted files to archive directory")
