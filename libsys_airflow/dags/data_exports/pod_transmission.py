@@ -36,13 +36,13 @@ def send_pod_records():
 
     end = EmptyOperator(task_id="end")
 
-    gather_files = gather_files_task()
+    gather_files = gather_files_task(vendor="pod")
 
     connection_details = connection_details_task()
 
     transmit_data = transmit_data_task(connection_details)
 
-    archive_data = archive_transmitted_data_task()
+    archive_data = archive_transmitted_data_task(transmit_data['success'])
 
     start >> gather_files >> transmit_data >> archive_data >> end
 
