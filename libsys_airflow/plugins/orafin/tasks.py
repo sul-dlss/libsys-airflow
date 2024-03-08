@@ -194,7 +194,9 @@ def retrieve_voucher_task(ti=None):
     """
     Retrieves voucher based on invoice id
     """
-    invoice_id: str = ti.xcom_pull(task_ids="update_folio.update_invoices_task")
+    invoice_id: str = ti.xcom_pull(
+        task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
+    )
     folio_client = _folio_client()
     return retrieve_voucher(invoice_id, folio_client)
 
@@ -242,7 +244,9 @@ def update_email_branch(update_result):
 
 @task
 def update_vouchers_task(ti=None):
-    voucher = ti.xcom_pull(task_ids="retrieve_voucher_task")
+    voucher = ti.xcom_pull(
+        task_ids="update-folio.retrieve_voucher_task", map_indexes=ti.map_index
+    )
     if voucher:
         folio_client = _folio_client()
         logger.info(f"Updating voucher {voucher['id']}")
