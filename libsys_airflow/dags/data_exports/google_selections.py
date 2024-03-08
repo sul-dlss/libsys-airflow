@@ -34,8 +34,6 @@ with DAG(
     def sample_marc_transform_1():
         "Replace this with method from marc processing module"
 
-    def save_transformed_marc():
-        "Replace this with method from marc writing module"
 
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
@@ -60,23 +58,17 @@ with DAG(
         op_kwargs={},
     )
 
-    write_marc_to_fs = PythonOperator(
-        task_id="write_marc_record_to_file",
-        python_callable=save_transformed_marc,
-        op_kwargs={},
-    )
-
     send_to_vendor = TriggerDagRunOperator(
         task_id="send_google_records",
         trigger_dag_id="send_google_records",
-        conf={"iteration_id": "{{ dag_run.run_id }}"},
+        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
     )
 
-    finish_fetching_marc = EmptyOperator(
+    finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
 
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> write_marc_to_fs
-write_marc_to_fs >> finish_fetching_marc >> send_to_vendor
+fetch_marc_records >> transform_marc_record >> send_to_vendor
+send_to_vendor >> finish_processing_marc
