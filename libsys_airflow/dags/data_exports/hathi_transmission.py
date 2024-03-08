@@ -9,6 +9,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     connection_details_task,
     gather_files_task,
     transmit_data_task,
+    archive_transmitted_data_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,13 +36,15 @@ def send_hathi_records():
 
     end = EmptyOperator(task_id="end")
 
-    gather_files = gather_files_task()
+    gather_files = gather_files_task(vendor="hathi")
 
     connection_details = connection_details_task()
 
     transmit_data = transmit_data_task(connection_details)
 
-    start >> gather_files >> transmit_data >> end
+    archive_data = archive_transmitted_data_task(transmit_data['success'])
+
+    start >> gather_files >> transmit_data >> archive_data >> end
 
 
 send_hathi_records()
