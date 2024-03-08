@@ -111,4 +111,3 @@ def remove_marc_fields(marc_file: str):
         marc_writer = pymarc.MARCWriter(fo)
         for record in marc_records:
             marc_writer.write(record)
-

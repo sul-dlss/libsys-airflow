@@ -1,6 +1,7 @@
 from airflow.models import Variable
 from folioclient import FolioClient
 
+
 def folio_client(**kwargs):
     client = kwargs.get("client")
 

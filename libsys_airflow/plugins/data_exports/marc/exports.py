@@ -22,8 +22,7 @@ def marc_for_instances(**kwargs) -> list[str]:
     Retrieves the converted marc for each instance id file in vendor directory
     """
     instance_files = instance_files_dir(
-        airflow=kwargs.get("airflow", "/opt/airflow"),
-        vendor=kwargs.get("vendor", "")
+        airflow=kwargs.get("airflow", "/opt/airflow"), vendor=kwargs.get("vendor", "")
     )
 
     exporter = Exporter()
