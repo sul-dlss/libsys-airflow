@@ -15,8 +15,8 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
-    remove_marc_fields
-    )
+    remove_marc_fields,
+)
 
 default_args = {
     "owner": "libsys",
@@ -82,4 +82,3 @@ with DAG(
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
 transform_marc_fields >> send_to_vendor >> finish_processing_marc
-

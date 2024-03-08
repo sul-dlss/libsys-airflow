@@ -14,8 +14,8 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
-    remove_marc_fields
-    )
+    remove_marc_fields,
+)
 
 default_args = {
     "owner": "libsys",
