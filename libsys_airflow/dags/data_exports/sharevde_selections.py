@@ -12,7 +12,10 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 )
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
-from libsys_airflow.plugins.data_exports.marc.transforms import add_holdings_items_to_marc_files
+from libsys_airflow.plugins.data_exports.marc.transforms import (
+    add_holdings_items_to_marc_files,
+    remove_marc_fields
+    )
 
 default_args = {
     "owner": "libsys",
@@ -56,6 +59,14 @@ with DAG(
         },
     )
 
+    transform_marc_fields = PythonOperator(
+        task_id="transform_folio_remove_marc_fields",
+        python_callable=remove_marc_fields,
+        op_kwargs={
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+        },
+    )
+
     send_to_vendor = TriggerDagRunOperator(
         task_id="send_sharevde_records",
         trigger_dag_id="send_sharevde_records",
@@ -68,5 +79,5 @@ with DAG(
 
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> send_to_vendor
-send_to_vendor >> finish_processing_marc
+fetch_marc_records >> transform_marc_record >> transform_marc_fields
+transform_marc_fields >> send_to_vendor >> finish_processing_marc
