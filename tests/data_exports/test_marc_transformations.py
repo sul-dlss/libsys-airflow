@@ -162,7 +162,7 @@ def mock_folio_client():
 def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
-        return_value = mock_folio_client
+        return_value=mock_folio_client,
     )
     record = pymarc.Record()
     record.add_field(
@@ -200,7 +200,7 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
 def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
-        return_value = mock_folio_client
+        return_value=mock_folio_client,
     )
     record = pymarc.Record()
     record.add_field(
@@ -238,7 +238,7 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
 def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
-        return_value = mock_folio_client
+        return_value=mock_folio_client,
     )
     record = pymarc.Record()
 

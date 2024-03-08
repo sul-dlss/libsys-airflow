@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.exports import (
     marc_for_instances,
-    instance_files_dir
-    )
+    instance_files_dir,
+)
 
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
@@ -129,8 +129,8 @@ def setup_test_file(tmp_path):
 def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
-        return_value = mock_folio_client
-        )
+        return_value=mock_folio_client,
+    )
 
     instance_file = setup_test_file(tmp_path)
 
@@ -150,8 +150,8 @@ def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
 def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
-        return_value = mock_folio_404
-        )
+        return_value=mock_folio_404,
+    )
 
     instance_file = setup_test_file(tmp_path)
 
@@ -173,8 +173,8 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
-        return_value = mock_folio_client
-        )
+        return_value=mock_folio_client,
+    )
 
     files = marc_for_instances(airflow=tmp_path, vendor="pod")
 
