@@ -1,5 +1,3 @@
-import pathlib
-
 import pymarc
 import pytest
 
@@ -7,7 +5,9 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.exports import (
     _exclude_marc_by_vendor,
-    fetch_marc,
+    retrieve_marc_for_instances,
+    instance_files_dir,
+    marc_for_instances,
 )
 
 
@@ -20,7 +20,7 @@ def mock_folio_client():
             }
         }
         fields = []
-        if args[0].endswith("4e66ce0d-4a1d-41dc-8b35-0914df20c7fb"):
+        if "4e66ce0d-4a1d-41dc-8b35-0914df20c7fb" in args[0]:
             fields = [
                 {'001': 'a4293534'},
                 {
@@ -64,7 +64,8 @@ def mock_folio_client():
                     }
                 },
             ]
-        if args[0].endswith("fe2e581f-9767-442a-ae3c-a421ac655fe2"):
+        if "fe2e581f-9767-442a-ae3c-a421ac655fe2" in args[0]:
+            # This record gets rejected because it is japanede language (not fre or eng) per _check_008 function
             fields = [
                 {'001': 'a4232294'},
                 {'008': '920218s1990    ja a          000 0 jpn  '},
@@ -98,8 +99,20 @@ def mock_folio_client():
     return mock_client
 
 
-def test_fetch_marc(tmp_path, mock_folio_client):
-    instance_file = tmp_path / "pod/Instanceids/2024022711.csv"
+@pytest.fixture
+def mock_folio_404():
+    def mock_folio_get_404(*args, **kwargs):
+        raise ValueError(
+            "Error retrieving Record by externalId: '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb', response code 404, Not Found"
+        )
+
+    mock_404_client = MagicMock()
+    mock_404_client.folio_get = mock_folio_get_404
+    return mock_404_client
+
+
+def setup_test_file(tmp_path):
+    instance_file = tmp_path / "data-export-files/pod/instanceids/2024022711.csv"
 
     instance_file.parent.mkdir(parents=True)
 
@@ -110,11 +123,17 @@ def test_fetch_marc(tmp_path, mock_folio_client):
         ]:
             fo.write(f"{instance_uuid}\n")
 
-    returned_marc_path = fetch_marc(
+    return instance_file
+
+
+def test_retrieve_marc_for_instances(tmp_path, mock_folio_client):
+    instance_file = setup_test_file(tmp_path)
+
+    retrieve_marc_for_instances(
         instance_file=str(instance_file), folio_client=mock_folio_client
     )
 
-    marc_file = pathlib.Path(returned_marc_path)
+    marc_file = instance_file.parent.parent / "marc-files/2024022711.mrc"
 
     assert marc_file.exists()
 
@@ -124,9 +143,30 @@ def test_fetch_marc(tmp_path, mock_folio_client):
     assert len(marc_records) == 1
 
 
-def test_fetch_marc_missing_instance_file():
-    with pytest.raises(ValueError, match="2024022409.csv does not exist"):
-        fetch_marc(instance_file="2024022409.csv")
+def test_retrieve_marc_for_instance_404(tmp_path, mock_folio_404, caplog):
+    instance_file = setup_test_file(tmp_path)
+
+    retrieve_marc_for_instances(
+        instance_file=str(instance_file), folio_client=mock_folio_404
+    )
+
+    assert "response code 404" in caplog.text
+
+
+def test_fetch_marc_missing_instance_file(tmp_path):
+    setup_test_file(tmp_path)
+
+    with pytest.raises(ValueError, match="Vendor instance files do not exist"):
+        instance_files_dir(airflow=tmp_path, vendor="gobi")
+
+
+def test_marc_for_instances(tmp_path, mock_folio_client):
+    setup_test_file(tmp_path)
+    files = marc_for_instances(
+        airflow=tmp_path, vendor="pod", folio_client=mock_folio_client
+    )
+
+    assert files[0].endswith('2024022711.csv')
 
 
 field_001 = pymarc.Field(tag='001', data='gls')

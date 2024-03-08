@@ -1,12 +1,9 @@
 import csv
-import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-
-logger = logging.getLogger(__name__)
 
 
 def fetch_record_ids(**kwargs):
@@ -56,9 +53,8 @@ def save_ids_to_fs(**kwargs):
 
     with open(data_path, 'w') as f:
         writer = csv.writer(f, lineterminator='\n')
-        for ids in data:
-            if ids:
-                for tuple in ids:
-                    writer.writerow(tuple)
+        for id in data:
+            if id:
+                writer.writerow(id)
 
     return str(data_path)

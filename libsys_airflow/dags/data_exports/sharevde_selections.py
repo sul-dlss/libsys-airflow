@@ -11,6 +11,8 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
+from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
+
 default_args = {
     "owner": "libsys",
     "depends_on_past": False,
@@ -29,9 +31,6 @@ with DAG(
     tags=["data export"],
 ) as dag:
     # Sample methods to be removed and replaced by real methods, along with imports when they are coded.
-    def folio_marc_records_for_id():
-        "Replace this with method from marc module"
-
     def sample_marc_transform_1():
         "Replace this with method from marc processing module"
 
@@ -51,8 +50,8 @@ with DAG(
 
     fetch_marc_records = PythonOperator(
         task_id="fetch_marc_records_from_folio",
-        python_callable=folio_marc_records_for_id,
-        op_kwargs={},
+        python_callable=marc_for_instances,
+        op_kwargs={"vendor": "sharevde"},
     )
 
     transform_marc_record = PythonOperator(
