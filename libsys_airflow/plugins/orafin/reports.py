@@ -167,12 +167,13 @@ def retrieve_voucher(invoice_id: str, folio_client: FolioClient) -> Union[dict, 
 
         case 1:
             voucher = voucher_result["vouchers"][0]
+            # Invoice BL endpoint sets voucher status but still needs
+            # additional data set from AP report
             if voucher["status"] == "Paid":
                 msg = f"Voucher {voucher['id']} already Paid"
                 logger.error(msg)
                 task_instance.xcom_push(key="paid", value=msg)
-            else:
-                return voucher
+            return voucher
 
         case _:
             msg = f"Multiple vouchers {','.join([voucher['id'] for voucher in voucher_result['vouchers']])} found for invoice {invoice_id}"
