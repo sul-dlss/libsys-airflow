@@ -82,6 +82,13 @@ def inventory_audit_report(**kwargs):
     report_path.write_text(audit_report)
 
 
+def mapping_marc_to_instance_report(db_path: str):
+    """
+    Generates summary report and zip file of new mapping from MARC to
+    FOLIO Instance
+    """
+
+
 def srs_audit_report(
     db_connection: sqlite3.Connection, iteration: str, airflow: str = "/opt/airflow"
 ):

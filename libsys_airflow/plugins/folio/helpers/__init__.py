@@ -8,6 +8,7 @@ import requests
 from airflow.models import Variable
 from airflow.operators.python import get_current_context
 
+from folioclient import FolioClient
 from folio_migration_tools.migration_tasks.migration_task_base import LevelFilter
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,27 @@ def archive_artifacts(*args, **kwargs):
 
         shutil.move(artifact, target)
         logger.info("Moved {artifact} to {target}")
+
+
+def calculate_batches(batch_size: str, folio_client: FolioClient = None) -> list:
+    """
+    Calculates batches for updating Instances
+    """
+    if folio_client is None:
+        folio_client = FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
+    batch_ids = []
+    total_instances_result = folio_client.folio_get(
+        "/instance-storage/instances?limit=0"
+    )
+    total_instances = total_instances_result["totalRecords"]
+    total_batches = round(total_instances / int(batch_size))
+    batch_ids = [i for i in range(total_batches)]
+    return batch_ids
 
 
 # Determines marc_only workflow

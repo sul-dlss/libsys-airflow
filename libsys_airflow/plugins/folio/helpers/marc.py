@@ -10,10 +10,15 @@ import pandas as pd
 import pymarc
 import requests
 
+from typing import Union
+
+from airflow.models import Variable
+
 from folio_migration_tools.migration_tasks.batch_poster import BatchPoster
 from folio_uuid.folio_uuid import FOLIONamespaces
 
 from libsys_airflow.plugins.folio.audit import AuditStatus, add_audit_log
+from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.remediate import _save_error, _save_malformed_error
 
 logger = logging.getLogger(__name__)
@@ -50,6 +55,19 @@ authkey_fields = [
     "811",
     "830",
 ]
+
+
+def _folio_client():
+    try:
+        return FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
+    except ValueError as error:
+        logger.error(error)
+        raise
 
 
 def _add_electronic_holdings(field: pymarc.Field) -> bool:
@@ -273,6 +291,94 @@ def _valid_for_srs_properties(srs_record_keys: list) -> bool:
     if "rawRecord" in srs_record_keys and "parsedRecord" in srs_record_keys:
         return True
     return False
+
+
+def _check_srs_exists_in_db(instance_id: int, con: sqlite3.Connection) -> bool:
+    cur = con.cursor()
+    cur.execute("""SELECT id FROM SRSUpdate WHERE instance=?;""", (instance_id,))
+    exists_result = cur.fetchone()
+    cur.close()
+    if exists_result is None:
+        return False
+    return True
+
+
+def _get_srs_record(
+    instance_id: int, con: sqlite3.Connection, folio_client: FolioClient
+) -> dict:
+    """
+    Retrieves SRS Record
+    """
+    cur = con.cursor()
+    cur.execute("""SELECT uuid, version FROM Instance WHERE id=?;""", (instance_id,))
+    instance_uuid, version = cur.fetchone()
+    try:
+        srs_record = folio_client.get(
+            "/change-manager/parsedRecords", params={"externalId": instance_uuid}
+        )
+        cur.execute(
+            """UPDATE Instance SET srs=? WHERE id=?;""", (srs_record['id'], instance_id)
+        )
+    except requests.HTTPError as e:
+        cur.execute(
+            """INSERT INTO SRSUpdate (instance, http_status, http_error) VALUES (?,?,?);""",
+            (instance_id, e.response.status_code, e.response.text),
+        )
+    con.commit()
+    srs_record["relatedRecordVersion"] = version
+    cur.close()
+    return srs_record
+
+
+def _put_srs_record(**kwargs):
+    """
+    Updates SRS Record
+    """
+    srs_record: dict = kwargs["srs_record"]
+    con: sqlite3.Connection = kwargs["con"]
+    folio_client: FolioClient = kwargs["folio_client"]
+    instance_id: int = kwargs["instance_id"]
+    cur = con.cursor()
+    try:
+        folio_client.put(
+            f"/change-manager/parsedRecords/{srs_record['id']}", payload=srs_record
+        )
+        cur.execute(
+            """INSERT INTO SRSUpdate (instance, http_status) VALUES (?,?);""",
+            (instance_id, 202),
+        )
+    except requests.HTTPError as e:
+        cur.execute(
+            """INSERT INTO SRSUpdate (instance, http_status, http_error) VALUES (?,?,?);""",
+            (instance_id, e.response.status_code, e.response.text),
+        )
+    con.commit()
+    cur.close()
+
+
+def process_srs_records(
+    batch: int, db_path: str, folio_client: Union[FolioClient, None] = None
+):
+    if folio_client is None:
+        folio_client = _folio_client()
+    db_path = f"{db_path}/results-{batch}.db"
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+    logger.info(f"Batch {batch} with db_path {db_path}")
+    cur.execute("""SELECT id FROM Instance;""")
+    for i, row in enumerate(cur.fetchall()):
+        if not i % 1_000 and i > 0:
+            logger.info(f"Processed {i:,} srs records")
+        instance_id = row[0]
+        if _check_srs_exists_in_db(instance_id, con) is True:
+            continue
+        srs_record = _get_srs_record(instance_id, con, folio_client)
+        _put_srs_record(
+            srs_record=srs_record,
+            instance_id=instance_id,
+            con=con,
+            folio_client=folio_client,
+        )
 
 
 def srs_check_add(**kwargs) -> int:
