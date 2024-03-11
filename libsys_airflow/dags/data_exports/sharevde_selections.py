@@ -12,6 +12,10 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 )
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
+from libsys_airflow.plugins.data_exports.marc.transforms import (
+    add_holdings_items_to_marc_files,
+    remove_marc_fields,
+)
 
 default_args = {
     "owner": "libsys",
@@ -30,13 +34,6 @@ with DAG(
     catchup=False,
     tags=["data export"],
 ) as dag:
-    # Sample methods to be removed and replaced by real methods, along with imports when they are coded.
-    def sample_marc_transform_1():
-        "Replace this with method from marc processing module"
-
-    def save_transformed_marc():
-        "Replace this with method from marc writing module"
-
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
@@ -56,27 +53,31 @@ with DAG(
 
     transform_marc_record = PythonOperator(
         task_id="transform_folio_marc_record",
-        python_callable=sample_marc_transform_1,
-        op_kwargs={},
+        python_callable=add_holdings_items_to_marc_files,
+        op_kwargs={
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+        },
     )
 
-    write_marc_to_fs = PythonOperator(
-        task_id="write_marc_record_to_file",
-        python_callable=save_transformed_marc,
-        op_kwargs={},
+    transform_marc_fields = PythonOperator(
+        task_id="transform_folio_remove_marc_fields",
+        python_callable=remove_marc_fields,
+        op_kwargs={
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+        },
     )
 
     send_to_vendor = TriggerDagRunOperator(
         task_id="send_sharevde_records",
         trigger_dag_id="send_sharevde_records",
-        conf={"iteration_id": "{{ dag_run.run_id }}"},
+        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
     )
 
-    finish_fetching_marc = EmptyOperator(
+    finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
 
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> write_marc_to_fs
-write_marc_to_fs >> finish_fetching_marc >> send_to_vendor
+fetch_marc_records >> transform_marc_record >> transform_marc_fields
+transform_marc_fields >> send_to_vendor >> finish_processing_marc

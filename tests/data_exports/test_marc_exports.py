@@ -4,11 +4,11 @@ import pytest
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.exports import (
-    _exclude_marc_by_vendor,
-    retrieve_marc_for_instances,
-    instance_files_dir,
     marc_for_instances,
+    instance_files_dir,
 )
+
+from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
 
 @pytest.fixture
@@ -126,12 +126,16 @@ def setup_test_file(tmp_path):
     return instance_file
 
 
-def test_retrieve_marc_for_instances(tmp_path, mock_folio_client):
+def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
+        return_value=mock_folio_client,
+    )
+
     instance_file = setup_test_file(tmp_path)
 
-    retrieve_marc_for_instances(
-        instance_file=str(instance_file), folio_client=mock_folio_client
-    )
+    exporter = Exporter()
+    exporter.retrieve_marc_for_instances(instance_file)
 
     marc_file = instance_file.parent.parent / "marc-files/2024022711.mrc"
 
@@ -143,12 +147,16 @@ def test_retrieve_marc_for_instances(tmp_path, mock_folio_client):
     assert len(marc_records) == 1
 
 
-def test_retrieve_marc_for_instance_404(tmp_path, mock_folio_404, caplog):
+def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
+        return_value=mock_folio_404,
+    )
+
     instance_file = setup_test_file(tmp_path)
 
-    retrieve_marc_for_instances(
-        instance_file=str(instance_file), folio_client=mock_folio_404
-    )
+    exporter = Exporter()
+    exporter.retrieve_marc_for_instances(instance_file)
 
     assert "response code 404" in caplog.text
 
@@ -160,11 +168,15 @@ def test_fetch_marc_missing_instance_file(tmp_path):
         instance_files_dir(airflow=tmp_path, vendor="gobi")
 
 
-def test_marc_for_instances(tmp_path, mock_folio_client):
+def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
     setup_test_file(tmp_path)
-    files = marc_for_instances(
-        airflow=tmp_path, vendor="pod", folio_client=mock_folio_client
+
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
+        return_value=mock_folio_client,
     )
+
+    files = marc_for_instances(airflow=tmp_path, vendor="pod")
 
     assert files[0].endswith('2024022711.csv')
 
@@ -195,34 +207,42 @@ field_915_alt = pymarc.Field(
 )
 
 
-def test_exclude_marc_by_vendor_gobi():
+def test_exclude_marc_by_vendor_gobi(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    exporter = Exporter()
     marc_record = pymarc.Record()
     marc_record.add_field(field_001, field_008)
 
-    assert _exclude_marc_by_vendor(marc_record, 'gobi')
+    assert exporter.exclude_marc_by_vendor(marc_record, 'gobi')
 
     marc_record = pymarc.Record()
     marc_record.add_field(field_008)
 
-    assert _exclude_marc_by_vendor(marc_record, 'gobi')
+    assert exporter.exclude_marc_by_vendor(marc_record, 'gobi')
 
 
-def test_exclude_marc_by_vendor_oclc():
+def test_exclude_marc_by_vendor_oclc(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    exporter = Exporter()
     marc_record = pymarc.Record()
     marc_record.add_field(field_590, field_915)
 
-    assert _exclude_marc_by_vendor(marc_record, 'oclc')
+    assert exporter.exclude_marc_by_vendor(marc_record, 'oclc')
 
 
-def test_exclude_marc_by_vendor_pod():
+def test_exclude_marc_by_vendor_pod(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    exporter = Exporter()
     marc_record = pymarc.Record()
     marc_record.add_field(field_590, field_915)
 
-    assert _exclude_marc_by_vendor(marc_record, 'pod')
+    assert exporter.exclude_marc_by_vendor(marc_record, 'pod')
 
 
-def test_exclude_marc_by_vendor_sharevde():
+def test_exclude_marc_by_vendor_sharevde(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    exporter = Exporter()
     marc_record = pymarc.Record()
     marc_record.add_field(field_590, field_915)
 
-    assert _exclude_marc_by_vendor(marc_record, 'sharevde')
+    assert exporter.exclude_marc_by_vendor(marc_record, 'sharevde')

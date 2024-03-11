@@ -3,10 +3,10 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc.transforms import (
-    add_holdings_items,
-    remove_marc_fields,
-)
+from libsys_airflow.plugins.data_exports.marc.transforms import remove_marc_fields
+
+from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
+
 
 holdings_multiple_items = {
     "holdingsRecords": [
@@ -159,7 +159,11 @@ def mock_folio_client():
     return mock_client
 
 
-def test_add_holdings_items_single_999(tmp_path, mock_folio_client):
+def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -175,7 +179,8 @@ def test_add_holdings_items_single_999(tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    add_holdings_items(str(marc_file), mock_folio_client)
+    transformer = Transformer()
+    transformer.add_holdings_items(str(marc_file))
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
@@ -192,7 +197,11 @@ def test_add_holdings_items_single_999(tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
 
 
-def test_add_holdings_items_multiple_999(tmp_path, mock_folio_client):
+def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -209,7 +218,8 @@ def test_add_holdings_items_multiple_999(tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    add_holdings_items(str(marc_file), mock_folio_client)
+    transformer = Transformer()
+    transformer.add_holdings_items(str(marc_file))
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
@@ -225,7 +235,11 @@ def test_add_holdings_items_multiple_999(tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('l') == field_999s[2].get_subfields('l')
 
 
-def test_add_holdings_items_no_items(tmp_path, mock_folio_client):
+def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
     record = pymarc.Record()
 
     record.add_field(
@@ -243,7 +257,8 @@ def test_add_holdings_items_no_items(tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    add_holdings_items(str(marc_file), mock_folio_client)
+    transformer = Transformer()
+    transformer.add_holdings_items(str(marc_file))
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
