@@ -15,7 +15,6 @@ class OCLCTransformer(Transformer):
         self.libraries = {}
         for code in ["CASUM", "HIN", "RCJ", "S7Z", "STF"]:
             self.libraries[code] = {"holdings": [], "marc": []}
-        self.marc_path = None
         self.staff_notices = []
 
     def determine_campus_code(self, record: pymarc.Record):
@@ -56,11 +55,11 @@ class OCLCTransformer(Transformer):
         with self.marc_path.open('rb') as fo:
             marc_records = [record for record in pymarc.MARCReader(fo)]
 
-        logging.info(f"Process {len(marc_records):,} record for OCLC data export")
+        logger.info(f"Process {len(marc_records):,} record for OCLC data export")
 
         for i, record in enumerate(marc_records):
             if not i % 100:
-                logging.info(f"{i:,} records processed")
+                logger.info(f"{i:,} records processed")
 
             record_ids = self.get_record_id(record)
             campus_codes = self.determine_campus_code(record)
@@ -74,6 +73,7 @@ class OCLCTransformer(Transformer):
 
                     case _:
                         self.multiple_codes(record, code, record_ids)
+
 
     def get_record_id(self, record: pymarc.Record) -> list:
         """
@@ -124,3 +124,4 @@ class OCLCTransformer(Transformer):
             if len(values["holdings"]) > 0:
                 _save_file(values["holdings"], f"{files_stem}-update.mrc")
                 logger.info(f"Updating records for {library_code}")
+        self.marc_path.unlink()

@@ -68,7 +68,7 @@ class Exporter(object):
 
         return exclude
 
-    def retrieve_marc_for_instances(self, instance_file: pathlib.Path) -> None:
+    def retrieve_marc_for_instances(self, instance_file: pathlib.Path) -> str:
         """
         Writes and returns converted MARC from SRS
         """
@@ -79,6 +79,7 @@ class Exporter(object):
 
         vendor_name = instance_file.parent.parent.name
 
+        marc_file = ""
         with instance_file.open() as fo:
             instance_reader = csv.reader(fo)
             for row in instance_reader:
@@ -93,7 +94,10 @@ class Exporter(object):
                     logger.info(f"Excluding {vendor_name}")
                     continue
 
-                self.write_marc(instance_file, instance_file.parent.parent, marc_record)
+                marc_file = self.write_marc(
+                    instance_file, instance_file.parent.parent, marc_record
+                )
+        return marc_file
 
     def marc21(self, instance_uuid: str) -> pymarc.Record:
         json_handler = pymarc.JSONHandler()

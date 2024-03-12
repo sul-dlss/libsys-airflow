@@ -12,9 +12,10 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 )
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
+
 from libsys_airflow.plugins.data_exports.marc.transforms import (
-    add_holdings_items_to_marc_files,
-    remove_marc_fields,
+    divide_into_oclc_libraries,
+    remove_fields_from_marc_files,
 )
 
 default_args = {
@@ -51,17 +52,17 @@ with DAG(
         op_kwargs={"vendor": "oclc"},
     )
 
-    transform_marc_record = PythonOperator(
-        task_id="transform_folio_marc_record",
-        python_callable=add_holdings_items_to_marc_files,
+    transform_marc_fields = PythonOperator(
+        task_id="transform_folio_remove_marc_fields",
+        python_callable=remove_fields_from_marc_files,
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
         },
     )
 
-    transform_marc_fields = PythonOperator(
-        task_id="transform_folio_remove_marc_fields",
-        python_callable=remove_marc_fields,
+    divide_marc_records_by_library = PythonOperator(
+        task_id="divide_marc_records_by_library",
+        python_callable=divide_into_oclc_libraries,
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
         },
@@ -79,5 +80,5 @@ with DAG(
 
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> send_to_vendor >> finish_processing_marc
+fetch_marc_records >> transform_marc_fields >> divide_marc_records_by_library
+divide_marc_records_by_library >> send_to_vendor >> finish_processing_marc

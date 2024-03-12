@@ -26,7 +26,9 @@ def marc_for_instances(**kwargs) -> list[str]:
     )
 
     exporter = Exporter()
+    marc_files = []
     for file_datename in instance_files:
-        exporter.retrieve_marc_for_instances(instance_file=file_datename)
+        marc_file = exporter.retrieve_marc_for_instances(instance_file=file_datename)
+        marc_files.append(marc_file)
 
-    return [str(f) for f in instance_files]
+    return [str(f) for f in marc_files]
