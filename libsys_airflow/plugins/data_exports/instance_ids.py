@@ -8,7 +8,7 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 def fetch_record_ids(**kwargs) -> list:
     context = get_current_context()
-    params = context.get("params")
+    params = context.get("params", {}) # type: ignore
     airflow = kwargs.get("airflow", "/opt/airflow/libsys_airflow")
     sql_list = sql_files(params=params, airflow=airflow)
     results = []
@@ -18,6 +18,9 @@ def fetch_record_ids(**kwargs) -> list:
         with open(sqlfile) as sqf:
             query = sqf.read()
 
+        from_date = params.get("from_date", datetime.now().strftime('%Y-%m-%d'))
+        to_date = (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
+
         results.extend(
             SQLExecuteQueryOperator(
                 task_id=task_id,
@@ -25,10 +28,8 @@ def fetch_record_ids(**kwargs) -> list:
                 database=kwargs.get("database", "okapi"),
                 sql=query,
                 parameters={
-                    "from_date": params.get(
-                        "from_date", datetime.now().strftime('%Y-%m-%d')
-                    ),
-                    "to_date": (datetime.now() + timedelta(1)).strftime('%Y-%m-%d'),
+                    "from_date": from_date,
+                    "to_date": to_date,
                 },
             ).execute(context)
         )
