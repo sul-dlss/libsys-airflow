@@ -112,7 +112,7 @@ def mock_folio_404():
 
 
 def setup_test_file(tmp_path):
-    instance_file = tmp_path / "data-export-files/pod/instanceids/2024022711.csv"
+    instance_file = tmp_path / "data-export-files/pod/instanceids/202402271159.csv"
 
     instance_file.parent.mkdir(parents=True)
 
@@ -137,7 +137,7 @@ def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
     exporter = Exporter()
     exporter.retrieve_marc_for_instances(instance_file)
 
-    marc_file = instance_file.parent.parent / "marc-files/2024022711.mrc"
+    marc_file = instance_file.parent.parent / "marc-files/202402271159.mrc"
 
     assert marc_file.exists()
 
@@ -178,7 +178,7 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
 
     files = marc_for_instances(airflow=tmp_path, vendor="pod")
 
-    assert files[0].endswith('2024022711.csv')
+    assert files[0].endswith('202402271159.csv')
 
 
 field_001 = pymarc.Field(tag='001', data='gls')
