@@ -8,7 +8,7 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 def fetch_record_ids(**kwargs) -> list:
     context = get_current_context()
-    params = context.get("params", {}) # type: ignore
+    params = context.get("params", {})  # type: ignore
     airflow = kwargs.get("airflow", "/opt/airflow/libsys_airflow")
     sql_list = sql_files(params=params, airflow=airflow)
     results = []
