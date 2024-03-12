@@ -1,7 +1,9 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 
-from libsys_airflow.plugins.data_exports.data_export_upload_view import DataExportUploadView
+from libsys_airflow.plugins.data_exports.data_export_upload_view import (
+    DataExportUploadView,
+)
 
 fileupload_bp = Blueprint("data_export_upload", __name__, template_folder="templates")
 
