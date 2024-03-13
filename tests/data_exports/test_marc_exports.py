@@ -65,7 +65,7 @@ def mock_folio_client():
                 },
             ]
         if "fe2e581f-9767-442a-ae3c-a421ac655fe2" in args[0]:
-            # This record gets rejected because it is japanede language (not fre or eng) per _check_008 function
+            # This record gets rejected because it is japanese language (not fre or eng) per _check_008 function
             fields = [
                 {'001': 'a4232294'},
                 {'008': '920218s1990    ja a          000 0 jpn  '},
@@ -181,7 +181,11 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
     assert files[0].endswith('202402271159.csv')
 
 
-field_001 = pymarc.Field(tag='001', data='gls')
+field_035 = pymarc.Field(
+    tag='035',
+    indicators=[' ', '9'],
+    subfields=[pymarc.Subfield(code='a', value='gls19291491')],
+)
 
 field_008 = pymarc.Field(tag='008', data='920218s1990    ja a          000 0 jpn  ')
 
@@ -211,7 +215,7 @@ def test_exclude_marc_by_vendor_gobi(mocker):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     exporter = Exporter()
     marc_record = pymarc.Record()
-    marc_record.add_field(field_001, field_008)
+    marc_record.add_field(field_035)
 
     assert exporter.exclude_marc_by_vendor(marc_record, 'gobi')
 
