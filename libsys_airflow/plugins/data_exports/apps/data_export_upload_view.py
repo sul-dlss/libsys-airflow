@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import re
 
@@ -6,7 +7,9 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 
-vendors = ['gobi', 'google', 'hathi', 'nielsen', 'oclc', 'pod', 'sharevde', 'west']
+DATA_EXPORTS= "/opt/airflow/libsys_airflow/plugins/data_exports"
+vendor_file = open(f"{DATA_EXPORTS}/apps/vendors.json")
+vendors = json.load(vendor_file)
 
 
 def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
@@ -25,7 +28,7 @@ def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
 
 
 def default_rendered_page(self):
-    return self.render_template("data-export-upload/index.html", vendors=vendors)
+    return self.render_template("data-export-upload/index.html", vendors=vendors['vendors'])
 
 
 class DataExportUploadView(AppBuilderBaseView):
