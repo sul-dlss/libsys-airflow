@@ -1,11 +1,19 @@
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 
-from libsys_airflow.plugins.data_exports.apps.data_export_upload_view import DataExportUploadView
-from libsys_airflow.plugins.data_exports.apps.data_export_download_view import DataExportDownloadView
+from libsys_airflow.plugins.data_exports.apps.data_export_upload_view import (
+    DataExportUploadView,
+)
+from libsys_airflow.plugins.data_exports.apps.data_export_download_view import (
+    DataExportDownloadView,
+)
 
-data_export_upload_bp = Blueprint("data_export_upload", __name__, template_folder="templates")
-data_export_download_bp = Blueprint("data_export_download", __name__, template_folder="templates")
+data_export_upload_bp = Blueprint(
+    "data_export_upload", __name__, template_folder="templates"
+)
+data_export_download_bp = Blueprint(
+    "data_export_download", __name__, template_folder="templates"
+)
 
 data_export_upload_view = DataExportUploadView()
 data_export_upload_view_package = {

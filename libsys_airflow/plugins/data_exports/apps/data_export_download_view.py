@@ -18,7 +18,9 @@ class DataExportDownloadView(AppBuilderBaseView):
     def data_export_download_home(self):
         content = []
         for vendor in vendors['vendors']:
-            for path in pathlib.Path(f"{DATA_EXPORT_FILES}/{vendor}/marc-files").glob("*"):
+            for path in pathlib.Path(f"{DATA_EXPORT_FILES}/{vendor}/marc-files").glob(
+                "*"
+            ):
                 content.append({vendor: path.name})
 
         return self.render_template("data-export-download/index.html", content=content)
