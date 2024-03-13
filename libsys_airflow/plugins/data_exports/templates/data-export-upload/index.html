@@ -1,0 +1,39 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <h2>Data Export CSV Upload</h2>
+  <form enctype="multipart/form-data" method="POST" action="{{ url_for('DataExportUploadView.run_data_export_upload') }}">
+    <div class="row">
+      <div class="col-md-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <div class="form-group">
+          <p class="help-block">
+            Upload a csv file with a single column of instance UUIDs
+            <b>NOTE:</b> Maximum number of rows is 1,000
+          </p>
+          <input type="file" class="form-control" id="upload-data-export-ids" name="upload-data-export-ids">
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="form-group">
+        <p class="help-block">
+          Select Export Vendor (required)
+        </p>
+        <select class="form-control" id="vendor" name="vendor">
+          <option value="">--Choose vendor--</option>
+          {%for v in vendors%}
+            <option value="{{v}}">{{v}}</option>
+          {%endfor%}
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-9">
+        <input type="submit" class="btn btn-default" value="Upload UUID file">
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
