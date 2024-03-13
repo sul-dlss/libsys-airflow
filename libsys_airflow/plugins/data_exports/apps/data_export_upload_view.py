@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import pathlib
 import re
 
 from flask import flash, request
@@ -7,8 +8,9 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 
-DATA_EXPORTS = "/opt/airflow/libsys_airflow/plugins/data_exports"
-vendor_file = open(f"{DATA_EXPORTS}/apps/vendors.json")
+
+parent = pathlib.Path(__file__).resolve().parent
+vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
 

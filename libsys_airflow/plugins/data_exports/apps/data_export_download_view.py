@@ -3,10 +3,8 @@ import pathlib
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 
-APP_BASE = "/opt/airflow/libsys_airflow/plugins/data_exports/apps"
-DATA_EXPORT_FILES = "/opt/airflow/data-export-files"
-
-vendor_file = open(f"{APP_BASE}/vendors.json")
+parent = pathlib.Path(__file__).resolve().parent
+vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
 
@@ -18,7 +16,7 @@ class DataExportDownloadView(AppBuilderBaseView):
     def data_export_download_home(self):
         content = []
         for vendor in vendors['vendors']:
-            for path in pathlib.Path(f"{DATA_EXPORT_FILES}/{vendor}/marc-files").glob(
+            for path in pathlib.Path(f"data-export-files/{vendor}/marc-files").glob(
                 "*"
             ):
                 content.append({vendor: path.name})
@@ -28,6 +26,6 @@ class DataExportDownloadView(AppBuilderBaseView):
     @expose("/downloads/<vendor>/<filename>")
     def vendor_marc_record(self, vendor, filename):
         file_bytes = pathlib.Path(
-            f"{DATA_EXPORT_FILES}/{vendor}/marc-files/{filename}"
+            f"data-export-files/{vendor}/marc-files/{filename}"
         ).read_bytes()  # noqa
         return file_bytes
