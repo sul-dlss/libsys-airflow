@@ -38,9 +38,9 @@ class Exporter(object):
     def check_915(self, fields915: list) -> bool:
         reject = False
         for field in fields915:
-            if any("NO EXPORT" in sf for sf in field.get_subfields(
-                "a"
-            )) and any("FOR SU ONLY" in sf for sf in field.get_subfields("b")):
+            if any("NO EXPORT" in sf for sf in field.get_subfields("a")) and any(
+                "FOR SU ONLY" in sf for sf in field.get_subfields("b")
+            ):
                 reject = True
         return reject
 
