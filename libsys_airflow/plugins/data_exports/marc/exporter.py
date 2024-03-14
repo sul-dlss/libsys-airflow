@@ -13,10 +13,10 @@ class Exporter(object):
     def __init__(self):
         self.folio_client = folio_client()
 
-    def check_001(self, field001s: list) -> bool:
+    def check_035(self, field035s: list) -> bool:
         reject = False
-        for field in field001s:
-            if field.value() == "gls":
+        for field in field035s:
+            if any("gls" in sf for sf in field.get_subfields("a")):
                 reject = True
         return reject
 
@@ -31,16 +31,16 @@ class Exporter(object):
     def check_590(self, field590s: list) -> bool:
         reject = False
         for field in field590s:
-            if "MARCit brief record" in field.get_subfields("a"):
+            if any("MARCit brief record" in sf for sf in field.get_subfields("a")):
                 reject = True
         return reject
 
     def check_915(self, fields915: list) -> bool:
         reject = False
         for field in fields915:
-            if "NO EXPORT" in field.get_subfields(
-                "a"
-            ) and "FOR SU ONLY" in field.get_subfields("b"):
+            if any("NO EXPORT" in sf for sf in field.get_subfields("a")) and any(
+                "FOR SU ONLY" in sf for sf in field.get_subfields("b")
+            ):
                 reject = True
         return reject
 
@@ -53,7 +53,7 @@ class Exporter(object):
             case "gobi":
                 exclude = any(
                     [
-                        self.check_001(marc_record.get_fields("001")),
+                        self.check_035(marc_record.get_fields("035")),
                         self.check_008(marc_record.get_fields("008")),
                     ]
                 )
