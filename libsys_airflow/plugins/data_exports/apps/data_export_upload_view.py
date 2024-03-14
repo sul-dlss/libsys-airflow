@@ -1,4 +1,6 @@
+import json
 import pandas as pd
+import pathlib
 import re
 
 from flask import flash, request
@@ -6,7 +8,10 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 
-vendors = ['gobi', 'google', 'hathi', 'nielsen', 'oclc', 'pod', 'sharevde', 'west']
+
+parent = pathlib.Path(__file__).resolve().parent
+vendor_file = open(parent / "vendors.json")
+vendors = json.load(vendor_file)
 
 
 def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
@@ -25,7 +30,9 @@ def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
 
 
 def default_rendered_page(self):
-    return self.render_template("data-export-upload/index.html", vendors=vendors)
+    return self.render_template(
+        "data-export-upload/index.html", vendors=vendors['vendors']
+    )
 
 
 class DataExportUploadView(AppBuilderBaseView):

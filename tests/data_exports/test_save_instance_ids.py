@@ -4,7 +4,7 @@ import pathlib
 import pytest
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids_to_fs
-from libsys_airflow.plugins.data_exports.data_export_upload_view import (
+from libsys_airflow.plugins.data_exports.apps.data_export_upload_view import (
     upload_data_export_ids,
 )
 

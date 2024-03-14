@@ -1,0 +1,29 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <h2>Vendor MARC files</h2>
+  <table class="table table-striped">
+    <tr>
+      <th>Vendor</th>
+      <th>Status</th>
+      <th>MARC file (download)</th>
+    </tr>
+    {% for item in content %}
+      {% for vendor, marcfile in item.items() %}
+      <tr>
+        <td>
+          {{ vendor }}
+        </td>
+        <td>
+          {{ marcfile[0] }}
+        </td>
+        <td>
+          <a href="{{ url_for('DataExportDownloadView.vendor_marc_record', vendor=vendor, folder=marcfile[0], filename=marcfile[1]) }}" download>{{ marcfile[1] }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </table>
+</div>
+{% endblock %}
