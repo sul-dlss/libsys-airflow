@@ -2,6 +2,9 @@ import logging
 from pathlib import Path
 
 from airflow.decorators import task
+from airflow.models.connection import Connection
+from airflow.providers.ftp.hooks.ftp import FTPHook
+from airflow.providers.http.hooks.http import HttpHook
 
 logger = logging.getLogger(__name__)
 
@@ -20,22 +23,58 @@ def gather_files_task(**kwargs) -> list:
     return [str(p) for p in marc_filepath.glob("*.mrc")]
 
 
-@task
-def connection_details_task(**kwargs):
+@task(multiple_outputs=True)
+def transmit_data_http_task(conn_id, local_files) -> dict:
     """
-    Given vendor name get connection details to transmit data
+    Transmit the data via http
+    Returns lists of files successfully transmitted and failures
     """
-    logger.info("Connection details for vendor")
+    hook = HttpHook(http_conn_id=conn_id)
+    success = []
+    failures = []
+    for f in local_files:
+        logger.info(f"Begin reading file {f} for transmission")
+        with Path(f).open("rb") as fo:
+            marc_data = fo.read()
+
+        try:
+            logger.info(f"Start transmission of data from file {f}")
+            connection = Connection.get_connection_from_secrets(conn_id)
+            hook.run(headers=connection.extra_dejson, data=marc_data)
+            success.append(f)
+            logger.info(f"End transmission of data from file {f}")
+        except Exception as e:
+            logger.error(e)
+            logger.error(f"Exception for transmission of data from file {f}")
+            failures.append(f)
+
+    return {"success": success, "failures": failures}
 
 
 @task(multiple_outputs=True)
-def transmit_data_task(connection_details) -> dict:
+def transmit_data_ftp_task(conn_id, local_files) -> dict:
     """
-    Transmit the data
+    Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
     """
-    logger.info("Transmitting the data")
-    return {"success": [], "failures": []}
+    hook = FTPHook(ftp_conn_id=conn_id)
+    connection = Connection.get_connection_from_secrets(conn_id)
+    remote_path = connection.extra_dejson["remote_path"]
+    success = []
+    failures = []
+    for f in local_files:
+        remote_file_path = f"{remote_path}/{Path(f).name}"
+        try:
+            logger.info(f"Start transmission of file {f}")
+            hook.store_file(remote_file_path, f)
+            success.append(f)
+            logger.info(f"End transmission of file {f}")
+        except Exception as e:
+            logger.error(e)
+            logger.error(f"Exception for transmission of file {f}")
+            failures.append(f)
+
+    return {"success": success, "failures": failures}
 
 
 @task
