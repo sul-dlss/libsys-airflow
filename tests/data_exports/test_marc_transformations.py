@@ -104,8 +104,32 @@ single_item = {
 def mock_folio_client():
     def mock_folio_get(*args, **kwargs):
         # Holdings
+        if args[0].endswith("a75a9e59-8e9a-55cd-8414-f71c1194493b)"):
+            return {
+                "holdingsRecords": [
+                    {"permanentLocationId": "148e598c-bb58-4e6d-b313-4933e6a4534c"}
+                ]
+            }
+        if args[0].endswith("2aa4c0b3-4db6-5c71-a4e2-7fdc672b6b94)"):
+            return {
+                "holdingsRecords": [
+                    {"permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3"}
+                ]
+            }
         if args[0].endswith("5face3a3-9804-5034-aa02-1eb5db0c191c)"):
             return single_holdings
+        if args[0].endswith("8b373183-2b6f-5a6b-82ab-5f4e6e70d0f8)"):
+            return {
+                "holdingsRecords": [
+                    {"permanentLocationId": "c9cef3c6-5874-4bae-b90b-2e1d1f4674db"}
+                ]
+            }
+        if args[0].endswith("8e9eb01b-1249-5ef8-b9ea-e16496ca64cc)"):
+            return {
+                "holdingsRecords": [
+                    {"permanentLocationId": "46eb9191-1f6f-44ba-a67c-610f868dd429"}
+                ]
+            }
         if args[0].endswith("e1797b62-a8b1-5f3d-8e85-934d58bd9395)"):
             return holdings_multiple_items
         if args[0].endswith("c77d294c-4d83-4fe0-87b1-f94a845c0d49)"):
@@ -139,16 +163,19 @@ def mock_folio_client():
             'id': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
             'name': 'Business Newspaper Stacks',
             'code': 'BUS-NEWS-STKS',
+            'libraryId': 'f5c58187-3db6-4bda-b1bf-e5f0717e2149',
         },
         {
             'id': 'a8676073-7520-4f26-8573-55976301ab5d',
             'name': 'Green Flat Folios',
             'code': 'GRE-FOLIO-FLAT',
+            'libraryId': 'f6b5519e-88d9-413e-924d-9ed96255f72e',
         },
         {
             'id': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
             'name': 'SUL Electronic',
             'code': 'SUL-ELECTRONIC',
+            'libraryId': 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
         },
     ]
     mock_client = MagicMock()

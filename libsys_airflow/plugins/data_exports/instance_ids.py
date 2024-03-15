@@ -46,8 +46,9 @@ def sql_files(**kwargs) -> list:
 def save_ids_to_fs(**kwargs) -> str:
     airflow = kwargs.get("airflow", "/opt/airflow")
     task_instance = kwargs["task_instance"]
+    vendor = kwargs["vendor"]
     data = task_instance.xcom_pull(task_ids="fetch_record_ids_from_folio")
-    ids_path = save_ids(airflow=airflow, data=data)
+    ids_path = save_ids(airflow=airflow, data=data, vendor=vendor)
 
     return ids_path
 

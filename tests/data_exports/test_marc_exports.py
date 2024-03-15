@@ -178,7 +178,7 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
 
     files = marc_for_instances(airflow=tmp_path, vendor="pod")
 
-    assert files[0].endswith('202402271159.csv')
+    assert files[0].endswith('202402271159.mrc')
 
 
 field_035 = pymarc.Field(

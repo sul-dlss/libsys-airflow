@@ -1,9 +1,11 @@
+import ast
 import logging
 import pathlib
 
 import pymarc
 
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
+from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +87,27 @@ excluded_tags = [
 ]
 
 
-def add_holdings_items_to_marc_files(marc_file_list: list):
+def add_holdings_items_to_marc_files(marc_file_list: str):
     transformer = Transformer()
-    for marc_file in marc_file_list:
+    for marc_file in ast.literal_eval(marc_file_list):
         transformer.add_holdings_items(marc_file=marc_file)
+
+
+def divide_into_oclc_libraries(**kwargs):
+    marc_file_list = kwargs.get("marc_file_list", "")
+    task_instance = kwargs["ti"]
+    oclc_transformer = OCLCTransformer()
+    for marc_file in ast.literal_eval(marc_file_list):
+        oclc_transformer.divide(marc_file)
+    oclc_transformer.save()
+    task_instance.xcom_push(
+        key="multiple-oclc-codes", value=oclc_transformer.staff_notices
+    )
+
+
+def remove_fields_from_marc_files(marc_file_list: str):
+    for file in ast.literal_eval(marc_file_list):
+        remove_marc_fields(file)
 
 
 def remove_marc_fields(marc_file: str):
