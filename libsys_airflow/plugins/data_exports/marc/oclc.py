@@ -46,7 +46,7 @@ class OCLCTransformer(Transformer):
             codes.append(oclc_code)
         return codes
 
-    def divide(self, marc_file):
+    def divide(self, marc_file) -> None:
         """
         Divides up MARC Export by Campus and presence of OCLC record id
         """

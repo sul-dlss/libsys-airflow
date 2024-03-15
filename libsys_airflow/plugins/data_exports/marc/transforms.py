@@ -96,11 +96,13 @@ def add_holdings_items_to_marc_files(marc_file_list: str):
 def divide_into_oclc_libraries(**kwargs):
     marc_file_list = kwargs.get("marc_file_list", "")
     task_instance = kwargs["ti"]
-    transformer = OCLCTransformer()
+    oclc_transformer = OCLCTransformer()
     for marc_file in ast.literal_eval(marc_file_list):
-        transformer.divide(marc_file)
-    transformer.save()
-    task_instance.xcom_push(key="multiple-oclc-codes", value=transformer.staff_notices)
+        oclc_transformer.divide(marc_file)
+    oclc_transformer.save()
+    task_instance.xcom_push(
+        key="multiple-oclc-codes", value=oclc_transformer.staff_notices
+    )
 
 
 def remove_fields_from_marc_files(marc_file_list: str):
