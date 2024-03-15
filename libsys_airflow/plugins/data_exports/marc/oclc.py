@@ -74,7 +74,6 @@ class OCLCTransformer(Transformer):
                     case _:
                         self.multiple_codes(record, code, record_ids)
 
-
     def get_record_id(self, record: pymarc.Record) -> list:
         """
         Extracts OCLC id from 035 field

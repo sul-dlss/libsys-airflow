@@ -17,6 +17,9 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
     divide_into_oclc_libraries,
     remove_fields_from_marc_files,
 )
+from libsys_airflow.plugins.data_exports.email import (
+    generate_multiple_oclc_identifiers_email,
+)
 
 default_args = {
     "owner": "libsys",
@@ -56,7 +59,7 @@ with DAG(
         task_id="transform_folio_remove_marc_fields",
         python_callable=remove_fields_from_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull(task_ids='fetch_marc_records_from_folio') }}"
         },
     )
 
@@ -64,7 +67,15 @@ with DAG(
         task_id="divide_marc_records_by_library",
         python_callable=divide_into_oclc_libraries,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull(task_ids='fetch_marc_records_from_folio') }}"
+        },
+    )
+
+    send_multiple_oclc_codes_email = PythonOperator(
+        task_id="multiple_oclc_codes_email",
+        python_callable=generate_multiple_oclc_identifiers_email,
+        op_kwargs={
+            "multiple_codes": "{{ ti.xcom_pull(task_ids='divide_marc_records_by_library', key='multiple-oclc-codes')}}"
         },
     )
 
@@ -81,4 +92,8 @@ with DAG(
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_fields >> divide_marc_records_by_library
-divide_marc_records_by_library >> send_to_vendor >> finish_processing_marc
+(
+    divide_marc_records_by_library
+    >> [send_multiple_oclc_codes_email, send_to_vendor]
+    >> finish_processing_marc
+)
