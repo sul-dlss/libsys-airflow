@@ -47,17 +47,17 @@ def save_ids_to_fs(**kwargs) -> str:
     airflow = kwargs.get("airflow", "/opt/airflow")
     task_instance = kwargs["task_instance"]
     data = task_instance.xcom_pull(task_ids="fetch_record_ids_from_folio")
-    ids_path = save_ids(airflow=airflow, data=data)
+    ids_path = save_ids(airflow=airflow, data=data, filestamp=None)
 
     return ids_path
 
 
 def save_ids(**kwargs) -> str:
-    today = datetime.now().strftime('%Y%m%d%H%M')
+    filestamp = kwargs.get("timestamp", datetime.now().strftime('%Y%m%d%H%M'))
     airflow = kwargs.get("airflow", "/opt/airflow")
     vendor = kwargs.get("vendor")
     data = kwargs.get("data", "")
-    data_path = Path(airflow) / f"data-export-files/{vendor}/instanceids/{today}.csv"
+    data_path = Path(airflow) / f"data-export-files/{vendor}/instanceids/{filestamp}.csv"
     data_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(data_path, 'w') as f:
