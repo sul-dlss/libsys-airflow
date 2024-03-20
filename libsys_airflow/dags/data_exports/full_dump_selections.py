@@ -1,22 +1,23 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 
-from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
+# from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.data_exports.full_dump_ids import (
     fetch_full_dump_ids,
-    refresh_view
+    refresh_view,
 )
 
-from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
-from libsys_airflow.plugins.data_exports.marc.transforms import (
-    add_holdings_items_to_marc_files,
-    remove_marc_fields,
-)
+# from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
+
+# from libsys_airflow.plugins.data_exports.marc.transforms import (
+#     add_holdings_items_to_marc_files,
+#     remove_marc_fields,
+# )
 
 default_args = {
     "owner": "libsys",
@@ -42,21 +43,13 @@ with DAG(
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_full_dump_ids,
-        op_kwargs={ "batch_size": 50000 }
+        op_kwargs={"batch_size": 50000},
     )
 
     # fetch_marc_records = PythonOperator(
     #     task_id="fetch_marc_records_from_folio",
     #     python_callable=marc_for_instances,
-    #     op_kwargs={"vendor": "gobi"},
-    # )
-
-    # transform_marc_record = PythonOperator(
-    #     task_id="transform_folio_marc_record",
-    #     python_callable=add_holdings_items_to_marc_files,
-    #     op_kwargs={
-    #         "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
-    #     },
+    #     op_kwargs={"vendor": "full_dump"},
     # )
 
     # transform_marc_fields = PythonOperator(
@@ -67,10 +60,17 @@ with DAG(
     #     },
     # )
 
+    # transform_marc_record = PythonOperator(
+    #     task_id="transform_folio_marc_record",
+    #     python_callable=add_holdings_items_to_marc_files,
+    #     op_kwargs={
+    #         "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+    #     },
+    # )
+
     # send_to_vendor = TriggerDagRunOperator(
-    #     task_id="send_ybp_records",
-    #     trigger_dag_id="send_ybp_records",
-    #     conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
+    #     task_id="send_full_dump_records",
+    #     trigger_dag_id="send_full_dump_records",
     # )
 
     finish_processing_marc = EmptyOperator(
@@ -78,6 +78,6 @@ with DAG(
     )
 
 
-# refresh_view >> fetch_folio_record_ids  >> fetch_marc_records
+refresh_table_view >> fetch_folio_record_ids >> finish_processing_marc
 # fetch_marc_records >> transform_marc_record >> transform_marc_fields
 # transform_marc_fields >> send_to_vendor >> finish_processing_marc

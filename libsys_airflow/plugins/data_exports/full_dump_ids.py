@@ -8,47 +8,50 @@ logger = logging.getLogger(__name__)
 
 
 def fetch_full_dump_ids(**kwargs) -> None:
-    results: list[str] = []
+    airflow = kwargs.get("airflow", "/opt/airflow")
     batch_size = kwargs.get("batch_size", 50000)
     context = get_current_context()
-    airflow = kwargs.get("airflow", "/opt/airflow")
 
     total = fetch_number_of_records()
-    batch = round(total/batch_size)
+    batch = round(total / batch_size)
     i = 0
 
-    query = f"select id from public.data_export_marc_ids limit %(batch_size)s offset %(offset)s"
+    query = (
+        "SELECT id FROM public.data_export_marc_ids LIMIT %(limit)s OFFSET %(offset)s"
+    )
 
-    while i<=batch:
+    while i <= batch - 1:
         task_id = f"postgres_full_dump_query_{i}"
-        offset=i*batch
+        offset = i * batch_size
 
         tuples = SQLExecuteQueryOperator(
             task_id=task_id,
             conn_id="postgres_folio",
             database=kwargs.get("database", "okapi"),
             sql=query,
-            parameters={
-                "offset": offset,
-                "batch_size": batch
-            }
+            parameters={"offset": offset, "limit": batch_size},
         ).execute(context)
-        i+=1
-        breakpoint()
-        save_ids(airflow=airflow, vendor="full-dump", data=tuples, timestamp=f"{offset}_{batch}_ids")
+        i += 1
+
+        save_ids(
+            airflow=airflow,
+            vendor="full-dump",
+            data=tuples,
+            timestamp=f"{offset}_{batch}_ids",
+        )
 
 
 def fetch_number_of_records(**kwargs) -> int:
     context = get_current_context()
 
-    query = f"select count(id) from public.data_export_marc_ids"
+    query = "SELECT count(id) from public.data_export_marc_ids"
 
     result = SQLExecuteQueryOperator(
-            task_id="postgres_full_count_query",
-            conn_id="postgres_folio",
-            database=kwargs.get("database", "okapi"),
-            sql=query,
-        ).execute(context)
+        task_id="postgres_full_count_query",
+        conn_id="postgres_folio",
+        database=kwargs.get("database", "okapi"),
+        sql=query,
+    ).execute(context)
 
     return int(result)
 
@@ -59,11 +62,11 @@ def refresh_view(**kwargs) -> None:
     query = "refresh materialized view data_export_marc_ids"
 
     result = SQLExecuteQueryOperator(
-            task_id="postgres_full_count_query",
-            conn_id="postgres_folio",
-            database=kwargs.get("database", "okapi"),
-            sql=query,
-        ).execute(context)
+        task_id="postgres_full_count_query",
+        conn_id="postgres_folio",
+        database=kwargs.get("database", "okapi"),
+        sql=query,
+    ).execute(context)
 
     logger.info(result)
 

@@ -52,12 +52,15 @@ def save_ids_to_fs(**kwargs) -> str:
 
     return ids_path
 
+
 def save_ids(**kwargs) -> str:
     filestamp = kwargs.get("timestamp", datetime.now().strftime('%Y%m%d%H%M'))
     airflow = kwargs.get("airflow", "/opt/airflow")
     vendor = kwargs.get("vendor")
     data = kwargs.get("data", "")
-    data_path = Path(airflow) / f"data-export-files/{vendor}/instanceids/{filestamp}.csv"
+    data_path = (
+        Path(airflow) / f"data-export-files/{vendor}/instanceids/{filestamp}.csv"
+    )
     data_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(data_path, 'w') as f:
