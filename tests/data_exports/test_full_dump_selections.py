@@ -16,6 +16,11 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
 
+def mock_get_pg_hook(*args, **kwargs):
+    mock_hook = MagicMock()
+    return mock_hook
+
+
 class MockAirflowConnection(pydantic.BaseModel):
     conn_id = "postgres_folio"
     host = "http://example.com/"
@@ -24,9 +29,6 @@ class MockAirflowConnection(pydantic.BaseModel):
     port = 5432
     get_hook = mock_get_pg_hook
 
-def mock_get_pg_hook(*args, **kwargs):
-    mock_hook = MagicMock()
-    return
 
 
 @pytest.fixture
@@ -40,12 +42,16 @@ def mock_airflow_connection(monkeypatch):
 
 
 @pytest.fixture
-def mock_sql_execute_query_op():
-  mock_sql_execute_query_op = MagicMock
+def mock_sql_execute_query_op(*args, **kwargs):
+    def mock_execute(**kwargs):
+        offset = mock_sql_execute_query_op.call_args[1]['parameters']['offset']
+        instance_uuids = mock_result_set()
+        return instance_uuids[offset-4:offset]
 
-  mock_sql_execute_query_op.execute = mock_result_set
+    mock_sql_execute_query_op = MagicMock()
+    mock_sql_execute_query_op.execute = mock_execute
 
-  return mock_sql_execute_query_op
+    return mock_sql_execute_query_op
 
 
 def mock_number_of_records(mock_result_set):
@@ -91,19 +97,22 @@ def test_fetch_full_dump_ids(
       ):
 
     mocker.patch(
-        'airflow.providers.common.sql.operators.sql',
-        return_value=mock_sql_execute_query_op,
+        "libsys_airflow.plugins.data_exports.full_dump_ids.SQLExecuteQueryOperator",
+        return_value=mock_sql_execute_query_op()
     )
     mocker.patch(
        'libsys_airflow.plugins.data_exports.full_dump_ids.fetch_number_of_records',
        return_value=mock_number_of_records(mock_result_set())
     )
 
-    full_dump_ids = fetch_full_dump_ids(batch_size=3)
+    fetch_full_dump_ids(airflow=tmp_path, batch_size=3)
 
-    file = pathlib.Path(tmp_path)
-    print(full_dump_ids)
-    # assert file.exists()
+
+    file_dir = pathlib.Path(tmp_path) / "data-export-files/full-dump/instanceids"
+
+    breakpoint()
+    # print(full_dump_ids)
+    assert file.exists()
 
     # with file.open('r') as fo:
     #     id_list = list(row for row in csv.reader(fo))

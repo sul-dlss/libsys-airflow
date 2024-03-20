@@ -11,6 +11,7 @@ def fetch_full_dump_ids(**kwargs) -> None:
     results: list[str] = []
     batch_size = kwargs.get("batch_size", 50000)
     context = get_current_context()
+    airflow = kwargs.get("airflow", "/opt/airflow")
 
     total = fetch_number_of_records()
     batch = round(total/batch_size)
@@ -33,8 +34,8 @@ def fetch_full_dump_ids(**kwargs) -> None:
             }
         ).execute(context)
         i+=1
-
-        save_ids(airflow="/opt/airflow", vendor="full-dump", data=tuples, filestamp=f"{offset}_{batch}_ids.csv")
+        breakpoint()
+        save_ids(airflow=airflow, vendor="full-dump", data=tuples, timestamp=f"{offset}_{batch}_ids")
 
 
 def fetch_number_of_records(**kwargs) -> int:

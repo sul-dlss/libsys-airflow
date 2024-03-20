@@ -52,7 +52,6 @@ def save_ids_to_fs(**kwargs) -> str:
 
     return ids_path
 
-
 def save_ids(**kwargs) -> str:
     filestamp = kwargs.get("timestamp", datetime.now().strftime('%Y%m%d%H%M'))
     airflow = kwargs.get("airflow", "/opt/airflow")
