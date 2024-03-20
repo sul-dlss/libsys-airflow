@@ -671,9 +671,10 @@ def boundwith_holdings(*args, **kwargs):
         logger.info("Processing boundwiths")
         bw_reader = csv.DictReader(tsv, delimiter="\t")
 
-        with bw_holdings_json_path.open("w+") as bwh, bw_parts_json_path.open(
-            "w+"
-        ) as bwp:
+        with (
+            bw_holdings_json_path.open("w+") as bwh,
+            bw_parts_json_path.open("w+") as bwp,
+        ):
             for row in bw_reader:
                 """
                 includes default holdings-type id for 'Bound-with'

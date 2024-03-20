@@ -32,7 +32,7 @@ pendulum = "2.1.2"
 flask-session = "<0.6.0"
 
 [tool.poetry.group.test.dependencies]
-black = "~23.3.0"
+black = "~24.3.0"
 coveralls = "~3.3.1"
 coverage = "~6.5.0"
 flake8 = "^6.0.0"
