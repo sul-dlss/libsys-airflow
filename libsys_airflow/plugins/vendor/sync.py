@@ -90,14 +90,16 @@ def sync_data(folio_org_uuid, folio_client):
                     display_name=organization["name"],
                     folio_organization_uuid=organization["id"],
                     vendor_code_from_folio=organization["code"],
-                    acquisitions_unit_from_folio=organization["acqUnitIds"][0]
-                    if organization["acqUnitIds"]
-                    else None,
-                    acquisitions_unit_name_from_folio=acq_names[
+                    acquisitions_unit_from_folio=(
                         organization["acqUnitIds"][0]
-                    ]
-                    if organization["acqUnitIds"]
-                    else None,
+                        if organization["acqUnitIds"]
+                        else None
+                    ),
+                    acquisitions_unit_name_from_folio=(
+                        acq_names[organization["acqUnitIds"][0]]
+                        if organization["acqUnitIds"]
+                        else None
+                    ),
                     last_folio_update=datetime.now(),
                 )
                 logging.info(f"Adding vendor {vendor.display_name}")
