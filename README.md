@@ -49,7 +49,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_MIGRATION_PASSWORD`
 
   These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
-  
+
   Example script to quickly populate your .env file for dev:
   ```
   for i in `vault kv list puppet/application/libsys_airflow/dev`; do val=$(echo $i| tr '[a-z]' '[A-Z]'); echo AIRFLOW_VAR_$val=`vault kv get -field=content puppet/application/libsys_airflow/dev/$i`; done
@@ -66,7 +66,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 ### For FOLIO migration loads
 
 Make sure the environmental variables `AIRFLOW_VAR_MIGRATION_USER`
-and `AIRFLOW_VAR_MIGRATION_PASSWORD` are set in Vault to a 
+and `AIRFLOW_VAR_MIGRATION_PASSWORD` are set in Vault to a
 user with appropriate rights (typically we've used an administrative user)
 
 ## Deploying
@@ -121,6 +121,23 @@ cap alembic:migrate  # Run Alembic database migrations
 `cap ${env} deploy`
 
 This will stop and remove the docker images for the previous release and start up a new one.
+
+## Running Airflow in Kubernetes Cluster
+```
+helm -n {namespace} upgrade --install -f helm-airflow.yaml airflow apache-airflow/airflow
+```
+Then wait for all of the pods to become ready.
+
+For logging into the webserver locally:
+Find out the webserver pod id:
+```
+kubectl -n {namespace} get pods | grep airflow-webserver
+```
+
+Then use that to do a port-forward:
+```
+kubectl -n {namespace} port-forward airflow-webserver-<instance-id> 8080:8080
+```
 
 ### For Aeon and Lobbytrack API calls
 
@@ -235,7 +252,7 @@ If when doing a rebase you encounter a merge conflict with the `poetry.lock` fil
 dependencies to the `pyproject.toml`, run the following commands:
 
 - `git checkout --theirs poetry.lock`
-- `poetry lock --no-update`  
+- `poetry lock --no-update`
 
 ## Testing
 
