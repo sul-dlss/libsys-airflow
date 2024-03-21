@@ -58,7 +58,7 @@ class Exporter(object):
                     ]
                 )
 
-            case "oclc" | "pod" | "sharevde":
+            case "oclc" | "pod" | "sharevde" | "full-dump":
                 exclude = any(
                     [
                         self.check_590(marc_record.get_fields("590")),
