@@ -20,6 +20,8 @@ from libsys_airflow.plugins.folio.reports import srs_audit_report
 
 logger = logging.getLogger(__name__)
 
+# mypy: disable-error-code = "index, import-untyped"
+
 
 def _get_audit_db(results_dir: str) -> sqlite3.Connection:
     audit_db_path = pathlib.Path(results_dir) / "audit-remediation.db"

@@ -10,6 +10,8 @@ from libsys_airflow.plugins.vendor.sync import sync_data_task
 
 logger = logging.getLogger(__name__)
 
+# mypy: disable-error-code = index
+
 # Run with:
 # docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger folio_vendor_sync -c '{"folio_org_uuid": "57705203-3413-40aa-9bd5-35fafc6d72d7"}'
 

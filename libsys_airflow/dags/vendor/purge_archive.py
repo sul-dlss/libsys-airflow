@@ -14,6 +14,8 @@ from libsys_airflow.plugins.vendor.emails import email_args
 
 logger = logging.getLogger(__name__)
 
+# mypy: disable-error-code = "index, arg-type"
+
 default_args = dict(
     {
         "owner": "folio",
