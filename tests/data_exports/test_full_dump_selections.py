@@ -1,9 +1,8 @@
-import csv
-import pathlib
 import pydantic
 import pytest
 
-from libsys_airflow.plugins.data_exports import full_dump_ids
+from libsys_airflow.plugins.data_exports import full_dump_marc
+from libsys_airflow.plugins.data_exports.marc import exporter
 
 
 class MockSQLOperator(pydantic.BaseModel):
@@ -20,8 +19,23 @@ class MockSQLOperator(pydantic.BaseModel):
         return mock_result[start:end]
 
 
+class MockS3Operator(pydantic.BaseModel):
+    task_id: str
+    s3_bucket: str
+    s3_key: str
+    data: bytes
+    replace: bool
+
+    def execute(self, context):
+        pass
+
+
 def mock_number_of_records(mock_result_set):
     return len(mock_result_set)
+
+
+def mock_marc_records():
+    return ""
 
 
 def mock_result_set():
@@ -47,29 +61,21 @@ def mock_get_current_context(mocker):
     return context
 
 
-def test_fetch_full_dump_ids(tmp_path, mocker, mock_get_current_context):
+def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.full_dump_ids.get_current_context",
+        "libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context",
         return_value={},
     )
 
-    mocker.patch.object(full_dump_ids, "SQLExecuteQueryOperator", MockSQLOperator)
-
+    mocker.patch.object(exporter, "get_current_context", mock_get_current_context)
+    mocker.patch.object(full_dump_marc, "SQLExecuteQueryOperator", MockSQLOperator)
+    mocker.patch.object(exporter, "S3CreateObjectOperator", MockS3Operator)
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mocker.patch(
-        'libsys_airflow.plugins.data_exports.full_dump_ids.fetch_number_of_records',
+        'libsys_airflow.plugins.data_exports.full_dump_marc.fetch_number_of_records',
         return_value=mock_number_of_records(mock_result_set()),
     )
 
-    full_dump_ids.fetch_full_dump_ids(airflow=tmp_path, batch_size=3)
+    full_dump_marc.fetch_full_dump_marc(batch_size=3)
 
-    files_dir = pathlib.Path(tmp_path) / "data-export-files/full-dump/instanceids"
-    csv_files = [i for i in files_dir.glob("*.csv")]
-
-    assert len(csv_files) == 4
-
-    csv_files = sorted(csv_files)
-
-    with csv_files[3].open('r') as fo:
-        id_list = list(row for row in csv.reader(fo))
-
-    assert id_list[0][0] == "90e08427-6cef-493a-b1ab-11ec3a8f340d"
+    assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text

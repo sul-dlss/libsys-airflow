@@ -2,13 +2,12 @@ import logging
 
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-from libsys_airflow.plugins.data_exports.instance_ids import save_ids
+from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_full_dump_ids(**kwargs) -> None:
-    airflow = kwargs.get("airflow", "/opt/airflow")
+def fetch_full_dump_marc(**kwargs) -> None:
     batch_size = kwargs.get("batch_size", 50000)
     context = get_current_context()
 
@@ -33,11 +32,9 @@ def fetch_full_dump_ids(**kwargs) -> None:
         ).execute(context)
         i += 1
 
-        save_ids(
-            airflow=airflow,
-            vendor="full-dump",
-            data=tuples,
-            timestamp=f"{offset}_{batch}_ids",
+        exporter = Exporter()
+        exporter.retrieve_marc_for_full_dump(
+            f"{offset}_{offset + batch_size}.mrc", instance_ids=tuples
         )
 
 
@@ -53,6 +50,7 @@ def fetch_number_of_records(**kwargs) -> int:
         sql=query,
     ).execute(context)
 
+    logger.info(f"Record count: {result}")
     return int(result)
 
 

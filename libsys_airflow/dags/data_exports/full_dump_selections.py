@@ -7,12 +7,10 @@ from airflow.operators.python import PythonOperator
 
 # from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
-from libsys_airflow.plugins.data_exports.full_dump_ids import (
-    fetch_full_dump_ids,
+from libsys_airflow.plugins.data_exports.full_dump_marc import (
+    fetch_full_dump_marc,
     refresh_view,
 )
-
-from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
@@ -42,14 +40,8 @@ with DAG(
 
     fetch_and_save_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
-        python_callable=fetch_full_dump_ids,
+        python_callable=fetch_full_dump_marc,
         op_kwargs={"batch_size": 50000},
-    )
-
-    fetch_marc_records = PythonOperator(
-        task_id="fetch_marc_records_from_folio",
-        python_callable=marc_for_instances,
-        op_kwargs={"vendor": "full-dump"},
     )
 
     transform_marc_record = PythonOperator(
@@ -78,7 +70,6 @@ with DAG(
     )
 
 
-refresh_table_view >> fetch_and_save_folio_record_ids >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >>  finish_processing_marc
+refresh_table_view >> fetch_and_save_folio_record_ids >> transform_marc_record
+transform_marc_record >> transform_marc_fields >> finish_processing_marc
 # transform_marc_fields >> send_to_vendor >> finish_processing_marc
