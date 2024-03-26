@@ -1,10 +1,10 @@
 import logging
 from pathlib import Path
+import httpx
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
-from airflow.providers.http.hooks.http import HttpHook
 
 logger = logging.getLogger(__name__)
 
@@ -24,29 +24,31 @@ def gather_files_task(**kwargs) -> list:
 
 
 @task(multiple_outputs=True)
-def transmit_data_http_task(conn_id, local_files) -> dict:
+def transmit_data_http_task(conn_id, local_files, **kwargs) -> dict:
     """
     Transmit the data via http
     Returns lists of files successfully transmitted and failures
     """
-    hook = HttpHook(http_conn_id=conn_id)
     success = []
     failures = []
-    for f in local_files:
-        logger.info(f"Begin reading file {f} for transmission")
-        with Path(f).open("rb") as fo:
-            marc_data = fo.read()
-
-        try:
-            logger.info(f"Start transmission of data from file {f}")
-            connection = Connection.get_connection_from_secrets(conn_id)
-            hook.run(headers=connection.extra_dejson, data=marc_data)
-            success.append(f)
-            logger.info(f"End transmission of data from file {f}")
-        except Exception as e:
-            logger.error(e)
-            logger.error(f"Exception for transmission of data from file {f}")
-            failures.append(f)
+    files_params = kwargs.get("files_params", "upload")
+    url_params = kwargs.get("url_params", {})
+    connection = Connection.get_connection_from_secrets(conn_id)
+    with httpx.Client(
+        headers=connection.extra_dejson, params=url_params, follow_redirects=True
+    ) as client:
+        for f in local_files:
+            files = {files_params: open(f"{f}", "rb")}
+            request = client.build_request("POST", connection.host, files=files)
+            try:
+                logger.info(f"Start transmission of data from file {f}")
+                response = client.send(request)
+                response.raise_for_status()
+                success.append(f)
+                logger.info(f"End transmission of data from file {f}")
+            except httpx.HTTPError as e:
+                logger.error(f"Error for {e.request.url} - {e}")
+                failures.append(f)
 
     return {"success": success, "failures": failures}
 
