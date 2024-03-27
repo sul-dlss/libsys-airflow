@@ -34,7 +34,7 @@ with DAG(
     tags=["data export"],
     params={
         "batch_size": 50000,
-    }
+    },
 ) as dag:
     refresh_table_view = PythonOperator(
         task_id="refresh_materialized_table_view",
