@@ -1,7 +1,10 @@
 import logging
 from pathlib import Path
+import httpx
 
 from airflow.decorators import task
+from airflow.models.connection import Connection
+from airflow.providers.ftp.hooks.ftp import FTPHook
 
 logger = logging.getLogger(__name__)
 
@@ -20,22 +23,60 @@ def gather_files_task(**kwargs) -> list:
     return [str(p) for p in marc_filepath.glob("*.mrc")]
 
 
-@task
-def connection_details_task(**kwargs):
+@task(multiple_outputs=True)
+def transmit_data_http_task(conn_id, local_files, **kwargs) -> dict:
     """
-    Given vendor name get connection details to transmit data
+    Transmit the data via http
+    Returns lists of files successfully transmitted and failures
     """
-    logger.info("Connection details for vendor")
+    success = []
+    failures = []
+    files_params = kwargs.get("files_params", "upload")
+    url_params = kwargs.get("url_params", {})
+    connection = Connection.get_connection_from_secrets(conn_id)
+    with httpx.Client(
+        headers=connection.extra_dejson, params=url_params, follow_redirects=True
+    ) as client:
+        for f in local_files:
+            files = {files_params: open(f"{f}", "rb")}
+            request = client.build_request("POST", connection.host, files=files)
+            try:
+                logger.info(f"Start transmission of data from file {f}")
+                response = client.send(request)
+                response.raise_for_status()
+                success.append(f)
+                logger.info(f"End transmission of data from file {f}")
+            except httpx.HTTPError as e:
+                logger.error(f"Error for {e.request.url} - {e}")
+                failures.append(f)
+
+    return {"success": success, "failures": failures}
 
 
 @task(multiple_outputs=True)
-def transmit_data_task(connection_details) -> dict:
+def transmit_data_ftp_task(conn_id, local_files) -> dict:
     """
-    Transmit the data
+    Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
     """
-    logger.info("Transmitting the data")
-    return {"success": [], "failures": []}
+    hook = FTPHook(ftp_conn_id=conn_id)
+    connection = Connection.get_connection_from_secrets(conn_id)
+    remote_path = connection.extra_dejson["remote_path"]
+    success = []
+    failures = []
+    for f in local_files:
+        remote_file_path = f"{remote_path}/{Path(f).name}"
+        try:
+            logger.info(f"Start transmission of file {f}")
+            hook.store_file(remote_file_path, f)
+            success.append(f)
+            logger.info(f"End transmission of file {f}")
+        except Exception as e:
+            logger.error(e)
+            logger.error(f"Exception for transmission of file {f}")
+            failures.append(f)
+
+    return {"success": success, "failures": failures}
 
 
 @task
