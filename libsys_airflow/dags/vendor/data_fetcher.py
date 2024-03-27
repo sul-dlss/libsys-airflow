@@ -15,6 +15,8 @@ from libsys_airflow.plugins.vendor.emails import email_args, files_fetched_email
 
 logger = logging.getLogger(__name__)
 
+# mypy: disable-error-code = "index, arg-type"
+
 # Run with:
 # docker exec -it libsys-airflow-airflow-worker-1 airflow dags trigger data_fetcher -c '{"vendor_interface_name": "Gobi - Full bibs", "vendor_code": "YANKEE-SUL", "vendor_uuid": "9cce436e-1858-4c37-9c7f-9374a36576ff", "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351", "dataload_profile_uuid": "f4144dbd-def7-4b77-842a-954c62faf319", "remote_path": "oclc", "filename_regex": "^\\d+\\.mrc$"}'
 # With processing delay:

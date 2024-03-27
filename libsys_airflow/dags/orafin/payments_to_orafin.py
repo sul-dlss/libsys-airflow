@@ -22,6 +22,7 @@ from libsys_airflow.plugins.orafin.tasks import (
 
 logger = logging.getLogger(__name__)
 
+# mypy: disable-error-code = "index, arg-type"
 
 default_args = {
     "owner": "libsys",

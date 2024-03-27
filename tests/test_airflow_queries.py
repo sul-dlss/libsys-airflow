@@ -65,6 +65,10 @@ def test_get_dags_filtering_multiple_actual_tags():
             'example_nested_branch_dag',
             'example_subdag_operator',
             'example_trigger_controller_dag',
+            'example_setup_teardown_taskflow',
+            'tutorial_objectstorage',
+            'example_python_decorator',
+            'example_setup_teardown',
         ]
     )
 
