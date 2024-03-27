@@ -44,7 +44,7 @@ def send_oclc_records():
             "http-web.oclc-Lane",
             "http-web.oclc-Law",
             "http-web.oclc-SUL"
-        ], 
+        ],
         gather_files
     )
 

@@ -24,19 +24,20 @@ def gather_files_task(**kwargs) -> list:
     marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
     return [str(p) for p in marc_filepath.glob("*.mrc")]
 
+
 @task(multiple_outputs=True)
-def gather_oclc_files_task(**kwargs) -> list:
+def gather_oclc_files_task(**kwargs) -> dict:
     """
     Gets new and updated MARC files by library (SUL, Business, Hoover, and Law)
-    to send to OCLC 
+    to send to OCLC
     """
     airflow = kwargs.get("airflow", "/opt/airflow")
-    libraries = {
-         "S7Z": {}, # Business
-         "HIN": {}, # Hoover
-         "CASUM": {}, # Lane
-         "RCJ": {}, # Law
-         "STF": {} # SUL
+    libraries: dict = {
+        "S7Z": {},  # Business
+        "HIN": {},  # Hoover
+        "CASUM": {},  # Lane
+        "RCJ": {},  # Law
+        "STF": {},  # SUL
     }
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
     for marc_file_path in oclc_directory.glob("*.mrc"):
@@ -113,9 +114,9 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
         oclc_code = connection.xtra_dejson["oclc_code"]
         connection_lookup[oclc_code] = {
             "username": connection.login,
-            "password": connection.password
+            "password": connection.password,
         }
-    
+
     for library, records in libraries.items():
         oclc_api = OCLCAPIWrapper(
             user=connection_lookup[library]["username"],
@@ -123,13 +124,14 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
         )
         new_result = oclc_api.new(records['new'])
         success[library] = new_result['success']
-        failures[library]= new_result['failures']
+        failures[library] = new_result['failures']
 
         updated_result = oclc_api.update(records['update'])
         success[library].extend(updated_result['success'])
         failures[library].extend(updated_result['failures'])
 
     return {"success": success, "failures": failures}
+
 
 @task
 def archive_transmitted_data_task(files):
