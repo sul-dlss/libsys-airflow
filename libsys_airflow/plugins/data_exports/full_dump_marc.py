@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 def fetch_full_dump_marc(**kwargs) -> None:
-    batch_size = kwargs.get("batch_size", 50000)
     context = get_current_context()
-
+    params = context.get("params", {})  # type: ignore
+    batch_size = params.get("batch_size")
     total = fetch_number_of_records()
     batch = round(total / batch_size)
     i = 0
@@ -50,8 +50,9 @@ def fetch_number_of_records(**kwargs) -> int:
         sql=query,
     ).execute(context)
 
-    logger.info(f"Record count: {result}")
-    return int(result)
+    count = result[0][0]
+    logger.info(f"Record count: {count}")
+    return int(result[0][0])
 
 
 def refresh_view(**kwargs) -> None:

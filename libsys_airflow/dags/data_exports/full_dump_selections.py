@@ -32,6 +32,9 @@ with DAG(
     schedule=None,
     catchup=False,
     tags=["data export"],
+    params={
+        "batch_size": 50000,
+    }
 ) as dag:
     refresh_table_view = PythonOperator(
         task_id="refresh_materialized_table_view",
@@ -41,7 +44,6 @@ with DAG(
     fetch_and_save_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_full_dump_marc,
-        op_kwargs={"batch_size": 50000},
     )
 
     transform_marc_record = PythonOperator(
