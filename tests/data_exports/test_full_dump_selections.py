@@ -79,3 +79,6 @@ def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context, caplog):
     full_dump_marc.fetch_full_dump_marc()
 
     assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text
+    assert "Saving 3 marc records to 3_6.mrc in bucket" in caplog.text
+    assert "Saving 3 marc records to 6_9.mrc in bucket" in caplog.text
+    assert "Saving 2 marc records to 9_12.mrc in bucket" in caplog.text
