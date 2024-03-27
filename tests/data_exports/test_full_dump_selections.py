@@ -64,7 +64,7 @@ def mock_get_current_context(mocker):
 def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context, caplog):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context",
-        return_value={},
+        return_value={"params": {"batch_size": 3}},
     )
 
     mocker.patch.object(exporter, "get_current_context", mock_get_current_context)
@@ -76,6 +76,6 @@ def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context, caplog):
         return_value=mock_number_of_records(mock_result_set()),
     )
 
-    full_dump_marc.fetch_full_dump_marc(batch_size=3)
+    full_dump_marc.fetch_full_dump_marc()
 
     assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text
