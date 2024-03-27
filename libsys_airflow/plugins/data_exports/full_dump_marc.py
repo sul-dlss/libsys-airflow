@@ -2,16 +2,15 @@ import logging
 
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-from libsys_airflow.plugins.data_exports.instance_ids import save_ids
+from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_full_dump_ids(**kwargs) -> None:
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    batch_size = kwargs.get("batch_size", 50000)
+def fetch_full_dump_marc(**kwargs) -> None:
     context = get_current_context()
-
+    params = context.get("params", {})  # type: ignore
+    batch_size = params.get("batch_size", 50000)
     total = fetch_number_of_records()
     batch = round(total / batch_size)
     i = 0
@@ -33,11 +32,9 @@ def fetch_full_dump_ids(**kwargs) -> None:
         ).execute(context)
         i += 1
 
-        save_ids(
-            airflow=airflow,
-            vendor="full-dump",
-            data=tuples,
-            timestamp=f"{offset}_{batch}_ids",
+        exporter = Exporter()
+        exporter.retrieve_marc_for_full_dump(
+            f"{offset}_{offset + batch_size}.mrc", instance_ids=tuples
         )
 
 
@@ -53,7 +50,9 @@ def fetch_number_of_records(**kwargs) -> int:
         sql=query,
     ).execute(context)
 
-    return int(result)
+    count = result[0][0]
+    logger.info(f"Record count: {count}")
+    return int(count)
 
 
 def refresh_view(**kwargs) -> None:

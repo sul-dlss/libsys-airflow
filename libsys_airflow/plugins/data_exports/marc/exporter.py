@@ -1,9 +1,13 @@
 import csv
+import io
 import logging
 import pathlib
 import pymarc
 
 from libsys_airflow.plugins.folio_client import folio_client
+from airflow.operators.python import get_current_context
+from airflow.models import Variable
+from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +62,7 @@ class Exporter(object):
                     ]
                 )
 
-            case "oclc" | "pod" | "sharevde":
+            case "oclc" | "pod" | "sharevde" | "full-dump":
                 exclude = any(
                     [
                         self.check_590(marc_record.get_fields("590")),
@@ -70,7 +74,9 @@ class Exporter(object):
 
     def retrieve_marc_for_instances(self, instance_file: pathlib.Path) -> str:
         """
-        Writes and returns converted MARC from SRS
+        Called for each instanceid file in vendor or full-dump directory
+        For each ID row, writes and returns converted MARC from SRS
+        Writes to file system, or in case of full-dump to AWS bucket
         """
         if not instance_file.exists():
             raise ValueError(
@@ -97,14 +103,33 @@ class Exporter(object):
                 marc_file = self.write_marc(
                     instance_file, instance_file.parent.parent, marc_record
                 )
+
         return marc_file
 
+    def retrieve_marc_for_full_dump(self, marc_file: str, instance_ids: str) -> None:
+        marc_records = []
+        for row in instance_ids:
+            uuid = row[0]
+            try:
+                marc = self.marc21(uuid)
+            except Exception as e:
+                logger.warning(e)
+                continue
+
+            if self.exclude_marc_by_vendor(marc, "full-dump"):
+                logger.info("Excluding full-dump")
+                continue
+
+            marc_records.append(marc)
+
+        self.write_s3_marc(marc_file, marc_records)
+
     def marc21(self, instance_uuid: str) -> pymarc.Record:
-        json_handler = pymarc.JSONHandler()
+        marc_json_handler = pymarc.JSONHandler()
 
-        json_handler.elements(self.marc_json_from_srs(instance_uuid))
+        marc_json_handler.elements(self.marc_json_from_srs(instance_uuid))
 
-        marc21 = json_handler.records[0]
+        marc21 = marc_json_handler.records[0]
 
         return marc21
 
@@ -132,3 +157,23 @@ class Exporter(object):
         marc_writer.write(marc_record)
         marc_writer.close()
         return str(marc_file.absolute())
+
+    def write_s3_marc(self, marc_file, marc_records):
+        context = get_current_context()
+        marc_data = io.BytesIO()
+        writer = pymarc.MARCWriter(marc_data)
+        for mrec in marc_records:
+            writer.write(mrec)
+
+        writer.close(close_fh=False)
+
+        logger.info(
+            f"Saving {len(marc_records)} marc records to {marc_file} in bucket."
+        )
+        S3CreateObjectOperator(
+            task_id="create_object",
+            s3_bucket=Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"),
+            s3_key=f"full-dump-marc-files/{marc_file}",
+            data=marc_data.getvalue(),
+            replace=True,
+        ).execute(context)
