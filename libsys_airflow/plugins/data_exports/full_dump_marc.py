@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def fetch_full_dump_marc(**kwargs) -> None:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
-    batch_size = params.get("batch_size")
+    batch_size = params.get("batch_size", 50000)
     total = fetch_number_of_records()
     batch = round(total / batch_size)
     i = 0
