@@ -1,8 +1,14 @@
 import pytest  # noqa
 import pathlib
+import httpx
+
+from http import HTTPStatus
+
+from airflow.models import Connection
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
+    transmit_data_http_task,
     archive_transmitted_data_task,
 )
 
@@ -37,10 +43,76 @@ def mock_marc_file_list(mock_file_system):
     return marc_file_list
 
 
+@pytest.fixture
+def mock_httpx_connection():
+    return Connection(
+        conn_id="http-example.com",
+        conn_type="http",
+        host="https://www.example.com",
+        login=None,
+        password=None,
+        extra={"Authorization": "access_token"},
+        schema="https",
+    )
+
+
+@pytest.fixture
+def mock_httpx_success():
+    return httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(HTTPStatus.OK))
+    )
+
+
+@pytest.fixture
+def mock_httpx_failure():
+    return httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(500))
+    )
+
+
 def test_gather_files_task(mock_file_system, mock_marc_file_list):
     airflow = mock_file_system[0]
     marc_file_list = gather_files_task.function(airflow=airflow, vendor="oclc")
     assert marc_file_list.sort() == mock_marc_file_list.sort()
+
+
+def test_transmit_data_task(
+    mocker, mock_httpx_connection, mock_httpx_success, mock_marc_file_list
+):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.httpx.Client",
+        return_value=mock_httpx_success,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_httpx_connection,
+    )
+    transmit_data = transmit_data_http_task.function(
+        "vendor",
+        mock_marc_file_list,
+        files_params="upload[files][]",
+    )
+    for x in mock_marc_file_list:
+        assert len(transmit_data["success"]) == 3
+
+
+def test_transmit_data_failed(
+    mocker, mock_httpx_connection, mock_httpx_failure, mock_marc_file_list
+):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.httpx.Client",
+        return_value=mock_httpx_failure,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_httpx_connection,
+    )
+    transmit_data = transmit_data_http_task.function(
+        "vendor",
+        mock_marc_file_list,
+    )
+    for x in mock_marc_file_list:
+        assert len(transmit_data["failures"]) == 3
 
 
 def test_archive_transmitted_data_task(mock_file_system, mock_marc_file_list):
