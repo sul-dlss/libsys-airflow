@@ -39,13 +39,12 @@ def send_oclc_records():
 
     transmit_data = transmit_data_oclc_api_task(
         [
-            "http-web.oclc-Business"
-            "http-web.oclc-Hoover",
+            "http-web.oclc-Business" "http-web.oclc-Hoover",
             "http-web.oclc-Lane",
             "http-web.oclc-Law",
-            "http-web.oclc-SUL"
+            "http-web.oclc-SUL",
         ],
-        gather_files
+        gather_files,
     )
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
