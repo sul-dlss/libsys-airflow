@@ -52,7 +52,7 @@ def fetch_number_of_records(**kwargs) -> int:
 
     count = result[0][0]
     logger.info(f"Record count: {count}")
-    return int(result[0][0])
+    return int(count)
 
 
 def refresh_view(**kwargs) -> None:
