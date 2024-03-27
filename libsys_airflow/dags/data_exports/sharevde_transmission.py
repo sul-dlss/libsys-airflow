@@ -6,9 +6,8 @@ from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    connection_details_task,
     gather_files_task,
-    transmit_data_task,
+    transmit_data_ftp_task,
     archive_transmitted_data_task,
 )
 
@@ -38,9 +37,7 @@ def send_sharevde_records():
 
     gather_files = gather_files_task(vendor="sharevde")
 
-    connection_details = connection_details_task()
-
-    transmit_data = transmit_data_task(connection_details)
+    transmit_data = transmit_data_ftp_task("sharevde", gather_files)
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
 
