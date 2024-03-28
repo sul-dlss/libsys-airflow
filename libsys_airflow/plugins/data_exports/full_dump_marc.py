@@ -7,41 +7,35 @@ from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 logger = logging.getLogger(__name__)
 
 
-def fetch_full_dump_marc(**kwargs) -> None:
+def fetch_full_dump_marc(**kwargs) -> str:
     context = get_current_context()
-    params = context.get("params", {})  # type: ignore
-    batch_size = params.get("batch_size", 50000)
-    total = fetch_number_of_records()
-    batch = round(total / batch_size)
-    i = 0
+    offset = kwargs.get("offset")
+    batch_size = kwargs.get("batch_size", 1000)
+    task_id = f"postgres_full_dump_query_{offset}"
 
-    query = (
-        "SELECT id FROM public.data_export_marc_ids LIMIT %(limit)s OFFSET %(offset)s"
+    query = "SELECT id, content FROM public.data_export_marc LIMIT %(limit)s OFFSET %(offset)s"
+
+    tuples = SQLExecuteQueryOperator(
+        task_id=task_id,
+        conn_id="postgres_folio",
+        database=kwargs.get("database", "okapi"),
+        sql=query,
+        parameters={"offset": offset, "limit": batch_size},
+    ).execute(context)
+
+    exporter = Exporter()
+    marc_file = exporter.retrieve_marc_for_full_dump(
+        f"{offset}_{offset + batch_size}.mrc",
+        instance_ids=tuples,
     )
 
-    while i <= batch - 1:
-        task_id = f"postgres_full_dump_query_{i}"
-        offset = i * batch_size
-
-        tuples = SQLExecuteQueryOperator(
-            task_id=task_id,
-            conn_id="postgres_folio",
-            database=kwargs.get("database", "okapi"),
-            sql=query,
-            parameters={"offset": offset, "limit": batch_size},
-        ).execute(context)
-        i += 1
-
-        exporter = Exporter()
-        exporter.retrieve_marc_for_full_dump(
-            f"{offset}_{offset + batch_size}.mrc", instance_ids=tuples
-        )
+    return str(marc_file)
 
 
 def fetch_number_of_records(**kwargs) -> int:
     context = get_current_context()
 
-    query = "SELECT count(id) from public.data_export_marc_ids"
+    query = "SELECT count(id) from public.data_export_marc"
 
     result = SQLExecuteQueryOperator(
         task_id="postgres_full_count_query",
@@ -57,16 +51,21 @@ def fetch_number_of_records(**kwargs) -> int:
 
 def refresh_view(**kwargs) -> None:
     context = get_current_context()
+    params = context.get("params", {})  # type: ignore
+    refresh = params.get("refresh_view", True)
 
-    query = "refresh materialized view data_export_marc_ids"
+    if refresh:
+        query = "refresh materialized view data_export_marc_ids"
 
-    result = SQLExecuteQueryOperator(
-        task_id="postgres_full_count_query",
-        conn_id="postgres_folio",
-        database=kwargs.get("database", "okapi"),
-        sql=query,
-    ).execute(context)
+        result = SQLExecuteQueryOperator(
+            task_id="postgres_full_count_query",
+            conn_id="postgres_folio",
+            database=kwargs.get("database", "okapi"),
+            sql=query,
+        ).execute(context)
 
-    logger.info(result)
+        logger.info(result)
+    else:
+        logger.info("Skipping refresh of materialized view")
 
     return None

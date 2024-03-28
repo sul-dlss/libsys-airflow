@@ -60,7 +60,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 6. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
 7. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
 8. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
-9. Access Airflow locally at http://localhost:3000. The default username and password are both `airflow`.
+9. Access Airflow locally at http://localhost:8080. The default username and password are both `airflow`.
 10. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
 ### For FOLIO migration loads
