@@ -92,8 +92,7 @@ def test_transmit_data_task(
         mock_marc_file_list,
         files_params="upload[files][]",
     )
-    for x in mock_marc_file_list:
-        assert len(transmit_data["success"]) == 3
+    assert len(transmit_data["success"]) == 3
 
 
 def test_transmit_data_failed(
@@ -111,8 +110,7 @@ def test_transmit_data_failed(
         "vendor",
         mock_marc_file_list,
     )
-    for x in mock_marc_file_list:
-        assert len(transmit_data["failures"]) == 3
+    assert len(transmit_data["failures"]) == 3
 
 
 def test_archive_transmitted_data_task(mock_file_system, mock_marc_file_list):
