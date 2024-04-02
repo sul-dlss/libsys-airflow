@@ -1,3 +1,4 @@
+import json
 import httpx
 import pymarc
 import pytest
@@ -5,7 +6,6 @@ import pytest
 from libsys_airflow.plugins.data_exports import oclc_api
 
 
-@pytest.fixture
 def mock_oclc_httpx():
     def mock_response(request):
         response = None
@@ -70,7 +70,7 @@ def mock_oclc_httpx():
     return httpx.Client(transport=httpx.MockTransport(mock_response))
 
 
-@pytest.fixture
+# @pytest.fixture
 def mock_folio_client(mocker):
     mock = mocker
     mock.okapi_headers = {}
@@ -78,39 +78,35 @@ def mock_folio_client(mocker):
     return mock
 
 
-def test_oclc_api_class_init(mocker, mock_oclc_httpx, mock_folio_client):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
+@pytest.fixture
+def mock_oclc_api(mocker):
+    mock = mocker.MagicMock()
+    mock.Client = lambda: mock_oclc_httpx()
 
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
+    mocker.patch.object(oclc_api, "httpx", mock)
 
     mocker.patch(
         "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
+        return_value=mock_folio_client(mocker),
     )
+
+    return mocker
+
+
+def test_oclc_api_class_init(mock_oclc_api):
+
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         user="oclc_user", password="oclc_password"
     )
 
     assert oclc_api_instance.folio_client.okapi_url == "https://okapi.stanford.edu/"
     assert oclc_api_instance.oclc_headers == {
-        "Authorization": "abcded12345",
+        "Authorization": "Bearer: abcded12345",
         "Content-type": "application/marc",
     }
 
 
-def test_oclc_api_class_no_new_records(
-    mocker, mock_oclc_httpx, mock_folio_client, caplog
-):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
+def test_oclc_api_class_no_new_records(mock_oclc_api, caplog):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         user="fx_str", password="fx_str_password"
@@ -121,18 +117,7 @@ def test_oclc_api_class_no_new_records(
     assert "No new marc records" in caplog.text
 
 
-def test_oclc_api_class_new_records(
-    tmp_path, mocker, mock_oclc_httpx, mock_folio_client
-):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
+def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
 
     marc_record = pymarc.Record()
     marc_record.add_field(
@@ -174,19 +159,7 @@ def test_oclc_api_class_new_records(
     assert new_result['failures'] == []
 
 
-def test_oclc_api_class_updated_records(
-    tmp_path, mocker, mock_oclc_httpx, mock_folio_client
-):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
+def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
     marc_record = pymarc.Record()
     marc_record.add_field(
         pymarc.Field(
@@ -241,16 +214,7 @@ def test_oclc_api_failed_authenication(mocker):
         oclc_api.OCLCAPIWrapper(user="fx_str", password="fx_str_password")
 
 
-def test_oclc_api_missing_srs(mocker, mock_oclc_httpx, caplog):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
+def test_oclc_api_missing_srs(mock_oclc_api, caplog):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         user="fx_str", password="fx_str_password"
@@ -263,17 +227,7 @@ def test_oclc_api_missing_srs(mocker, mock_oclc_httpx, caplog):
     assert "Record Missing SRS uuid" in caplog.text
 
 
-def test_failed_oclc_new_record(tmp_path, mocker, mock_oclc_httpx, mock_folio_client):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
+def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
     record = pymarc.Record()
     record.add_field(pymarc.Field(tag='001', data='00a'))
     record.add_field(
@@ -302,19 +256,7 @@ def test_failed_oclc_new_record(tmp_path, mocker, mock_oclc_httpx, mock_folio_cl
     assert new_response["failures"] == ['08ca5a68-241a-4a5f-89b9-5af5603981ad']
 
 
-def test_bad_srs_put_in_new_context(
-    tmp_path, mocker, mock_oclc_httpx, mock_folio_client
-):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
+def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -342,17 +284,7 @@ def test_bad_srs_put_in_new_context(
     assert new_results['failures'] == ['d63085c0-cab6-4bdd-95e8-d53696919ac1']
 
 
-def test_no_update_records(mocker, mock_oclc_httpx, mock_folio_client, caplog):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
+def test_no_update_records(mock_oclc_api, caplog):
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         user="fx_str", password="fx_str_password"
     )
@@ -362,17 +294,7 @@ def test_no_update_records(mocker, mock_oclc_httpx, mock_folio_client, caplog):
     assert "No updated marc records" in caplog.text
 
 
-def test_bad_holdings_set_call(tmp_path, mocker, mock_oclc_httpx, mock_folio_client):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_oclc_httpx
-
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
+def test_bad_holdings_set_call(tmp_path, mock_oclc_api):
     marc_record = pymarc.Record()
     marc_record.add_field(
         pymarc.Field(tag='001', data='4566'),
