@@ -31,7 +31,8 @@ class OCLCAPIWrapper(object):
     def __del__(self):
         if self.httpx_client:
             self.httpx_client.close()
-        # ! Close snapshot
+        if self.snapshot:
+            self.__close_snapshot__()
 
     def __authenticate__(self, username, passphrase) -> None:
         try:
@@ -43,7 +44,7 @@ class OCLCAPIWrapper(object):
             logger.info("Retrieved API Access Token")
             token = result.json()["access_token"]
             self.oclc_headers = {
-                "Authorization": token,
+                "Authorization": f"Bearer: {token}",
                 "Content-type": "application/marc",
             }
         except Exception as e:
@@ -51,12 +52,21 @@ class OCLCAPIWrapper(object):
             logger.error(msg)
             raise Exception(msg, e)
 
+    def __close_snapshot__(self) -> None:
+        post_result = self.httpx_client.post(
+            f"{self.folio_client.okapi_url}source-storage/snapshots",
+            headers=self.folio_client.okapi_headers,
+            json={"jobExecutionId": self.snapshot, "status": "PROCESSING_FINISHED"},
+        )
+
+        post_result.raise_for_status()
+
     def __generate_snapshot__(self) -> None:
         snapshot_uuid = str(uuid.uuid4())
         post_result = self.httpx_client.post(
             f"{self.folio_client.okapi_url}source-storage/snapshots",
             headers=self.folio_client.okapi_headers,
-            json={"jobExecuteionId": snapshot_uuid, "status": "NEW"},
+            json={"jobExecutionId": snapshot_uuid, "status": "NEW"},
         )
         post_result.raise_for_status()
         self.snapshot = snapshot_uuid
