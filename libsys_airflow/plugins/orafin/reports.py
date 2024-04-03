@@ -42,7 +42,6 @@ def _retrieve_invoice(
         case 0:
             msg = f"No Invoice found for folioInvoiceNo {folio_invoice_number}"
             logger.error(msg)
-            report_row['error'] = msg
             task_instance.xcom_push(key="missing", value=report_row)
 
         case 1:
@@ -51,14 +50,12 @@ def _retrieve_invoice(
                 case "Cancelled":
                     msg = f"Invoice {invoice['id']} has been Cancelled"
                     logger.error(msg)
-                    report_row['error'] = msg
                     report_row['invoice_id'] = invoice['id']
                     task_instance.xcom_push(key="cancelled", value=report_row)
 
                 case "Paid":
                     msg = f"Invoice {invoice['id']} already Paid"
                     logger.error(msg)
-                    report_row['error'] = msg
                     report_row['invoice_id'] = invoice['id']
                     task_instance.xcom_push(key="paid", value=report_row)
 
@@ -69,7 +66,6 @@ def _retrieve_invoice(
             invoice_ids = [invoice['id'] for invoice in invoice_result['invoices']]
             msg = f"Multiple invoices {','.join(invoice_ids)} found for folioInvoiceNo {folio_invoice_number}"
             logger.error(msg)
-            report_row['error'] = msg
             report_row['invoice_ids'] = invoice_ids
             task_instance.xcom_push(key="duplicates", value=report_row)
     return None
