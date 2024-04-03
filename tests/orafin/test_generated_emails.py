@@ -22,20 +22,93 @@ def mock_retrieve_invoice_task_xcom_pull(**kwargs):
         case "cancelled":
             output.extend(
                 [
-                    "759dfefa-a2d4-4977-bf31-d11da1ba1fb0",
-                    "0332b649-4415-4a63-8a6e-4b0b16b51ab0",
-                    "6c583579-146c-453b-aa05-e1ce0d8365cd",
+                    {
+                        'SupplierNumber': 31134,
+                        'SupplierName': 'GOBI LIBRARY SERVICES',
+                        'PaymentNumber': 3262656,
+                        'PaymentDate': '03/29/2024',
+                        'PaymentAmount': 14038.19,
+                        'InvoiceNum': '2024-988810 16009',
+                        'InvoiceDate': '02/28/2024',
+                        'InvoiceAmt': 380.0,
+                        'AmountPaid': 380.0,
+                        'PoNumber': None,
+                        "invoice_id": "759dfefa-a2d4-4977-bf31-d11da1ba1fb0",
+                    },
+                    {
+                        'SupplierNumber': 619422,
+                        'SupplierName': 'CONTINUING EDUCATION OF THE BAR CALIFORNIA',
+                        'PaymentNumber': 2412482,
+                        'PaymentDate': '03/28/2024',
+                        'PaymentAmount': 1301.81,
+                        'InvoiceNum': '11142139 16497',
+                        'InvoiceDate': '02/22/2024',
+                        'InvoiceAmt': 476.33,
+                        'AmountPaid': 476.33,
+                        'PoNumber': None,
+                        'invoice_id': "0332b649-4415-4a63-8a6e-4b0b16b51ab0",
+                    },
+                    {
+                        'SupplierNumber': 2685,
+                        'SupplierName': 'AUX AMATEURS DE LIVRES',
+                        'PaymentNumber': 2412515,
+                        'PaymentDate': '03/28/2024',
+                        'PaymentAmount': 5079.42,
+                        'InvoiceNum': 'F240201919 15471',
+                        'InvoiceDate': '02/06/2024',
+                        'InvoiceAmt': 725.45,
+                        'AmountPaid': 725.45,
+                        'PoNumber': None,
+                        'invoice_id': "6c583579-146c-453b-aa05-e1ce0d8365cd",
+                    },
                 ]
             )
 
         case "missing":
-            output.append("10440")
+            output.append(
+                {
+                    'SupplierNumber': 12580,
+                    'SupplierName': 'OTTO HARRASSOWITZ GMBH AND CO KG',
+                    'PaymentNumber': 3262272,
+                    'PaymentDate': '03/28/2024',
+                    'PaymentAmount': 0.0,
+                    'InvoiceNum': '39327 16568',
+                    'InvoiceDate': '03/05/2024',
+                    'InvoiceAmt': -622.02,
+                    'AmountPaid': -622.02,
+                    'PoNumber': None,
+                }
+            )
 
         case "paid":
             output.extend(
                 [
-                    "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
-                    "e2886f5c-f7f7-4d26-aa32-afc62e2d554c",
+                    {
+                        'SupplierNumber': 597416,
+                        'SupplierName': 'BRILL',
+                        'PaymentNumber': 3246272,
+                        'PaymentDate': '03/13/2024',
+                        'PaymentAmount': 3310.3,
+                        'InvoiceNum': '1074695 15496',
+                        'InvoiceDate': '02/12/2024',
+                        'InvoiceAmt': 3310.3,
+                        'AmountPaid': 3310.3,
+                        'PoNumber': None,
+                        'invoice_id': "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+                    },
+                    {
+                        'SupplierNumber': 917465,
+                        'SupplierName': 'EDITIO ALTERA',
+                        'PaymentNumber': 3246686,
+                        'PaymentDate': '03/13/2024',
+                        'PaymentAmount': 20250.0,
+                        'InvoiceNum': '1406 15205',
+                        'InvoiceDate': '02/12/2024',
+                        'InvoiceAmt': 5400.0,
+                        'AmountPaid': 5400.0,
+                        'PoNumber': None,
+                        'invoice_id': "e2886f5c-f7f7-4d26-aa32-afc62e2d554c",
+                    },
                 ]
             )
 
@@ -75,18 +148,26 @@ def test_generate_ap_error_report_email(mocker):
     assert h2s[1].text == "Cancelled Invoices"
     assert h2s[2].text == "Already Paid Invoices"
 
-    uls = html_body.find_all("ul")
-    missing_lis = uls[0].find_all("li")
-    assert missing_lis[0].text == "10440 found in AP Report but not in FOLIO"
-
-    cancelled_lis = uls[1].find_all("li")
+    tables = html_body.find_all("table")
+    missing_trs = tables[0].find_all("tr")
+    assert len(missing_trs) == 2
+    assert missing_trs[0].find_all('th')[5].text.startswith("InvoiceNum")
     assert (
-        cancelled_lis[1].find("a").get("href")
+        missing_trs[1]
+        .find_all('td')[1]
+        .text.startswith("OTTO HARRASSOWITZ GMBH AND CO KG")
+    )
+
+    cancelled_trs = tables[1].find_all("tr")
+    assert len(cancelled_trs) == 4
+    assert cancelled_trs[0].find_all('th')[-1].text.startswith("Invoice URL")
+    assert (
+        cancelled_trs[2].find_all('td')[-1].find('a').get('href')
         == "http://folio.stanford.edu/invoice/view/0332b649-4415-4a63-8a6e-4b0b16b51ab0"
     )
 
-    paid_lis = uls[2].find_all("li")
-    assert paid_lis[0].find("a").text == "Invoice 9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"
+    paid_trs = tables[2].find_all("tr")
+    assert paid_trs[2].find_all('td')[3].text == "03/13/2024"
 
 
 def test_generate_ap_error_report_email_options(mocker):
@@ -96,9 +177,9 @@ def test_generate_ap_error_report_email_options(mocker):
     def _no_missing_xcom(**kwargs):
         key = kwargs.get("key")
         if key.startswith("cancelled"):
-            return ["759dfefa-a2d4-4977-bf31-d11da1ba1fb0"]
+            return [{"invoice_id": "759dfefa-a2d4-4977-bf31-d11da1ba1fb0"}]
         if key.startswith("paid"):
-            return ["9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"]
+            return [{"invoice_id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"}]
         return None
 
     mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")

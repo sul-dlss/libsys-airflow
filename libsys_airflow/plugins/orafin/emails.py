@@ -1,6 +1,9 @@
 import logging
 import pathlib
 
+import numpy as np
+import pandas as pd
+
 from jinja2 import Environment, Template
 
 from airflow.models import Variable
@@ -13,50 +16,44 @@ logger = logging.getLogger(__name__)
 
 
 def _ap_report_errors_email_body(
-    missing_invoices: list,
-    cancelled_invoices: list,
-    paid_invoices: list,
+    missing_invoices: pd.DataFrame,
+    cancelled_invoices: pd.DataFrame,
+    paid_invoices: pd.DataFrame,
     folio_url: str,
 ) -> str:
+    def _generate_folio_url(uuid: str) -> str:
+        invoice_url = f"{folio_url}/invoice/view/{uuid}"
+        return f"""<a href="{invoice_url}">Invoice {uuid}</a>"""
+
+    def _update_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+        dataframe = dataframe.replace({np.nan: None})
+        dataframe["Invoice URL"] = dataframe["invoice_id"].apply(_generate_folio_url)
+        dataframe = dataframe.drop(columns=["invoice_id"])
+        return dataframe
+
+    cancelled_invoices = _update_dataframe(cancelled_invoices)
+    paid_invoices = _update_dataframe(paid_invoices)
+
     template = Template(
         """
         <h1>Invoices Failures from AP Report</h1>
         {% if missing|length > 0 %}
         <h2>Missing Invoices</h2>
-        <ul>
-        {% for folio_invoice_number in missing %}
-        <li>{{ folio_invoice_number }} found in AP Report but not in FOLIO</li>
-        {% endfor %}
-        </ul>
+        {{ missing.to_html(escape=False, index=False)|safe }}
         {% endif %}
         {% if cancelled|length > 0 %}
         <h2>Cancelled Invoices</h2>
-        <ul>
-        {% for invoice_id in cancelled %}
-        <li>
-            <a href="{{ folio_url}}/invoice/view/{{invoice_id }}">Invoice {{invoice_id }}</a>
-        </li>
-        {% endfor %}
-        </ul>
+        {{ cancelled.to_html(escape=False, index=False)|safe }}
         {% endif %}
         {% if paid|length > 0 %}
         <h2>Already Paid Invoices</h2>
-        <ul>
-        {% for invoice_id in paid %}
-        <li>
-          <a href="{{ folio_url}}/invoice/view/{{invoice_id }}">Invoice {{invoice_id }}</a>
-        </li>
-        {% endfor %}
-        </ul>
+        {{ paid.to_html(escape=False, index=False)|safe }}
         {% endif %}
         """
     )
 
     return template.render(
-        missing=missing_invoices,
-        cancelled=cancelled_invoices,
-        paid=paid_invoices,
-        folio_url=folio_url,
+        missing=missing_invoices, cancelled=cancelled_invoices, paid=paid_invoices
     )
 
 
@@ -299,18 +296,22 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     )
     if missing_invoices is None:
         missing_invoices = []
+    missing_invoices_df = pd.DataFrame(missing_invoices)
     logger.info(f"Missing {len(missing_invoices):,}")
     cancelled_invoices = task_instance.xcom_pull(
         task_ids='retrieve_invoice_task', key='cancelled'
     )
     if cancelled_invoices is None:
         cancelled_invoices = []
+    cancelled_invoices_df = pd.DataFrame(cancelled_invoices)
     logger.info(f"Cancelled {len(cancelled_invoices):,}")
+
     paid_invoices = task_instance.xcom_pull(
         task_ids='retrieve_invoice_task', key='paid'
     )
     if paid_invoices is None:
         paid_invoices = []
+    paid_invoices_df = pd.DataFrame(paid_invoices)
     logger.info(f"Paid {len(paid_invoices):,}")
     total_errors = len(missing_invoices) + len(cancelled_invoices) + len(paid_invoices)
 
@@ -327,7 +328,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     )
 
     html_content = _ap_report_errors_email_body(
-        missing_invoices, cancelled_invoices, paid_invoices, folio_url
+        missing_invoices_df, cancelled_invoices_df, paid_invoices_df, folio_url
     )
 
     send_email(
