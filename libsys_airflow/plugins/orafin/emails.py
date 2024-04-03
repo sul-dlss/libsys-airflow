@@ -1,6 +1,8 @@
 import logging
 import pathlib
 
+import pandas as pd
+
 from jinja2 import Environment, Template
 
 from airflow.models import Variable
@@ -299,20 +301,25 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     )
     if missing_invoices is None:
         missing_invoices = []
+    missing_invoices_df = pd.DataFrame(missing_invoices)
     logger.info(f"Missing {len(missing_invoices):,}")
     cancelled_invoices = task_instance.xcom_pull(
         task_ids='retrieve_invoice_task', key='cancelled'
     )
     if cancelled_invoices is None:
         cancelled_invoices = []
+    cancelled_invoices_df = pd.DataFrame(cancelled_invoices)
     logger.info(f"Cancelled {len(cancelled_invoices):,}")
     paid_invoices = task_instance.xcom_pull(
         task_ids='retrieve_invoice_task', key='paid'
     )
     if paid_invoices is None:
         paid_invoices = []
+    paid_invoices_df = pd.DataFrame(paid_invoices)
     logger.info(f"Paid {len(paid_invoices):,}")
-    total_errors = len(missing_invoices) + len(cancelled_invoices) + len(paid_invoices)
+    total_errors = sum(
+        [len(error) for error in [missing_invoices, cancelled_invoices, paid_invoices]]
+    )
 
     # No errors, don't send email
     if total_errors < 1:
@@ -327,7 +334,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     )
 
     html_content = _ap_report_errors_email_body(
-        missing_invoices, cancelled_invoices, paid_invoices, folio_url
+        missing_invoices_df, cancelled_invoices_df, paid_invoices_df, folio_url
     )
 
     send_email(

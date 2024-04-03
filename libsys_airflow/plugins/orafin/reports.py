@@ -26,12 +26,13 @@ ap_server_options = [
 
 
 def _retrieve_invoice(
-    invoice_number: str, folio_client: FolioClient, task_instance
+    report_row: dict, folio_client: FolioClient, task_instance
 ) -> Union[dict, None]:
     """
     Takes InvoiceNum and parses out the folioInvoiceNo values to retrieve invoice from
     Okapi
     """
+    invoice_number = report_row["InvoiceNum"]
     parts = shlex.split(invoice_number)
     _, folio_invoice_number = parts[0], parts[1]
     invoice_result = folio_client.get(
@@ -41,7 +42,8 @@ def _retrieve_invoice(
         case 0:
             msg = f"No Invoice found for folioInvoiceNo {folio_invoice_number}"
             logger.error(msg)
-            task_instance.xcom_push(key="missing", value=msg)
+            report_row['error'] = msg
+            task_instance.xcom_push(key="missing", value=report_row)
 
         case 1:
             invoice = invoice_result["invoices"][0]
@@ -49,20 +51,27 @@ def _retrieve_invoice(
                 case "Cancelled":
                     msg = f"Invoice {invoice['id']} has been Cancelled"
                     logger.error(msg)
-                    task_instance.xcom_push(key="cancelled", value=invoice['id'])
+                    report_row['error'] = msg
+                    report_row['invoice_id'] = invoice['id']
+                    task_instance.xcom_push(key="cancelled", value=report_row)
 
                 case "Paid":
                     msg = f"Invoice {invoice['id']} already Paid"
                     logger.error(msg)
-                    task_instance.xcom_push(key="paid", value=invoice['id'])
+                    report_row['error'] = msg
+                    report_row['invoice_id'] = invoice['id']
+                    task_instance.xcom_push(key="paid", value=report_row)
 
                 case _:
                     return invoice
 
         case _:
-            msg = f"Multiple invoices {','.join([invoice['id'] for invoice in invoice_result['invoices']])} found for folioInvoiceNo {folio_invoice_number}"
+            invoice_ids = [invoice['id'] for invoice in invoice_result['invoices']]
+            msg = f"Multiple invoices {','.join(invoice_ids)} found for folioInvoiceNo {folio_invoice_number}"
             logger.error(msg)
-            task_instance.xcom_push(key="duplicates", value=msg)
+            report_row['error'] = msg
+            report_row['invoice_ids'] = invoice_ids
+            task_instance.xcom_push(key="duplicates", value=report_row)
     return None
 
 
@@ -144,7 +153,7 @@ def remove_reports() -> OperatorPartial:
 
 def retrieve_invoice(row: dict, folio_client: FolioClient) -> Union[None, dict]:
     task_instance = get_current_context()["ti"]
-    invoice = _retrieve_invoice(row["InvoiceNum"], folio_client, task_instance)
+    invoice = _retrieve_invoice(row, folio_client, task_instance)
     if invoice:
         task_instance.xcom_push(key=invoice["id"], value=row)
         return invoice
