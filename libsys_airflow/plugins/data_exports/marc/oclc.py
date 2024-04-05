@@ -76,15 +76,28 @@ class OCLCTransformer(Transformer):
 
     def get_record_id(self, record: pymarc.Record) -> list:
         """
-        Extracts OCLC id from 035 field
+        Extracts OCLC control number from 035 field
         """
-        oclc_ids = []
+        oclc_ids = set()
         for field in record.get_fields("035"):
             subfields_a = field.get_subfields("a")
             for subfield in subfields_a:
+                # Skip Legacy OCLC Number
+                if subfield.startswith("(OCoLC-I)"):
+                    continue
+                # Matches (OCoLC) and (OCoLC-M)
                 if subfield.startswith("(OCoLC"):
-                    oclc_ids.append(subfield)
-        return oclc_ids
+                    raw_oclc_number = subfield.split(")")[-1].strip()
+                    if raw_oclc_number.startswith("ocm") or raw_oclc_number.startswith(
+                        "ocn"
+                    ):
+                        oclc_number = raw_oclc_number[3:]
+                    elif raw_oclc_number.startswith("on"):
+                        oclc_number = raw_oclc_number[2:]
+                    else:
+                        oclc_number = raw_oclc_number
+                    oclc_ids.add(oclc_number)
+        return list(oclc_ids)
 
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
         instance_id = record['999']['i']

@@ -346,8 +346,57 @@ def test_save(mocker, mock_folio_client, sample_marc_records, tmp_path):
     assert (marc_file.parent / "202401213-STF-update.mrc").exists()
     assert (marc_file.parent / "202401213-HIN-new.mrc").exists()
 
-    assert oclc_transformer.staff_notices[0] == (
-        '7cf53d65-973b-441c-a7c4-f66467ee077f',
-        'RCJ',
-        ['(OCoLC)123489', '(OCoLC-M)445689'],
+    assert (
+        oclc_transformer.staff_notices[0][0] == '7cf53d65-973b-441c-a7c4-f66467ee077f'
     )
+    assert oclc_transformer.staff_notices[0][1] == 'RCJ'
+    assert sorted(oclc_transformer.staff_notices[0][2]) == ['123489', '445689']
+
+
+def test_get_record_id(mocker, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    oclc_transformer = OCLCTransformer()
+
+    record_oclc_i = pymarc.Record()
+    record_oclc_i.add_field(
+        pymarc.Field(
+            tag="035",
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC-I)275220973")],
+        ),
+        pymarc.Field(
+            tag="035",
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC-M)38180605")],
+        ),
+    )
+
+    oclc_no_i_ids = oclc_transformer.get_record_id(record_oclc_i)
+    assert oclc_no_i_ids == ["38180605"]
+
+    record_dup_and_prefixes = pymarc.Record()
+    record_dup_and_prefixes.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC)on1427207959")],
+        ),
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC-M)1427207959")],
+        ),
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC)ocm1427207959")],
+        ),
+    )
+
+    oclc_ids = oclc_transformer.get_record_id(record_dup_and_prefixes)
+
+    assert oclc_ids == ["1427207959"]
