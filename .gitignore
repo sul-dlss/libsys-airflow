@@ -8,6 +8,7 @@ coverage.xml
 refresh_vendors.log
 seed_vendors.log
 circ/
+data-export-files/
 dist/
 .python-version
 orafin-files/
