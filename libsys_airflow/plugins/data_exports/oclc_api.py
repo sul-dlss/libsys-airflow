@@ -8,6 +8,9 @@ import pymarc
 
 from typing import List, Union
 
+from bookops_worldcat import WorldcatAccessToken, MetadataSession
+from bookops_worldcat.errors import WorldcatRequestError 
+
 from libsys_airflow.plugins.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -20,12 +23,12 @@ class OCLCAPIWrapper(object):
     worldcat_metadata_url = "https://metadata.api.oclc.org/worldcat"
 
     def __init__(self, **kwargs):
-        self.oclc_headers = None
-        user = kwargs["user"]
-        password = kwargs["password"]
-        self.snapshot = None
+        self.oclc_token = None
+        client_id = kwargs["client_id"]
+        secret = kwargs["secret"]
         self.httpx_client = None
-        self.__authenticate__(user, password)
+        self.snapshot = None
+        self.__authenticate__(client_id, secret)
         self.folio_client = folio_client()
 
     def __del__(self):
@@ -34,21 +37,15 @@ class OCLCAPIWrapper(object):
         if self.snapshot:
             self.__close_snapshot__()
 
-    def __authenticate__(self, username, passphrase) -> None:
+    def __authenticate__(self, client_key, secret) -> None:
         try:
-            self.httpx_client = httpx.Client()
-
-            result = self.httpx_client.post(
-                url=OCLCAPIWrapper.auth_url, auth=(username, passphrase)
+            self.oclc_token = WorldcatAccessToken(
+                key=client_key,
+                secret=secret,
+                scopes="WorldCatMetadataAPI"
             )
-            logger.info("Retrieved API Access Token")
-            token = result.json()["access_token"]
-            self.oclc_headers = {
-                "Authorization": f"Bearer: {token}",
-                "Content-type": "application/marc",
-            }
         except Exception as e:
-            msg = "Unable to Retrieve Access Token"
+            msg = "Unable to Retrieve Worldcat Access Token"
             logger.error(msg)
             raise Exception(msg, e)
 
@@ -140,22 +137,24 @@ class OCLCAPIWrapper(object):
             srs_uuid = self.__srs_uuid__(record)
             if srs_uuid is None:
                 continue
-            new_record_result = self.httpx_client.post(
-                f"{OCLCAPIWrapper.worldcat_metadata_url}/manage/bibs",
-                headers=self.oclc_headers,
-                data=record.as_marc21(),
-            )
+            with MetadataSession(authorization=self.oclc_token) as session:
+                try:
+                    marc21 = record.as_marc21()
+                    session.bib_validate(
+                        record=marc21,
+                        recordFormat="application/marc",
+                        validationLevel="validateFull"
+                    )
+                    new_record = session.bib_create(
+                        record=marc21,
+                        recordFormat="application/marc",
+                    )
+                    self.__update_035__(new_record, record)
+                except WorldcatRequestError  as e:
+                    logger.error(e)
+                    output['failures'].append(srs_uuid)
+                    continue
 
-            if new_record_result.status_code != 200:
-                logger.error(
-                    f"Failed to create record, error: {new_record_result.text}"
-                )
-                output['failures'].append(srs_uuid)
-                continue
-            self.__update_035__(new_record_result.content, record)
-            if not self.put_folio_record(srs_uuid, record):
-                output['failures'].append(srs_uuid)
-                continue
             output['success'].append(srs_uuid)
         return output
 
