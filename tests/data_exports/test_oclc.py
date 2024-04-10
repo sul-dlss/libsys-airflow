@@ -3,7 +3,10 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer, get_record_id
+from libsys_airflow.plugins.data_exports.marc.oclc import (
+    OCLCTransformer,
+    get_record_id
+)
 
 
 @pytest.fixture
