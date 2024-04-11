@@ -1,6 +1,8 @@
 import logging
-import re
+import ftplib
 import pathlib
+import re
+
 from typing import Union, Callable, Optional
 from datetime import datetime, timedelta
 
@@ -33,13 +35,27 @@ class FTPAdapter:
         return self._filenames
 
     def get_mod_time(self, filename: str) -> datetime:
-        return self.hook.get_mod_time(filename)
+        try:
+            mod_time = self.hook.get_mod_time(filename)
+        except ftplib.error_perm as e:
+            logger.error(f"Failed to retrieve modified time for {filename}, {e}")
+            mod_time = self.hook.get_mod_time(f"{self.remote_path}/{filename}")
+        return mod_time
 
     def get_size(self, filename: str) -> int | None:
-        return self.hook.get_size(filename)
+        try:
+            file_size = self.hook.get_size(filename)
+        except ftplib.error_perm as e:
+            logger.error(f"Failed to retrieve size for {filename}, {e}")
+            file_size = self.hook.get_size(f"{self.remote_path}/{filename}")
+        return file_size
 
     def retrieve_file(self, filename: str, download_filepath: str):
-        self.hook.retrieve_file(filename, download_filepath)
+        try:
+            self.hook.retrieve_file(filename, download_filepath)
+        except ftplib.error_perm as e:
+            logger.error(f"Failed to retrieve {filename}, {e}")
+            self.hook.retrieve_file(f"{self.remote_path}/{filename}", download_filepath)
 
 
 class SFTPAdapter:
