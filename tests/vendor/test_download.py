@@ -1,3 +1,4 @@
+import ftplib
 import pytest  # noqa
 from datetime import datetime
 from pytest_mock_resources import create_sqlite_fixture, Rows
@@ -5,6 +6,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 
 from libsys_airflow.plugins.vendor.download import (
     download,
+    FTPAdapter,
     _regex_filter_strategy,
     _gobi_order_filter_strategy,
 )
@@ -130,6 +132,54 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
             select(VendorFile).where(VendorFile.vendor_filename == "3820230413.mrc")
         ).first()
         assert skipped_vendor_file.status == FileStatus.skipped
+
+
+def mock_ftp_hook_with_errors(mocker):
+
+    def mock_get_mod_time(*args):
+        if args[0] == "0820240402_f.mrc":
+            raise ftplib.error_perm("550 The system cannot find the file specified.")
+        elif args[0].startswith("oclc"):
+            return "20240411193159"
+
+    def mock_get_size(*args):
+        if args[0] == "1120240402_f.mrc":
+            raise ftplib.error_perm("550 The system cannot find the file specified.")
+        elif args[0].startswith("oclc"):
+            return "563"
+
+    def mock_list_directory(*args):
+        return ['0820240402_f.mrc', '1120240402_f.mrc', '1220240402_f.mrc']
+
+    def mock_retrieve_file(*args):
+        if args[0] == "1220240402_f.mrc":
+            raise ftplib.error_perm("550 The system cannot find the file specified.")
+
+    mock_ftp_hook = mocker.MagicMock()
+    mock_ftp_hook.get_mod_time = mock_get_mod_time
+    mock_ftp_hook.get_size = mock_get_size
+    mock_ftp_hook.list_directory = mock_list_directory
+    mock_ftp_hook.retrieve_file = mock_retrieve_file
+    return mock_ftp_hook
+
+
+def test_ftp_download_error_handling(mocker, caplog):
+
+    adapter = FTPAdapter(hook=mock_ftp_hook_with_errors(mocker), remote_path="oclc")
+
+    mod_time = adapter.get_mod_time('0820240402_f.mrc')
+
+    assert "Failed to retrieve modified time" in caplog.text
+    assert mod_time == "20240411193159"
+
+    file_size = adapter.get_size('1120240402_f.mrc')
+
+    assert "Failed to retrieve size" in caplog.text
+    assert file_size == "563"
+
+    adapter.retrieve_file("1220240402_f.mrc", "/home/airflow/vendor-files/abded-abcd")
+
+    assert "Failed to retrieve 1220240402_f.mrc" in caplog.text
 
 
 def test_sftp_download(sftp_hook, download_path, pg_hook):
