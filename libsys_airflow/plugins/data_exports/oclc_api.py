@@ -9,8 +9,9 @@ import pymarc
 from typing import List, Union
 
 from bookops_worldcat import WorldcatAccessToken, MetadataSession
-from bookops_worldcat.errors import WorldcatRequestError 
+from bookops_worldcat.errors import WorldcatRequestError
 
+from libsys_airflow.plugins.data_exports.marc.oclc import get_record_id
 from libsys_airflow.plugins.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -26,23 +27,20 @@ class OCLCAPIWrapper(object):
         self.oclc_token = None
         client_id = kwargs["client_id"]
         secret = kwargs["secret"]
-        self.httpx_client = None
+        self.httpx_client = httpx.Client()
         self.snapshot = None
         self.__authenticate__(client_id, secret)
         self.folio_client = folio_client()
 
     def __del__(self):
-        if self.httpx_client:
-            self.httpx_client.close()
         if self.snapshot:
             self.__close_snapshot__()
+        self.httpx_client.close()
 
     def __authenticate__(self, client_key, secret) -> None:
         try:
             self.oclc_token = WorldcatAccessToken(
-                key=client_key,
-                secret=secret,
-                scopes="WorldCatMetadataAPI"
+                key=client_key, secret=secret, scopes="WorldCatMetadataAPI"
             )
         except Exception as e:
             msg = "Unable to Retrieve Worldcat Access Token"
@@ -87,21 +85,41 @@ class OCLCAPIWrapper(object):
             logger.error("Record Missing SRS uuid")
         return srs_uuid
 
-    def __update_035__(self, oclc_put_result: bytes, record: pymarc.Record) -> None:
+    def __update_035__(
+        self, oclc_put_result: bytes, record: pymarc.Record, srs_uuid: str
+    ) -> bool:
         """
-        Extracts 035 field with new OCLC number adds to existing MARC21
+        Extracts 035 field with new OCLC number and adds to existing MARC21
         record
         """
         oclc_record = pymarc.Record(data=oclc_put_result)  # type: ignore
         fields_035 = oclc_record.get_fields('035')
         for field in fields_035:
-            subfields_a = field.get_subfields("a")
-            for subfield in subfields_a:
+            for subfield in field.get_subfields("a"):
                 if subfield.startswith("(OCoLC"):
                     record.add_ordered_field(field)
                     break
+        return self.__put_folio_record__(srs_uuid, record)
 
-    def put_folio_record(self, srs_uuid: str, record: pymarc.Record) -> bool:
+    def __update_oclc_number__(
+        self, record: pymarc.Record, control_number: str, srs_uuid: str
+    ) -> bool:
+        """
+        Updates 035 field if control_number has changed
+        """
+        for field in record.get_fields('035'):
+            for subfield in field.get_subfields("a"):
+                if control_number in subfield:
+                    return True  # Control number already exists
+        new_035 = pymarc.Field(
+            tag='035',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value=f"(OCoLC){control_number}")],
+        )
+        record.add_ordered_field(new_035)
+        return self.__put_folio_record__(srs_uuid, record)
+
+    def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
         """
         Updates FOLIO SRS with updated MARC record with new OCLC Number
         in the 035 field
@@ -143,19 +161,20 @@ class OCLCAPIWrapper(object):
                     session.bib_validate(
                         record=marc21,
                         recordFormat="application/marc",
-                        validationLevel="validateFull"
+                        validationLevel="validateFull",
                     )
                     new_record = session.bib_create(
                         record=marc21,
                         recordFormat="application/marc",
                     )
-                    self.__update_035__(new_record, record)
-                except WorldcatRequestError  as e:
+                    if self.__update_035__(new_record.text, record, srs_uuid):  # type: ignore
+                        output['success'].append(srs_uuid)
+                    else:
+                        output['failures'].append(srs_uuid)
+                except WorldcatRequestError as e:
                     logger.error(e)
                     output['failures'].append(srs_uuid)
                     continue
-
-            output['success'].append(srs_uuid)
         return output
 
     def update(self, marc_files: List[str]):
@@ -165,19 +184,25 @@ class OCLCAPIWrapper(object):
             return output
         marc_records = self.__read_marc_files__(marc_files)
 
-        for record in marc_records:
-            srs_uuid = self.__srs_uuid__(record)
-            if srs_uuid is None:
-                continue
-            post_result = self.httpx_client.post(
-                f"{OCLCAPIWrapper.worldcat_metadata_url}/manage/institution/holdings/set",
-                headers=self.oclc_headers,
-                data=record.as_marc21(),
-            )
-            if post_result.status_code != 200:
-                logger.error(f"Failed to update record, error: {post_result.text}")
-                output['failures'].append(srs_uuid)
-                continue
-            # !Need to update OCLC code in 035 field
-            output['success'].append(srs_uuid)
+        with MetadataSession(authorization=self.oclc_token) as session:
+            for record in marc_records:
+                srs_uuid = self.__srs_uuid__(record)
+                if srs_uuid is None:
+                    continue
+                oclc_id = get_record_id(record)[0]
+                try:
+                    response = session.holdings_set(oclcNumber=oclc_id)
+                    if response is None:
+                        output['failures'].append(srs_uuid)
+                        continue
+                    if self.__update_oclc_number__(
+                        record, response.json()['controlNumber'], srs_uuid
+                    ):
+                        output['success'].append(srs_uuid)
+                    else:
+                        output['failures'].append(srs_uuid)
+                except WorldcatRequestError as e:
+                    logger.error(f"Failed to update record, error: {e}")
+                    output['failures'].append(srs_uuid)
+                    continue
         return output

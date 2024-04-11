@@ -1,83 +1,97 @@
-import json
 import httpx
 import pymarc
 import pytest
 
+from unittest.mock import MagicMock
+
+from bookops_worldcat.errors import WorldcatAuthorizationError, WorldcatRequestError
+
 from libsys_airflow.plugins.data_exports import oclc_api
 
 
-def mock_metadata_session():
+def mock_metadata_session(authorization=None):
+    mock_response = MagicMock()
+
+    def mock__enter__(*args):
+        return args[0]
+
+    def mock__exit__(*args):
+        pass
+
+    def mock_bib_create(**kwargs):
+        record = pymarc.Record(data=kwargs['record'])
+        if "001" in record and record["001"].value() == "00a":
+            raise WorldcatRequestError(b"400 Client Error")
+        record.add_field(
+            pymarc.Field(
+                tag='035',
+                indicators=['', ''],
+                subfields=[pymarc.Subfield(code='a', value='(OCoLC)345678')],
+            )
+        )
+        mock_response.text = record.as_marc21()
+        return mock_response
+
     def mock_bib_validate(**kwargs):
-        
+        pass
 
-# def mock_oclc_httpx():
-#     def mock_response(request):
-#         response = None
-#         match request.method:
+    def mock_holdings_set(**kwargs):
+        if kwargs['oclcNumber'] == "456907809":
+            raise WorldcatRequestError(b"400 Client Error")
+        if kwargs['oclcNumber'] == '2369001':
+            return
+        mock_response.json = lambda: {
+            "controlNumber": "439887343",
+            "requestedControlNumber": "439887343",
+            "institutionCode": "158223",
+            "institutionSymbol": "STF",
+            "success": True,
+            "message": "Holding Updated Successfully",
+            "action": "Set Holdings",
+        }
+        return mock_response
 
-#             case 'PUT':
-#                 if request.url.path.endswith('d63085c0-cab6-4bdd-95e8-d53696919ac1'):
-#                     response = httpx.Response(
-#                         status_code=422, text='Failed to update SRS'
-#                     )
-#                 elif request.url.path.startswith('/source-storage/records'):
-#                     response = httpx.Response(status_code=200)
+    mock_session = MagicMock()
+    # Supports mocking context manager
+    mock_session.__enter__ = mock__enter__
+    mock_session.__exit__ = mock__exit__
+    mock_session.bib_create = mock_bib_create
+    mock_session.bib_validate = mock_bib_validate
+    mock_session.holdings_set = mock_holdings_set
 
-#             case 'POST':
-#                 if request.url.host.startswith('oauth.oclc.org'):
-#                     response = httpx.Response(
-#                         status_code=200, json={'access_token': "abcded12345"}
-#                     )
-#                 if request.url.path.startswith('/worldcat/manage/bibs'):
-#                     record = pymarc.Record(data=request.content)
-#                     if len(record.get_fields('001')) == 1:
-#                         response = httpx.Response(
-#                             status_code=500, text='Internal Server Error'
-#                         )
-#                     else:
-#                         record.add_ordered_field(
-#                             pymarc.Field(
-#                                 tag='035',
-#                                 indicators=[' ', ' '],
-#                                 subfields=[
-#                                     pymarc.Subfield(code='a', value='(OCoLC)123489')
-#                                 ],
-#                             )
-#                         )
-#                         response = httpx.Response(
-#                             status_code=200, content=record.as_marc21()
-#                         )
-#                 if request.url.path.startswith("/source-storage/snapshots"):
-#                     response = httpx.Response(status_code=200)
-#                 elif request.url.path.endswith('/manage/institution/holdings/set'):
-#                     record = pymarc.Record(data=request.content)
-#                     if len(record.get_fields('001')) == 1:
-#                         response = httpx.Response(
-#                             status_code=500, text='Internal Server Error'
-#                         )
-#                     else:
-#                         response = httpx.Response(
-#                             status_code=200,
-#                             json={
-#                                 "controlNumber": "439887343",
-#                                 "requestedControlNumber": "439887343",
-#                                 "institutionCode": "158223",
-#                                 "institutionSymbol": "STF",
-#                                 "success": True,
-#                                 "message": "Holding Updated Successfully",
-#                                 "action": "Set Holdings",
-#                             },
-#                         )
-
-#         return response
-# return httpx.Client(transport=httpx.MockTransport(mock_response))
-
-@pytest.fixture
-def mock_bookops_package(mocker):
-    pass
+    return mock_session
 
 
-# @pytest.fixture
+def mock_worldcat_access_token(**kwargs):
+    if kwargs.get('key', '').startswith('n0taVal1dC1i3nt'):
+        raise WorldcatAuthorizationError(
+            b'{"code":401,"message":"No valid authentication credentials found in request"}'
+        )
+    return "tk_6e302a204c2bfa4d266813cO647d62a77b10"
+
+
+def mock_httpx_client():
+    def mock_response(request):
+        response = None
+        match request.method:
+
+            case 'PUT':
+                if request.url.path.endswith('d63085c0-cab6-4bdd-95e8-d53696919ac1'):
+                    response = httpx.Response(
+                        status_code=422, text='Failed to update SRS'
+                    )
+                elif request.url.path.startswith('/source-storage/records'):
+                    response = httpx.Response(status_code=200)
+
+            case 'POST':
+                if request.url.path.startswith("/source-storage/snapshots"):
+                    response = httpx.Response(status_code=200)
+
+        return response
+
+    return httpx.Client(transport=httpx.MockTransport(mock_response))
+
+
 def mock_folio_client(mocker):
     mock = mocker
     mock.okapi_headers = {}
@@ -87,11 +101,14 @@ def mock_folio_client(mocker):
 
 @pytest.fixture
 def mock_oclc_api(mocker):
-    
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.WorldcatAccessToken",
-        return_value="tk_6e302a204c2bfa4d266813cO647d62a77b10"
-    )
+    mock_httpx = mocker.MagicMock()
+    mock_httpx.Client = lambda: mock_httpx_client()
+
+    mocker.patch.object(oclc_api, "httpx", mock_httpx)
+
+    mocker.patch.object(oclc_api, "WorldcatAccessToken", mock_worldcat_access_token)
+
+    mocker.patch.object(oclc_api, "MetadataSession", mock_metadata_session)
 
     mocker.patch(
         "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
@@ -104,8 +121,8 @@ def mock_oclc_api(mocker):
 def test_oclc_api_class_init(mock_oclc_api):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     assert oclc_api_instance.folio_client.okapi_url == "https://okapi.stanford.edu/"
@@ -115,8 +132,8 @@ def test_oclc_api_class_init(mock_oclc_api):
 def test_oclc_api_class_no_new_records(mock_oclc_api, caplog):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     oclc_api_instance.new([])
@@ -153,8 +170,8 @@ def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
             marc_writer.write(record)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     new_result = oclc_api_instance.new(
@@ -171,12 +188,17 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
     marc_record = pymarc.Record()
     marc_record.add_field(
         pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC-M)on455677')],
+        ),
+        pymarc.Field(
             tag='999',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='s', value='ea5b38dc-8f96-45de-8306-a2dd673716d5')
             ],
-        )
+        ),
     )
 
     no_srs_record = pymarc.Record()
@@ -196,8 +218,8 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
             marc_writer.write(record)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     updated_result = oclc_api_instance.update([str(marc_file.absolute())])
@@ -206,31 +228,19 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
     assert updated_result['failures'] == []
 
 
-def test_oclc_api_failed_authenication(mocker):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = httpx.Client(
-        transport=httpx.MockTransport(lambda *args: httpx.Response(500))
-    )
+def test_oclc_api_failed_authentication(mock_oclc_api):
 
-    mocker.patch.object(oclc_api, "httpx", mock_httpx)
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.oclc_api.folio_client",
-        return_value=mock_folio_client,
-    )
-
-    with pytest.raises(Exception, match="Unable to Retrieve Access Token"):
-       oclc_api.OCLCAPIWrapper(
-            client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-            secret="c867b1dd75e6490f99d1cd1c9252ef22"
+    with pytest.raises(Exception, match="Unable to Retrieve Worldcat Access Token"):
+        oclc_api.OCLCAPIWrapper(
+            client_id="n0taVal1dC1i3nt", secret="c867b1dd75e6490f99d1cd1c9252ef22"
         )
 
 
 def test_oclc_api_missing_srs(mock_oclc_api, caplog):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     record = pymarc.Record()
@@ -260,8 +270,8 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
         marc_writer.write(record)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     new_response = oclc_api_instance.new([str(marc_file.absolute())])
@@ -283,8 +293,8 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
     )
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     marc_file = tmp_path / "202403273-STF-new.mrc"
@@ -301,18 +311,23 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
 
 def test_no_update_records(mock_oclc_api, caplog):
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
     oclc_api_instance.update([])
 
     assert "No updated marc records" in caplog.text
 
 
-def test_bad_holdings_set_call(tmp_path, mock_oclc_api):
+def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
     marc_record = pymarc.Record()
     marc_record.add_field(
         pymarc.Field(tag='001', data='4566'),
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)ocn456907809')],
+        ),
         pymarc.Field(
             tag='999',
             indicators=['f', 'f'],
@@ -322,19 +337,75 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api):
         ),
     )
 
+    bad_srs_record = pymarc.Record()
+    bad_srs_record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)7789932')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1')
+            ],
+        ),
+    )
+
+    no_response_record = pymarc.Record()
+    no_response_record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)2369001')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='s', value='6325e8fd-101a-4972-8da7-298cd01d1a9d')
+            ],
+        ),
+    )
     marc_file = tmp_path / "202403273-STF-update.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        for record in [marc_record]:
+        for record in [marc_record, bad_srs_record, no_response_record]:
             marc_writer.write(record)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK", 
-        secret="c867b1dd75e6490f99d1cd1c9252ef22"
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     update_result = oclc_api_instance.update([str(marc_file.absolute())])
 
     assert update_result['success'] == []
-    assert update_result['failures'] == ['ea5b38dc-8f96-45de-8306-a2dd673716d5']
+    assert sorted(update_result['failures']) == [
+        '6325e8fd-101a-4972-8da7-298cd01d1a9d',
+        'd63085c0-cab6-4bdd-95e8-d53696919ac1',
+        'ea5b38dc-8f96-45de-8306-a2dd673716d5',
+    ]
+
+    assert "Failed to update record" in caplog.text
+
+
+def test_already_exists_control_number(tmp_path, mock_oclc_api):
+    marc_record = pymarc.Record()
+    marc_record.add_field(
+        pymarc.Field(tag='001', data='4566'),
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)445667')],
+        ),
+    )
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    assert oclc_api_instance.__update_oclc_number__(marc_record, '445667', '')

@@ -113,8 +113,6 @@ class OCLCTransformer(Transformer):
                     case _:
                         self.multiple_codes(record, code, record_ids)
 
-    
-
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
         instance_id = record['999']['i']
         self.staff_notices.append((instance_id, code, record_ids))
