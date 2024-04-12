@@ -138,6 +138,8 @@ def transfer_to_orafin(feeder_file: str):
         "-i /opt/airflow/vendor-keys/apdrop.key",
         "-o KexAlgorithms=diffie-hellman-group14-sha1",
         "-o StrictHostKeyChecking=no",
+        "-o HostKeyAlgorithms=+ssh-rsa",
+        "-o PubkeyAcceptedAlgorithms=+ssh-rsa",
         str(feeder_file),
         "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat",
     ]

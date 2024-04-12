@@ -62,4 +62,5 @@ with DAG(
         generate_file
         >> upload_status
         >> invoices_pending_payment_task(filtered_invoices["feed"])
+        >> email_summary_invoices
     )
