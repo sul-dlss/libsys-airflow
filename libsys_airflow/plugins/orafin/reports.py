@@ -22,6 +22,8 @@ ap_server_options = [
     "-i /opt/airflow/vendor-keys/apdrop.key",
     "-o KexAlgorithms=diffie-hellman-group14-sha1",
     "-o StrictHostKeyChecking=no",
+    "-o HostKeyAlgorithms=+ssh-rsa",
+    "-o PubkeyAcceptedAlgorithms=+ssh-rsa",
 ]
 
 
