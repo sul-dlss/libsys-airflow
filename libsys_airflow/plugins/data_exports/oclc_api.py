@@ -66,6 +66,12 @@ class OCLCAPIWrapper(object):
         post_result.raise_for_status()
         self.snapshot = snapshot_uuid
 
+    def __get_srs_record__(self, srs_uuid: str) -> pymarc.Record:
+        marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
+        marc_json_handler = pymarc.JSONHandler()
+        marc_json_handler.elements(marc_json)
+        return marc_json_handler.records[0]
+
     def __read_marc_files__(self, marc_files: list) -> list:
         records = []
         for marc_file in marc_files:
@@ -85,13 +91,12 @@ class OCLCAPIWrapper(object):
             logger.error("Record Missing SRS uuid")
         return srs_uuid
 
-    def __update_035__(
-        self, oclc_put_result: bytes, record: pymarc.Record, srs_uuid: str
-    ) -> bool:
+    def __update_035__(self, oclc_put_result: bytes, srs_uuid: str) -> bool:
         """
         Extracts 035 field with new OCLC number and adds to existing MARC21
         record
         """
+        record = self.__get_srs_record__(srs_uuid)
         oclc_record = pymarc.Record(data=oclc_put_result)  # type: ignore
         fields_035 = oclc_record.get_fields('035')
         for field in fields_035:
@@ -101,12 +106,11 @@ class OCLCAPIWrapper(object):
                     break
         return self.__put_folio_record__(srs_uuid, record)
 
-    def __update_oclc_number__(
-        self, record: pymarc.Record, control_number: str, srs_uuid: str
-    ) -> bool:
+    def __update_oclc_number__(self, control_number: str, srs_uuid: str) -> bool:
         """
         Updates 035 field if control_number has changed
         """
+        record = self.__get_srs_record__(srs_uuid)
         for field in record.get_fields('035'):
             for subfield in field.get_subfields("a"):
                 if control_number in subfield:
@@ -118,6 +122,12 @@ class OCLCAPIWrapper(object):
         )
         record.add_ordered_field(new_035)
         return self.__put_folio_record__(srs_uuid, record)
+
+    def __pre_process__(self, record: pymarc.Record) -> bytes:
+        """
+        Pre-processes MARC record specifically for OCLC
+        """
+        return record.as_marc21()
 
     def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
         """
@@ -157,7 +167,8 @@ class OCLCAPIWrapper(object):
                 continue
             with MetadataSession(authorization=self.oclc_token) as session:
                 try:
-                    marc21 = record.as_marc21()
+                    marc21 = self.__pre_process__(record)
+
                     session.bib_validate(
                         record=marc21,
                         recordFormat="application/marc",
@@ -167,7 +178,7 @@ class OCLCAPIWrapper(object):
                         record=marc21,
                         recordFormat="application/marc",
                     )
-                    if self.__update_035__(new_record.text, record, srs_uuid):  # type: ignore
+                    if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
                         output['success'].append(srs_uuid)
                     else:
                         output['failures'].append(srs_uuid)
@@ -196,7 +207,7 @@ class OCLCAPIWrapper(object):
                         output['failures'].append(srs_uuid)
                         continue
                     if self.__update_oclc_number__(
-                        record, response.json()['controlNumber'], srs_uuid
+                        response.json()['controlNumber'], srs_uuid
                     ):
                         output['success'].append(srs_uuid)
                     else:

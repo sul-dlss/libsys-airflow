@@ -1,3 +1,4 @@
+import json
 import httpx
 import pymarc
 import pytest
@@ -7,6 +8,47 @@ from unittest.mock import MagicMock
 from bookops_worldcat.errors import WorldcatAuthorizationError, WorldcatRequestError
 
 from libsys_airflow.plugins.data_exports import oclc_api
+
+
+def sample_marc_records():
+    sample = []
+    marc_record = pymarc.Record()
+    marc_record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
+            ],
+        )
+    )
+    sample.append(marc_record)
+    no_srs_record = pymarc.Record()
+    no_srs_record.add_field(
+        pymarc.Field(
+            tag='245',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='Much Ado about Something')],
+        )
+    )
+    sample.append(no_srs_record)
+    another_record = pymarc.Record()
+    another_record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)445667')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1')
+            ],
+        ),
+    )
+    sample.append(another_record)
+    return sample
 
 
 def mock_metadata_session(authorization=None):
@@ -93,9 +135,20 @@ def mock_httpx_client():
 
 
 def mock_folio_client(mocker):
+    sample_marc = sample_marc_records()
+
+    def mock_folio_get(*args, **kwargs):
+        output = {}
+        if args[0].endswith("08ca5a68-241a-4a5f-89b9-5af5603981ad"):
+            output = json.loads(sample_marc[0].as_json())
+        if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
+            output = json.loads(sample_marc[2].as_json())
+        return output
+
     mock = mocker
     mock.okapi_headers = {}
     mock.okapi_url = "https://okapi.stanford.edu/"
+    mock.folio_get = mock_folio_get
     return mock
 
 
@@ -142,26 +195,7 @@ def test_oclc_api_class_no_new_records(mock_oclc_api, caplog):
 
 
 def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
-
-    marc_record = pymarc.Record()
-    marc_record.add_field(
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
-            ],
-        )
-    )
-
-    no_srs_record = pymarc.Record()
-    no_srs_record.add_field(
-        pymarc.Field(
-            tag='245',
-            indicators=[' ', ' '],
-            subfields=[pymarc.Subfield(code='a', value='Much Ado about Something')],
-        )
-    )
+    marc_record, no_srs_record, _ = sample_marc_records()
     marc_file = tmp_path / "202403273-STF-new.mrc"
 
     with marc_file.open('wb') as fo:
@@ -185,28 +219,12 @@ def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
 
 
 def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
-    marc_record = pymarc.Record()
-    marc_record.add_field(
+    marc_record, no_srs_record, _ = sample_marc_records()
+    marc_record.add_ordered_field(
         pymarc.Field(
             tag='035',
             indicators=['', ''],
             subfields=[pymarc.Subfield(code='a', value='(OCoLC-M)on455677')],
-        ),
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='s', value='ea5b38dc-8f96-45de-8306-a2dd673716d5')
-            ],
-        ),
-    )
-
-    no_srs_record = pymarc.Record()
-    no_srs_record.add_field(
-        pymarc.Field(
-            tag='245',
-            indicators=[' ', ' '],
-            subfields=[pymarc.Subfield(code='a', value='Much Ado about Something')],
         )
     )
 
@@ -224,7 +242,7 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
 
     updated_result = oclc_api_instance.update([str(marc_file.absolute())])
 
-    assert updated_result['success'] == ['ea5b38dc-8f96-45de-8306-a2dd673716d5']
+    assert updated_result['success'] == ['08ca5a68-241a-4a5f-89b9-5af5603981ad']
     assert updated_result['failures'] == []
 
 
@@ -281,16 +299,6 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
 
 def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
-    record = pymarc.Record()
-    record.add_field(
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1')
-            ],
-        )
-    )
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
@@ -301,7 +309,7 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        marc_writer.write(record)
+        marc_writer.write(sample_marc_records()[2])
 
     new_results = oclc_api_instance.new([str(marc_file.absolute())])
 
@@ -408,4 +416,6 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
-    assert oclc_api_instance.__update_oclc_number__(marc_record, '445667', '')
+    assert oclc_api_instance.__update_oclc_number__(
+        '445667', 'd63085c0-cab6-4bdd-95e8-d53696919ac1'
+    )
