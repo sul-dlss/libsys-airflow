@@ -4,6 +4,8 @@ import pathlib
 import numpy as np
 import pandas as pd
 
+from typing import Union
+
 from jinja2 import Environment, Template
 
 from airflow.models import Variable
@@ -27,8 +29,11 @@ def _ap_report_errors_email_body(
 
     def _update_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
         dataframe = dataframe.replace({np.nan: None})
-        dataframe["Invoice URL"] = dataframe["invoice_id"].apply(_generate_folio_url)
-        dataframe = dataframe.drop(columns=["invoice_id"])
+        if "invoice_id" in dataframe.columns:
+            dataframe["Invoice URL"] = dataframe["invoice_id"].apply(
+                _generate_folio_url
+            )
+            dataframe = dataframe.drop(columns=["invoice_id"])
         return dataframe
 
     cancelled_invoices = _update_dataframe(cancelled_invoices)
@@ -186,17 +191,18 @@ def _group_excluded_invoices(invoices_reasons: list):
     return grouped_acqunits
 
 
-def _group_invoices_by_acqunit(invoices: list):
+def _group_invoices_by_acqunit(invoices: Union[list, None]) -> dict:
     """
     Groups invoices by acq unit ID
     """
     grouped_acqunits: dict = {}
-    for row in invoices:
-        acq_unit = row["acqUnitIds"][0]
-        if acq_unit in grouped_acqunits:
-            grouped_acqunits[acq_unit].append(row)
-        else:
-            grouped_acqunits[acq_unit] = [row]
+    if invoices:
+        for row in invoices:
+            acq_unit = row["acqUnitIds"][0]
+            if acq_unit in grouped_acqunits:
+                grouped_acqunits[acq_unit].append(row)
+            else:
+                grouped_acqunits[acq_unit] = [row]
     return grouped_acqunits
 
 
