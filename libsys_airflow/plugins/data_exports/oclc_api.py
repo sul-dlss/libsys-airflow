@@ -12,6 +12,8 @@ from bookops_worldcat import WorldcatAccessToken, MetadataSession
 from bookops_worldcat.errors import WorldcatRequestError
 
 from libsys_airflow.plugins.data_exports.marc.oclc import get_record_id
+from libsys_airflow.plugins.data_exports.marc.transforms import oclc_excluded
+
 from libsys_airflow.plugins.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -72,6 +74,31 @@ class OCLCAPIWrapper(object):
         marc_json_handler.elements(marc_json)
         return marc_json_handler.records[0]
 
+    def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
+        """
+        Updates FOLIO SRS with updated MARC record with new OCLC Number
+        in the 035 field
+        """
+        marc_json = record.as_json()
+        if self.snapshot is None:
+            self.__generate_snapshot__()
+
+        put_result = self.httpx_client.put(
+            f"{self.folio_client.okapi_url}source-storage/records/{srs_uuid}",
+            headers=self.folio_client.okapi_headers,
+            json={
+                "snapshotId": self.snapshot,
+                "matchedId": srs_uuid,
+                "recordType": "MARC_BIB",
+                "rawRecord": {"content": json.dumps(marc_json)},
+                "parsedRecord": {"content": marc_json},
+            },
+        )
+        if put_result.status_code != 200:
+            logger.error(f"Failed to update FOLIO for SRS {srs_uuid}")
+            return False
+        return True
+
     def __read_marc_files__(self, marc_files: list) -> list:
         records = []
         for marc_file in marc_files:
@@ -123,37 +150,6 @@ class OCLCAPIWrapper(object):
         record.add_ordered_field(new_035)
         return self.__put_folio_record__(srs_uuid, record)
 
-    def __pre_process__(self, record: pymarc.Record) -> bytes:
-        """
-        Pre-processes MARC record specifically for OCLC
-        """
-        return record.as_marc21()
-
-    def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
-        """
-        Updates FOLIO SRS with updated MARC record with new OCLC Number
-        in the 035 field
-        """
-        marc_json = record.as_json()
-        if self.snapshot is None:
-            self.__generate_snapshot__()
-
-        put_result = self.httpx_client.put(
-            f"{self.folio_client.okapi_url}source-storage/records/{srs_uuid}",
-            headers=self.folio_client.okapi_headers,
-            json={
-                "snapshotId": self.snapshot,
-                "matchedId": srs_uuid,
-                "recordType": "MARC_BIB",
-                "rawRecord": {"content": json.dumps(marc_json)},
-                "parsedRecord": {"content": marc_json},
-            },
-        )
-        if put_result.status_code != 200:
-            logger.error(f"Failed to update FOLIO for SRS {srs_uuid}")
-            return False
-        return True
-
     def new(self, marc_files: List[str]) -> dict:
         output: dict = {"success": [], "failures": []}
         if len(marc_files) < 1:
@@ -167,8 +163,8 @@ class OCLCAPIWrapper(object):
                 continue
             with MetadataSession(authorization=self.oclc_token) as session:
                 try:
-                    marc21 = self.__pre_process__(record)
-
+                    record.remove_fields(*oclc_excluded)
+                    marc21 = record.as_marc21()
                     session.bib_validate(
                         record=marc21,
                         recordFormat="application/marc",
