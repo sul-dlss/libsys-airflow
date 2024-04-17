@@ -157,11 +157,11 @@ class OCLCAPIWrapper(object):
             return output
         marc_records = self.__read_marc_files__(marc_files)
 
-        for record in marc_records:
-            srs_uuid = self.__srs_uuid__(record)
-            if srs_uuid is None:
-                continue
-            with MetadataSession(authorization=self.oclc_token) as session:
+        with MetadataSession(authorization=self.oclc_token) as session:
+            for record in marc_records:
+                srs_uuid = self.__srs_uuid__(record)
+                if srs_uuid is None:
+                    continue
                 try:
                     record.remove_fields(*oclc_excluded)
                     marc21 = record.as_marc21()

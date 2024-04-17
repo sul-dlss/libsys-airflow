@@ -15,12 +15,17 @@ def sample_marc_records():
     marc_record = pymarc.Record()
     marc_record.add_field(
         pymarc.Field(
+            tag="100",
+            indicators=['1', ''],
+            subfields=[pymarc.Subfield(code='a', value='Morrison, Toni')],
+        ),
+        pymarc.Field(
             tag='999',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
             ],
-        )
+        ),
     )
     sample.append(marc_record)
     no_srs_record = pymarc.Record()
@@ -62,7 +67,7 @@ def mock_metadata_session(authorization=None):
 
     def mock_bib_create(**kwargs):
         record = pymarc.Record(data=kwargs['record'])
-        if "001" in record and record["001"].value() == "00a":
+        if "008" in record and record["008"].value() == "00a":
             raise WorldcatRequestError(b"400 Client Error")
         record.add_field(
             pymarc.Field(
@@ -270,15 +275,20 @@ def test_oclc_api_missing_srs(mock_oclc_api, caplog):
 
 def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
     record = pymarc.Record()
-    record.add_field(pymarc.Field(tag='001', data='00a'))
     record.add_field(
+        pymarc.Field(tag='008', data='00a'),
+        pymarc.Field(
+            tag='500',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='Of noteworthy import')],
+        ),
         pymarc.Field(
             tag='999',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
             ],
-        )
+        ),
     )
 
     marc_file = tmp_path / "202403273-STF-new.mrc"
