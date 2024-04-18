@@ -3,7 +3,7 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
+from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer, get_record_id
 
 
 @pytest.fixture
@@ -359,8 +359,6 @@ def test_get_record_id(mocker, mock_folio_client):
         return_value=mock_folio_client,
     )
 
-    oclc_transformer = OCLCTransformer()
-
     record_oclc_i = pymarc.Record()
     record_oclc_i.add_field(
         pymarc.Field(
@@ -375,7 +373,7 @@ def test_get_record_id(mocker, mock_folio_client):
         ),
     )
 
-    oclc_no_i_ids = oclc_transformer.get_record_id(record_oclc_i)
+    oclc_no_i_ids = get_record_id(record_oclc_i)
     assert oclc_no_i_ids == ["38180605"]
 
     record_dup_and_prefixes = pymarc.Record()
@@ -397,6 +395,6 @@ def test_get_record_id(mocker, mock_folio_client):
         ),
     )
 
-    oclc_ids = oclc_transformer.get_record_id(record_dup_and_prefixes)
+    oclc_ids = get_record_id(record_dup_and_prefixes)
 
     assert oclc_ids == ["1427207959"]
