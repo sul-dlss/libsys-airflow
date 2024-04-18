@@ -2,7 +2,6 @@ import copy
 import logging
 import pathlib
 import pymarc
-import traceback
 
 from libsys_airflow.plugins.folio_client import folio_client
 from airflow.operators.python import get_current_context
@@ -119,7 +118,6 @@ class Transformer(object):
                                     fields.append(new_999)
             except Exception as e:
                 logger.warning(f"Error with holdings or items: {e}")
-                print(traceback.format_exc())
                 continue
 
         return fields
