@@ -1,14 +1,16 @@
 import csv
-import io
 import logging
 import pathlib
-import pymarc
+from pymarc import (
+    JSONHandler as marcJson,
+    MARCWriter as marcWriter,
+    Record as marcRecord,
+)
 
 from libsys_airflow.plugins.folio_client import folio_client
-from airflow.operators.python import get_current_context
 from airflow.models import Variable
-from airflow.providers.amazon.aws.operators.s3 import S3CreateObjectOperator
-
+from s3path import S3Path
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +50,7 @@ class Exporter(object):
                 reject = True
         return reject
 
-    def exclude_marc_by_vendor(self, marc_record: pymarc.Record, vendor: str):
+    def exclude_marc_by_vendor(self, marc_record: marcRecord, vendor: str):
         """
         Filters MARC record by Vendor
         """
@@ -106,26 +108,37 @@ class Exporter(object):
 
         return marc_file
 
-    def retrieve_marc_for_full_dump(self, marc_file: str, instance_ids: str) -> None:
-        marc_records = []
+    def retrieve_marc_for_full_dump(self, marc_filename: str, instance_ids: str) -> str:
+        marc_file = ""
+        bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
+        full_dump_files = f"/{bucket}/data-export-files/full-dump"
+
+        marc = []
         for row in instance_ids:
-            uuid = row[0]
+            marc_json_handler = marcJson()
             try:
-                marc = self.marc21(uuid)
+                marc_json_handler.elements(row[1])
+                marc21 = marc_json_handler.records[0]
             except Exception as e:
                 logger.warning(e)
                 continue
 
-            if self.exclude_marc_by_vendor(marc, "full-dump"):
-                logger.info("Excluding full-dump")
+            if self.exclude_marc_by_vendor(marc21, "full-dump"):
                 continue
 
-            marc_records.append(marc)
+            marc.append(marc21)
 
-        self.write_s3_marc(marc_file, marc_records)
+        logger.info(
+            f"Saving {len(instance_ids)} marc records to {marc_filename} in bucket."
+        )
+        marc_file = self.write_marc(
+            pathlib.Path(marc_filename), S3Path(full_dump_files), marc
+        )
 
-    def marc21(self, instance_uuid: str) -> pymarc.Record:
-        marc_json_handler = pymarc.JSONHandler()
+        return marc_file
+
+    def marc21(self, instance_uuid: str) -> marcRecord:
+        marc_json_handler = marcJson()
 
         marc_json_handler.elements(self.marc_json_from_srs(instance_uuid))
 
@@ -143,37 +156,30 @@ class Exporter(object):
     def write_marc(
         self,
         instance_file: pathlib.Path,
-        marc_directory: pathlib.Path,
-        marc_record: pymarc.Record,
-    ):
+        marc_directory: Union[pathlib.Path, S3Path],
+        marc: Union[list[marcRecord], marcRecord],
+    ) -> str:
         """
-        Writes marc record to file system
+        Writes marc record to a file system (local or S3)
         """
         marc_file_name = instance_file.stem
         directory = marc_directory / "marc-files"
+        logger.info(f"Writing to directory: {directory}")
         directory.mkdir(parents=True, exist_ok=True)
         marc_file = directory / f"{marc_file_name}.mrc"
-        marc_writer = pymarc.MARCWriter(marc_file.open("ab"))
-        marc_writer.write(marc_record)
+        marc_file.touch()
+
+        mode = "wb"
+
+        if type(marc_directory).__name__ == 'PosixPath':
+            mode = "ab"
+            marc = [marc]  # type: ignore
+
+        with marc_file.open(mode) as fo:
+            marc_writer = marcWriter(fo)
+            for record in marc:
+                marc_writer.write(record)
+
         marc_writer.close()
+
         return str(marc_file.absolute())
-
-    def write_s3_marc(self, marc_file, marc_records):
-        context = get_current_context()
-        marc_data = io.BytesIO()
-        writer = pymarc.MARCWriter(marc_data)
-        for mrec in marc_records:
-            writer.write(mrec)
-
-        writer.close(close_fh=False)
-
-        logger.info(
-            f"Saving {len(marc_records)} marc records to {marc_file} in bucket."
-        )
-        S3CreateObjectOperator(
-            task_id="create_object",
-            s3_bucket=Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"),
-            s3_key=f"full-dump-marc-files/{marc_file}",
-            data=marc_data.getvalue(),
-            replace=True,
-        ).execute(context)

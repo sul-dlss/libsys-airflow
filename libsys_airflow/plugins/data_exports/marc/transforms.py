@@ -6,6 +6,7 @@ import pymarc
 
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
+from s3path import S3Path
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +88,10 @@ excluded_tags = [
 ]
 
 
-def add_holdings_items_to_marc_files(marc_file_list: str):
+def add_holdings_items_to_marc_files(marc_file_list: str, full_dump: bool):
     transformer = Transformer()
     for marc_file in ast.literal_eval(marc_file_list):
-        transformer.add_holdings_items(marc_file=marc_file)
+        transformer.add_holdings_items(marc_file=marc_file, full_dump=full_dump)
 
 
 def divide_into_oclc_libraries(**kwargs):
@@ -107,14 +108,17 @@ def divide_into_oclc_libraries(**kwargs):
 
 def remove_fields_from_marc_files(marc_file_list: str):
     for file in ast.literal_eval(marc_file_list):
-        remove_marc_fields(file)
+        remove_marc_fields(file, False)
 
 
-def remove_marc_fields(marc_file: str):
+def remove_marc_fields(marc_file: str, full_dump: bool):
     """
     Removes MARC fields from export MARC21 file
     """
     marc_path = pathlib.Path(marc_file)
+    if full_dump:
+        marc_path = S3Path(marc_file)
+        logger.info(f"Removing MARC fields using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
         marc_records = [record for record in pymarc.MARCReader(fo)]
@@ -122,11 +126,19 @@ def remove_marc_fields(marc_file: str):
     logger.info(f"Removing MARC fields for {len(marc_records):,} records")
 
     for i, record in enumerate(marc_records):
-        record.remove_fields(*excluded_tags)
-        if not i % 100:
-            logger.info(f"{i:,} records processed")
+        try:
+            record.remove_fields(*excluded_tags)
+            if not i % 100:
+                logger.info(f"{i:,} records processed")
+        except AttributeError as e:
+            logger.warning(e)
+            continue
 
-    with marc_path.open("wb+") as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for record in marc_records:
-            marc_writer.write(record)
+    try:
+        with marc_path.open("wb") as fo:
+            marc_writer = pymarc.MARCWriter(fo)
+            for record in marc_records:
+                marc_writer.write(record)
+    except pymarc.exceptions.WriteNeedsRecord as e:
+
+        logger.warning(e)

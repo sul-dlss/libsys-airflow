@@ -68,6 +68,7 @@ x-airflow-common:
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
+    AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS: config.log_config.LOGGING_CONFIG
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     AIRFLOW_VAR_AEON_URL: ${AIRFLOW_VAR_AEON_URL}
     AIRFLOW_VAR_AEON_KEY: ${AIRFLOW_VAR_AEON_KEY}
@@ -100,12 +101,13 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     DATABASE_USERNAME: ${DATABASE_USERNAME}
     DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-20}
-    # HB Python library uses HONEYBADGER_ENVIRONMENT, which is different from Ruby library.
+    # HB   library uses HONEYBADGER_ENVIRONMENT, which is different from Ruby library.
     HONEYBADGER_ENVIRONMENT: ${HONEYBADGER_ENV}
     HONEYBADGER_API_KEY: ${HONEYBADGER_API_KEY}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/libsys_airflow:/opt/airflow/libsys_airflow
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/symphony:/opt/airflow/symphony
     - ${AIRFLOW_PROJ_DIR:-.}/migration:/opt/airflow/migration
     - ${AIRFLOW_PROJ_DIR:-.}/circ:/opt/airflow/circ
@@ -113,6 +115,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-keys:/opt/airflow/vendor-keys
     - ${AIRFLOW_PROJ_DIR:-.}/data-export-files:/opt/airflow/data-export-files
     - ${AIRFLOW_PROJ_DIR:-.}/orafin-files:/opt/airflow/orafin-files
+    - ${AIRFLOW_PROJ_DIR:-.}/.aws:/home/airflow/.aws
   user: "${AIRFLOW_UID:-50000}:0"
   extra_hosts:
       - host.docker.internal:host-gateway
@@ -250,8 +253,8 @@ services:
           echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
           echo
         fi
-        mkdir -p /sources/logs /sources/libsys_airflow/dags /sources/libsys_airflow/plugins
-        chown -R "${AIRFLOW_UID}:0" /sources/{logs,libsys_airflow/{dags,plugins}}
+        mkdir -p /sources/logs /sources/config /sources/libsys_airflow/dags /sources/libsys_airflow/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,config,libsys_airflow/{dags,plugins}}
         exec /entrypoint airflow version
     # yamllint enable rule:line-length
     environment:

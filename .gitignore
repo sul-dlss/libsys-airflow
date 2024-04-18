@@ -1,4 +1,5 @@
 log*
+!log_config.py
 .env
 __pycache__/
 .coveralls.yml
