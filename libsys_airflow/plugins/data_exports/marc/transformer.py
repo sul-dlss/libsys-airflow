@@ -126,21 +126,21 @@ class Transformer(object):
 
     def add_holdings_subfields(self, holdings: dict) -> pymarc.Field:
         field_999 = pymarc.Field(tag="999", indicators=[' ', ' '])
-        if self.check_len(holdings, "holdingsTypeId") > 0:
+        if len(holdings.get("holdingsTypeId", "")) > 0:
             holdings_type_name = self.holdings_type.get(holdings["holdingsTypeId"])
             if holdings_type_name:
                 field_999.add_subfield('h', holdings_type_name)
-        if self.check_len(holdings, "permanentLocationId") > 0:
+        if len(holdings.get("permanentLocationId", "")) > 0:
             permanent_location_code = self.locations.get(
                 holdings['permanentLocationId']
             )
             if permanent_location_code:
                 field_999.add_subfield('l', permanent_location_code)
-        if self.check_len(holdings, "callNumberTypeId") > 0:
+        if len(holdings.get("callNumberTypeId", "")) > 0:
             call_number_type = self.call_numbers.get(holdings['callNumberTypeId'])
             if call_number_type:
                 field_999.add_subfield('w', call_number_type)
-        if self.check_len(holdings, "callNumber") > 0:
+        if len(holdings.get("callNumber", "")) > 0:
             field_999.add_subfield('a', holdings['callNumber'], 0)
         return field_999
 
@@ -160,11 +160,3 @@ class Transformer(object):
                     value = field_999.delete_subfield('a')
                     value = f"{value} {item['enumeration']}"
                     field_999.add_subfield('a', value, 0)
-
-    def check_len(self, holdings, key) -> int:
-        try:
-            result = len(holdings[key])
-        except KeyError:
-            result = 0
-
-        return result
