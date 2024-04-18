@@ -43,10 +43,21 @@ class OCLCTransformer(Transformer):
             self.libraries[code] = {"holdings": [], "marc": []}
         self.staff_notices = []
 
-    def determine_campus_code(self, record: pymarc.Record):
+    def __filter_999__(self, record: pymarc.Record) -> str:
+        """
+        Filters 999 fields to extract FOLIO Instance UUID
+        """
         fields999 = record.get_fields("999")
-        # FOLIO adds the 999 as the last field in the record
-        instance_uuid = fields999[-1].get_subfields("i")[0]
+        instance_uuid = ""
+        for field in fields999:
+            if field.indicators == ["f", "f"]:
+                instance_uuid = field.get_subfields("i")[0]
+                break
+        return instance_uuid
+
+    def determine_campus_code(self, record: pymarc.Record):
+        instance_uuid = self.__filter_999__(record)
+
         holdings_result = self.folio_client.folio_get(
             f"/holdings-storage/holdings?query=(instanceId=={instance_uuid})"
         )
