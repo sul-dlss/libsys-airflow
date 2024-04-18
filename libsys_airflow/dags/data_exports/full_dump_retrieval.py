@@ -53,7 +53,7 @@ with DAG(
     def do_batch_size() -> int:
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
-        batch = params.get("batch_size", 5000, type="integer")
+        batch = params.get("batch_size", 5000)
 
         return int(batch)
 
@@ -61,7 +61,7 @@ with DAG(
     def do_concurrency() -> list[int]:
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
-        concurrency = params.get("concurrent_jobs", 5, type="integer")
+        concurrency = params.get("concurrent_jobs", 5)
 
         return [i for i in range(int(concurrency))]
 
