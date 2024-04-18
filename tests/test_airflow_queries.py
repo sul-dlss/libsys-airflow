@@ -47,6 +47,7 @@ def test_get_dags_filtering_multiple_actual_tags():
             'latest_only_with_trigger',
             'example_time_delta_sensor_async',
             'example_dag_decorator',
+            'example_display_name',
             'example_xcom',
             'example_xcom_args_with_operators',
             'example_xcom_args',
@@ -69,6 +70,8 @@ def test_get_dags_filtering_multiple_actual_tags():
             'tutorial_objectstorage',
             'example_python_decorator',
             'example_setup_teardown',
+            'example_params_trigger_ui',
+            'example_params_ui_tutorial',
         ]
     )
 
