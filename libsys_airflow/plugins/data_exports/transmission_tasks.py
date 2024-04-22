@@ -42,7 +42,9 @@ def gather_oclc_files_task(**kwargs) -> dict:
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
     for marc_file_path in oclc_directory.glob("*.mrc"):
         file_parts = marc_file_path.name.split("-")
-        library, type_of = file_parts[1], file_parts[2]
+        if len(file_parts) < 3:
+            continue
+        library, type_of = file_parts[1], file_parts[2].split(".")[0]
         if type_of in libraries[library]:
             libraries[library][type_of].append(str(marc_file_path))
         else:
@@ -111,7 +113,7 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
     connection_lookup, success, failures = {}, {}, {}
     for conn_id in connection_details:
         connection = Connection.get_connection_from_secrets(conn_id)
-        oclc_code = connection.xtra_dejson["oclc_code"]
+        oclc_code = connection.extra_dejson["oclc_code"]
         connection_lookup[oclc_code] = {
             "username": connection.login,
             "password": connection.password,
@@ -119,16 +121,18 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
 
     for library, records in libraries.items():
         oclc_api = OCLCAPIWrapper(
-            user=connection_lookup[library]["username"],
-            password=connection_lookup[library]["password"],
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
         )
-        new_result = oclc_api.new(records['new'])
-        success[library] = new_result['success']
-        failures[library] = new_result['failures']
+        if len(records.get("new", [])) > 0:
+            new_result = oclc_api.new(records['new'])
+            success[library] = new_result['success']
+            failures[library] = new_result['failures']
 
-        updated_result = oclc_api.update(records['update'])
-        success[library].extend(updated_result['success'])
-        failures[library].extend(updated_result['failures'])
+        if len(records.get("update", [])) > 0:
+            updated_result = oclc_api.update(records['update'])
+            success[library].extend(updated_result['success'])
+            failures[library].extend(updated_result['failures'])
 
     return {"success": success, "failures": failures}
 
