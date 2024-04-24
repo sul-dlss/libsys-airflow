@@ -23,7 +23,8 @@ def sample_marc_records():
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
+                pymarc.Subfield(code='i', value="958835d2-39cc-4ab3-9c56-53bf7940421b"),
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
             ],
         ),
     )
@@ -48,7 +49,8 @@ def sample_marc_records():
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1')
+                pymarc.Subfield(code='i', value='f19fd2fc-586c-45df-9b0c-127af97aef34'),
+                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1'),
             ],
         ),
     )
@@ -148,6 +150,8 @@ def mock_folio_client(mocker):
             output = json.loads(sample_marc[0].as_json())
         if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
             output = json.loads(sample_marc[2].as_json())
+        if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
+            output = {}
         return output
 
     mock = mocker
@@ -219,7 +223,7 @@ def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
         ]
     )
 
-    assert new_result['success'] == ['08ca5a68-241a-4a5f-89b9-5af5603981ad']
+    assert new_result['success'] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
     assert new_result['failures'] == []
 
 
@@ -247,7 +251,7 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
 
     updated_result = oclc_api_instance.update([str(marc_file.absolute())])
 
-    assert updated_result['success'] == ['08ca5a68-241a-4a5f-89b9-5af5603981ad']
+    assert updated_result['success'] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
     assert updated_result['failures'] == []
 
 
@@ -268,7 +272,7 @@ def test_oclc_api_missing_srs(mock_oclc_api, caplog):
 
     record = pymarc.Record()
 
-    oclc_api_instance.__srs_uuid__(record)
+    oclc_api_instance.__record_uuids__(record)
 
     assert "Record Missing SRS uuid" in caplog.text
 
@@ -286,7 +290,8 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad')
+                pymarc.Subfield(code='i', value='e15e3707-f012-482f-a13b-34556b6d0946'),
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
             ],
         ),
     )
@@ -305,7 +310,7 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
     new_response = oclc_api_instance.new([str(marc_file.absolute())])
 
     assert new_response["success"] == []
-    assert new_response["failures"] == ['08ca5a68-241a-4a5f-89b9-5af5603981ad']
+    assert new_response["failures"] == ['e15e3707-f012-482f-a13b-34556b6d0946']
 
 
 def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
@@ -324,7 +329,7 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
     new_results = oclc_api_instance.new([str(marc_file.absolute())])
 
     assert new_results['success'] == []
-    assert new_results['failures'] == ['d63085c0-cab6-4bdd-95e8-d53696919ac1']
+    assert new_results['failures'] == ['f19fd2fc-586c-45df-9b0c-127af97aef34']
 
 
 def test_no_update_records(mock_oclc_api, caplog):
@@ -350,7 +355,8 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='ea5b38dc-8f96-45de-8306-a2dd673716d5')
+                pymarc.Subfield(code='i', value='8c9447fa-0556-47cc-98af-c8d5e0d763fb'),
+                pymarc.Subfield(code='s', value='ea5b38dc-8f96-45de-8306-a2dd673716d5'),
             ],
         ),
     )
@@ -366,7 +372,8 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1')
+                pymarc.Subfield(code='i', value='00b492cb-704d-41f4-bd12-74cfe643aea9'),
+                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1'),
             ],
         ),
     )
@@ -382,7 +389,8 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='s', value='6325e8fd-101a-4972-8da7-298cd01d1a9d')
+                pymarc.Subfield(code='i', value='f8fa3682-fef8-4810-b8da-8f51b73785ac'),
+                pymarc.Subfield(code='s', value='6325e8fd-101a-4972-8da7-298cd01d1a9d'),
             ],
         ),
     )
@@ -402,9 +410,9 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
 
     assert update_result['success'] == []
     assert sorted(update_result['failures']) == [
-        '6325e8fd-101a-4972-8da7-298cd01d1a9d',
-        'd63085c0-cab6-4bdd-95e8-d53696919ac1',
-        'ea5b38dc-8f96-45de-8306-a2dd673716d5',
+        '00b492cb-704d-41f4-bd12-74cfe643aea9',
+        '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
+        'f8fa3682-fef8-4810-b8da-8f51b73785ac',
     ]
 
     assert "Failed to update record" in caplog.text
@@ -429,3 +437,77 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
     assert oclc_api_instance.__update_oclc_number__(
         '445667', 'd63085c0-cab6-4bdd-95e8-d53696919ac1'
     )
+
+
+def test_missing_marc_json(mock_oclc_api, caplog):
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    update_035_result = oclc_api_instance.__update_035__(
+        b"", "6aabb9cd-64cc-4673-b63b-d35fa015b91c"
+    )
+
+    assert update_035_result is False
+    assert "Failed converting 6aabb9cd-64cc-4673-b63b-d35fa015b91c" in caplog.text
+
+    update_oclc_number_result = oclc_api_instance.__update_oclc_number__(
+        "22345", "6aabb9cd-64cc-4673-b63b-d35fa015b91c"
+    )
+    assert update_oclc_number_result is False
+
+
+def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
+    missing_oclc_record = pymarc.Record()
+    missing_oclc_record.add_field(
+        pymarc.Field(
+            tag="245",
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code="a", value="Various Stuff")],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value="958835d2-39cc-4ab3-9c56-53bf7940421b"),
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
+            ],
+        ),
+    )
+    multiple_oclc_record = pymarc.Record()
+
+    multiple_oclc_record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)2369001')],
+        ),
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)456789')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='f19fd2fc-586c-45df-9b0c-127af97aef34'),
+                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1'),
+            ],
+        ),
+    )
+
+    marc_file = tmp_path / "2024042413-STF-update.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in [missing_oclc_record, multiple_oclc_record]:
+            marc_writer.write(record)
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    oclc_api_instance.update([str(marc_file)])

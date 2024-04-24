@@ -68,11 +68,15 @@ class OCLCAPIWrapper(object):
         post_result.raise_for_status()
         self.snapshot = snapshot_uuid
 
-    def __get_srs_record__(self, srs_uuid: str) -> pymarc.Record:
+    def __get_srs_record__(self, srs_uuid: str) -> Union[pymarc.Record, None]:
         marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
         marc_json_handler = pymarc.JSONHandler()
-        marc_json_handler.elements(marc_json)
-        return marc_json_handler.records[0]
+        try:
+            marc_json_handler.elements(marc_json)
+            return marc_json_handler.records[0]
+        except KeyError as e:
+            logger.error(f"Failed converting {srs_uuid} to MARC JSON {e}")
+            return None
 
     def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
         """
@@ -109,14 +113,15 @@ class OCLCAPIWrapper(object):
                     records.extend([r for r in marc_reader])
         return records
 
-    def __srs_uuid__(self, record) -> Union[str, None]:
-        srs_uuid = None
+    def __record_uuids__(self, record) -> tuple:
+        instance_uuid, srs_uuid = None, None
         for field in record.get_fields("999"):
             if field.indicators == ["f", "f"]:
                 srs_uuid = field["s"]
+                instance_uuid = field["i"]
         if srs_uuid is None:
             logger.error("Record Missing SRS uuid")
-        return srs_uuid
+        return instance_uuid, srs_uuid
 
     def __update_035__(self, oclc_put_result: bytes, srs_uuid: str) -> bool:
         """
@@ -124,6 +129,8 @@ class OCLCAPIWrapper(object):
         record
         """
         record = self.__get_srs_record__(srs_uuid)
+        if record is None:
+            return False
         oclc_record = pymarc.Record(data=oclc_put_result)  # type: ignore
         fields_035 = oclc_record.get_fields('035')
         for field in fields_035:
@@ -138,6 +145,8 @@ class OCLCAPIWrapper(object):
         Updates 035 field if control_number has changed
         """
         record = self.__get_srs_record__(srs_uuid)
+        if record is None:
+            return False
         for field in record.get_fields('035'):
             for subfield in field.get_subfields("a"):
                 if control_number in subfield:
@@ -159,7 +168,7 @@ class OCLCAPIWrapper(object):
 
         with MetadataSession(authorization=self.oclc_token) as session:
             for record in marc_records:
-                srs_uuid = self.__srs_uuid__(record)
+                instance_uuid, srs_uuid = self.__record_uuids__(record)
                 if srs_uuid is None:
                     continue
                 try:
@@ -175,12 +184,12 @@ class OCLCAPIWrapper(object):
                         recordFormat="application/marc",
                     )
                     if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
-                        output['success'].append(srs_uuid)
+                        output['success'].append(instance_uuid)
                     else:
-                        output['failures'].append(srs_uuid)
+                        output['failures'].append(instance_uuid)
                 except WorldcatRequestError as e:
                     logger.error(e)
-                    output['failures'].append(srs_uuid)
+                    output['failures'].append(instance_uuid)
                     continue
         return output
 
@@ -193,23 +202,38 @@ class OCLCAPIWrapper(object):
 
         with MetadataSession(authorization=self.oclc_token) as session:
             for record in marc_records:
-                srs_uuid = self.__srs_uuid__(record)
+                instance_uuid, srs_uuid = self.__record_uuids__(record)
                 if srs_uuid is None:
                     continue
-                oclc_id = get_record_id(record)[0]
+                oclc_id = get_record_id(record)
+                match len(oclc_id):
+
+                    case 0:
+                        logger.error(f"{srs_uuid} missing OCLC number")
+                        output['failures'].append(instance_uuid)
+                        continue
+
+                    case 1:
+                        pass
+
+                    case _:
+                        logger.error(f"Multiple OCLC ids for {srs_uuid}")
+                        output['failures'].append(instance_uuid)
+                        continue
+
                 try:
-                    response = session.holdings_set(oclcNumber=oclc_id)
+                    response = session.holdings_set(oclcNumber=oclc_id[0])
                     if response is None:
-                        output['failures'].append(srs_uuid)
+                        output['failures'].append(instance_uuid)
                         continue
                     if self.__update_oclc_number__(
                         response.json()['controlNumber'], srs_uuid
                     ):
-                        output['success'].append(srs_uuid)
+                        output['success'].append(instance_uuid)
                     else:
-                        output['failures'].append(srs_uuid)
+                        output['failures'].append(instance_uuid)
                 except WorldcatRequestError as e:
                     logger.error(f"Failed to update record, error: {e}")
-                    output['failures'].append(srs_uuid)
+                    output['failures'].append(instance_uuid)
                     continue
         return output
