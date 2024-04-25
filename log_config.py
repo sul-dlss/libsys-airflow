@@ -6,7 +6,7 @@ LOGGING_CONFIG = deep_update(
     deepcopy(DEFAULT_LOGGING_CONFIG),
     {
         "loggers": {
-            "airflow.providers.common.sql.operators.sql.SQLExecuteQueryOperator": {
+            "airflow.hooks.base": {
                 "handlers": ["task"],
                 "level": "WARN",
                 "propagate": True,
