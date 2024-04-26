@@ -1,5 +1,4 @@
 import datetime
-import json
 
 import pytest
 import requests
@@ -10,10 +9,8 @@ from pytest_mock import MockerFixture
 
 from libsys_airflow.plugins.folio.helpers.bw import (
     add_admin_notes,
-    check_add_bw,
     create_admin_note,
     create_bw_record,
-    discover_bw_parts_files,
     email_failure,
     email_bw_summary,
     post_bw_record,
@@ -24,8 +21,6 @@ from tests.mocks import (  # noqa
     MockFOLIOClient,
     MockTaskInstance,
 )
-
-import tests.mocks as mocks
 
 
 @pytest.fixture
@@ -180,7 +175,6 @@ def test_create_bw_record_no_holdings(mock_folio_client):
     )
 
     assert bw_parts == {}
-
 
 
 @pytest.fixture
