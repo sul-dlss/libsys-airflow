@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import task, dag
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
+
+from libsys_airflow.plugins.data_exports.email import generate_oclc_transmission_email
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
@@ -21,6 +23,18 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
+
+
+@task
+def failure_email_task(failures: dict):
+    for library_code, instance_uuids in failures.items():
+        generate_oclc_transmission_email("failure", instance_uuids, library_code)
+
+
+@task
+def success_email_task(successes: dict):
+    for library_code, instance_uuids in successes.items():
+        generate_oclc_transmission_email("success", instance_uuids, library_code)
 
 
 @dag(
@@ -49,8 +63,11 @@ def send_oclc_records():
     )
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
+    success_email = success_email_task(transmit_data['success'])
+    failed_email = failure_email_task(transmit_data['failures'])
 
-    start >> gather_files >> transmit_data >> archive_data >> end
+    start >> gather_files >> transmit_data
+    transmit_data >> archive_data >> [success_email, failed_email] >> end
 
 
 send_oclc_records()
