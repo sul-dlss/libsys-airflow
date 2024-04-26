@@ -5,7 +5,6 @@ from pytest_mock import MockerFixture
 
 from mocks import (  # noqa
     mock_dag_run,
-    mock_file_system,
     MockFOLIOClient,
     MockTaskInstance,
 )

@@ -63,49 +63,6 @@ def mock_okapi_variable(monkeypatch):
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
-@pytest.fixture
-def mock_file_system(tmp_path, mock_dag_run):
-    airflow_path = tmp_path / "opt/airflow/"
-
-    # Mock source and target dirs
-    source_dir = airflow_path / "symphony"
-    source_dir.mkdir(parents=True)
-
-    sample_marc = source_dir / "sample.mrc"
-    sample_marc.write_text("sample")
-
-    iteration_dir = airflow_path / f"migration/iterations/{mock_dag_run.run_id}"
-    iteration_dir.mkdir(parents=True)
-
-    # Mock plugins directory
-    config_dir = airflow_path / "plugins/folio"
-    config_dir.mkdir(parents=True)
-
-    # Makes directories for different type of data for mock_dag_run
-    source_data = iteration_dir / "source_data"
-    (source_data / "instances").mkdir(parents=True)
-    (source_data / "holdings").mkdir(parents=True)
-    (source_data / "items").mkdir(parents=True)
-    (source_data / "users").mkdir(parents=True)
-
-    # Mock Results, Reports, Mapping Files, and Archive Directories
-    results_dir = iteration_dir / "results"
-    results_dir.mkdir(parents=True)
-    (iteration_dir / "reports").mkdir(parents=True)
-    (airflow_path / "migration/mapping_files").mkdir(parents=True)
-    archive_dir = iteration_dir / "archive"
-
-    # Mock .gitignore
-    gitignore = airflow_path / "migration/.gitignore"
-    gitignore.write_text("results\nreports")
-
-    # mock tmp dir
-    tmp = tmp_path / "tmp/"
-    tmp.mkdir(parents=True)
-
-    return [airflow_path, source_dir, iteration_dir, results_dir, archive_dir, tmp]
-
-
 # Mock xcom messages dict
 messages: dict[str, str] = {}
 
