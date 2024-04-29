@@ -7,10 +7,11 @@ RUN apt-get update && apt-get install -y gcc git libmagic-dev
 ENV PYTHONPATH "${PYTHONPATH}:/opt/airflow/"
 ENV SLUGIFY_USES_TEXT_UNIDECODE "yes"
 
+COPY log_config.py ./config/log_config.py
+
 USER airflow
 
 COPY airflow.cfg requirements.txt pyproject.toml qa.sql poetry.lock ./
-COPY log_config.py ./config/log_config.py
 COPY libsys_airflow ./libsys_airflow
 COPY bin ./bin
 

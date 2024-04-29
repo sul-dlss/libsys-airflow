@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from airflow import DAG
+from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 
 from airflow.models import Variable
@@ -34,6 +35,20 @@ with DAG(
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export"],
+    params={
+        "from_date": Param(
+            f"{datetime.now().strftime('%Y-%m-%d')}",
+            format="date",
+            type="string",
+            description="The earliest date to select record IDs from FOLIO.",
+        ),
+        "to_date": Param(
+            f"{(datetime.now() + timedelta(1)).strftime('%Y-%m-%d')}",
+            format="date",
+            type="string",
+            description="The latest date to select record IDs from FOLIO.",
+        ),
+    },
 ) as dag:
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",

@@ -4,6 +4,7 @@ import math
 from datetime import datetime, timedelta
 
 from airflow import DAG
+from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 from airflow.decorators import task, task_group
@@ -37,6 +38,18 @@ with DAG(
     schedule=None,
     catchup=False,
     tags=["data export"],
+    params={
+        "batch_size": Param(
+            5000,
+            type="integer",
+            description="Number of MARC records to process per file.",
+        ),
+        "concurrent_jobs": Param(
+            5,
+            type="integer",
+            description="Number of batch processing jobs to run in parallel.",
+        ),
+    },
 ) as dag:
 
     start = EmptyOperator(task_id='start')
