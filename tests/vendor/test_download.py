@@ -7,6 +7,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 from libsys_airflow.plugins.vendor.download import (
     download,
     FTPAdapter,
+    _download_filepath,
     _regex_filter_strategy,
     _gobi_order_filter_strategy,
 )
@@ -263,3 +264,13 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
     assert ftp_hook.retrieve_file.called_with(
         "3820230411.ord", f"{download_path}/3820230411.ord"
     )
+
+
+def test_missing_parent_directories(tmp_path):
+    download_filepath = tmp_path / "Stanford/test.mrc"
+
+    assert not download_filepath.parent.exists()
+
+    _download_filepath(tmp_path, "Stanford/test.mrc")
+
+    assert download_filepath.parent.exists()

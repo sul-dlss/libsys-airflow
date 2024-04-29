@@ -1,5 +1,5 @@
 import logging
-import os
+import pathlib
 import shutil
 from datetime import date
 
@@ -60,7 +60,6 @@ def archive_file(
     )
     archive_filepath = _filepath(archive_path, vendor_file.vendor_filename)
     print(f"Archive path: {archive_filepath}")
-    os.makedirs(archive_path, exist_ok=True)
     shutil.copyfile(download_filepath, archive_filepath)
     vendor_file.archive_date = date.today()
     session.commit()
@@ -68,4 +67,7 @@ def archive_file(
 
 
 def _filepath(path: str, filename: str) -> str:
-    return os.path.join(path, filename)
+    full_filepath = pathlib.Path(path) / filename
+    if not full_filepath.parent.exists():
+        full_filepath.parent.mkdir(parents=True, exist_ok=True)
+    return str(full_filepath)

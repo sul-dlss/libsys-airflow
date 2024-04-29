@@ -195,7 +195,10 @@ def download(
 
 
 def _download_filepath(download_path: str, filename: str) -> str:
-    return str(pathlib.Path(download_path) / filename)
+    full_path = pathlib.Path(download_path) / filename
+    if not full_path.parent.exists():
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+    return str(full_path)
 
 
 def _record_vendor_file(
