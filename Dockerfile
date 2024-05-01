@@ -11,7 +11,7 @@ COPY log_config.py ./config/log_config.py
 
 USER airflow
 
-COPY airflow.cfg requirements.txt pyproject.toml qa.sql poetry.lock ./
+COPY airflow.cfg requirements.txt pyproject.toml poetry.lock ./
 COPY libsys_airflow ./libsys_airflow
 COPY bin ./bin
 
