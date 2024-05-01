@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from s3path import S3Path
 import httpx
 
 from airflow.decorators import task
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def gather_files_task(**kwargs) -> list:
+def gather_files_task(**kwargs) -> dict:
     """
     Gets files to send to vendor:
     Looks for all the files in the data-export-files/{vendor}/marc-files folder
@@ -19,12 +20,21 @@ def gather_files_task(**kwargs) -> list:
     logger.info("Gathering files to transmit")
     airflow = kwargs.get("airflow", "/opt/airflow")
     vendor = kwargs["vendor"]
-    marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
-    return [str(p) for p in marc_filepath.glob("*.mrc")]
+    params = kwargs.get("params", {})
+    bucket = params.get("bucket", {})
+    if vendor == "full-dump":
+        marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
+    else:
+        marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
+
+    return {
+        "file_list": [str(p) for p in marc_filepath.glob("*.mrc")],
+        "s3": bool(bucket),
+    }
 
 
 @task(multiple_outputs=True)
-def transmit_data_http_task(conn_id, local_files, **kwargs) -> dict:
+def transmit_data_http_task(gather_files, **kwargs) -> dict:
     """
     Transmit the data via http
     Returns lists of files successfully transmitted and failures
@@ -33,12 +43,19 @@ def transmit_data_http_task(conn_id, local_files, **kwargs) -> dict:
     failures = []
     files_params = kwargs.get("files_params", "upload")
     url_params = kwargs.get("url_params", {})
+    params = kwargs.get("params", {})
+    conn_id = params["vendor"]
+    logger.info(f"Transmit data to {conn_id}")
     connection = Connection.get_connection_from_secrets(conn_id)
+    if gather_files["s3"]:
+        path_module = S3Path
+    else:
+        path_module = Path
     with httpx.Client(
         headers=connection.extra_dejson, params=url_params, follow_redirects=True
     ) as client:
-        for f in local_files:
-            files = {files_params: open(f"{f}", "rb")}
+        for f in gather_files["file_list"]:
+            files = {files_params: path_module(f).open("rb")}
             request = client.build_request("POST", connection.host, files=files)
             try:
                 logger.info(f"Start transmission of data from file {f}")
