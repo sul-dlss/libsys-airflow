@@ -2,7 +2,6 @@ from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
 from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
 from libsys_airflow.plugins.folio.apps.healthcheck_view import Healthcheck
-from libsys_airflow.plugins.folio.apps.folio_migration_view import FOLIOMigrationReports
 
 
 bp = Blueprint(
@@ -13,13 +12,6 @@ bp = Blueprint(
     static_url_path="/static/folio_plugin",
 )
 
-# FOLIO Migration Reports
-folio_appbuilder_view = FOLIOMigrationReports()
-folio_appbuilder_package = {
-    "name": "FOLIO Reports and Logs",
-    "category": "FOLIO",
-    "view": folio_appbuilder_view,
-}
 
 # Circ Rules Tester App
 circ_rules_tester_view = CircRulesTester()
@@ -46,7 +38,6 @@ class FOLIOPlugin(AirflowPlugin):
     executors = []
     admin_views = []
     appbuilder_views = [
-        folio_appbuilder_package,
         circ_rules_tester_package,
         healthcheck_package,
     ]

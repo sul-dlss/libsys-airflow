@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "libsys-airflow"
-version = "0.1.0"
+version = "1.0.0"
 description = "Airflow DAGS for migrating and managing ILS data into FOLIO along with other LibSys workflows"
 authors = ["Jeremy Nelson <jpnelson@stanford.edu>", "Joshua Greben <jgreben@stanford.edu>", "Shelley Doljack", "Laura Wrubel", "Michael J. Giarlo <mjgiarlo@stanford.edu>"]
 license = "Apache 2.0"
@@ -69,7 +69,7 @@ skip-string-normalization = true
 color = true
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 explicit_package_bases = true
 warn_unreachable = true
