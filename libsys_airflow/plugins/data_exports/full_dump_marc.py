@@ -55,7 +55,7 @@ def refresh_view(**kwargs) -> None:
     refresh = params.get("refresh_view", True)
 
     if refresh:
-        query = "refresh materialized view data_export_marc_ids"
+        query = "refresh materialized view data_export_marc"
 
         result = SQLExecuteQueryOperator(
             task_id="postgres_full_count_query",
