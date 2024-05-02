@@ -38,8 +38,8 @@ def send_pod_records():
     gather_files = gather_files_task(vendor="pod")
 
     transmit_data = transmit_data_http_task(
-        "pod",
         gather_files,
+        params={"vendor": "pod"},
         files_params="upload[files][]",
     )
 
