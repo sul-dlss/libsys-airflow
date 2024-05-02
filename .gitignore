@@ -1,5 +1,6 @@
 log*
 !log_config.py
+.aws
 .env
 __pycache__/
 .coveralls.yml
