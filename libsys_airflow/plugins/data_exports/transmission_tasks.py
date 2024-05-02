@@ -27,8 +27,14 @@ def gather_files_task(**kwargs) -> dict:
     else:
         marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
 
+    marc_filelist = []
+    for f in marc_filepath.glob("*.mrc"):
+        if f.stat().st_size == 0:
+            continue
+        marc_filelist.append(str(f))
+
     return {
-        "file_list": [str(p) for p in marc_filepath.glob("*.mrc")],
+        "file_list": marc_filelist,
         "s3": bool(bucket),
     }
 

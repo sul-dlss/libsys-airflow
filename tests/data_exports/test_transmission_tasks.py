@@ -37,9 +37,11 @@ def mock_marc_files(mock_file_system):
         "marc_files": ["2024022914.mrc", "2024030114.mrc", "2024030214.mrc"]
     }
     marc_files = []
-    for x in setup_marc_files['marc_files']:
+    for i, x in enumerate(setup_marc_files['marc_files']):
         marc_file = pathlib.Path(f"{marc_file_dir}/{x}")
         marc_file.touch()
+        if i == 0:
+            marc_file.write_text("hello world")
         marc_files.append(str(marc_file))
 
     return {"file_list": marc_files, "s3": False}
@@ -75,7 +77,7 @@ def mock_httpx_failure():
 def test_gather_files_task(mock_file_system, mock_marc_files):
     airflow = mock_file_system[0]
     marc_files = gather_files_task.function(airflow=airflow, vendor="oclc")
-    assert marc_files["file_list"].sort() == mock_marc_files["file_list"].sort()
+    assert marc_files["file_list"][0] == mock_marc_files["file_list"][0]
 
 
 def test_gather_full_dump_files(mocker):
