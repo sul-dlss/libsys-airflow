@@ -52,13 +52,13 @@ multiple_items = [
     (
         {
             'id': 'f34165a0-c41f-59fb-b5a4-f95018303259',
-            'materialType': {
+            'materialTypeId': {
                 'id': 'd934e614-215d-4667-b231-aed97887f289',
                 'name': 'periodical',
             },
             'numberOfPieces': '1',
             'enumeration': 'V.17 1983',
-            'effectiveLocation': {
+            'effectiveLocationId': {
                 'id': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
                 'name': 'Business Newspaper Stacks',
             },
@@ -67,12 +67,12 @@ multiple_items = [
     (
         {
             'id': 'f341a6dd-2c08-575b-9511-8677fc0229b5',
-            'materialType': {
+            'materialTypeId': {
                 'id': 'd934e614-215d-4667-b231-aed97887f289',
                 'name': 'periodical',
             },
             'enumeration': 'eV.17 1983',
-            'effectiveLocation': {
+            'effectiveLocationId': {
                 'id': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
                 'name': 'SUL Electronic',
             },
@@ -100,13 +100,13 @@ single_item = [
     (
         {
             'id': '3251f045-f80c-5c0d-8774-a75af8a6f01c',
-            'materialType': {
+            'materialTypeId': {
                 'id': '1a54b431-2e4f-452d-9cae-9cee66c9a892',
                 'name': 'book',
             },
             'numberOfPieces': '1',
             'enumeration': '1989',
-            'effectiveLocation': {
+            'effectiveLocationId': {
                 'id': 'a8676073-7520-4f26-8573-55976301ab5d',
                 'name': 'Green Flat Folios',
             },
