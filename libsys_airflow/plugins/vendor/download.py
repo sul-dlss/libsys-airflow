@@ -97,7 +97,7 @@ def ftp_download_task(
     if filename_regex == "CNT-ORD":
         filter_strategy = _gobi_order_filter_strategy
     elif filename_regex:
-        filter_strategy = _regex_filter_strategy(filename_regex)
+        filter_strategy = _regex_filter_strategy(filename_regex, remote_path)
     else:
         filter_strategy = _null_filter_strategy()
 
@@ -166,7 +166,9 @@ def download(
     filtered_filenames = filtered_filenames[:1000]
     logger.info(f"{len(filtered_filenames)} files to download in {remote_path}")
     for filename in filtered_filenames:
-        download_filepath = _download_filepath(download_path, filename)
+        download_filepath = _download_filepath(
+            download_path, _filter_remote_path(filename, remote_path)
+        )
         mod_time = adapter.get_mod_time(filename)
         try:
             logger.info(f"Downloading {filename} ({mod_time}) to {download_filepath}")
@@ -183,6 +185,7 @@ def download(
             )
             raise
         else:
+            filename = _filter_remote_path(filename, remote_path)
             _record_vendor_file(
                 filename,
                 adapter.get_size(filename),
@@ -191,11 +194,17 @@ def download(
                 mod_time,
                 engine,
             )
-    return list(filtered_filenames)
+    return [_filter_remote_path(f, remote_path) for f in filtered_filenames]
 
 
 def _download_filepath(download_path: str, filename: str) -> str:
     return str(pathlib.Path(download_path) / filename)
+
+
+def _filter_remote_path(filename: str, remote_path: str) -> str:
+    if filename.startswith(remote_path):
+        filename = filename.replace(f"{remote_path}/", "")
+    return filename
 
 
 def _record_vendor_file(
@@ -235,13 +244,18 @@ def _record_vendor_file(
         session.commit()
 
 
-def _regex_filter_strategy(filename_regex: str) -> Callable:
+def _regex_filter_strategy(filename_regex: str, remote_path: str) -> Callable:
+    base_regex = re.compile(filename_regex, flags=re.IGNORECASE)
+    remote_path_regex = re.compile(
+        filename_regex.replace("^", f"^{remote_path}/"), flags=re.IGNORECASE
+    )
+
     def strategy(all_filenames: list[str]) -> list[str]:
-        return [
-            f
-            for f in all_filenames
-            if re.compile(filename_regex, flags=re.IGNORECASE).match(f)
-        ]
+        filtered_filenames = []
+        for filename in all_filenames:
+            if base_regex.match(filename) or remote_path_regex.match(filename):
+                filtered_filenames.append(filename)
+        return filtered_filenames
 
     return strategy
 
