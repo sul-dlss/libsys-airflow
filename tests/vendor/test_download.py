@@ -7,6 +7,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 from libsys_airflow.plugins.vendor.download import (
     download,
     FTPAdapter,
+    _filter_remote_path,
     _regex_filter_strategy,
     _gobi_order_filter_strategy,
 )
@@ -102,7 +103,7 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
         ftp_hook,
         "oclc",
         download_path,
-        _regex_filter_strategy(r".+\.mrc"),
+        _regex_filter_strategy(r".+\.mrc", ""),
         "65d30c15-a560-4064-be92-f90e38eeb351",
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
@@ -187,7 +188,7 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
         sftp_hook,
         "oclc",
         download_path,
-        _regex_filter_strategy(r".+\.mrc"),
+        _regex_filter_strategy(r".+\.mrc", ""),
         "65d30c15-a560-4064-be92-f90e38eeb351",
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
@@ -219,7 +220,7 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             ftp_hook,
             "oclc",
             download_path,
-            _regex_filter_strategy(r".+\.mrc"),
+            _regex_filter_strategy(r".+\.mrc", ""),
             "65d30c15-a560-4064-be92-f90e38eeb351",
             datetime.fromisoformat("2020-01-01T00:05:23"),
         )
@@ -263,3 +264,9 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
     assert ftp_hook.retrieve_file.called_with(
         "3820230411.ord", f"{download_path}/3820230411.ord"
     )
+
+
+def test_filter_remote_path():
+    filename = "Stanford/ST26673.mrc"
+    filtered_filename = _filter_remote_path(filename, "Stanford")
+    assert filtered_filename == "ST26673.mrc"
