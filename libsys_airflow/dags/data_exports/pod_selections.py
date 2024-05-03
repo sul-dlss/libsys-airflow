@@ -5,7 +5,6 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     fetch_record_ids,
@@ -84,12 +83,6 @@ with DAG(
         },
     )
 
-    send_to_vendor = TriggerDagRunOperator(
-        task_id="send_pod_records",
-        trigger_dag_id="send_pod_records",
-        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
-    )
-
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
@@ -97,4 +90,4 @@ with DAG(
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> send_to_vendor >> finish_processing_marc
+transform_marc_fields >> finish_processing_marc
