@@ -2,13 +2,13 @@ import logging
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag
+from airflow.models.param import Param
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
     transmit_data_http_task,
-    archive_transmitted_data_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,27 +25,35 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_pod_days", 1))),
+    schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["data export"],
+    params={
+        "vendor": Param(
+            "pod",
+            type="string",
+            description="Send all records to this vendor.",
+            enum=["pod", "sharevde"],
+        ),
+        "bucket": Param(
+            Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"), type="string"
+        ),
+    },
 )
-def send_pod_records():
+def send_all_records():
     start = EmptyOperator(task_id="start")
 
     end = EmptyOperator(task_id="end")
 
-    gather_files = gather_files_task(vendor="pod")
+    gather_files = gather_files_task(vendor="full-dump")
 
     transmit_data = transmit_data_http_task(
         gather_files,
-        params={"vendor": "pod"},
         files_params="upload[files][]",
     )
 
-    archive_data = archive_transmitted_data_task(transmit_data['success'])
-
-    start >> gather_files >> transmit_data >> archive_data >> end
+    start >> gather_files >> transmit_data >> end
 
 
-send_pod_records()
+send_all_records()

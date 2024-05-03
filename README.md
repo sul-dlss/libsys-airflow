@@ -57,11 +57,19 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
   **NOTE** In order to connect to the OKAPI_URL you must be connected to the VPN or the on-campus network.
 
-6. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-7. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
-8. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
-9. Access Airflow locally at http://localhost:8080. The default username and password are both `airflow`.
-10. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
+6. Add a `.aws` directory with the config and credentials for the S3 bucket your want to use.
+  Example credentials
+  ```
+  [default]
+  aws_access_key_id = myaccess
+  aws_secret_access_key = mysecret
+  ```
+
+7. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
+8. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
+9. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
+10. Access Airflow locally at http://localhost:8080. The default username and password are both `airflow`.
+11. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
 
 ### For FOLIO migration loads
 
