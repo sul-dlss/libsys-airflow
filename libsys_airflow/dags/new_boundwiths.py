@@ -55,8 +55,8 @@ def add_bw_relationships(**kwargs):
     @task
     def add_bw_record(row: dict):
         folio_client = _folio_client()
-        holdings_hrid = row['child_holdings_hrid']
-        barcode = row["parent_barcode"]
+        holdings_hrid = row['part_holdings_hrid']
+        barcode = row["principle_barcode"]
         bw_parts = create_bw_record(
             folio_client=folio_client, holdings_hrid=holdings_hrid, barcode=barcode
         )

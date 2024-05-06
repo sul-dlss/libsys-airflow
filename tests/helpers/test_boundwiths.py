@@ -185,20 +185,20 @@ def mock_context():
             "file_name": "bw-errors.csv",
             "relationships": [
                 {
-                    'child_holdings_hrid': 'ah1135444_2',
-                    'parent_barcode': '36105042288113',
+                    'part_holdings_hrid': 'ah1135444_2',
+                    'principle_barcode': '36105042288113',
                 },
                 {
-                    'child_holdings_hrid': 'ah787483_1',
-                    'parent_barcode': '36105010089238',
+                    'part_holdings_hrid': 'ah787483_1',
+                    'principle_barcode': '36105010089238',
                 },
                 {
-                    'child_holdings_hrid': 'ah1545187_1',
-                    'parent_barcode': '36105042353974',
+                    'part_holdings_hrid': 'ah1545187_1',
+                    'principle_barcode': '36105042353974',
                 },
                 {
-                    'child_holdings_hrid': 'ah1598042_1',
-                    'parent_barcode': '36105042353974',
+                    'part_holdings_hrid': 'ah1598042_1',
+                    'principle_barcode': '36105042353974',
                 },
             ],
         },
@@ -336,7 +336,7 @@ def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     assert paragraphs[0].text == "1 boundwith relationships created"
 
     list_items = html_body.find_all("li")
-    assert list_items[0].text.startswith("Child Holding ID 59f2bc54")
+    assert list_items[0].text.startswith("Parts Holding ID 59f2bc54")
     assert list_items[1].text.endswith("Item ID 4a5944f7-9d9f-427e-a510-3af7856241de")
 
 
