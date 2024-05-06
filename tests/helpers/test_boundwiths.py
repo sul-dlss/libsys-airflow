@@ -61,7 +61,7 @@ def mock_task_instance(mocker):
                         return "bw-test-file.csv"
 
                     case "user_email":
-                        return "jstanford@stanford.edu"
+                        return "jstanford@example.com"
 
             case "new_bw_record":
                 match key:
@@ -181,7 +181,7 @@ def test_create_bw_record_no_holdings(mock_folio_client):
 def mock_context():
     return {
         "params": {
-            "email": "jstanford@stanford.edu",
+            "email": "jstanford@example.com",
             "file_name": "bw-errors.csv",
             "relationships": [
                 {
@@ -235,7 +235,7 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -243,8 +243,8 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
     assert mock_send_email.called
 
     assert mock_send_email.call_args[1]['to'] == [
-        'libsys-lists@stanford.edu',
-        'jstanford@stanford.edu',
+        'libsys-lists@example.com',
+        'jstanford@example.com',
     ]
 
     html_body = BeautifulSoup(
@@ -271,7 +271,7 @@ def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -299,7 +299,7 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -319,12 +319,12 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
 def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
 
-    email_bw_summary('libsys-lists@stanford.edu', mock_task_instance)
+    email_bw_summary('libsys-lists@example.com', mock_task_instance)
 
     assert mock_send_email.called
     assert mock_send_email.call_args[1]['to'] == [
-        'libsys-lists@stanford.edu',
-        'jstanford@stanford.edu',
+        'libsys-lists@example.com',
+        'jstanford@example.com',
     ]
 
     html_body = BeautifulSoup(
