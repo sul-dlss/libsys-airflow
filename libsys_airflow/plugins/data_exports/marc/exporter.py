@@ -74,7 +74,9 @@ class Exporter(object):
 
         return exclude
 
-    def retrieve_marc_for_instances(self, instance_file: pathlib.Path) -> str:
+    def retrieve_marc_for_instances(
+        self, instance_file: pathlib.Path, kind: str
+    ) -> str:
         """
         Called for each instanceid file in vendor or full-dump directory
         For each ID row, writes and returns converted MARC from SRS
@@ -85,7 +87,7 @@ class Exporter(object):
                 "Instance file does not exist for retrieve_marc_for_instances"
             )
 
-        vendor_name = instance_file.parent.parent.name
+        vendor_name = instance_file.parent.parent.parent.name
 
         marc_file = ""
         with instance_file.open() as fo:
@@ -102,8 +104,9 @@ class Exporter(object):
                     logger.info(f"Excluding {vendor_name}")
                     continue
 
+                marc_directory = instance_file.parent.parent.parent
                 marc_file = self.write_marc(
-                    instance_file, instance_file.parent.parent, marc_record
+                    instance_file, marc_directory, marc_record, kind
                 )
 
         return marc_file
@@ -132,7 +135,7 @@ class Exporter(object):
             f"Saving {len(instance_ids)} marc records to {marc_filename} in bucket."
         )
         marc_file = self.write_marc(
-            pathlib.Path(marc_filename), S3Path(full_dump_files), marc
+            pathlib.Path(marc_filename), S3Path(full_dump_files), marc, "."
         )
 
         return marc_file
@@ -158,22 +161,24 @@ class Exporter(object):
         instance_file: pathlib.Path,
         marc_directory: Union[pathlib.Path, S3Path],
         marc: Union[list[marcRecord], marcRecord],
+        kind: str,
     ) -> str:
         """
         Writes marc record to a file system (local or S3)
         """
         marc_file_name = instance_file.stem
         directory = marc_directory / "marc-files"
-        logger.info(f"Writing to directory: {directory}")
-        directory.mkdir(parents=True, exist_ok=True)
-        marc_file = directory / f"{marc_file_name}.mrc"
-        marc_file.touch()
-
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
             mode = "ab"
             marc = [marc]  # type: ignore
+            directory = directory / kind
+
+        logger.info(f"Writing to directory: {directory}")
+        directory.mkdir(parents=True, exist_ok=True)
+        marc_file = directory / f"{marc_file_name}.mrc"
+        marc_file.touch()
 
         with marc_file.open(mode) as fo:
             marc_writer = marcWriter(fo)

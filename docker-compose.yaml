@@ -100,7 +100,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-keys:/opt/airflow/vendor-keys
     - ${AIRFLOW_PROJ_DIR:-.}/data-export-files:/opt/airflow/data-export-files
     - ${AIRFLOW_PROJ_DIR:-.}/orafin-files:/opt/airflow/orafin-files
-    - ${AIRFLOW_PROJ_DIR:-.}/.aws:/opt/airflow/.aws
+    - ${AIRFLOW_PROJ_DIR:-.}/.aws:/home/airflow/.aws
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on

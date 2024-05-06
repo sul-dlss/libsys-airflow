@@ -5,7 +5,6 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     fetch_record_ids,
@@ -15,7 +14,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
-    remove_marc_fields,
+    remove_fields_from_marc_files,
 )
 
 default_args = {
@@ -72,22 +71,17 @@ with DAG(
         task_id="transform_folio_marc_record",
         python_callable=add_holdings_items_to_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
+            "full_dump": False,
         },
     )
 
     transform_marc_fields = PythonOperator(
         task_id="transform_folio_remove_marc_fields",
-        python_callable=remove_marc_fields,
+        python_callable=remove_fields_from_marc_files,
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
         },
-    )
-
-    send_to_vendor = TriggerDagRunOperator(
-        task_id="send_pod_records",
-        trigger_dag_id="send_pod_records",
-        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
     )
 
     finish_processing_marc = EmptyOperator(
@@ -97,4 +91,4 @@ with DAG(
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> send_to_vendor >> finish_processing_marc
+transform_marc_fields >> finish_processing_marc
