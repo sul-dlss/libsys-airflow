@@ -16,6 +16,8 @@
         {% endif %}
     </div>
     {% else %}
+    <p>Create boundwith relationships for parts and principle.</p>
+    <p class="help-block">CSV should include a row for the principle's barcode and holdings HRID (use part_holdings_hrid column for principle's holdings HRID).</p>
     <form enctype="multipart/form-data" method="POST" action="{{ url_for('BoundWithView.run_bw_creation') }}">
         <div class="row">
             <div class="col-md-3">
