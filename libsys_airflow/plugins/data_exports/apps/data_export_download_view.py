@@ -1,5 +1,6 @@
 import json
 import pathlib
+from flask import send_file
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 
@@ -41,7 +42,10 @@ class DataExportDownloadView(AppBuilderBaseView):
 
     @expose("/downloads/<vendor>/<folder>/<filename>")
     def vendor_marc_record(self, vendor, folder, filename):
-        file_bytes = pathlib.Path(
-            f"data-export-files/{vendor}/marc-files/{folder}/{filename}"
-        ).read_bytes()  # noqa
-        return file_bytes
+        folder_file = f"{folder}-{filename}"
+        return send_file(
+            f"/opt/airflow/data-export-files/{vendor}/marc-files/{folder}/{filename}",
+            as_attachment=True,
+            mimetype="application/marc",
+            download_name=folder_file,
+        )
