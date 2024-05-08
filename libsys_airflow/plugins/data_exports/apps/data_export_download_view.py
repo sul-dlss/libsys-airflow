@@ -45,7 +45,7 @@ class DataExportDownloadView(AppBuilderBaseView):
         folder_file = f"{folder}-{filename}"
         return send_file(
             f"/opt/airflow/data-export-files/{vendor}/marc-files/{folder}/{filename}",
-            as_attachment=False,
+            as_attachment=True,
             mimetype="application/marc",
             download_name=folder_file,
         )
