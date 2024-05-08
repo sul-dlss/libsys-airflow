@@ -109,6 +109,44 @@ def divide_into_oclc_libraries(**kwargs):
     )
 
 
+def change_leader_for_deletes(marc_file_list: str):
+    marc_list = ast.literal_eval(marc_file_list)
+    for file in marc_list['deletes']:
+        leader_for_deletes(file, False)
+
+
+def leader_for_deletes(marc_file: str, full_dump: bool):
+    """
+    Records specified as deleted by using d in position 05 in the MARC Leader
+    """
+    marc_path = pathlib.Path(marc_file)
+    if full_dump:
+        marc_path = S3Path(marc_file)
+        logger.info(f"Changing leader using AWS S3 with path: {marc_path}")
+
+    with marc_path.open('rb') as fo:
+        marc_records = [record for record in pymarc.MARCReader(fo)]
+
+    logger.info(f"Changing leader for {len(marc_records):,} records")
+
+    for i, record in enumerate(marc_records):
+        try:
+            record.leader[5] = "d"
+            if not i % 100:
+                logger.info(f"{i:,} records processed")
+        except AttributeError as e:
+            logger.warning(e)
+            continue
+
+    try:
+        with marc_path.open("wb") as fo:
+            marc_writer = pymarc.MARCWriter(fo)
+            for record in marc_records:
+                marc_writer.write(record)
+    except pymarc.exceptions.WriteNeedsRecord as e:
+        logger.warning(e)
+
+
 def remove_fields_from_marc_files(marc_file_list: str):
     marc_list = ast.literal_eval(marc_file_list)
     for file in marc_list['updates']:
@@ -144,5 +182,4 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
             for record in marc_records:
                 marc_writer.write(record)
     except pymarc.exceptions.WriteNeedsRecord as e:
-
         logger.warning(e)
