@@ -95,6 +95,14 @@ def mock_folio_client():
                     {"id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00', "code": 'SUL'},
                 ]
             }
+        # Material types
+        if args[0].startswith("/material-types"):
+            return {
+                "mtypes": [
+                    {"id": "d934e614-215d-4667-b231-aed97887f289", "name": "periodical"},
+                    {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
+                ]
+            }
 
     mock_locations = [
         {
