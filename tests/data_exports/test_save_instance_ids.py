@@ -21,14 +21,24 @@ def mock_task_instance():
 
 
 def mock_xcom_pull(**kwargs):
-    return [
-        [],
-        [
-            ['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb'],
-            ['fe2e581f-9767-442a-ae3c-a421ac655fe2'],
+    return {
+        "updates": [
+            [],
+            [
+                ['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb'],
+                ['fe2e581f-9767-442a-ae3c-a421ac655fe2'],
+            ],
+            [],
         ],
-        [],
-    ]
+        "deletes": [
+            [],
+            [
+                ['336971cd-2ea1-4ad2-af86-22ae7c0a95ae'],
+                ['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb'],
+            ],
+            [],
+        ],
+    }
 
 
 def test_save_ids_to_fs(tmp_path, mock_task_instance):
@@ -36,13 +46,14 @@ def test_save_ids_to_fs(tmp_path, mock_task_instance):
         airflow=tmp_path, task_instance=mock_task_instance, vendor="oclc"
     )
 
-    file = pathlib.Path(save_path)
-    assert file.exists()
+    for i, path in enumerate(save_path):
+        file = pathlib.Path(path)
+        assert file.exists()
 
-    with file.open('r') as fo:
-        id_list = list(row for row in csv.reader(fo))
+        with file.open('r') as fo:
+            id_list = list(row for row in csv.reader(fo))
 
-    assert id_list[0][1] == "['fe2e581f-9767-442a-ae3c-a421ac655fe2']"
+        assert id_list[0][i] == "['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb']"
 
 
 def test_upload_data_export_file_ids_one_column():
@@ -54,7 +65,7 @@ def test_upload_data_export_file_ids_one_column():
     df = pd.DataFrame(data)
 
     with pytest.raises(ValueError, match="ID file has more than one column."):
-        upload_data_export_ids(df, 'gobi')
+        upload_data_export_ids(df, 'gobi', 'updates')
 
 
 def test_upload_data_export_file_not_uuid():
@@ -62,4 +73,4 @@ def test_upload_data_export_file_not_uuid():
     df = pd.DataFrame(data)
 
     with pytest.raises(ValueError, match="Joe is not a UUID."):
-        upload_data_export_ids(df, 'gobi')
+        upload_data_export_ids(df, 'gobi', 'deletes')

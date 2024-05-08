@@ -19,12 +19,12 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 def mock_file_system(tmp_path):
     airflow = tmp_path / "airflow"
     vendor_dir = airflow / "data-export-files/oclc/"
-    marc_file_dir = vendor_dir / "marc-files"
+    marc_file_dir = vendor_dir / "marc-files" / "updates"
     marc_file_dir.mkdir(parents=True)
-    instance_id_dir = vendor_dir / "instanceids"
-    instance_id_dir.mkdir()
-    archive_dir = vendor_dir / "transmitted"
-    archive_dir.mkdir()
+    instance_id_dir = vendor_dir / "instanceids" / "updates"
+    instance_id_dir.mkdir(parents=True)
+    archive_dir = vendor_dir / "transmitted" / "updates"
+    archive_dir.mkdir(parents=True)
 
     return [airflow, marc_file_dir, instance_id_dir, archive_dir]
 

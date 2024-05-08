@@ -14,7 +14,7 @@ vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
 
-def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
+def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str, kind: str) -> str:
     if len(ids_df.columns) > 1:
         raise ValueError("ID file has more than one column.")
     tuples = list(ids_df.itertuples(index=False, name=None))
@@ -24,7 +24,7 @@ def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str) -> str:
         ):
             raise ValueError(f"{id[0]} is not a UUID.")
 
-    ids_path = save_ids(airflow="/opt/airflow", vendor=vendor, data=tuples)
+    ids_path = save_ids(airflow="/opt/airflow", vendor=vendor, data=tuples, kind=kind)
 
     return ids_path
 
@@ -47,11 +47,12 @@ class DataExportUploadView(AppBuilderBaseView):
             try:
                 raw_csv = request.files["upload-data-export-ids"]
                 vendor = request.form.get("vendor")
-                ids_df = pd.read_csv(raw_csv)
+                kind = request.form.get("kind")
+                ids_df = pd.read_csv(raw_csv, header=None)
                 if not vendor:
                     raise Exception("You must choose a vendor!")
                 else:
-                    upload_data_export_ids(ids_df, vendor)
+                    upload_data_export_ids(ids_df, vendor, kind)
                     flash("Sucessfully uploaded ID file.")
             except pd.errors.EmptyDataError:
                 flash("Warning! Empty UUID file.")

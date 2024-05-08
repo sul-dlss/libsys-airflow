@@ -28,7 +28,7 @@ def gather_files_task(**kwargs) -> dict:
         marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
 
     marc_filelist = []
-    for f in marc_filepath.glob("*.mrc"):
+    for f in marc_filepath.glob("**/*.mrc"):
         if f.stat().st_size == 0:
             continue
         marc_filelist.append(str(f))
@@ -114,15 +114,17 @@ def archive_transmitted_data_task(files):
         logger.warning("No files to archive")
         return
 
-    archive_dir = Path(files[0]).parent.parent / "transmitted"
+    archive_dir = Path(files[0]).parent.parent.parent / "transmitted"
     archive_dir.mkdir(exist_ok=True)
     for x in files:
+        kind = Path(x).parent.name
         original_marc_path = Path(x)
-        archive_path = archive_dir / original_marc_path.name
+        archive_path = archive_dir / kind / original_marc_path.name
         instance_path = (
-            original_marc_path.parent.parent
-            / f"instanceids/{original_marc_path.stem}.csv"
+            original_marc_path.parent.parent.parent
+            / f"instanceids/{kind}/{original_marc_path.stem}.csv"
         )
-        if instance_path.exists():
-            instance_path.replace(archive_dir / instance_path.name)
         original_marc_path.replace(archive_path)
+
+        if instance_path.exists():
+            instance_path.replace(archive_dir / kind / instance_path.name)

@@ -22,9 +22,14 @@ class DataExportDownloadView(AppBuilderBaseView):
     def data_export_download_home(self):
         content = []
         for vendor in vendors['vendors']:
-            for path in pathlib.Path(f"data-export-files/{vendor}/marc-files").glob(
-                "*"
-            ):
+            for path in pathlib.Path(
+                f"data-export-files/{vendor}/marc-files/updates"
+            ).glob("*"):
+                content.append({vendor: [path_parent(path), path.name]})
+
+            for path in pathlib.Path(
+                f"data-export-files/{vendor}/marc-files/deletes"
+            ).glob("*"):
                 content.append({vendor: [path_parent(path), path.name]})
 
             for path in pathlib.Path(f"data-export-files/{vendor}/transmitted").glob(
@@ -37,6 +42,6 @@ class DataExportDownloadView(AppBuilderBaseView):
     @expose("/downloads/<vendor>/<folder>/<filename>")
     def vendor_marc_record(self, vendor, folder, filename):
         file_bytes = pathlib.Path(
-            f"data-export-files/{vendor}/{folder}/{filename}"
+            f"data-export-files/{vendor}/marc-files/{folder}/{filename}"
         ).read_bytes()  # noqa
         return file_bytes

@@ -26,6 +26,13 @@
             <option value="{{v}}">{{v}}</option>
           {%endfor%}
         </select>
+        <p class="help-block">Select for Updates or Deletes:</p>
+        <fieldset id="kind">
+            <input type="radio" name="kind" id="updates" value="updates" checked />
+            <label for="updates">Updates</label>
+            <input type="radio" name="kind" id="deletes" value="deletes" />
+            <label for="deletes">Deletes</label>
+        </fieldset>
       </div>
     </div>
     <div class="row">

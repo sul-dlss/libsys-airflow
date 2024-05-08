@@ -114,8 +114,10 @@ def mock_folio_404():
     return mock_404_client
 
 
-def setup_test_file(tmp_path):
-    instance_file = tmp_path / "data-export-files/pod/instanceids/202402271159.csv"
+def setup_test_file_updates(tmp_path):
+    instance_file = (
+        tmp_path / "data-export-files/pod/instanceids/updates/202402271159.csv"
+    )
 
     instance_file.parent.mkdir(parents=True)
 
@@ -129,18 +131,37 @@ def setup_test_file(tmp_path):
     return instance_file
 
 
+def setup_test_file_deletes(tmp_path):
+    instance_file = (
+        tmp_path / "data-export-files/pod/instanceids/deletes/202402271159.csv"
+    )
+
+    instance_file.parent.mkdir(parents=True)
+
+    with instance_file.open("w+") as fo:
+        for instance_uuid in [
+            "0234363b-0289-4aa4-ab2f-816055992e68",
+            "0617fa00-2fae-4000-ae4b-ab8369d9afcf",
+        ]:
+            fo.write(f"{instance_uuid}\n")
+
+    return instance_file
+
+
 def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
         return_value=mock_folio_client,
     )
 
-    instance_file = setup_test_file(tmp_path)
+    instance_file = setup_test_file_updates(tmp_path)
 
     exporter = Exporter()
-    exporter.retrieve_marc_for_instances(instance_file)
+    exporter.retrieve_marc_for_instances(instance_file, kind="updates")
 
-    marc_file = instance_file.parent.parent / "marc-files/202402271159.mrc"
+    marc_file = (
+        instance_file.parent.parent.parent / "marc-files/updates/202402271159.mrc"
+    )
 
     assert marc_file.exists()
 
@@ -156,23 +177,24 @@ def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog
         return_value=mock_folio_404,
     )
 
-    instance_file = setup_test_file(tmp_path)
+    instance_file = setup_test_file_updates(tmp_path)
 
     exporter = Exporter()
-    exporter.retrieve_marc_for_instances(instance_file)
+    exporter.retrieve_marc_for_instances(instance_file, kind="updates")
 
     assert "response code 404" in caplog.text
 
 
 def test_fetch_marc_missing_instance_file(tmp_path):
-    setup_test_file(tmp_path)
+    setup_test_file_updates(tmp_path)
 
     with pytest.raises(ValueError, match="Vendor instance files do not exist"):
         instance_files_dir(airflow=tmp_path, vendor="gobi")
 
 
 def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
-    setup_test_file(tmp_path)
+    setup_test_file_updates(tmp_path)
+    setup_test_file_deletes(tmp_path)
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
@@ -181,7 +203,7 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
 
     files = marc_for_instances(airflow=tmp_path, vendor="pod")
 
-    assert files[0].endswith('202402271159.mrc')
+    assert files["updates"][0].endswith('202402271159.mrc')
 
 
 field_035 = pymarc.Field(

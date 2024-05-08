@@ -90,7 +90,8 @@ excluded_tags = [
 
 def add_holdings_items_to_marc_files(marc_file_list: str, full_dump: bool):
     transformer = Transformer()
-    for marc_file in ast.literal_eval(marc_file_list):
+    marc_list = ast.literal_eval(marc_file_list)
+    for marc_file in marc_list['updates']:
         transformer.add_holdings_items(marc_file=marc_file, full_dump=full_dump)
 
 
@@ -98,7 +99,9 @@ def divide_into_oclc_libraries(**kwargs):
     marc_file_list = kwargs.get("marc_file_list", "")
     task_instance = kwargs["ti"]
     oclc_transformer = OCLCTransformer()
-    for marc_file in ast.literal_eval(marc_file_list):
+
+    marc_list = ast.literal_eval(marc_file_list)
+    for marc_file in marc_list['updates']:
         oclc_transformer.divide(marc_file)
     oclc_transformer.save()
     task_instance.xcom_push(
@@ -107,7 +110,8 @@ def divide_into_oclc_libraries(**kwargs):
 
 
 def remove_fields_from_marc_files(marc_file_list: str):
-    for file in ast.literal_eval(marc_file_list):
+    marc_list = ast.literal_eval(marc_file_list)
+    for file in marc_list['updates']:
         remove_marc_fields(file, False)
 
 
