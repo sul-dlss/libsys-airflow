@@ -52,30 +52,18 @@ multiple_items = [
     (
         {
             'id': 'f34165a0-c41f-59fb-b5a4-f95018303259',
-            'materialTypeId': {
-                'id': 'd934e614-215d-4667-b231-aed97887f289',
-                'name': 'periodical',
-            },
+            'materialTypeId': 'd934e614-215d-4667-b231-aed97887f289',
             'numberOfPieces': '1',
             'enumeration': 'V.17 1983',
-            'effectiveLocationId': {
-                'id': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
-                'name': 'Business Newspaper Stacks',
-            },
+            'effectiveLocationId': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
         },
     ),
     (
         {
             'id': 'f341a6dd-2c08-575b-9511-8677fc0229b5',
-            'materialTypeId': {
-                'id': 'd934e614-215d-4667-b231-aed97887f289',
-                'name': 'periodical',
-            },
+            'materialTypeId': 'd934e614-215d-4667-b231-aed97887f289',
             'enumeration': 'eV.17 1983',
-            'effectiveLocationId': {
-                'id': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
-                'name': 'SUL Electronic',
-            },
+            'effectiveLocationId': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
         },
     ),
 ]
@@ -100,16 +88,10 @@ single_item = [
     (
         {
             'id': '3251f045-f80c-5c0d-8774-a75af8a6f01c',
-            'materialTypeId': {
-                'id': '1a54b431-2e4f-452d-9cae-9cee66c9a892',
-                'name': 'book',
-            },
+            'materialTypeId': '1a54b431-2e4f-452d-9cae-9cee66c9a892',
             'numberOfPieces': '1',
             'enumeration': '1989',
-            'effectiveLocationId': {
-                'id': 'a8676073-7520-4f26-8573-55976301ab5d',
-                'name': 'Green Flat Folios',
-            },
+            'effectiveLocationId': 'a8676073-7520-4f26-8573-55976301ab5d',
         },
     ),
 ]
@@ -182,10 +164,18 @@ def mock_folio_client():
             'libraryId': 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
         },
     ]
+    mock_material_types = {
+        "mtypes": [
+            {"id": "d934e614-215d-4667-b231-aed97887f289", "name": "periodical"},
+            {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
+        ]
+    }
+
     mock_client = MagicMock()
     mock_client.call_number_types = mock_call_number_types
     mock_client.holdings_types = mock_holdings_types
     mock_client.locations = mock_locations
+    mock_client.folio_get = lambda *args: mock_material_types
     return mock_client
 
 
