@@ -6,9 +6,9 @@ from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    gather_files_task,
-    transmit_data_ftp_task,
     archive_transmitted_data_task,
+    gather_oclc_files_task,
+    transmit_data_oclc_api_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,9 +35,18 @@ def send_oclc_records():
 
     end = EmptyOperator(task_id="end")
 
-    gather_files = gather_files_task(vendor="oclc")
+    gather_files = gather_oclc_files_task()
 
-    transmit_data = transmit_data_ftp_task("google", gather_files)
+    transmit_data = transmit_data_oclc_api_task(
+        [
+            "http-web.oclc-Business",
+            "http-web.oclc-Hoover",
+            "http-web.oclc-Lane",
+            "http-web.oclc-Law",
+            "http-web.oclc-SUL",
+        ],
+        gather_files,
+    )
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
 
