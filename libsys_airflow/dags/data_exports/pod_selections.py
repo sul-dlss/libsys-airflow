@@ -100,4 +100,4 @@ with DAG(
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> finish_processing_marc
+transform_marc_fields >> transform_leader_fields >> finish_processing_marc
