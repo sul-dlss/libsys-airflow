@@ -4,7 +4,10 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc.transforms import remove_marc_fields
+from libsys_airflow.plugins.data_exports.marc.transforms import (
+    leader_for_deletes,
+    remove_marc_fields
+)
 
 from libsys_airflow.plugins.data_exports.marc import transformer as marc_transformer
 
@@ -363,3 +366,29 @@ def test_remove_marc_fields(tmp_path):
 
     assert "598" not in current_fields
     assert "699" not in current_fields
+
+
+def test_change_leader(tmp_path):
+    marc_file = tmp_path / "20240509.mrc"
+
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='245',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='A Short Title')],
+        ),
+    )
+    assert not record.leader[5] == 'd'
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    leader_for_deletes(str(marc_file.absolute()), full_dump=False)
+
+    with marc_file.open('rb') as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        modified_marc_record = next(marc_reader)
+
+    assert modified_marc_record.leader[5] == 'd'
