@@ -80,6 +80,7 @@ with DAG(
         params["remote_path"],
         params["download_path"],
         params["filename_regex"],
+        params["vendor_uuid"],
         params["vendor_interface_uuid"],
     )
 
