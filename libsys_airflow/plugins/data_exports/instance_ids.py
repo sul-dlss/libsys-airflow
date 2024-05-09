@@ -23,7 +23,7 @@ def fetch_record_ids(**kwargs) -> dict:
             from_date = params.get("from_date", datetime.now().strftime('%Y-%m-%d'))
             to_date = (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
 
-            results[type].extend(
+            results[kind].extend(
                 SQLExecuteQueryOperator(
                     task_id=task_id,
                     conn_id="postgres_folio",

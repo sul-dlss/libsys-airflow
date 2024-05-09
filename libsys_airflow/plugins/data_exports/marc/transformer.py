@@ -17,6 +17,7 @@ class Transformer(object):
         self.call_numbers = self.call_number_lookup()
         self.holdings_type = self.holdings_type_lookup()
         self.locations = self.locations_lookup()
+        self.materialtypes = self.materialtype_lookup()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -34,6 +35,15 @@ class Transformer(object):
         lookup = {}
         for location in self.folio_client.locations:
             lookup[location['id']] = location['code']
+        return lookup
+
+    def materialtype_lookup(self) -> dict:
+        lookup = {}
+        materialtypes = self.folio_client.folio_get("/material-types?limit=99")[
+            "mtypes"
+        ]
+        for m in materialtypes:
+            lookup[m['id']] = m['name']
         return lookup
 
     def add_holdings_items(self, marc_file: str, full_dump: bool):
@@ -144,9 +154,9 @@ class Transformer(object):
 
     def add_item_subfields(self, field_999: pymarc.Field, item: dict):
         if 'materialTypeId' in item:
-            field_999.add_subfield('t', item['materialTypeId'].get('name'))
+            field_999.add_subfield('t', self.materialtypes.get(item['materialTypeId']))
         if 'effectiveLocationId' in item:
-            location_code = self.locations.get(item['effectiveLocationId'].get('id'))
+            location_code = self.locations.get(item['effectiveLocationId'])
             if location_code:
                 field_999.add_subfield('e', location_code)
         if len(item.get('numberOfPieces', '')) > 0:
