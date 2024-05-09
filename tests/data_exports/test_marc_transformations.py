@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     leader_for_deletes,
-    remove_marc_fields
+    remove_marc_fields,
 )
 
 from libsys_airflow.plugins.data_exports.marc import transformer as marc_transformer
