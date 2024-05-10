@@ -23,8 +23,8 @@ def _bw_error_body(task_instance, params) -> str:
      <h3>Relationships</h3>
      <ul>
      {% for row in params.relationships[0:25] %}
-     <li>Child Holdings HRID: {{ row.child_holdings_hrid}}<br>
-         Parent Barcode: {{ row.parent_barcode }}
+     <li>Part Holdings HRID: {{ row.part_holdings_hrid}}<br>
+         Principle Barcode: {{ row.principle_barcode }}
      </li>
      {% endfor %}
      </ul>
@@ -68,8 +68,8 @@ def _bw_summary_body(task_instance, file_name) -> str:
        <dt>{{ error.message }}</dt>
        <dd>
           <ul>
-            <li>Child Holding ID {{ error.record.holdingsRecordId}}</li>
-            <li>Parent Item ID {{ error.record.itemId }}</li>
+            <li>Parts Holding ID {{ error.record.holdingsRecordId}}</li>
+            <li>Principle Item ID {{ error.record.itemId }}</li>
           </ul>
         </dd>
       {% endfor %}

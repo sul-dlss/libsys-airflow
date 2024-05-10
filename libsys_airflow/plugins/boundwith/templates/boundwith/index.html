@@ -16,6 +16,8 @@
         {% endif %}
     </div>
     {% else %}
+    <p>Create boundwith relationships for parts and principle.</p>
+    <p class="help-block">CSV should include a row for the principle's barcode and holdings HRID (use part_holdings_hrid column for principle's holdings HRID).</p>
     <form enctype="multipart/form-data" method="POST" action="{{ url_for('BoundWithView.run_bw_creation') }}">
         <div class="row">
             <div class="col-md-3">
@@ -31,8 +33,8 @@
                     <p class="help-block">
                         Upload csv file with the following columns:
                         <ul>
-                            <li>child_holdings_hrid</li>
-                            <li>parent_barcode</li>
+                            <li>part_holdings_hrid</li>
+                            <li>principle_barcode</li>
                         </ul> 
                         <b>NOTE:</b> Maximum number of rows is 1,000
                     </p>

@@ -61,7 +61,7 @@ def mock_task_instance(mocker):
                         return "bw-test-file.csv"
 
                     case "user_email":
-                        return "jstanford@stanford.edu"
+                        return "jstanford@example.com"
 
             case "new_bw_record":
                 match key:
@@ -181,24 +181,24 @@ def test_create_bw_record_no_holdings(mock_folio_client):
 def mock_context():
     return {
         "params": {
-            "email": "jstanford@stanford.edu",
+            "email": "jstanford@example.com",
             "file_name": "bw-errors.csv",
             "relationships": [
                 {
-                    'child_holdings_hrid': 'ah1135444_2',
-                    'parent_barcode': '36105042288113',
+                    'part_holdings_hrid': 'ah1135444_2',
+                    'principle_barcode': '36105042288113',
                 },
                 {
-                    'child_holdings_hrid': 'ah787483_1',
-                    'parent_barcode': '36105010089238',
+                    'part_holdings_hrid': 'ah787483_1',
+                    'principle_barcode': '36105010089238',
                 },
                 {
-                    'child_holdings_hrid': 'ah1545187_1',
-                    'parent_barcode': '36105042353974',
+                    'part_holdings_hrid': 'ah1545187_1',
+                    'principle_barcode': '36105042353974',
                 },
                 {
-                    'child_holdings_hrid': 'ah1598042_1',
-                    'parent_barcode': '36105042353974',
+                    'part_holdings_hrid': 'ah1598042_1',
+                    'principle_barcode': '36105042353974',
                 },
             ],
         },
@@ -235,7 +235,7 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -243,8 +243,8 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
     assert mock_send_email.called
 
     assert mock_send_email.call_args[1]['to'] == [
-        'libsys-lists@stanford.edu',
-        'jstanford@stanford.edu',
+        'libsys-lists@example.com',
+        'jstanford@example.com',
     ]
 
     html_body = BeautifulSoup(
@@ -271,7 +271,7 @@ def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -299,7 +299,7 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
-    mock_variable.get = lambda _: 'libsys-lists@stanford.edu'
+    mock_variable.get = lambda _: 'libsys-lists@example.com'
 
     mock_context["task_instance"] = mock_task_instance
 
@@ -319,12 +319,12 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
 def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
 
-    email_bw_summary('libsys-lists@stanford.edu', mock_task_instance)
+    email_bw_summary('libsys-lists@example.com', mock_task_instance)
 
     assert mock_send_email.called
     assert mock_send_email.call_args[1]['to'] == [
-        'libsys-lists@stanford.edu',
-        'jstanford@stanford.edu',
+        'libsys-lists@example.com',
+        'jstanford@example.com',
     ]
 
     html_body = BeautifulSoup(
@@ -336,7 +336,7 @@ def test_email_bw_summary(mocker, mock_task_instance, mock_context):
     assert paragraphs[0].text == "1 boundwith relationships created"
 
     list_items = html_body.find_all("li")
-    assert list_items[0].text.startswith("Child Holding ID 59f2bc54")
+    assert list_items[0].text.startswith("Parts Holding ID 59f2bc54")
     assert list_items[1].text.endswith("Item ID 4a5944f7-9d9f-427e-a510-3af7856241de")
 
 
