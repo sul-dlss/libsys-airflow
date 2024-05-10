@@ -70,7 +70,7 @@ def save_ids(**kwargs) -> str:
     kind = kwargs.get("kind")
 
     if not data:
-        return
+        return ""
 
     data_path = (
         Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}/{filestamp}.csv"
