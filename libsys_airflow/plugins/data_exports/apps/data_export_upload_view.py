@@ -5,6 +5,7 @@ import re
 
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
+from typing import Union
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 
@@ -14,7 +15,9 @@ vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
 
-def upload_data_export_ids(ids_df: pd.DataFrame, vendor: str, kind: str) -> str:
+def upload_data_export_ids(
+    ids_df: pd.DataFrame, vendor: str, kind: str
+) -> Union[str, None]:
     if len(ids_df.columns) > 1:
         raise ValueError("ID file has more than one column.")
     tuples = list(ids_df.itertuples(index=False, name=None))
