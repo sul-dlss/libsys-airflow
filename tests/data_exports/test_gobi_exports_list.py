@@ -210,6 +210,60 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
         assert fo.readline() == ""
 
 
+def test_with_modified_isbn(tmp_path, mocker, mock_folio_client):  # noqa
+    file_date = "20240203.mrc"
+
+    holdings = [
+        {
+            'id': '3bb4a439-842e-5c8d-b86c-eaad46b6a316',
+            'holdingsTypeId': '996f93e2-5b5e-4cf2-9168-33ced1f95eed',
+        }
+    ]
+
+    items = [
+        {
+            'id': '3251f045-f80c-5c0d-8774-a75af8a6f01c',
+        },
+    ]
+
+    def mock_folio_get(*args):
+        result = folio_result
+        result["holdingsRecords"] = holdings
+        result["items"] = items
+        return result
+
+    mock_folio_client.folio_get = mock_folio_get
+
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    marc_file = tmp_path / f"{file_date}.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(
+            record(
+                isbns=["1234567890 some text", "9-876543212345"],
+                fields035=["notgls12345", "other1value"],
+                fields856=["notgobi", "other"],
+                fields956=["notsubscribed", "other"],
+            )
+        )
+
+    transformer = gobi_transformer.GobiTransformer()
+    transformer.generate_list(marc_file)
+
+    gobi_file = pathlib.Path(marc_file.parent.parent / f"stf.{file_date}.txt")
+
+    with gobi_file.open('r+') as fo:
+        assert fo.readline() == "1234567890|print|325099\n"
+        assert fo.readline() == "9876543212345|print|325099\n"
+        assert fo.readline() == "1234567890|ebook|325099\n"
+        assert fo.readline() == "9876543212345|ebook|325099\n"
+
+
 def test_with_print_no_electronic_holding(tmp_path, mocker, mock_folio_client):  # noqa
     file_date = "20240104"
 
