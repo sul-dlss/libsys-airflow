@@ -185,11 +185,12 @@ def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog
     assert "response code 404" in caplog.text
 
 
-def test_fetch_marc_missing_instance_file(tmp_path):
+def test_fetch_marc_missing_instance_file(tmp_path, caplog):
     setup_test_file_updates(tmp_path)
 
-    with pytest.raises(ValueError, match="Vendor instance files do not exist"):
-        instance_files_dir(airflow=tmp_path, vendor="gobi")
+    instance_files_dir(airflow=tmp_path, vendor="gobi")
+
+    assert "Vendor instance files do not exist" in caplog.text
 
 
 def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
