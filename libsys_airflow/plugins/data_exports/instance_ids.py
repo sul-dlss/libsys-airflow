@@ -66,8 +66,11 @@ def save_ids(**kwargs) -> str:
     filestamp = kwargs.get("timestamp", datetime.now().strftime('%Y%m%d%H%M'))
     airflow = kwargs.get("airflow", "/opt/airflow")
     vendor = kwargs.get("vendor")
-    data = kwargs.get("data", "")
+    data = kwargs.get("data")
     kind = kwargs.get("kind")
+
+    if not data:
+        return  # type: ignore
 
     data_path = (
         Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}/{filestamp}.csv"
