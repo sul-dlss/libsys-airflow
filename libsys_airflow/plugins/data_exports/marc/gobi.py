@@ -50,7 +50,8 @@ class GobiTransformer(Transformer):
                     isbn = isbn.replace("-", "")
                     isbn = re.sub("\s.*", "", isbn)
                     if not re.search(
-                        r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$", isbn
+                        r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
+                        isbn,
                     ):
                         break
 
@@ -95,7 +96,6 @@ class GobiTransformer(Transformer):
 
                         if len(items_result['items']):
                             print_list.append(isbn)
-
 
         with gobi_path.open("w+") as (fo):
             for p_isbn in print_list:
