@@ -48,7 +48,7 @@ class GobiTransformer(Transformer):
                     Some ISBNs are written with embedded hyphens to ignore, or additional text after a space.
                     """
                     isbn = isbn.replace("-", "")
-                    isbn = re.sub("\s.*", "", isbn)
+                    isbn = re.sub(r"\s.*", "", isbn)
                     if not re.search(
                         r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
                         isbn,
