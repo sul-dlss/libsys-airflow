@@ -1,5 +1,8 @@
+import logging
 import pathlib
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
+
+logger = logging.getLogger(__name__)
 
 
 def instance_files_dir(**kwargs) -> list[pathlib.Path]:
@@ -15,7 +18,7 @@ def instance_files_dir(**kwargs) -> list[pathlib.Path]:
     instance_files = list(instance_dir.glob("*.csv"))
 
     if not instance_files:
-        raise ValueError("Vendor instance files do not exist")
+        logger.warning(f"Vendor instance files do not exist for {kind}")
 
     return instance_files
 

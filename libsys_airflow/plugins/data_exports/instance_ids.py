@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Union
 
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
@@ -48,7 +49,7 @@ def sql_files(**kwargs) -> list:
     return list(sql_path.glob("*.sql"))
 
 
-def save_ids_to_fs(**kwargs) -> list[str]:
+def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
     ids_path = []
     airflow = kwargs.get("airflow", "/opt/airflow")
     task_instance = kwargs["task_instance"]
@@ -62,7 +63,7 @@ def save_ids_to_fs(**kwargs) -> list[str]:
     return ids_path
 
 
-def save_ids(**kwargs) -> str:
+def save_ids(**kwargs) -> Union[str, None]:
     filestamp = kwargs.get("timestamp", datetime.now().strftime('%Y%m%d%H%M'))
     airflow = kwargs.get("airflow", "/opt/airflow")
     vendor = kwargs.get("vendor")
@@ -70,7 +71,7 @@ def save_ids(**kwargs) -> str:
     kind = kwargs.get("kind")
 
     if not data:
-        return  # type: ignore
+        return None
 
     data_path = (
         Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}/{filestamp}.csv"
