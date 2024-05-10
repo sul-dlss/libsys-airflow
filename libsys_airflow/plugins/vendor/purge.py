@@ -70,7 +70,7 @@ def _extract_uuids(directory: str):
     return output
 
 
-def find_directories(archive_directory: str) -> list[str]:
+def find_directories(archive_directory: pathlib.Path) -> list[str]:
     """
     Iterates through archives to determine what vendor management
     directories to delete based on age
@@ -79,8 +79,7 @@ def find_directories(archive_directory: str) -> list[str]:
     prior_datestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).strftime(
         "%Y%m%d"
     )
-    archive_directory_path = pathlib.Path(archive_directory)
-    for directory in sorted(archive_directory_path.iterdir()):
+    for directory in sorted(archive_directory.iterdir()):
         if directory.stem <= prior_datestamp:
             target_dirs.append(str(directory))
     if len(target_dirs) < 1:
@@ -88,15 +87,14 @@ def find_directories(archive_directory: str) -> list[str]:
     return target_dirs
 
 
-def find_files(downloads_directory: str):
+def find_files(downloads_directory: pathlib.Path):
     """
     Iterates through downloads directory determing what files to
     delete based on the file's age
     """
     prior_timestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).timestamp()
-    downloads_path = pathlib.Path(downloads_directory)
     files = []
-    for file_path in downloads_path.glob("**/*"):
+    for file_path in downloads_directory.glob("**/*"):
         if file_path.is_file() and file_path.stat().st_mtime <= prior_timestamp:
             logger.info(f"Found {file_path}")
             files.append(str(file_path.absolute()))

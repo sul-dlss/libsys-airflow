@@ -1,7 +1,6 @@
 import pytest  # noqa
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
-import os
 import shutil
 from datetime import datetime, date
 
@@ -63,16 +62,16 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 @pytest.fixture
 def download_path(tmp_path):
-    path = os.path.join(tmp_path, "download")
-    os.mkdir(path)
-    shutil.copyfile("tests/vendor/0720230118.mrc", os.path.join(path, "0720230118.mrc"))
+    path = tmp_path / "download"
+    path.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile("tests/vendor/0720230118.mrc", path / "0720230118.mrc")
     return path
 
 
 @pytest.fixture
 def archive_path(tmp_path):
-    path = os.path.join(tmp_path, "archive")
-    os.mkdir(path)
+    path = tmp_path / "archive"
+    path.mkdir(parents=True, exist_ok=True)
     return path
 
 
@@ -86,13 +85,13 @@ def test_archive_no_files(download_path, archive_path, pg_hook):
             session,
         )
 
-    assert os.listdir(archive_path) == []
+    assert [r for r in archive_path.iterdir()] == []
 
 
 def test_archive(download_path, archive_path, pg_hook, mocker):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.archive_basepath',
-        return_value=str(archive_path),
+        return_value=archive_path,
     )
 
     with Session(pg_hook()) as session:
@@ -104,12 +103,12 @@ def test_archive(download_path, archive_path, pg_hook, mocker):
             session,
         )
 
-    assert os.listdir(
-        os.path.join(
-            archive_path,
-            f"{date.today().strftime('%Y%m%d')}/698a62fe-8aff-40c7-b1ef-e8bd13c77536/65d30c15-a560-4064-be92-f90e38eeb351",
-        )
-    ) == ["0720230118.mrc"]
+    vendor_interface_archived_path = (
+        archive_path
+        / f"{date.today().strftime('%Y%m%d')}/698a62fe-8aff-40c7-b1ef-e8bd13c77536/65d30c15-a560-4064-be92-f90e38eeb351"
+    )
+    archived_file = next(vendor_interface_archived_path.glob("*.mrc"))
+    assert archived_file.name == "0720230118.mrc"
 
     with Session(pg_hook()) as session:
         vendor_file = session.scalars(
