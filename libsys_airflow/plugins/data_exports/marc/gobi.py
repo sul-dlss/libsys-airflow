@@ -53,7 +53,7 @@ class GobiTransformer(Transformer):
                         r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
                         isbn,
                     ):
-                        break
+                        continue
 
                     fields035 = record.get_fields("035")
                     field856 = record.get_fields("856")
