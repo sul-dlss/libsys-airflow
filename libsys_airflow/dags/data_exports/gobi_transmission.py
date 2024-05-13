@@ -11,6 +11,8 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
 )
 
+from libsys_airflow.plugins.data_exports.marc.gobi import gobi_list_from_marc_files
+
 logger = logging.getLogger(__name__)
 
 default_args = {
@@ -37,11 +39,15 @@ def send_gobi_records():
 
     gather_files = gather_files_task(vendor="gobi")
 
-    transmit_data = transmit_data_ftp_task("ftp-ftp.ybp.com-stanford", gather_files)
+    generate_isbn_list = gobi_list_from_marc_files(gather_files)
+
+    transmit_data = transmit_data_ftp_task(
+        "ftp-ftp.ybp.com-stanford", generate_isbn_list
+    )
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
 
-    start >> gather_files >> transmit_data >> archive_data >> end
+    start >> gather_files >> generate_isbn_list >> transmit_data >> archive_data >> end
 
 
 send_gobi_records()
