@@ -1,10 +1,13 @@
 import csv
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union
 
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_record_ids(**kwargs) -> dict:
@@ -71,6 +74,7 @@ def save_ids(**kwargs) -> Union[str, None]:
     kind = kwargs.get("kind")
 
     if not data:
+        logger.info(f"No new changes for {vendor} record {kind}")
         return None
 
     data_path = (

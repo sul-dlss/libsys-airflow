@@ -54,12 +54,10 @@ class Transformer(object):
         marc_path = pathlib.Path(marc_file)
         if full_dump:
             marc_path = S3Path(marc_file)
-            logger.info(
-                f"Adding holdings and items using AWS S3 with path: {marc_path}"
-            )
+            logger.info("Adding holdings and items using AWS S3 with path")
 
         marc_records = []
-        logger.info("Starting MARC processing")
+        logger.info(f"Starting MARC processing on {marc_path}")
         with marc_path.open('rb') as fo:
             for i, record in enumerate(pymarc.MARCReader(fo)):
                 try:
