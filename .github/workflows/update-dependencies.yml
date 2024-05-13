@@ -3,6 +3,11 @@ name: Update Dependencies
 on:
   schedule:
     - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        default: 'debug'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
