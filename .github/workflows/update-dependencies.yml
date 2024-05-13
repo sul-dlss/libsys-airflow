@@ -22,6 +22,7 @@ jobs:
         python-version: "3.10"
     - name: Update Poetry dependencies
       run: |
+        sudo apt-get --assume-yes install libxml2-dev libxmlsec1-dev libxmlsec1-openssl pkg-config
         git config user.name "dlss-infra-bot"
         git config user.email "dlss-infrastructure-team-owner@lists.stanford.edu"
         git checkout -b update-dependencies
