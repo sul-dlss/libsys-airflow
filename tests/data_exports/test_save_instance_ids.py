@@ -1,4 +1,3 @@
-import csv
 import pandas as pd
 import pathlib
 import pytest
@@ -23,20 +22,12 @@ def mock_task_instance():
 def mock_xcom_pull(**kwargs):
     return {
         "updates": [
-            [],
-            [
-                ['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb'],
-                ['fe2e581f-9767-442a-ae3c-a421ac655fe2'],
-            ],
-            [],
+            '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb',
+            'fe2e581f-9767-442a-ae3c-a421ac655fe2',
         ],
         "deletes": [
-            [],
-            [
-                ['336971cd-2ea1-4ad2-af86-22ae7c0a95ae'],
-                ['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb'],
-            ],
-            [],
+            '336971cd-2ea1-4ad2-af86-22ae7c0a95ae',
+            '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb',
         ],
     }
 
@@ -46,14 +37,20 @@ def test_save_ids_to_fs(tmp_path, mock_task_instance):
         airflow=tmp_path, task_instance=mock_task_instance, vendor="oclc"
     )
 
+    file_list = []
     for i, path in enumerate(save_path):
         file = pathlib.Path(path)
         assert file.exists()
-
         with file.open('r') as fo:
-            id_list = list(row for row in csv.reader(fo))
+            for row in fo:
+                file_list.append(row)
 
-        assert id_list[0][i] == "['4e66ce0d-4a1d-41dc-8b35-0914df20c7fb']"
+    assert file_list == [
+        '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb\n',
+        'fe2e581f-9767-442a-ae3c-a421ac655fe2\n',
+        '336971cd-2ea1-4ad2-af86-22ae7c0a95ae\n',
+        '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb\n',
+    ]
 
 
 def test_upload_data_export_file_ids_one_column():

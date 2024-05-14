@@ -189,6 +189,44 @@ def mock_get_current_context(mocker):
     return context
 
 
+def test_skip_record_no_999i(
+    mocker, tmp_path, mock_folio_client, mock_get_current_context
+):
+    mocker.patch.object(
+        marc_transformer, "get_current_context", mock_get_current_context
+    )
+    mocker.patch.object(marc_transformer, "SQLExecuteQueryOperator", MockSQLOperator)
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='not a uuid!'),
+            ],
+        )
+    )
+    marc_file = tmp_path / "20240514.mrc"
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    transformer = marc_transformer.Transformer()
+    transformer.add_holdings_items(str(marc_file), full_dump=False)
+
+    with pytest.raises(Exception, match='No uuid in subfields'):
+        raise Exception('No uuid in subfields')
+
+    with marc_file.open('rb') as fo:
+        mod_marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    assert len(mod_marc_records) == 0
+
+
 def test_add_holdings_items_single_999(
     mocker, tmp_path, mock_folio_client, mock_get_current_context
 ):
@@ -206,7 +244,8 @@ def test_add_holdings_items_single_999(
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c')
+                pymarc.Subfield(code='i', value='not a uuid!'),
+                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c'),
             ],
         )
     )
