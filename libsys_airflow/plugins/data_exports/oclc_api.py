@@ -174,11 +174,6 @@ class OCLCAPIWrapper(object):
                 try:
                     record.remove_fields(*oclc_excluded)
                     marc21 = record.as_marc21()
-                    session.bib_validate(
-                        record=marc21,
-                        recordFormat="application/marc",
-                        validationLevel="validateFull",
-                    )
                     new_record = session.bib_create(
                         record=marc21,
                         recordFormat="application/marc",
