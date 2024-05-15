@@ -11,6 +11,7 @@ import libsys_airflow.plugins.data_exports.transmission_tasks as transmission_ta
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
     transmit_data_http_task,
+    transmit_data_ftp_task,
     archive_transmitted_data_task,
 )
 
@@ -61,6 +62,19 @@ def mock_httpx_connection():
 
 
 @pytest.fixture
+def mock_ftphook_connection():
+    return Connection(
+        conn_id="ftp-example.com",
+        conn_type="ftp",
+        host="ftp://www.example.com",
+        login="username",
+        password="pass",
+        extra={"remote_path": "/remote/path/dir"},
+        schema="ftp",
+    )
+
+
+@pytest.fixture
 def mock_httpx_success():
     return httpx.Client(
         transport=httpx.MockTransport(lambda request: httpx.Response(HTTPStatus.OK))
@@ -86,6 +100,25 @@ def test_gather_full_dump_files(mocker):
         vendor="full-dump", params={"bucket": "data-export-test"}
     )
     assert marc_files["s3"]
+
+
+def test_transmit_data_ftp_task(
+    mocker, mock_ftphook_connection, mock_marc_files, caplog
+):
+    ftp_hook = mocker.patch(
+        "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_ftphook_connection,
+    )
+
+    transmit_data = transmit_data_ftp_task.function("ftp-example.com", mock_marc_files)
+    assert len(transmit_data["success"]) == 3
+    assert "Start transmission of file" in caplog.text
+    assert ftp_hook.store_file.called_with(
+        "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
+    )
 
 
 def test_transmit_data_task(

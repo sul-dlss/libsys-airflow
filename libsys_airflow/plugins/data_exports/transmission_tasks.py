@@ -77,7 +77,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
 
 
 @task(multiple_outputs=True)
-def transmit_data_ftp_task(conn_id, local_files) -> dict:
+def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     """
     Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
@@ -87,7 +87,7 @@ def transmit_data_ftp_task(conn_id, local_files) -> dict:
     remote_path = connection.extra_dejson["remote_path"]
     success = []
     failures = []
-    for f in local_files:
+    for f in gather_files["file_list"]:
         remote_file_path = f"{remote_path}/{Path(f).name}"
         try:
             logger.info(f"Start transmission of file {f}")
