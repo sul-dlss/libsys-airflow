@@ -125,7 +125,9 @@ with DAG(
             params["archive_regex"] = processing_options.get("archive_regex")
 
         logger.info(f"Params are {params}")
-        assert os.path.exists(os.path.join(params["download_path"], params["filename"]))
+        assert (params["download_path"] / params["filename"]).exists()
+        # XCOM cannot serialize pathlib Paths
+        params["download_path"] = str(params["download_path"])
 
         return params
 
