@@ -2,6 +2,7 @@ import copy
 import logging
 import pathlib
 import pymarc
+import re
 
 from libsys_airflow.plugins.folio_client import folio_client
 from airflow.operators.python import get_current_context
@@ -58,16 +59,27 @@ class Transformer(object):
 
         marc_records = []
         logger.info(f"Starting MARC processing on {marc_path}")
+        regex = re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        )
+
         with marc_path.open('rb') as fo:
             for i, record in enumerate(pymarc.MARCReader(fo)):
                 try:
-                    subfields_i = record["999"].get_subfields("i")
+                    fields_999 = record.get_fields("999")
+                    for field_999 in fields_999:
+                        subfields_i = [
+                            i for i in field_999.get_subfields("i") if regex.match(i)
+                        ]
+                        if not subfields_i:
+                            raise Exception("No uuid in subfields")
+
                     new_999s = self.add_holdings_items_fields(subfields_i)
                     record.add_field(*new_999s)
                     marc_records.append(record)
                     if not i % 100:
                         logger.info(f"{i:,} processed records")
-                except TypeError as e:
+                except Exception as e:
                     logger.warning(e)
                     continue
 

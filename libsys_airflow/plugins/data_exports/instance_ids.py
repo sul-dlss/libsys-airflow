@@ -1,5 +1,5 @@
-import csv
 import logging
+import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union
@@ -39,6 +39,8 @@ def fetch_record_ids(**kwargs) -> dict:
                     },
                 ).execute(context)
             )
+
+        results[kind] = list(np.unique(results[kind]))
 
     return results
 
@@ -83,9 +85,7 @@ def save_ids(**kwargs) -> Union[str, None]:
     data_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(data_path, 'w') as f:
-        writer = csv.writer(f, lineterminator='\n')
         for id in data:
-            if id:
-                writer.writerow(id)
+            f.write(f"{id}\n")
 
     return str(data_path)
