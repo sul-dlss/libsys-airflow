@@ -4,6 +4,7 @@ from s3path import S3Path
 import httpx
 
 from airflow.decorators import task
+from airflow.models import Variable
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
@@ -41,6 +42,8 @@ def gather_files_task(**kwargs) -> dict:
 
 @task(multiple_outputs=True)
 def transmit_data_http_task(gather_files, **kwargs) -> dict:
+    if not is_production():
+        return return_success_test_instance(gather_files)
     """
     Transmit the data via http
     Returns lists of files successfully transmitted and failures
@@ -77,7 +80,9 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
 
 
 @task(multiple_outputs=True)
-def transmit_data_ftp_task(conn_id, local_files) -> dict:
+def transmit_data_ftp_task(conn_id, gather_files) -> dict:
+    if not is_production():
+        return return_success_test_instance(gather_files)
     """
     Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
@@ -87,7 +92,7 @@ def transmit_data_ftp_task(conn_id, local_files) -> dict:
     remote_path = connection.extra_dejson["remote_path"]
     success = []
     failures = []
-    for f in local_files:
+    for f in gather_files["file_list"]:
         remote_file_path = f"{remote_path}/{Path(f).name}"
         try:
             logger.info(f"Start transmission of file {f}")
@@ -128,3 +133,11 @@ def archive_transmitted_data_task(files):
 
         if instance_path.exists():
             instance_path.replace(archive_dir / kind / instance_path.name)
+
+
+def is_production():
+    return bool(Variable.get("OKAPI_URL").find("prod") > 0)
+
+
+def return_success_test_instance(files) -> dict:
+    return {"success": files["file_list"], "failures": []}
