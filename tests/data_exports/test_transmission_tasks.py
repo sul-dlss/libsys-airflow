@@ -102,8 +102,12 @@ def test_gather_full_dump_files(mocker):
     assert marc_files["s3"]
 
 
-def test_transmit_data_ftp_task(mocker, mock_ftphook_connection, mock_marc_files, caplog):
-    ftp_hook = mocker.patch("airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True)
+def test_transmit_data_ftp_task(
+    mocker, mock_ftphook_connection, mock_marc_files, caplog
+):
+    ftp_hook = mocker.patch(
+        "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
+    )
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
         return_value=mock_ftphook_connection,
@@ -115,6 +119,7 @@ def test_transmit_data_ftp_task(mocker, mock_ftphook_connection, mock_marc_files
     assert ftp_hook.store_file.called_with(
         "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
     )
+
 
 def test_transmit_data_task(
     mocker, mock_httpx_connection, mock_httpx_success, mock_marc_files, caplog
