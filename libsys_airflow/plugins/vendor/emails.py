@@ -1,5 +1,5 @@
-import os
-from datetime import date, datetime
+
+from datetime import date
 import logging
 import pathlib
 
@@ -22,72 +22,26 @@ from libsys_airflow.plugins.vendor.edi import invoice_count
 logger = logging.getLogger(__name__)
 
 
-# NOTE: The default value of the `smtp.smtp_host` config value is `localhost`
-#       and we consider that an indicator that the app is running in a
-#       development container where email is disabled. Our deployed
-#       environments use the docker-compose-prod.yaml configurations, which
-#       override this value and effectively communicate that email is enabled.
-def _email_disabled() -> bool:
-    return conf.get("smtp", "smtp_host") == "localhost"
-
-
-def email_args() -> dict:
-    if _email_disabled():
-        return {}
-
-    return {
-        "email_on_failure": True,
-        "email": os.getenv('VENDOR_LOADS_TO_EMAIL'),
-    }
-
-
 @task
-def files_fetched_email_task(
-    vendor_interface_name: str,
-    vendor_code: str,
-    vendor_interface_uuid: str,
-    downloaded_files: list[str],
-    environment: str,
-):
-    if not downloaded_files:
+def files_fetched_email_task(**kwargs):
+    if kwargs.get("downloaded_files") is None:
         logger.info("Skipping sending email since no files downloaded.")
         return
 
-    if _email_disabled():
-        logger.info("Email not enabled.")
-        return
-
-    send_files_fetched_email(
-        vendor_interface_name,
-        vendor_code,
-        vendor_interface_uuid,
-        downloaded_files,
-        environment,
-    )
+    send_files_fetched_email(**kwargs)
 
 
-def send_files_fetched_email(
-    vendor_interface_name,
-    vendor_code,
-    vendor_interface_uuid,
-    downloaded_files,
-    environment,
-):
+def send_files_fetched_email(**kwargs):
+    kwargs["date"] = date.today().isoformat()
+    subject = Template("{{vendor_interface_name}} ({{vendor_code}}) - Daily Fetch Report ({{date}}) [{{environment}}]").render(kwargs)
     send_email(
-        os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - Daily Fetch Report ({date.today().isoformat()}) [{environment}]",
-        _files_fetched_html_content(
-            vendor_interface_name,
-            vendor_code,
-            vendor_interface_uuid,
-            downloaded_files,
-        ),
+        Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        subject,
+        _files_fetched_html_content(**kwargs),
     )
 
 
-def _files_fetched_html_content(
-    vendor_interface_name, vendor_code, vendor_interface_uuid, downloaded_files
-):
+def _files_fetched_html_content(**kwargs):
     template = Template(
         """
         <h5>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
@@ -102,120 +56,50 @@ def _files_fetched_html_content(
         </p>
         """
     )
-    return template.render(
-        vendor_interface_name=vendor_interface_name,
-        vendor_code=vendor_code,
-        vendor_interface_uuid=vendor_interface_uuid,
-        downloaded_files=downloaded_files,
-        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
-    )
+    return template.render(kwargs)
 
 
-def _vendor_interface_url(vendor_interface_uuid):
+def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
-        return f"{conf.get('webserver', 'base_url')}/vendor_management/interfaces/{vendor_interface.id}"
+        vendor_interface = VendorInterface.load_with_vendor(
+            vendor_uuid, vendor_interface_uuid, session
+        )
+        return f"{conf.get('webserver', 'base_url')}vendor_management/interfaces/{vendor_interface.id}"
 
 
 @task
-def file_loaded_email_task(
-    vendor_code: str,
-    vendor_interface_name: str,
-    vendor_interface_uuid: str,
-    job_execution_id: str,
-    download_path: str,
-    filename: str,
-    load_time: datetime,
-    records_count: int,
-    srs_stats: dict,
-    instance_stats: dict,
-    environment: str,
-):
-    if _email_disabled():
-        logger.info("Email not enabled.")
-        return
-
-    job_execution_url = (
-        f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{job_execution_id}"
+def file_loaded_email_task(**kwargs):
+    kwargs["job_execution_url"] = (
+        f"{Variable.get('AIRFLOW_VAR_FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
     )
-    file_path = pathlib.Path(download_path) / filename
-    _is_marc = is_marc(file_path)
+    kwargs["file_path"] = pathlib.Path(kwargs["download_path"]) / kwargs['filename']
+    kwargs[""] = extract_double_zero_one_field_values(kwargs["file_path"])
 
-    send_file_loaded_email(
-        vendor_code,
-        vendor_interface_name,
-        vendor_interface_uuid,
-        job_execution_url,
-        filename,
-        load_time,
-        records_count if _is_marc else invoice_count(file_path),
-        srs_stats,
-        instance_stats,
-        _is_marc,
-        extract_double_zero_one_field_values(file_path),
-        environment,
-    )
+    send_file_loaded_email(**kwargs)
 
 
-def send_file_loaded_email(
-    vendor_code,
-    vendor_interface_name,
-    vendor_interface_uuid,
-    job_execution_url,
-    filename,
-    load_time,
-    records_count,
-    srs_stats,
-    instance_stats,
-    is_marc,
-    double_zero_ones,
-    environment,
-):
-    html_content = (
-        _file_loaded_bib_html_content(
-            job_execution_url,
-            filename,
-            load_time,
-            records_count,
-            srs_stats,
-            instance_stats,
-            double_zero_ones,
-            vendor_interface_name,
-            vendor_code,
-            vendor_interface_uuid,
-        )
-        if is_marc
-        else _file_loaded_edi_html_content(
-            job_execution_url,
-            filename,
-            load_time,
-            records_count,
-            srs_stats,
-            instance_stats,
-            vendor_interface_name,
-            vendor_code,
-            vendor_interface_uuid,
-        )
-    )
+def send_file_loaded_email(**kwargs):
+    if is_marc(kwargs["file_path"]):
+        html_content = _file_loaded_bib_html_content(**kwargs)
+    else:
+        kwargs["records_count"] = invoice_count(kwargs["file_path"])
+        html_content = _file_loaded_edi_html_content(**kwargs)
+
+    subject = Template("{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]").render(kwargs)
     send_email(
-        os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Load Report [{environment}]",
+        Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        subject,
         html_content,
     )
 
 
-def _file_loaded_edi_html_content(
-    job_execution_url,
-    filename,
-    load_time,
-    records_count,
-    srs_stats,
-    instance_stats,
-    vendor_interface_name,
-    vendor_code,
-    vendor_interface_uuid,
-):
+def _file_loaded_edi_html_content(**kwargs):
+
+    kwargs["srs_created"] = kwargs["srs_stats"].get("totalCreatedEntities", 0)
+    kwargs["instance_errors"] = kwargs["instance_stats"].get("totalErrors", 0)
+    kwargs["vendor_interface_url"] = _vendor_interface_url(kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"])
+
     template = Template(
         """
         <h5>FOLIO Catalog EDI Load started on {{load_time}}</h5>
@@ -227,32 +111,23 @@ def _file_loaded_edi_html_content(
         <p>{{instance_errors}} Instance errors</p>
         """
     )
-    return template.render(
-        load_time=load_time,
-        filename=filename,
-        job_execution_url=job_execution_url,
-        records_count=records_count,
-        srs_created=srs_stats.get("totalCreatedEntities", 0),
-        instance_errors=instance_stats.get("totalErrors", 0),
-        vendor_interface_name=vendor_interface_name,
-        vendor_code=vendor_code,
-        vendor_interface_uuid=vendor_interface_uuid,
-        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
-    )
+    return template.render(kwargs)
 
 
-def _file_loaded_bib_html_content(
-    job_execution_url,
-    filename,
-    load_time,
-    records_count,
-    srs_stats,
-    instance_stats,
-    double_zero_ones,
-    vendor_interface_name,
-    vendor_code,
-    vendor_interface_uuid,
-):
+def _file_loaded_bib_html_content(**kwargs):
+
+    kwargs["instance_created"] = kwargs["instance_stats"].get("totalCreatedEntities", 0)
+    kwargs["instance_updated"] = kwargs["instance_stats"].get("totalUpdatedEntities", 0)
+    kwargs["instance_discarded"] = kwargs["instance_stats"].get("totalDiscardedEntities", 0)
+    kwargs["instance_errors"] = kwargs["instance_stats"].get("totalErrors", 0)
+
+    kwargs["vendor_interface_url"] = _vendor_interface_url(kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"])
+
+    kwargs["srs_created"] = kwargs["srs_stats"].get("totalCreatedEntities", 0)
+    kwargs["srs_updated"] = kwargs["srs_stats"].get("totalUpdatedEntities", 0)
+    kwargs["srs_discarded"] = kwargs["srs_stats"].get("totalDiscardedEntities", 0)
+    kwargs["srs_errors"] = kwargs["srs_stats"].get("totalErrors", 0)
+
     template = Template(
         """
         <h5>FOLIO Catalog MARC Load started on {{load_time}}</h5>
@@ -281,67 +156,26 @@ def _file_loaded_bib_html_content(
         {%- endif -%}
         """
     )
-    return template.render(
-        load_time=load_time,
-        filename=filename,
-        job_execution_url=job_execution_url,
-        records_count=records_count,
-        srs_created=srs_stats.get("totalCreatedEntities", 0),
-        srs_updated=srs_stats.get("totalUpdatedEntities", 0),
-        srs_discarded=srs_stats.get("totalDiscardedEntities", 0),
-        srs_errors=srs_stats.get("totalErrors", 0),
-        instance_created=instance_stats.get("totalCreatedEntities", 0),
-        instance_updated=instance_stats.get("totalUpdatedEntities", 0),
-        instance_discarded=instance_stats.get("totalDiscardedEntities", 0),
-        instance_errors=instance_stats.get("totalErrors", 0),
-        double_zero_ones=double_zero_ones,
-        vendor_interface_name=vendor_interface_name,
-        vendor_code=vendor_code,
-        vendor_interface_uuid=vendor_interface_uuid,
-        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
-    )
+    return template.render(**kwargs)
 
 
 @task
-def file_not_loaded_email_task(
-    vendor_interface_name: str,
-    vendor_code: str,
-    vendor_interface_uuid: str,
-    filename: str,
-    environment: str,
-):
-    if _email_disabled():
-        logger.info("Email not enabled.")
-        return
-
-    send_file_not_loaded_email(
-        vendor_interface_name, vendor_code, vendor_interface_uuid, filename, environment
-    )
+def file_not_loaded_email_task(**kwargs):
+    send_file_not_loaded_email(**kwargs)
 
 
-def send_file_not_loaded_email(
-    vendor_interface_name,
-    vendor_code,
-    vendor_interface_uuid,
-    filename,
-    environment,
-):
+def send_file_not_loaded_email(**kwargs):
     send_email(
-        os.getenv('VENDOR_LOADS_TO_EMAIL'),
-        f"{vendor_interface_name} ({vendor_code}) - ({filename}) - File Processed [{environment}]",
-        _file_not_loaded_html_content(
-            vendor_interface_name, vendor_code, vendor_interface_uuid, filename
-        ),
+        Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        Template(
+            "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Processed [{[environment]}])"
+        ).render(kwargs),
+        _file_not_loaded_html_content(**kwargs),
     )
 
 
-def _file_not_loaded_html_content(
-    vendor_interface_name,
-    vendor_code,
-    vendor_interface_uuid,
-    filename,
-):
-    template = Template(
+def _file_not_loaded_html_content(**kwargs):
+    return Template(
         """
         <h5>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
 
@@ -349,11 +183,4 @@ def _file_not_loaded_html_content(
             File processed, but not loaded: {{filename}}
         </p>
         """
-    )
-    return template.render(
-        vendor_interface_name=vendor_interface_name,
-        vendor_code=vendor_code,
-        vendor_interface_uuid=vendor_interface_uuid,
-        vendor_interface_url=_vendor_interface_url(vendor_interface_uuid),
-        filename=filename,
-    )
+    ).render(kwargs)

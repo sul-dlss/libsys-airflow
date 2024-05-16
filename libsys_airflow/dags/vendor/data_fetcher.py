@@ -95,6 +95,7 @@ with DAG(
     )
 
     files_fetched_email_task(
+        params["vendor_uuid"],
         params["vendor_interface_name"],
         params["vendor_code"],
         params["vendor_interface_uuid"],

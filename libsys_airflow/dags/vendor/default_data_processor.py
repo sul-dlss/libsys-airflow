@@ -82,8 +82,8 @@ with DAG(
 
         pg_hook = PostgresHook("vendor_loads")
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
-            vendor_interface = VendorInterface.load(
-                params["vendor_interface_uuid"], session
+            vendor_interface = VendorInterface.load_with_vendor(
+                params["vendor_uuid"], params["vendor_interface_uuid"], session
             )
             params["vendor_code"] = vendor_interface.vendor.vendor_code_from_folio
             params["vendor_interface_name"] = vendor_interface.display_name
@@ -160,6 +160,7 @@ with DAG(
     job_summary = job_summary_task(data_import["job_execution_id"])
 
     file_loaded_email_task(
+        params["vendor_uuid"],
         params["vendor_code"],
         params["vendor_interface_name"],
         params["vendor_interface_uuid"],
