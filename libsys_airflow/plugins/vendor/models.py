@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 import enum
 import re
@@ -18,6 +19,9 @@ from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy.sql.expression import true
 from typing import List, Any
 
+logger = logging.getLogger(__name__)
+
+UPLOAD_FILE_REGEX = re.compile(r'^upload_only-(\d+)$')
 
 Model = declarative_base()
 
@@ -161,7 +165,7 @@ class VendorInterface(Model):  # type: ignore
 
     @classmethod
     def load(cls, interface_uuid: str, session: Session) -> 'VendorInterface':
-        match = re.match(r'^upload_only-(\d+)$', interface_uuid)
+        match = UPLOAD_FILE_REGEX.match(interface_uuid)
         if match:
             id = int(match.group(1))
             return session.get(cls, id)
@@ -169,6 +173,23 @@ class VendorInterface(Model):  # type: ignore
             return session.scalars(
                 select(cls).where(cls.folio_interface_uuid == interface_uuid)
             ).first()
+
+    @classmethod
+    def load_with_vendor(
+        cls, vendor_uuid: str, interface_uuid: str, session: Session
+    ) -> 'VendorInterface':
+        match = UPLOAD_FILE_REGEX.match(interface_uuid)
+        if match:
+            id = int(match.group(1))
+            return session.get(cls, id)
+        vendor = session.scalars(
+            select(Vendor).where(Vendor.folio_organization_uuid == vendor_uuid)
+        ).first()
+        return session.scalars(
+            select(cls)
+            .where(cls.folio_interface_uuid == interface_uuid)
+            .where(cls.vendor_id == vendor.id)
+        ).first()
 
 
 class FileStatus(enum.Enum):

@@ -86,6 +86,7 @@ def ftp_download_task(
     remote_path: str,
     download_path: str,
     filename_regex: str,
+    vendor_uuid: str,
     vendor_interface_uuid: str,
 ) -> list[str]:
     logger.info(
@@ -111,6 +112,7 @@ def ftp_download_task(
         remote_path or "",
         download_path,
         filter_strategy,
+        vendor_uuid,
         vendor_interface_uuid,
         mod_date_after,
     )
@@ -136,6 +138,7 @@ def download(
     remote_path: str,
     download_path: str,
     filter_strategy: Callable,
+    vendor_uuid: str,
     vendor_interface_uuid: str,
     mod_date_after: Optional[datetime],
 ) -> list[str]:
@@ -158,6 +161,7 @@ def download(
         filtered_filenames,
         adapter,
         mod_date_after,
+        vendor_uuid,
         vendor_interface_uuid,
         engine,
     )
@@ -179,6 +183,7 @@ def download(
                 filename,
                 adapter.get_size(filename),
                 "fetching_error",
+                vendor_uuid,
                 vendor_interface_uuid,
                 mod_time,
                 engine,
@@ -190,6 +195,7 @@ def download(
                 filename,
                 adapter.get_size(filename),
                 "fetched",
+                vendor_uuid,
                 vendor_interface_uuid,
                 mod_time,
                 engine,
@@ -211,12 +217,15 @@ def _record_vendor_file(
     filename: str,
     filesize: int | str | None,
     status: str,
+    vendor_uuid: str,
     vendor_interface_uuid: str,
     vendor_timestamp: datetime,
     engine: Engine,
 ):
     with Session(engine) as session:
-        vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
+        vendor_interface = VendorInterface.load_with_vendor(
+            vendor_uuid, vendor_interface_uuid, session
+        )
         existing_vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
@@ -317,6 +326,7 @@ def _filter_mod_date(
     filenames: list[str],
     adapter: Union[FTPAdapter, SFTPAdapter],
     mod_date_after: Optional[datetime],
+    vendor_uuid: str,
     vendor_interface_uuid: str,
     engine: Engine,
 ) -> list[str]:
@@ -333,6 +343,7 @@ def _filter_mod_date(
                 filename,
                 adapter.get_size(filename),
                 "skipped",
+                vendor_uuid,
                 vendor_interface_uuid,
                 mod_time,
                 engine,

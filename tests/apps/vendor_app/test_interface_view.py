@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta, date
 import shutil
 from unittest.mock import MagicMock, PropertyMock
@@ -254,7 +253,7 @@ def test_upload_file(
     )
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
-        return_value=str(tmp_path),
+        return_value=tmp_path,
     )
     today = date(2021, 1, 1)
     mock_date = mocker.patch('libsys_airflow.plugins.vendor.archive.date')
@@ -277,18 +276,15 @@ def test_upload_file(
         )
         assert response.status_code == 302
 
-        assert os.path.exists(
-            os.path.join(
-                tmp_path,
-                'downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat',
-            )
-        )
-        assert os.path.exists(
-            os.path.join(
-                tmp_path,
-                'archive/20210101/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat',
-            )
-        )
+        assert (
+            tmp_path
+            / 'downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat'
+        ).exists()
+
+        assert (
+            tmp_path
+            / 'archive/20210101/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-extra-strength-marc.dat'
+        ).exists()
 
         vendor_file = session.scalars(
             select(VendorFile).where(
@@ -319,13 +315,15 @@ def test_download_original_file(
 ):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
-        return_value=str(tmp_path),
+        return_value=tmp_path,
     )
-    path = os.path.join(
-        tmp_path,
-        f"archive/{(now - timedelta(days=9)).strftime('%Y%m%d')}/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc.dat",
+    archive_path = (
+        tmp_path
+        / f"archive/{(now - timedelta(days=9)).strftime('%Y%m%d')}/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E"
     )
-    os.makedirs(os.path.dirname(path))
+    archive_path.mkdir(parents=True, exist_ok=True)
+    path = archive_path / "acme-marc.dat"
+
     shutil.copyfile("tests/vendor/0720230118.mrc", path)
 
     with Session(mock_db()) as session:
@@ -347,13 +345,16 @@ def test_download_processed_file(
 ):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
-        return_value=str(tmp_path),
+        return_value=tmp_path,
     )
-    path = os.path.join(
-        tmp_path,
-        "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc-processed.dat",
+    downloads_path = (
+        tmp_path
+        / "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E"
     )
-    os.makedirs(os.path.dirname(path))
+
+    downloads_path.mkdir(parents=True, exist_ok=True)
+    path = downloads_path / "acme-marc-processed.dat"
+
     shutil.copyfile("tests/vendor/0720230118.mrc", path)
 
     with Session(mock_db()) as session:
@@ -375,13 +376,13 @@ def test_download_missing_file(
 ):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
-        return_value=str(tmp_path),
+        return_value=tmp_path,
     )
-    path = os.path.join(
-        tmp_path,
-        "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E/acme-marc-processed.dat",
+    downloads_path = (
+        tmp_path
+        / "downloads/375C6E33-2468-40BD-A5F2-73F82FE56DB0/140530EB-EE54-4302-81EE-D83B9DAC9B6E"
     )
-    os.makedirs(os.path.dirname(path))
+    downloads_path.mkdir(parents=True, exist_ok=True)
 
     with Session(mock_db()) as session:
         mocker.patch(

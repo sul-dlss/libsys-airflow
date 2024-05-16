@@ -1,7 +1,8 @@
 import logging
-import os
 import shutil
+
 from datetime import date
+from pathlib import Path
 
 from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -18,19 +19,23 @@ logger = logging.getLogger(__name__)
 def archive_task(
     downloaded_files: list[str],
     download_path: str,
-    vendor_interface_uuid: str,
     vendor_uuid: str,
+    vendor_interface_uuid: str,
 ):
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         archive(
-            downloaded_files, download_path, vendor_interface_uuid, vendor_uuid, session
+            downloaded_files,
+            Path(download_path),
+            vendor_uuid,
+            vendor_interface_uuid,
+            session,
         )
 
 
 def archive(
     downloaded_files: list[str],
-    download_path: str,
+    download_path: Path,
     vendor_uuid: str,
     vendor_interface_uuid: str,
     session: Session,
@@ -39,7 +44,9 @@ def archive(
         logger.info("No files to archive")
         return
 
-    vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
+    vendor_interface = VendorInterface.load_with_vendor(
+        vendor_uuid, vendor_interface_uuid, session
+    )
     for filename in downloaded_files:
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
@@ -48,24 +55,19 @@ def archive(
 
 
 def archive_file(
-    download_path: str,
+    download_path: Path,
     vendor_file: VendorFile,
     session: Session,
 ):
-    download_filepath = _filepath(download_path, vendor_file.vendor_filename)
+    download_filepath = download_path / vendor_file.vendor_filename
     archive_path = get_archive_path(
         vendor_file.vendor_interface.vendor.folio_organization_uuid,
         vendor_file.vendor_interface.interface_uuid,
         date.today(),
     )
-    archive_filepath = _filepath(archive_path, vendor_file.vendor_filename)
-    print(f"Archive path: {archive_filepath}")
-    os.makedirs(archive_path, exist_ok=True)
+    archive_filepath = archive_path / vendor_file.vendor_filename
+    archive_path.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(download_filepath, archive_filepath)
     vendor_file.archive_date = date.today()
     session.commit()
     logger.info(f"Archived {vendor_file.vendor_filename} to {archive_filepath}")
-
-
-def _filepath(path: str, filename: str) -> str:
-    return os.path.join(path, filename)

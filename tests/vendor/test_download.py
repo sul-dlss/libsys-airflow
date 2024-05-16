@@ -11,7 +11,12 @@ from libsys_airflow.plugins.vendor.download import (
     _regex_filter_strategy,
     _gobi_order_filter_strategy,
 )
-from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
+from libsys_airflow.plugins.vendor.models import (
+    Vendor,
+    VendorInterface,
+    VendorFile,
+    FileStatus,
+)
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -21,12 +26,20 @@ from airflow.providers.sftp.hooks.sftp import SFTPHook
 
 
 rows = Rows(
+    Vendor(
+        id=1,
+        display_name="Gobi",
+        folio_organization_uuid="43459f05-f98b-43c0-a79d-76a8855dba94",
+        vendor_code_from_folio="GOBI",
+        last_folio_update=datetime.fromisoformat("2024-05-09T00:05:23"),
+    ),
     VendorInterface(
         id=1,
         display_name="Gobi - Full bibs",
         folio_interface_uuid="65d30c15-a560-4064-be92-f90e38eeb351",
         folio_data_import_profile_uuid="f4144dbd-def7-4b77-842a-954c62faf319",
         file_pattern=r"^\d+\.mrc$",
+        vendor_id=1,
         remote_path="oclc",
         active=True,
     ),
@@ -104,6 +117,7 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
         "oclc",
         download_path,
         _regex_filter_strategy(r".+\.mrc", ""),
+        "43459f05-f98b-43c0-a79d-76a8855dba94",
         "65d30c15-a560-4064-be92-f90e38eeb351",
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
@@ -189,6 +203,7 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
         "oclc",
         download_path,
         _regex_filter_strategy(r".+\.mrc", ""),
+        "43459f05-f98b-43c0-a79d-76a8855dba94",
         "65d30c15-a560-4064-be92-f90e38eeb351",
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )
@@ -221,6 +236,7 @@ def test_download_error(ftp_hook, download_path, pg_hook):
             "oclc",
             download_path,
             _regex_filter_strategy(r".+\.mrc", ""),
+            "43459f05-f98b-43c0-a79d-76a8855dba94",
             "65d30c15-a560-4064-be92-f90e38eeb351",
             datetime.fromisoformat("2020-01-01T00:05:23"),
         )
@@ -250,6 +266,7 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
         "orders",
         download_path,
         _gobi_order_filter_strategy(),
+        "43459f05-f98b-43c0-a79d-76a8855dba94",
         "65d30c15-a560-4064-be92-f90e38eeb351",
         datetime.fromisoformat("2020-01-01T00:05:23"),
     )

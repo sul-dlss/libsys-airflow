@@ -61,14 +61,17 @@ with DAG(
     def setup():
         context = get_current_context()
         params = context["params"]
-        params["download_path"] = download_path(
+        dag_run_download_path = download_path(
             params["vendor_uuid"], params["vendor_interface_uuid"]
         )
         params["environment"] = os.getenv('HONEYBADGER_ENVIRONMENT', 'development')
 
-        logger.info(f"Params are {params}")
+        dag_run_download_path.mkdir(exist_ok=True)
 
-        os.makedirs(params["download_path"], exist_ok=True)
+        # XCOM cannot serialize pathlib Path object
+        params["download_path"] = str(dag_run_download_path)
+
+        logger.info(f"Params are {params}")
 
         return params
 
@@ -80,6 +83,7 @@ with DAG(
         params["remote_path"],
         params["download_path"],
         params["filename_regex"],
+        params["vendor_uuid"],
         params["vendor_interface_uuid"],
     )
 
