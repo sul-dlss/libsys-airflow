@@ -16,10 +16,35 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 )
 
 
+@pytest.fixture(params=["pod", "gobi"])
+def mock_vendor_marc_files(tmp_path, request):
+    airflow = tmp_path / "airflow"
+    vendor = request.param
+    vendor_dir = airflow / f"data-export-files/{vendor}/"
+    marc_file_dir = vendor_dir / "marc-files" / "updates"
+    marc_file_dir.mkdir(parents=True)
+    setup_files = {
+        "filenames": [
+            "2024022914.mrc",
+            "2024030114.mrc",
+            "2024030214.mrc",
+            "2024030214.txt",
+        ]
+    }
+    files = []
+    for i, x in enumerate(setup_files['filenames']):
+        file = pathlib.Path(f"{marc_file_dir}/{x}")
+        file.touch()
+        if i in [0, 3, 4]:
+            file.write_text("hello world")
+        files.append(str(file))
+    return {"file_list": files, "s3": False}
+
+
 @pytest.fixture
 def mock_file_system(tmp_path):
     airflow = tmp_path / "airflow"
-    vendor_dir = airflow / "data-export-files/oclc/"
+    vendor_dir = airflow / "data-export-files/some-vendor/"
     marc_file_dir = vendor_dir / "marc-files" / "updates"
     marc_file_dir.mkdir(parents=True)
     instance_id_dir = vendor_dir / "instanceids" / "updates"
@@ -30,12 +55,15 @@ def mock_file_system(tmp_path):
     return [airflow, marc_file_dir, instance_id_dir, archive_dir]
 
 
-# Mock xcom messages dict
 @pytest.fixture
 def mock_marc_files(mock_file_system):
     marc_file_dir = mock_file_system[1]
     setup_marc_files = {
-        "marc_files": ["2024022914.mrc", "2024030114.mrc", "2024030214.mrc"]
+        "marc_files": [
+            "2024022914.mrc",
+            "2024030114.mrc",
+            "2024030214.mrc",
+        ]
     }
     marc_files = []
     for i, x in enumerate(setup_marc_files['marc_files']):
@@ -88,10 +116,11 @@ def mock_httpx_failure():
     )
 
 
-def test_gather_files_task(mock_file_system, mock_marc_files):
-    airflow = mock_file_system[0]
-    marc_files = gather_files_task.function(airflow=airflow, vendor="oclc")
-    assert marc_files["file_list"][0] == mock_marc_files["file_list"][0]
+@pytest.mark.parametrize("mock_vendor_marc_files", ["pod"], indirect=True)
+def test_gather_files_task(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="pod")
+    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][0]
 
 
 def test_gather_full_dump_files(mocker):
@@ -100,6 +129,14 @@ def test_gather_full_dump_files(mocker):
         vendor="full-dump", params={"bucket": "data-export-test"}
     )
     assert marc_files["s3"]
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
+def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
+    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][-1]
+    assert len(marc_files["file_list"]) == 1
 
 
 def test_transmit_data_ftp_task(
