@@ -19,6 +19,7 @@ class Transformer(object):
         self.holdings_type = self.holdings_type_lookup()
         self.locations = self.locations_lookup()
         self.materialtypes = self.materialtype_lookup()
+        self.library_lookup = self.locations_by_library_lookup()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -45,6 +46,18 @@ class Transformer(object):
         ]
         for m in materialtypes:
             lookup[m['id']] = m['name']
+        return lookup
+
+    def locations_by_library_lookup(self) -> dict:
+        lookup = {}
+        libraries_result = self.folio_client.folio_get(
+            "/location-units/libraries?limit=1000"
+        )
+        libraries_lookup = {}
+        for library in libraries_result.get("loclibs"):
+            libraries_lookup[library['id']] = library["code"]
+        for location in self.folio_client.locations:
+            lookup[location['id']] = libraries_lookup.get(location['libraryId'])
         return lookup
 
     def add_holdings_items(self, marc_file: str, full_dump: bool):

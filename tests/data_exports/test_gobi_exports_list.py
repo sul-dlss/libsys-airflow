@@ -54,7 +54,10 @@ def record(**kwargs):
 folio_result = {
     "mtypes": [
         {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
-    ]
+    ],
+    "loclibs": [
+        {"id": "f6b5519e-88d9-413e-924d-9ed96255f72e", "code": "GREEN"},
+    ],
 }
 
 
