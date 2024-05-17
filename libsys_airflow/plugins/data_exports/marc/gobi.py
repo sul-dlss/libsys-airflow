@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 def gobi_list_from_marc_files(marc_file_list: str):
     gobi_lists = []
     gobi_transformer = GobiTransformer()
-    for marc_file in ast.literal_eval(marc_file_list):
-        gobi_lists.append(gobi_transformer.generate_list(marc_file=marc_file))
+    marc_list = ast.literal_eval(marc_file_list)
+    for file in marc_list['new']:
+        gobi_lists.append(gobi_transformer.generate_list(marc_file=file))
 
     return gobi_lists
 
