@@ -37,7 +37,6 @@ def get_record_id(record: pymarc.Record) -> list:
 class OCLCTransformer(Transformer):
     def __init__(self):
         super().__init__()
-        self.library_lookup = self.locations_by_library_lookup()
         self.libraries = {}
         for code in ["CASUM", "HIN", "RCJ", "S7Z", "STF"]:
             self.libraries[code] = {"holdings": [], "marc": []}
@@ -141,18 +140,6 @@ class OCLCTransformer(Transformer):
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
         instance_id = record['999']['i']
         self.staff_notices.append((instance_id, code, record_ids))
-
-    def locations_by_library_lookup(self) -> dict:
-        lookup = {}
-        libraries_result = self.folio_client.folio_get(
-            "/location-units/libraries?limit=1000"
-        )
-        libraries_lookup = {}
-        for library in libraries_result.get("loclibs"):
-            libraries_lookup[library['id']] = library["code"]
-        for location in self.folio_client.locations:
-            lookup[location['id']] = libraries_lookup.get(location['libraryId'])
-        return lookup
 
     def save(self):
         """
