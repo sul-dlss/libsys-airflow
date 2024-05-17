@@ -16,6 +16,7 @@ def gather_files_task(**kwargs) -> dict:
     """
     Gets files to send to vendor:
     Looks for all the files in the data-export-files/{vendor}/marc-files folder
+    File glob patterns include "**/" to get the deletes, new, and updates folders
     Regardless of date stamp
     """
     logger.info("Gathering files to transmit")
