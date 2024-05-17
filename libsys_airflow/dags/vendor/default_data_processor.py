@@ -174,8 +174,9 @@ with DAG(
         params["environment"],
     )
 
-    file_not_loaded_email = file_not_loaded_email_task(
+    file_not_loaded_email = file_not_loaded_email_task(**params)
         params["vendor_interface_name"],
+
         params["vendor_code"],
         params["vendor_interface_uuid"],
         filename,

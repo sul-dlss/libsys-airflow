@@ -1,4 +1,3 @@
-
 from datetime import date
 import logging
 import pathlib
@@ -23,17 +22,19 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def files_fetched_email_task(**kwargs):
-    if kwargs.get("downloaded_files") is None:
+def files_fetched_email_task(downloaded_files: list, kwargs: dict):
+    if len(downloaded_files) < 1:
         logger.info("Skipping sending email since no files downloaded.")
         return
-
+    kwargs["download_files"] = downloaded_files
     send_files_fetched_email(**kwargs)
 
 
 def send_files_fetched_email(**kwargs):
     kwargs["date"] = date.today().isoformat()
-    subject = Template("{{vendor_interface_name}} ({{vendor_code}}) - Daily Fetch Report ({{date}}) [{{environment}}]").render(kwargs)
+    subject = Template(
+        "{{vendor_interface_name}} ({{vendor_code}}) - Daily Fetch Report ({{date}}) [{{environment}}]"
+    ).render(kwargs)
     send_email(
         Variable.get('VENDOR_LOADS_TO_EMAIL'),
         subject,
@@ -69,24 +70,28 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
 
 
 @task
-def file_loaded_email_task(**kwargs):
-    kwargs["job_execution_url"] = (
-        f"{Variable.get('AIRFLOW_VAR_FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
-    )
-    kwargs["file_path"] = pathlib.Path(kwargs["download_path"]) / kwargs['filename']
-    kwargs[""] = extract_double_zero_one_field_values(kwargs["file_path"])
-
+def file_loaded_email_task(processed_params, params):
+    kwargs = {**processed_params, **params}
     send_file_loaded_email(**kwargs)
 
 
 def send_file_loaded_email(**kwargs):
+    kwargs["job_execution_url"] = (
+        f"{Variable.get('AIRFLOW_VAR_FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
+    )
+    kwargs["file_path"] = pathlib.Path(kwargs["download_path"]) / kwargs['filename']
+
     if is_marc(kwargs["file_path"]):
+        kwargs["double_zero_ones"] = extract_double_zero_one_field_values(
+            kwargs["file_path"]
+        )
         html_content = _file_loaded_bib_html_content(**kwargs)
     else:
         kwargs["records_count"] = invoice_count(kwargs["file_path"])
         html_content = _file_loaded_edi_html_content(**kwargs)
-
-    subject = Template("{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]").render(kwargs)
+    subject = Template(
+        "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]"
+    ).render(kwargs)
     send_email(
         Variable.get('VENDOR_LOADS_TO_EMAIL'),
         subject,
@@ -98,7 +103,9 @@ def _file_loaded_edi_html_content(**kwargs):
 
     kwargs["srs_created"] = kwargs["srs_stats"].get("totalCreatedEntities", 0)
     kwargs["instance_errors"] = kwargs["instance_stats"].get("totalErrors", 0)
-    kwargs["vendor_interface_url"] = _vendor_interface_url(kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"])
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
 
     template = Template(
         """
@@ -118,10 +125,14 @@ def _file_loaded_bib_html_content(**kwargs):
 
     kwargs["instance_created"] = kwargs["instance_stats"].get("totalCreatedEntities", 0)
     kwargs["instance_updated"] = kwargs["instance_stats"].get("totalUpdatedEntities", 0)
-    kwargs["instance_discarded"] = kwargs["instance_stats"].get("totalDiscardedEntities", 0)
+    kwargs["instance_discarded"] = kwargs["instance_stats"].get(
+        "totalDiscardedEntities", 0
+    )
     kwargs["instance_errors"] = kwargs["instance_stats"].get("totalErrors", 0)
 
-    kwargs["vendor_interface_url"] = _vendor_interface_url(kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"])
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
 
     kwargs["srs_created"] = kwargs["srs_stats"].get("totalCreatedEntities", 0)
     kwargs["srs_updated"] = kwargs["srs_stats"].get("totalUpdatedEntities", 0)
@@ -160,7 +171,8 @@ def _file_loaded_bib_html_content(**kwargs):
 
 
 @task
-def file_not_loaded_email_task(**kwargs):
+def file_not_loaded_email_task(processed_params, params):
+    kwargs = {**processed_params, **params}
     send_file_not_loaded_email(**kwargs)
 
 
@@ -168,7 +180,7 @@ def send_file_not_loaded_email(**kwargs):
     send_email(
         Variable.get('VENDOR_LOADS_TO_EMAIL'),
         Template(
-            "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Processed [{[environment]}])"
+            "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Processed [{{environment}}]"
         ).render(kwargs),
         _file_not_loaded_html_content(**kwargs),
     )
