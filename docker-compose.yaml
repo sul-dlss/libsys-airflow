@@ -78,6 +78,7 @@ x-airflow-common:
     AIRFLOW_VAR_MIGRATION_PASSWORD: ${AIRFLOW_VAR_MIGRATION_PASSWORD}
     AIRFLOW_VAR_OKAPI_URL: ${AIRFLOW_VAR_OKAPI_URL}
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://airflow:airflow@postgres/vendor_loads
+    AIRFLOW_VAR_VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     AWS_DEFAULT_REGION: us-west-2
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
     SQLALCHEMY_WARN_20: 1
