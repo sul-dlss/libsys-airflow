@@ -16,7 +16,7 @@ def fetch_record_ids(**kwargs) -> dict:
     airflow = kwargs.get("airflow", "/opt/airflow/libsys_airflow")
     results = {"new": [], "updates": [], "deletes": []}  # type: dict
 
-    for kind in ["newrecs", "updates", "deletes"]:
+    for kind in ["new", "updates", "deletes"]:
         sql_list = sql_files(params=params, airflow=airflow, kind=kind)
 
         for idx, sqlfile in enumerate(sql_list):
