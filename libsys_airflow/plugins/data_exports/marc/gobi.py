@@ -13,17 +13,20 @@ logger = logging.getLogger(__name__)
 def gobi_list_from_marc_files(marc_file_list: str):
     gobi_lists = []
     gobi_transformer = GobiTransformer()
-    for marc_file in ast.literal_eval(marc_file_list):
-        gobi_lists.append(gobi_transformer.generate_list(marc_file=marc_file))
+    marc_list = ast.literal_eval(marc_file_list)
+    for file in marc_list['updates']:
+        gobi_lists.append(gobi_transformer.generate_list(marc_file=file))
 
     return gobi_lists
 
 
 class GobiTransformer(Transformer):
     def generate_list(self, marc_file) -> pathlib.Path:
+        # marc_path is data-export-files/gobi/marc-files/updates/YYYYMMDD.mrc
         marc_path = pathlib.Path(marc_file)
         gobi_list_name = marc_path.stem
-        gobi_path = pathlib.Path(marc_path.parent.parent) / f"stf.{gobi_list_name}.txt"
+        # gobi_path is data-export-files/gobi/marc-files/updates/stf.YYYMMDD.txt
+        gobi_path = pathlib.Path(marc_path.parent) / f"stf.{gobi_list_name}.txt"
 
         with marc_path.open('rb') as fo:
             marc_records = [record for record in pymarc.MARCReader(fo)]
