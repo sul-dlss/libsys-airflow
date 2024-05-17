@@ -16,6 +16,7 @@ def gather_files_task(**kwargs) -> dict:
     """
     Gets files to send to vendor:
     Looks for all the files in the data-export-files/{vendor}/marc-files folder
+    File glob patterns include "**/" to get the deletes, new, and updates folders
     Regardless of date stamp
     """
     logger.info("Gathering files to transmit")
@@ -23,13 +24,14 @@ def gather_files_task(**kwargs) -> dict:
     vendor = kwargs["vendor"]
     params = kwargs.get("params", {})
     bucket = params.get("bucket", {})
+    marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
+    file_glob_pattern = "**/*.mrc"
     if vendor == "full-dump":
         marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
-    else:
-        marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
-
+    if vendor == "gobi":
+        file_glob_pattern = "**/*.txt"
     marc_filelist = []
-    for f in marc_filepath.glob("**/*.mrc"):
+    for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size == 0:
             continue
         marc_filelist.append(str(f))

@@ -3,7 +3,6 @@ import pathlib
 import httpx
 
 from http import HTTPStatus
-from unittest import mock
 
 from airflow.models import Connection
 
@@ -17,10 +16,35 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 )
 
 
+@pytest.fixture(params=["pod", "gobi"])
+def mock_vendor_marc_files(tmp_path, request):
+    airflow = tmp_path / "airflow"
+    vendor = request.param
+    vendor_dir = airflow / f"data-export-files/{vendor}/"
+    marc_file_dir = vendor_dir / "marc-files" / "updates"
+    marc_file_dir.mkdir(parents=True)
+    setup_files = {
+        "filenames": [
+            "2024022914.mrc",
+            "2024030114.mrc",
+            "2024030214.mrc",
+            "2024030214.txt",
+        ]
+    }
+    files = []
+    for i, x in enumerate(setup_files['filenames']):
+        file = pathlib.Path(f"{marc_file_dir}/{x}")
+        file.touch()
+        if i in [0, 3, 4]:
+            file.write_text("hello world")
+        files.append(str(file))
+    return {"file_list": files, "s3": False}
+
+
 @pytest.fixture
 def mock_file_system(tmp_path):
     airflow = tmp_path / "airflow"
-    vendor_dir = airflow / "data-export-files/oclc/"
+    vendor_dir = airflow / "data-export-files/some-vendor/"
     marc_file_dir = vendor_dir / "marc-files" / "updates"
     marc_file_dir.mkdir(parents=True)
     instance_id_dir = vendor_dir / "instanceids" / "updates"
@@ -31,12 +55,15 @@ def mock_file_system(tmp_path):
     return [airflow, marc_file_dir, instance_id_dir, archive_dir]
 
 
-# Mock xcom messages dict
 @pytest.fixture
 def mock_marc_files(mock_file_system):
     marc_file_dir = mock_file_system[1]
     setup_marc_files = {
-        "marc_files": ["2024022914.mrc", "2024030114.mrc", "2024030214.mrc"]
+        "marc_files": [
+            "2024022914.mrc",
+            "2024030114.mrc",
+            "2024030214.mrc",
+        ]
     }
     marc_files = []
     for i, x in enumerate(setup_marc_files['marc_files']):
@@ -89,10 +116,11 @@ def mock_httpx_failure():
     )
 
 
-def test_gather_files_task(mock_file_system, mock_marc_files):
-    airflow = mock_file_system[0]
-    marc_files = gather_files_task.function(airflow=airflow, vendor="oclc")
-    assert marc_files["file_list"][0] == mock_marc_files["file_list"][0]
+@pytest.mark.parametrize("mock_vendor_marc_files", ["pod"], indirect=True)
+def test_gather_files_task(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="pod")
+    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][0]
 
 
 def test_gather_full_dump_files(mocker):
@@ -101,6 +129,14 @@ def test_gather_full_dump_files(mocker):
         vendor="full-dump", params={"bucket": "data-export-test"}
     )
     assert marc_files["s3"]
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
+def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
+    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][-1]
+    assert len(marc_files["file_list"]) == 1
 
 
 def test_transmit_data_ftp_task(
@@ -114,15 +150,17 @@ def test_transmit_data_ftp_task(
         return_value=mock_ftphook_connection,
     )
 
-    with mock.patch.dict("os.environ", AIRFLOW_VAR_OKAPI_URL="http://okapi-prod"):
-        transmit_data = transmit_data_ftp_task.function(
-            "ftp-example.com", mock_marc_files
-        )
-        assert len(transmit_data["success"]) == 3
-        assert "Start transmission of file" in caplog.text
-        assert ftp_hook.store_file.called_with(
-            "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
-        )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
+
+    transmit_data = transmit_data_ftp_task.function("ftp-example.com", mock_marc_files)
+    assert len(transmit_data["success"]) == 3
+    assert "Start transmission of file" in caplog.text
+    assert ftp_hook.store_file.called_with(
+        "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
+    )
 
 
 def test_transmit_data_task(
@@ -136,13 +174,15 @@ def test_transmit_data_task(
         "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
         return_value=mock_httpx_connection,
     )
-
-    with mock.patch.dict("os.environ", AIRFLOW_VAR_OKAPI_URL="http://okapi-prod"):
-        transmit_data = transmit_data_http_task.function(
-            mock_marc_files, files_params="upload[files][]", params={"vendor": "pod"}
-        )
-        assert len(transmit_data["success"]) == 3
-        assert "Transmit data to pod" in caplog.text
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
+    transmit_data = transmit_data_http_task.function(
+        mock_marc_files, files_params="upload[files][]", params={"vendor": "pod"}
+    )
+    assert len(transmit_data["success"]) == 3
+    assert "Transmit data to pod" in caplog.text
 
 
 def test_transmit_data_from_s3_task(
@@ -156,16 +196,19 @@ def test_transmit_data_from_s3_task(
         "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
         return_value=mock_httpx_connection,
     )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
     mocker.patch.object(transmission_tasks, "S3Path", pathlib.Path)
     mock_marc_files["s3"] = True
 
-    with mock.patch.dict("os.environ", AIRFLOW_VAR_OKAPI_URL="http://okapi-prod"):
-        transmit_data_from_s3 = transmit_data_http_task.function(
-            mock_marc_files,
-            files_params="upload[files][]",
-            params={"vendor": "pod", "bucket": "data-export-test"},
-        )
-        assert len(transmit_data_from_s3["success"]) == 3
+    transmit_data_from_s3 = transmit_data_http_task.function(
+        mock_marc_files,
+        files_params="upload[files][]",
+        params={"vendor": "pod", "bucket": "data-export-test"},
+    )
+    assert len(transmit_data_from_s3["success"]) == 3
 
 
 def test_transmit_data_failed(
@@ -179,14 +222,16 @@ def test_transmit_data_failed(
         "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
         return_value=mock_httpx_connection,
     )
-
-    with mock.patch.dict("os.environ", AIRFLOW_VAR_OKAPI_URL="http://okapi-prod"):
-        transmit_data = transmit_data_http_task.function(
-            mock_marc_files,
-            params={"vendor": "pod"},
-        )
-        assert len(transmit_data["failures"]) == 3
-        assert "Transmit data to pod" in caplog.text
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
+    transmit_data = transmit_data_http_task.function(
+        mock_marc_files,
+        params={"vendor": "pod"},
+    )
+    assert len(transmit_data["failures"]) == 3
+    assert "Transmit data to pod" in caplog.text
 
 
 def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):

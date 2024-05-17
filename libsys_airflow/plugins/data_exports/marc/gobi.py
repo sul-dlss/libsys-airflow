@@ -22,9 +22,11 @@ def gobi_list_from_marc_files(marc_file_list: str):
 
 class GobiTransformer(Transformer):
     def generate_list(self, marc_file) -> pathlib.Path:
+        # marc_path is data-export-files/gobi/marc-files/updates/YYYYMMDD.mrc
         marc_path = pathlib.Path(marc_file)
         gobi_list_name = marc_path.stem
-        gobi_path = pathlib.Path(marc_path.parent.parent) / f"stf.{gobi_list_name}.txt"
+        # gobi_path is data-export-files/gobi/marc-files/updates/stf.YYYMMDD.txt
+        gobi_path = pathlib.Path(marc_path.parent) / f"stf.{gobi_list_name}.txt"
 
         with marc_path.open('rb') as fo:
             marc_records = [record for record in pymarc.MARCReader(fo)]
