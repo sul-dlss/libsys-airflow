@@ -26,8 +26,10 @@
             <option value="{{v}}">{{v}}</option>
           {%endfor%}
         </select>
-        <p class="help-block">Select for Updates or Deletes:</p>
+        <p class="help-block">Select for New records, Updates or Deletes:</p>
         <fieldset id="kind">
+            <input type="radio" name="kind" id="new" value="new" checked />
+            <label for="new">New records</label>
             <input type="radio" name="kind" id="updates" value="updates" checked />
             <label for="updates">Updates</label>
             <input type="radio" name="kind" id="deletes" value="deletes" />

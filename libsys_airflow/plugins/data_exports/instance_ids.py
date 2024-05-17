@@ -14,9 +14,9 @@ def fetch_record_ids(**kwargs) -> dict:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     airflow = kwargs.get("airflow", "/opt/airflow/libsys_airflow")
-    results = {"updates": [], "deletes": []}  # type: dict
+    results = {"new": [], "updates": [], "deletes": []}  # type: dict
 
-    for kind in ["updates", "deletes"]:
+    for kind in ["newrecs", "updates", "deletes"]:
         sql_list = sql_files(params=params, airflow=airflow, kind=kind)
 
         for idx, sqlfile in enumerate(sql_list):
@@ -61,7 +61,7 @@ def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
     vendor = kwargs["vendor"]
     data = task_instance.xcom_pull(task_ids="fetch_record_ids_from_folio")
 
-    for kind in ["updates", "deletes"]:
+    for kind in ["new", "updates", "deletes"]:
         ids = save_ids(airflow=airflow, data=data[kind], kind=kind, vendor=vendor)
         ids_path.append(ids)
 
