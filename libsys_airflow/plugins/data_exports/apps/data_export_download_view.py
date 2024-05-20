@@ -12,6 +12,7 @@ vendors = json.load(vendor_file)
 class DataExportDownloadView(AppBuilderBaseView):
     default_view = "data_export_download_home"
     route_base = "/data_export_download"
+    files_base = "data_export_files"
 
     @expose("/")
     def data_export_download_home(self):
@@ -20,7 +21,7 @@ class DataExportDownloadView(AppBuilderBaseView):
             for state in ["marc-files", "transmitted"]:
                 for kind in ["new", "updates", "deletes"]:
                     for path in pathlib.Path(
-                        f"data-export-files/{vendor}/{state}/{kind}"
+                        f"{DataExportDownloadView.files_base}/{vendor}/{state}/{kind}"
                     ).glob("*"):
                         content.append({vendor: [state, kind, path.name]})
 

@@ -33,7 +33,7 @@
             {{ marcfile[1] }}
           </td>
           <td>
-            <a href="{{ url_for('DataExportDownloadView.vendor_marc_record', vendor=vendor, state=marcfile[0], folder=marcfile[1], filename=marcfile[2]) }}" download>{{ marcfile[2] }}</a>
+            <a class="{{vendor}}-{{marcfile[0]}}-{{marcfile[1]}}" href="{{ url_for('DataExportDownloadView.vendor_marc_record', vendor=vendor, state=marcfile[0], folder=marcfile[1], filename=marcfile[2]) }}" download>{{ marcfile[2] }}</a>
           </td>
         </tr>
         {% endfor %}
