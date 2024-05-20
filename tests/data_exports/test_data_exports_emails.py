@@ -13,7 +13,7 @@ def test_multiple_oclc_email(mocker):
     )
 
     mocker.patch(
-        "libsys_airflow.plugins.orafin.emails.Variable.get",
+        "libsys_airflow.plugins.data_exports.email.Variable.get",
         return_value="test@stanford.edu",
     )
 
@@ -60,7 +60,7 @@ def test_no_multiple_oclc_code_email(mocker, caplog):
     mocker.patch("libsys_airflow.plugins.data_exports.email.send_email")
 
     mocker.patch(
-        "libsys_airflow.plugins.orafin.emails.Variable.get",
+        "libsys_airflow.plugins.data_exports.email.Variable.get",
         return_value="test@stanford.edu",
     )
 
