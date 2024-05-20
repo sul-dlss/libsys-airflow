@@ -12,7 +12,7 @@ vendors = json.load(vendor_file)
 class DataExportDownloadView(AppBuilderBaseView):
     default_view = "data_export_download_home"
     route_base = "/data_export_download"
-    files_base = "data_export_files"
+    files_base = "data-export-files"
 
     @expose("/")
     def data_export_download_home(self):
