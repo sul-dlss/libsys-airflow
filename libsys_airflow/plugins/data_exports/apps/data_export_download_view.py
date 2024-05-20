@@ -29,7 +29,7 @@ class DataExportDownloadView(AppBuilderBaseView):
 
     @expose("/downloads/<vendor>/<state>/<folder>/<filename>")
     def vendor_marc_record(self, vendor, state, folder, filename):
-        folder_file = f"{folder}-{filename}"
+        folder_file = f"{state}-{folder}-{filename}"
         return send_file(
             f"/opt/airflow/data-export-files/{vendor}/{state}/{folder}/{filename}",
             as_attachment=True,
