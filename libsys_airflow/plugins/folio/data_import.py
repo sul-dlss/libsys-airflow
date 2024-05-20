@@ -10,7 +10,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.vendor.models import FileStatus
 from libsys_airflow.plugins.vendor.marc import is_marc
-from libsys_airflow.plugins.vendor.models import VendorFile
+from libsys_airflow.plugins.vendor.models import VendorFile, VendorInterface
 from libsys_airflow.plugins.vendor.file_status import record_status_from_context
 
 from sqlalchemy.orm import Session
@@ -50,6 +50,7 @@ def data_import_task(
     download_path: str,
     batch_filenames: list[str],
     dataload_profile_uuid: str,
+    vendor_uuid: str,
     vendor_interface_uuid: str,
     filename: str,
 ) -> dict:
@@ -60,6 +61,7 @@ def data_import_task(
         download_path,
         batch_filenames,
         dataload_profile_uuid,
+        vendor_uuid,
         vendor_interface_uuid,
         filename,
     )
@@ -69,6 +71,7 @@ def data_import(
     download_path,
     batch_filenames,
     dataload_profile_uuid,
+    vendor_uuid,
     vendor_interface_uuid,
     filename,
     folio_client=None,
@@ -98,7 +101,10 @@ def data_import(
     )
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
+        vendor_interface = VendorInterface.load_with_vendor(
+            vendor_uuid, vendor_interface_uuid, session
+        )
+        vendor_file = VendorFile.load_with_vendor_interface(vendor_interface, filename, session)
         vendor_file.folio_job_execution_uuid = job_execution_id
         session.commit()
     logger.info(

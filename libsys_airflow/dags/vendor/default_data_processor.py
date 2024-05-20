@@ -147,6 +147,7 @@ with DAG(
         params["download_path"],
         batch_filenames,
         params["dataload_profile_uuid"],
+        params["vendor_uuid"],
         params["vendor_interface_uuid"],
         params["filename"],
     )

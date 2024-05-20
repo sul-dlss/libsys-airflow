@@ -13,7 +13,7 @@ from libsys_airflow.plugins.folio.data_import import (
     record_loading_error,
     _data_type,
 )
-from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
+from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile, FileStatus
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -21,6 +21,13 @@ from sqlalchemy import select
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 rows = Rows(
+    Vendor(
+        id=1,
+        display_name="Gobi",
+        folio_organization_uuid="43459f05-f98b-43c0-a79d-76a8855dba94",
+        vendor_code_from_folio="GOBI",
+        last_folio_update=datetime.fromisoformat("2024-05-09T00:05:23"),
+    ),
     VendorInterface(
         id=1,
         display_name="Gobi - Full bibs",
@@ -28,6 +35,7 @@ rows = Rows(
         folio_data_import_profile_uuid="f4144dbd-def7-4b77-842a-954c62faf319",
         file_pattern=r"^\d+\.mrc$",
         remote_path="oclc",
+        vendor_id=1,
         active=True,
     ),
     VendorFile(
@@ -160,6 +168,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             download_path,
             FILENAMES,
             "f4144dbd-def7-4b77-842a-954c62faf319",
+            "43459f05-f98b-43c0-a79d-76a8855dba94",
             "65d30c15-a560-4064-be92-f90e38eeb351",
             "0720230118.mrc",
             folio_client=folio_client,
