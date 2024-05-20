@@ -10,11 +10,11 @@
       $('#marcDownloads').DataTable();
     });
   </script>
-  <h2>Vendor MARC files</h2>
   <table class="table table-striped" id="marcDownloads">
     <thead>
       <tr>
         <th>Vendor</th>
+        <th>State</th>
         <th>Status</th>
         <th>MARC file (download)</th>
       </tr>
@@ -30,7 +30,10 @@
             {{ marcfile[0] }}
           </td>
           <td>
-            <a href="{{ url_for('DataExportDownloadView.vendor_marc_record', vendor=vendor, folder=marcfile[0], filename=marcfile[1]) }}" download>{{ marcfile[1] }}</a>
+            {{ marcfile[1] }}
+          </td>
+          <td>
+            <a href="{{ url_for('DataExportDownloadView.vendor_marc_record', vendor=vendor, state=marcfile[0], folder=marcfile[1], filename=marcfile[2]) }}" download>{{ marcfile[2] }}</a>
           </td>
         </tr>
         {% endfor %}
