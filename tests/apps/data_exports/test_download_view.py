@@ -11,10 +11,6 @@ from libsys_airflow.plugins.data_exports.apps.data_export_download_view import (
 
 @pytest.fixture
 def test_airflow_client():
-    """
-    A test fixture to start up the Airflow test app with the Vendor Management plugin, and return
-    a client for it for interacting with the application at the HTTP level.
-    """
     templates_folder = f"{root_directory}/libsys_airflow/plugins/data_exports/templates"
     files_base = f"{root_directory}/tests/apps/data_exports/data_export_file_fixtures"
 
