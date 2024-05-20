@@ -13,7 +13,6 @@ from libsys_airflow.plugins.folio.data_import import (
     data_import_branch_task,
 )
 from libsys_airflow.plugins.vendor.emails import (
-    email_args,
     file_loaded_email_task,
     file_not_loaded_email_task,
 )
@@ -41,7 +40,6 @@ default_args = dict(
         "retries": 0,
         "retry_delay": timedelta(minutes=5),
     },
-    **email_args(),
 )
 
 with DAG(
@@ -82,8 +80,8 @@ with DAG(
 
         pg_hook = PostgresHook("vendor_loads")
         with Session(pg_hook.get_sqlalchemy_engine()) as session:
-            vendor_interface = VendorInterface.load(
-                params["vendor_interface_uuid"], session
+            vendor_interface = VendorInterface.load_with_vendor(
+                params["vendor_uuid"], params["vendor_interface_uuid"], session
             )
             params["vendor_code"] = vendor_interface.vendor.vendor_code_from_folio
             params["vendor_interface_name"] = vendor_interface.display_name
@@ -154,32 +152,16 @@ with DAG(
     )
 
     file_loaded_sensor = file_loaded_sensor_task(
-        params["vendor_interface_uuid"], filename, data_import["job_execution_id"]
+        params["vendor_interface_uuid"],
+        params["filename"],
+        data_import["job_execution_id"],
     )
 
     job_summary = job_summary_task(data_import["job_execution_id"])
 
-    file_loaded_email_task(
-        params["vendor_code"],
-        params["vendor_interface_name"],
-        params["vendor_interface_uuid"],
-        data_import["job_execution_id"],
-        params["download_path"],
-        filename,
-        params["start_time"],
-        processed_params["records_count"],
-        job_summary["srs_stats"],
-        job_summary["instance_stats"],
-        params["environment"],
-    )
+    file_loaded_email_task(processed_params, params)
 
-    file_not_loaded_email = file_not_loaded_email_task(
-        params["vendor_interface_name"],
-        params["vendor_code"],
-        params["vendor_interface_uuid"],
-        filename,
-        params["environment"],
-    )
+    file_not_loaded_email = file_not_loaded_email_task(processed_params, params)
 
     data_import_branch >> data_import >> file_loaded_sensor >> job_summary
     data_import_branch >> file_not_loaded_email

@@ -11,7 +11,7 @@ from libsys_airflow.plugins.airflow.connections import create_connection_task
 from libsys_airflow.plugins.vendor.download import ftp_download_task
 from libsys_airflow.plugins.vendor.archive import archive_task
 from libsys_airflow.plugins.vendor.paths import download_path
-from libsys_airflow.plugins.vendor.emails import email_args, files_fetched_email_task
+from libsys_airflow.plugins.vendor.emails import files_fetched_email_task
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,6 @@ default_args = dict(
         "retries": 0,
         "retry_delay": timedelta(minutes=5),
     },
-    **email_args(),
 )
 
 with DAG(
@@ -94,10 +93,4 @@ with DAG(
         params["vendor_interface_uuid"],
     )
 
-    files_fetched_email_task(
-        params["vendor_interface_name"],
-        params["vendor_code"],
-        params["vendor_interface_uuid"],
-        downloaded_files,
-        params["environment"],
-    )
+    files_fetched_email_task(downloaded_files, params)
