@@ -27,9 +27,9 @@ def marc_for_instances(**kwargs) -> dict:
     """
     Retrieves the converted marc for each instance id file in vendor directory
     """
-    updates_and_deletes = {"updates": [], "deletes": []}  # type: dict
+    new_updates_deletes = {"new": [], "updates": [], "deletes": []}  # type: dict
 
-    for kind in ["updates", "deletes"]:
+    for kind in ["new", "updates", "deletes"]:
         instance_files = instance_files_dir(
             airflow=kwargs.get("airflow", "/opt/airflow"),
             vendor=kwargs.get("vendor", ""),
@@ -44,6 +44,6 @@ def marc_for_instances(**kwargs) -> dict:
             )
             marc_files.append(marc_file)
 
-        updates_and_deletes[kind].extend(str(f) for f in marc_files)
+        new_updates_deletes[kind].extend(str(f) for f in marc_files)
 
-    return updates_and_deletes
+    return new_updates_deletes

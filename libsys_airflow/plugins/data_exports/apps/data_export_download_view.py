@@ -23,6 +23,11 @@ class DataExportDownloadView(AppBuilderBaseView):
     def data_export_download_home(self):
         content = []
         for vendor in vendors['vendors']:
+            for path in pathlib.Path(f"data-export-files/{vendor}/marc-files/new").glob(
+                "*"
+            ):
+                content.append({vendor: [path_parent(path), path.name]})
+
             for path in pathlib.Path(
                 f"data-export-files/{vendor}/marc-files/updates"
             ).glob("*"):
