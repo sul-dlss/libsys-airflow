@@ -17,9 +17,7 @@ class Transformer(object):
         self.folio_client = folio_client()
         self.call_numbers = self.call_number_lookup()
         self.holdings_type = self.holdings_type_lookup()
-        self.locations = self.locations_lookup()
         self.materialtypes = self.materialtype_lookup()
-        self.library_lookup = self.library_by_locations_lookup()
         self.campus_lookup = self.campus_by_locations_lookup()
 
     def call_number_lookup(self) -> dict:
@@ -32,12 +30,6 @@ class Transformer(object):
         lookup = {}
         for row in self.folio_client.holdings_types:
             lookup[row['id']] = row['name']
-        return lookup
-
-    def locations_lookup(self) -> dict:
-        lookup = {}
-        for location in self.folio_client.locations:
-            lookup[location['id']] = location['code']
         return lookup
 
     def materialtype_lookup(self) -> dict:
@@ -57,18 +49,6 @@ class Transformer(object):
             campus_lookup[campus['id']] = campus["code"]
         for location in self.folio_client.locations:
             lookup[location['id']] = campus_lookup.get(location['campusId'])
-        return lookup
-
-    def library_by_locations_lookup(self) -> dict:
-        lookup = {}
-        libraries_result = self.folio_client.folio_get(
-            "/location-units/libraries?limit=1000"
-        )
-        libraries_lookup = {}
-        for library in libraries_result.get("loclibs"):
-            libraries_lookup[library['id']] = library["code"]
-        for location in self.folio_client.locations:
-            lookup[location['id']] = libraries_lookup.get(location['libraryId'])
         return lookup
 
     def add_holdings_items(self, marc_file: str, full_dump: bool):
