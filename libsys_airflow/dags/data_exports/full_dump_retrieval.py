@@ -13,6 +13,7 @@ from libsys_airflow.plugins.data_exports.full_dump_marc import (
     fetch_number_of_records,
     fetch_full_dump_marc,
     refresh_view,
+    reset_s3,
 )
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.marc.transforms import remove_marc_fields
@@ -57,6 +58,10 @@ with DAG(
     @task
     def refresh_materialized_view():
         refresh_view()
+
+    @task
+    def reset_s3_bucket():
+        reset_s3()
 
     @task
     def number_of_records():
@@ -138,6 +143,8 @@ with DAG(
 
     update_view = refresh_materialized_view()
 
+    delete_s3_files = reset_s3_bucket()
+
     start_stop = calculate_start_stop.partial(div=record_div).expand(job=number_of_jobs)
 
     marc_file_list = fetch_folio_records.partial(batch_size=batch_size).expand_kwargs(
@@ -150,5 +157,5 @@ with DAG(
         task_id="finish_marc",
     )
 
-    start >> update_view >> total_records
+    start >> update_view >> delete_s3_files >> total_records
     finish_transforms >> finish_processing_marc
