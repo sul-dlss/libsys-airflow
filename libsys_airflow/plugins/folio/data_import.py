@@ -104,7 +104,9 @@ def data_import(
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        vendor_file = VendorFile.load_with_vendor_interface(vendor_interface, filename, session)
+        vendor_file = VendorFile.load_with_vendor_interface(
+            vendor_interface, filename, session
+        )
         vendor_file.folio_job_execution_uuid = job_execution_id
         session.commit()
     logger.info(

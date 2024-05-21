@@ -13,7 +13,12 @@ from libsys_airflow.plugins.folio.data_import import (
     record_loading_error,
     _data_type,
 )
-from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile, FileStatus
+from libsys_airflow.plugins.vendor.models import (
+    Vendor,
+    VendorInterface,
+    VendorFile,
+    FileStatus,
+)
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select

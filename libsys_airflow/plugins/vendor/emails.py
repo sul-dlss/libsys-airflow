@@ -70,14 +70,16 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
 
 
 @task
-def file_loaded_email_task(processed_params, params):
+def file_loaded_email_task(**kwargs):
+    processed_params = kwargs["processed_params"]
+    params = kwargs["params"]
     kwargs = {**processed_params, **params}
     send_file_loaded_email(**kwargs)
 
 
 def send_file_loaded_email(**kwargs):
     kwargs["job_execution_url"] = (
-        f"{Variable.get('AIRFLOW_VAR_FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
+        f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
     )
     kwargs["file_path"] = pathlib.Path(kwargs["download_path"]) / kwargs['filename']
 
@@ -171,7 +173,9 @@ def _file_loaded_bib_html_content(**kwargs):
 
 
 @task
-def file_not_loaded_email_task(processed_params, params):
+def file_not_loaded_email_task(**kwargs):
+    processed_params = kwargs["processed_params"]
+    params = kwargs["params"]
     kwargs = {**processed_params, **params}
     send_file_not_loaded_email(**kwargs)
 
