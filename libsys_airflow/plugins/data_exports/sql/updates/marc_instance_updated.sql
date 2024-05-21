@@ -1,10 +1,9 @@
 (select id
 from sul_mod_inventory_storage.instance
 where id in (
-  select external_id
+  select distinct(external_id)
   from sul_mod_source_record_storage.records_lb
   where record_type = 'MARC_BIB'
-  and state = 'ACTUAL'
 )
 and (jsonb->>'statusId')::uuid in (
   select id
