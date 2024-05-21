@@ -87,12 +87,36 @@ def mock_folio_client():
         if args[0].startswith("/location-units/libraries"):
             return {
                 "loclibs": [
-                    {"id": 'f5c58187-3db6-4bda-b1bf-e5f0717e2149', "code": 'BUSINESS'},
-                    {"id": "f6b5519e-88d9-413e-924d-9ed96255f72e", "code": "GREEN"},
-                    {"id": "ffe6ea8e-1e14-482f-b3e9-66e05efb04dd", "code": "HILA"},
-                    {"id": "5b2c8449-eed6-4bd3-bcef-af1e5a225400", "code": "LANE"},
-                    {"id": "7e4c05e3-1ce6-427d-b9ce-03464245cd78", "code": "LAW"},
-                    {"id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00', "code": 'SUL'},
+                    {
+                        "id": 'f5c58187-3db6-4bda-b1bf-e5f0717e2149',
+                        "campusId": "b89563c5-cb66-4de7-b63c-ca4d82e9d856",
+                        "code": 'BUSINESS',
+                    },
+                    {
+                        "id": "f6b5519e-88d9-413e-924d-9ed96255f72e",
+                        "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
+                        "code": "GREEN",
+                    },
+                    {
+                        "id": "ffe6ea8e-1e14-482f-b3e9-66e05efb04dd",
+                        "campusId": "be6468b8-ed88-4876-93fe-5bdac764959c",
+                        "code": "HILA",
+                    },
+                    {
+                        "id": "5b2c8449-eed6-4bd3-bcef-af1e5a225400",
+                        "campusId": "40b76104-95ea-4360-a2be-5fd887222e2d",
+                        "code": "LANE",
+                    },
+                    {
+                        "id": "7e4c05e3-1ce6-427d-b9ce-03464245cd78",
+                        "campusId": "7003123d-ef65-45f6-b469-d2b9839e1bb3",
+                        "code": "LAW",
+                    },
+                    {
+                        "id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
+                        "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
+                        "code": 'SUL',
+                    },
                 ]
             }
         # Material types
@@ -106,42 +130,55 @@ def mock_folio_client():
                     {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
                 ]
             }
+        # Campuses
+        if args[0].startswith("/location-units/campuses"):
+            return {
+                "loccamps": [
+                    {"id": "c365047a-51f2-45ce-8601-e421ca3615c5", "code": "SUL"},
+                ],
+            }
 
     mock_locations = [
         {
             'id': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
             'name': 'Business Newspaper Stacks',
             'code': 'BUS-NEWS-STKS',
+            "campusId": "b89563c5-cb66-4de7-b63c-ca4d82e9d856",
             'libraryId': 'f5c58187-3db6-4bda-b1bf-e5f0717e2149',
         },
         {
             'id': 'a8676073-7520-4f26-8573-55976301ab5d',
             'name': 'Green Flat Folios',
             'code': 'GRE-FOLIO-FLAT',
+            "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
             'libraryId': 'f6b5519e-88d9-413e-924d-9ed96255f72e',
         },
         {
             'id': 'c9cef3c6-5874-4bae-b90b-2e1d1f4674db',
             'name': 'HILA Stacks',
             'code': 'HILA-STACKS',
+            "campusId": "be6468b8-ed88-4876-93fe-5bdac764959c",
             'libraryId': 'ffe6ea8e-1e14-482f-b3e9-66e05efb04dd',
         },
         {
             'id': '5ffcbe91-775f-484e-91a2-e5473ff6c915',
             'name': 'Lane New Books',
             'code': 'LANE-NEWB',
+            "campusId": "40b76104-95ea-4360-a2be-5fd887222e2d",
             'libraryId': '5b2c8449-eed6-4bd3-bcef-af1e5a225400',
         },
         {
             'id': '9f015af5-208c-49b3-9a43-4f079fb4f699',
             'name': 'Law Shadow Order',
             'code': 'LAW-SHADOW-ORD',
+            "campusId": "7003123d-ef65-45f6-b469-d2b9839e1bb3",
             'libraryId': '7e4c05e3-1ce6-427d-b9ce-03464245cd78',
         },
         {
             'id': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
             'name': 'SUL Electronic',
             'code': 'SUL-ELECTRONIC',
+            "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
             'libraryId': 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
         },
     ]

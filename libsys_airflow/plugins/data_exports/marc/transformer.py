@@ -19,7 +19,8 @@ class Transformer(object):
         self.holdings_type = self.holdings_type_lookup()
         self.locations = self.locations_lookup()
         self.materialtypes = self.materialtype_lookup()
-        self.library_lookup = self.locations_by_library_lookup()
+        self.library_lookup = self.library_by_locations_lookup()
+        self.campus_lookup = self.campus_by_locations_lookup()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -48,7 +49,17 @@ class Transformer(object):
             lookup[m['id']] = m['name']
         return lookup
 
-    def locations_by_library_lookup(self) -> dict:
+    def campus_by_locations_lookup(self) -> dict:
+        lookup = {}
+        campus_result = self.folio_client.folio_get("/location-units/campuses")
+        campus_lookup = {}
+        for campus in campus_result.get("loccamps"):
+            campus_lookup[campus['id']] = campus["code"]
+        for location in self.folio_client.locations:
+            lookup[location['id']] = campus_lookup.get(location['campusId'])
+        return lookup
+
+    def library_by_locations_lookup(self) -> dict:
         lookup = {}
         libraries_result = self.folio_client.folio_get(
             "/location-units/libraries?limit=1000"

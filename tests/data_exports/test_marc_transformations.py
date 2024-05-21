@@ -152,18 +152,21 @@ def mock_folio_client():
             'id': 'bffa197c-a6db-446c-96f7-e1fd37a8842e',
             'name': 'Business Newspaper Stacks',
             'code': 'BUS-NEWS-STKS',
+            "campusId": "b89563c5-cb66-4de7-b63c-ca4d82e9d856",
             'libraryId': 'f5c58187-3db6-4bda-b1bf-e5f0717e2149',
         },
         {
             'id': 'a8676073-7520-4f26-8573-55976301ab5d',
             'name': 'Green Flat Folios',
             'code': 'GRE-FOLIO-FLAT',
+            "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
             'libraryId': 'f6b5519e-88d9-413e-924d-9ed96255f72e',
         },
         {
             'id': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
             'name': 'SUL Electronic',
             'code': 'SUL-ELECTRONIC',
+            "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
             'libraryId': 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
         },
     ]
@@ -179,6 +182,9 @@ def mock_folio_client():
             {"id": "5b2c8449-eed6-4bd3-bcef-af1e5a225400", "code": "LANE"},
             {"id": "7e4c05e3-1ce6-427d-b9ce-03464245cd78", "code": "LAW"},
             {"id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00', "code": 'SUL'},
+        ],
+        "loccamps": [
+            {"id": "c365047a-51f2-45ce-8601-e421ca3615c5", "code": "SUL"},
         ],
     }
 
