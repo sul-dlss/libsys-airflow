@@ -4,7 +4,6 @@ where id in (
   select external_id
   from sul_mod_source_record_storage.records_lb
   where record_type = 'MARC_BIB'
-  and generation > 0
   and state = 'ACTUAL'
 )
 and (jsonb->>'statusId')::uuid in (
@@ -14,4 +13,4 @@ and (jsonb->>'statusId')::uuid in (
 )
 and jsonb->'metadata'->>'updatedDate' between %(from_date)s and %(to_date)s
 and jsonb->>'catalogedDate' similar to '\d{4}-\d{2}-\d{2}'
-and (jsonb->>'discoverySuppress')::boolean is false)  
+and (jsonb->>'discoverySuppress')::boolean is false)
