@@ -74,6 +74,12 @@ class GobiTransformer(Transformer):
                     for holding in holdings_result['holdingsRecords']:
                         ebook = False
 
+                        campus = self.campus_lookup.get(
+                            holding.get('permanentLocationId')
+                        )
+                        if not campus == 'SUL':
+                            continue
+
                         if len(holding.get("holdingsTypeId", "")) > 0:
                             if (
                                 self.holdings_type.get(holding["holdingsTypeId"])
