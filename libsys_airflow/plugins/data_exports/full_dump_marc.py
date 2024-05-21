@@ -1,5 +1,8 @@
 import logging
 
+from s3path import S3Path
+
+from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
@@ -67,5 +70,21 @@ def refresh_view(**kwargs) -> None:
         logger.info(result)
     else:
         logger.info("Skipping refresh of materialized view")
+
+    return None
+
+
+def reset_s3(**kwargs) -> None:
+    context = get_current_context()
+    params = context.get("params", {})  # type: ignore
+    reset = params.get("reset_s3", True)
+
+    if reset:
+        bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
+        s3_files = S3Path(f"/{bucket}/data-export-files/full-dump")
+        for file in s3_files:
+            file.unlink()
+    else:
+        logger.info("Skipping deletion of existing marc files in S3 bucket")
 
     return None
