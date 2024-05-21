@@ -8,6 +8,8 @@ from airflow.models import Variable
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
+from libsys_airflow.plugins.data_exports.oclc_api import OCLCAPIWrapper
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +42,33 @@ def gather_files_task(**kwargs) -> dict:
         "file_list": marc_filelist,
         "s3": bool(bucket),
     }
+
+
+@task(multiple_outputs=True)
+def gather_oclc_files_task(**kwargs) -> dict:
+    """
+    Gets new and updated MARC files by library (SUL, Business, Hoover, and Law)
+    to send to OCLC
+    """
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    libraries: dict = {
+        "S7Z": {},  # Business
+        "HIN": {},  # Hoover
+        "CASUM": {},  # Lane
+        "RCJ": {},  # Law
+        "STF": {},  # SUL
+    }
+    oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
+    for marc_file_path in oclc_directory.glob("*.mrc"):
+        file_parts = marc_file_path.name.split("-")
+        if len(file_parts) < 3:
+            continue
+        library, type_of = file_parts[1], file_parts[2].split(".")[0]
+        if type_of in libraries[library]:
+            libraries[library][type_of].append(str(marc_file_path))
+        else:
+            libraries[library][type_of] = [str(marc_file_path)]
+    return libraries
 
 
 @task(multiple_outputs=True)
@@ -105,6 +134,35 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
             logger.error(e)
             logger.error(f"Exception for transmission of file {f}")
             failures.append(f)
+
+    return {"success": success, "failures": failures}
+
+
+@task
+def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
+    connection_lookup, success, failures = {}, {}, {}
+    for conn_id in connection_details:
+        connection = Connection.get_connection_from_secrets(conn_id)
+        oclc_code = connection.extra_dejson["oclc_code"]
+        connection_lookup[oclc_code] = {
+            "username": connection.login,
+            "password": connection.password,
+        }
+
+    for library, records in libraries.items():
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+        if len(records.get("new", [])) > 0:
+            new_result = oclc_api.new(records['new'])
+            success[library] = new_result['success']
+            failures[library] = new_result['failures']
+
+        if len(records.get("update", [])) > 0:
+            updated_result = oclc_api.update(records['update'])
+            success[library].extend(updated_result['success'])
+            failures[library].extend(updated_result['failures'])
 
     return {"success": success, "failures": failures}
 
