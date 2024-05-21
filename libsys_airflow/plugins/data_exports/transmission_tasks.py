@@ -126,7 +126,9 @@ def archive_transmitted_data_task(files):
     for x in files:
         kind = Path(x).parent.name
         original_marc_path = Path(x)
-        archive_path = archive_dir / kind / original_marc_path.name
+        archive_path = archive_dir / kind
+        archive_path.mkdir(exist_ok=True)
+        archive_path = archive_path / original_marc_path.name
         instance_path = (
             original_marc_path.parent.parent.parent
             / f"instanceids/{kind}/{original_marc_path.stem}.csv"
@@ -142,4 +144,5 @@ def is_production():
 
 
 def return_success_test_instance(files) -> dict:
+    logger.info("SKIPPING TRANSMISSION")
     return {"success": files["file_list"], "failures": []}

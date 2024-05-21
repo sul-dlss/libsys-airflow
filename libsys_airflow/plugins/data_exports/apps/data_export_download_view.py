@@ -9,47 +9,29 @@ vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
 
-def path_parent(full_path: pathlib.Path) -> str:
-    parts = full_path.parts
-
-    return parts[len(parts) - 2]
-
-
 class DataExportDownloadView(AppBuilderBaseView):
     default_view = "data_export_download_home"
     route_base = "/data_export_download"
+    files_base = "data-export-files"
 
     @expose("/")
     def data_export_download_home(self):
         content = []
         for vendor in vendors['vendors']:
-            for path in pathlib.Path(f"data-export-files/{vendor}/marc-files/new").glob(
-                "*"
-            ):
-                content.append({vendor: [path_parent(path), path.name]})
-
-            for path in pathlib.Path(
-                f"data-export-files/{vendor}/marc-files/updates"
-            ).glob("*"):
-                content.append({vendor: [path_parent(path), path.name]})
-
-            for path in pathlib.Path(
-                f"data-export-files/{vendor}/marc-files/deletes"
-            ).glob("*"):
-                content.append({vendor: [path_parent(path), path.name]})
-
-            for path in pathlib.Path(f"data-export-files/{vendor}/transmitted").glob(
-                "*"
-            ):
-                content.append({vendor: [path_parent(path), path.name]})
+            for state in ["marc-files", "transmitted"]:
+                for kind in ["new", "updates", "deletes"]:
+                    for path in pathlib.Path(
+                        f"{DataExportDownloadView.files_base}/{vendor}/{state}/{kind}"
+                    ).glob("*"):
+                        content.append({vendor: [state, kind, path.name]})
 
         return self.render_template("data-export-download/index.html", content=content)
 
-    @expose("/downloads/<vendor>/<folder>/<filename>")
-    def vendor_marc_record(self, vendor, folder, filename):
-        folder_file = f"{folder}-{filename}"
+    @expose("/downloads/<vendor>/<state>/<folder>/<filename>")
+    def vendor_marc_record(self, vendor, state, folder, filename):
+        folder_file = f"{state}-{folder}-{filename}"
         return send_file(
-            f"/opt/airflow/data-export-files/{vendor}/marc-files/{folder}/{filename}",
+            f"/opt/airflow/data-export-files/{vendor}/{state}/{folder}/{filename}",
             as_attachment=True,
             mimetype="application/marc",
             download_name=folder_file,
