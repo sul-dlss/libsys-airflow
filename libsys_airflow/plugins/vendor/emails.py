@@ -26,7 +26,10 @@ def files_fetched_email_task(downloaded_files: list, kwargs: dict):
     if len(downloaded_files) < 1:
         logger.info("Skipping sending email since no files downloaded.")
         return
-    kwargs["download_files"] = downloaded_files
+    kwargs["downloaded_files"] = downloaded_files
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
     send_files_fetched_email(**kwargs)
 
 
