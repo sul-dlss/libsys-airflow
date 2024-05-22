@@ -43,6 +43,26 @@ def gather_files_task(**kwargs) -> dict:
         "s3": bool(bucket),
     }
 
+@task
+def retry_failed_files_task(**kwargs) -> dict:
+    """
+    Returns a list of files and s3 boolean
+    Uses the list of failed files from xcom
+    """
+    marc_filelist = []
+    params = kwargs.get("params", {})
+    bucket = params.get("bucket", {})
+    if len(kwargs["files"]) == 0:
+        logger.info("No failures to retry")
+    else:
+        logger.info("Retry failed files")
+        marc_filelist = kwargs["files"]
+
+    return {
+        "file_list": marc_filelist,
+        "s3": bool(bucket),
+    }
+
 
 @task(multiple_outputs=True)
 def gather_oclc_files_task(**kwargs) -> dict:

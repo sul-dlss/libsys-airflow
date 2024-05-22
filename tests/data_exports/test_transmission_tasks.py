@@ -10,6 +10,7 @@ import libsys_airflow.plugins.data_exports.transmission_tasks as transmission_ta
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
+    retry_failed_files_task,
     transmit_data_http_task,
     transmit_data_ftp_task,
     archive_transmitted_data_task,
@@ -137,6 +138,13 @@ def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
     marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
     assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][-1]
     assert len(marc_files["file_list"]) == 1
+
+
+def test_retry_failed_files_task(mock_marc_files, caplog):
+    retry_failed_files_task.function(files=mock_marc_files["file_list"])
+    assert "Retry failed files" in caplog.text
+    retry_failed_files_task.function(files=[])
+    assert "No failures to retry" in caplog.text
 
 
 def test_transmit_data_ftp_task(
