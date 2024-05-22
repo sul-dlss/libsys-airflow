@@ -71,7 +71,7 @@ def gather_oclc_files_task(**kwargs) -> dict:
     return libraries
 
 
-@task(multiple_outputs=True)
+@task
 def transmit_data_http_task(gather_files, **kwargs) -> dict:
     if not is_production():
         return return_success_test_instance(gather_files)
@@ -110,7 +110,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     return {"success": success, "failures": failures}
 
 
-@task(multiple_outputs=True)
+@task
 def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     if not is_production():
         return return_success_test_instance(gather_files)
