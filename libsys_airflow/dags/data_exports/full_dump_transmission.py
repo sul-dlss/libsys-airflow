@@ -8,7 +8,12 @@ from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
+    retry_failed_files_task,
     transmit_data_http_task,
+)
+
+from libsys_airflow.plugins.data_exports.email import (
+    failed_transmission_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +58,13 @@ def send_all_records():
         files_params="upload[files][]",
     )
 
-    start >> gather_files >> transmit_data >> end
+    retry_files = retry_failed_files_task(vendor="full-dump", files=transmit_data["failures"])
+
+    retry_transmission = transmit_data_http_task(retry_files, files_params="upload[files][]",)
+
+    email_failures = failed_transmission_email(retry_transmission["failures"])
+
+    start >> gather_files >> transmit_data >> retry_files >> retry_transmission >> email_failures >> end
 
 
 send_all_records()
