@@ -45,7 +45,6 @@ def send_pod_records():
         gather_files,
         params={"vendor": "pod"},
         files_params="upload[files][]",
-        url_params={"stream": "Test"},
     )
 
     archive_data = archive_transmitted_data_task(transmit_data["success"])
