@@ -58,13 +58,26 @@ def send_all_records():
         files_params="upload[files][]",
     )
 
-    retry_files = retry_failed_files_task(vendor="full-dump", files=transmit_data["failures"])
+    retry_files = retry_failed_files_task(
+        vendor="full-dump", files=transmit_data["failures"]
+    )
 
-    retry_transmission = transmit_data_http_task(retry_files, files_params="upload[files][]",)
+    retry_transmission = transmit_data_http_task(
+        retry_files,
+        files_params="upload[files][]",
+    )
 
     email_failures = failed_transmission_email(retry_transmission["failures"])
 
-    start >> gather_files >> transmit_data >> retry_files >> retry_transmission >> email_failures >> end
+    (
+        start
+        >> gather_files
+        >> transmit_data
+        >> retry_files
+        >> retry_transmission
+        >> email_failures
+        >> end
+    )
 
 
 send_all_records()

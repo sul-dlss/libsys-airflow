@@ -3,8 +3,6 @@ import logging
 from jinja2 import Template
 
 from airflow.decorators import task
-from airflow.models.taskinstance import TaskInstance
-from airflow.models.dagrun import DagRun
 from airflow.models import Variable
 from airflow.utils.email import send_email
 

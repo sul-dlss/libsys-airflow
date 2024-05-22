@@ -43,6 +43,7 @@ def gather_files_task(**kwargs) -> dict:
         "s3": bool(bucket),
     }
 
+
 @task
 def retry_failed_files_task(**kwargs) -> dict:
     """
