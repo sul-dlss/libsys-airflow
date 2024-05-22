@@ -66,14 +66,19 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        return f"{conf.get('webserver', 'base_url')}vendor_management/interfaces/{vendor_interface.id}"
+        airflow_url = conf.get('webserver', 'base_url')
+        if not airflow_url.endswith("/"):
+            airflow_url = f"{airflow_url}/"
+        return f"{airflow_url}vendor_management/interfaces/{vendor_interface.id}"
 
 
 @task
 def file_loaded_email_task(**kwargs):
     processed_params = kwargs["processed_params"]
     params = kwargs["params"]
+    job_execution_id = kwargs["job_execution_id"]
     kwargs = {**processed_params, **params}
+    kwargs["job_execution_id"] = job_execution_id
     send_file_loaded_email(**kwargs)
 
 
@@ -177,6 +182,9 @@ def file_not_loaded_email_task(**kwargs):
     processed_params = kwargs["processed_params"]
     params = kwargs["params"]
     kwargs = {**processed_params, **params}
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
     send_file_not_loaded_email(**kwargs)
 
 

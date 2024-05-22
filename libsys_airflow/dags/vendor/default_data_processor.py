@@ -160,10 +160,15 @@ with DAG(
 
     job_summary = job_summary_task(data_import["job_execution_id"])
 
-    file_loaded_email_task(processed_params=processed_params)
+    file_loaded_email_task(
+        processed_params=processed_params,
+        params=params,
+        job_execution_id=data_import["job_execution_id"],
+    )
 
     file_not_loaded_email = file_not_loaded_email_task(
-        processed_params=processed_params
+        processed_params=processed_params,
+        params=params,
     )
 
     data_import_branch >> data_import >> file_loaded_sensor >> job_summary

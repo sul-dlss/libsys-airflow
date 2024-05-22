@@ -252,6 +252,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
 def context():
     return {
         "params": {
+            "vendor_uuid": "43459f05-f98b-43c0-a79d-76a8855dba94",
             "vendor_interface_uuid": "65d30c15-a560-4064-be92-f90e38eeb351",
             "filename": "3820230411.mrc",
         }
