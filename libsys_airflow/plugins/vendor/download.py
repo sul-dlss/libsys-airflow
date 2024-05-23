@@ -153,7 +153,7 @@ def download(
     filtered_filenames = filter_strategy(all_filenames)
     logger.info(f"Filtered by strategy filenames: {filtered_filenames}")
     filtered_filenames = _filter_already_downloaded(
-        filtered_filenames, vendor_interface_uuid, engine
+        filtered_filenames, remote_path, vendor_uuid, vendor_interface_uuid, engine
     )
     logger.info(f"Filtered by already downloaded filenames: {filtered_filenames}")
     # Also creates skipped VendorFile for files that are outside download window.
@@ -298,13 +298,20 @@ def _create_adapter(
     return FTPAdapter(hook, remote_path)
 
 
-def _vendor_interface_id(vendor_interface_uuid: str, engine: Engine) -> int:
+def _vendor_interface_id(
+    vendor_uuid: str, vendor_interface_uuid: str, engine: Engine
+) -> int:
     with Session(engine) as session:
-        vendor_interface = VendorInterface.load(vendor_interface_uuid, session)
+        vendor_interface = VendorInterface.load_with_vendor(
+            vendor_uuid, vendor_interface_uuid, session
+        )
         return vendor_interface.id
 
 
-def _is_fetched(filename: str, vendor_interface_id: int, engine: Engine) -> bool:
+def _is_fetched(
+    filename: str, remote_path: str, vendor_interface_id: int, engine: Engine
+) -> bool:
+    filename = _filter_remote_path(filename, remote_path)
     with Session(engine) as session:
         return session.query(
             select(VendorFile)
@@ -316,10 +323,20 @@ def _is_fetched(filename: str, vendor_interface_id: int, engine: Engine) -> bool
 
 
 def _filter_already_downloaded(
-    filenames: list[str], vendor_interface_uuid: str, engine: Engine
+    filenames: list[str],
+    remote_path: str,
+    vendor_uuid: str,
+    vendor_interface_uuid: str,
+    engine: Engine,
 ) -> list[str]:
-    vendor_interface_id = _vendor_interface_id(vendor_interface_uuid, engine)
-    return [f for f in filenames if not _is_fetched(f, vendor_interface_id, engine)]
+    vendor_interface_id = _vendor_interface_id(
+        vendor_uuid, vendor_interface_uuid, engine
+    )
+    return [
+        f
+        for f in filenames
+        if not _is_fetched(f, remote_path, vendor_interface_id, engine)
+    ]
 
 
 def _filter_mod_date(

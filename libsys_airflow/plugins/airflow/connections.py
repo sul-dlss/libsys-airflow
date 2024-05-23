@@ -49,10 +49,10 @@ def find_or_create_conn(
     session: Session = NEW_SESSION,
 ) -> str:
     conn_id = f"{conn_type}-{host}-{login}"
-
     conn = session.query(Connection).filter_by(conn_id=conn_id).first()
     if not conn:
         conn = Connection(conn_id=conn_id)
+    conn.conn_id = conn_id
     conn.conn_type = conn_type
     conn.host = host
     conn.login = login

@@ -65,7 +65,7 @@ with DAG(
         )
         params["environment"] = os.getenv('HONEYBADGER_ENVIRONMENT', 'development')
 
-        dag_run_download_path.mkdir(exist_ok=True)
+        dag_run_download_path.mkdir(exist_ok=True, parents=True)
 
         # XCOM cannot serialize pathlib Path object
         params["download_path"] = str(dag_run_download_path)
