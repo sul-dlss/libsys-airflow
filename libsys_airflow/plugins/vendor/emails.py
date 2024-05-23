@@ -26,7 +26,10 @@ def files_fetched_email_task(downloaded_files: list, kwargs: dict):
     if len(downloaded_files) < 1:
         logger.info("Skipping sending email since no files downloaded.")
         return
-    kwargs["download_files"] = downloaded_files
+    kwargs["downloaded_files"] = downloaded_files
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
     send_files_fetched_email(**kwargs)
 
 
@@ -66,18 +69,25 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        return f"{conf.get('webserver', 'base_url')}vendor_management/interfaces/{vendor_interface.id}"
+        airflow_url = conf.get('webserver', 'base_url')
+        if not airflow_url.endswith("/"):
+            airflow_url = f"{airflow_url}/"
+        return f"{airflow_url}vendor_management/interfaces/{vendor_interface.id}"
 
 
 @task
-def file_loaded_email_task(processed_params, params):
+def file_loaded_email_task(**kwargs):
+    processed_params = kwargs["processed_params"]
+    params = kwargs["params"]
+    job_execution_id = kwargs["job_execution_id"]
     kwargs = {**processed_params, **params}
+    kwargs["job_execution_id"] = job_execution_id
     send_file_loaded_email(**kwargs)
 
 
 def send_file_loaded_email(**kwargs):
     kwargs["job_execution_url"] = (
-        f"{Variable.get('AIRFLOW_VAR_FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
+        f"{Variable.get('FOLIO_URL')}/data-import/job-summary/{kwargs['job_execution_id']}"
     )
     kwargs["file_path"] = pathlib.Path(kwargs["download_path"]) / kwargs['filename']
 
@@ -171,8 +181,13 @@ def _file_loaded_bib_html_content(**kwargs):
 
 
 @task
-def file_not_loaded_email_task(processed_params, params):
+def file_not_loaded_email_task(**kwargs):
+    processed_params = kwargs["processed_params"]
+    params = kwargs["params"]
     kwargs = {**processed_params, **params}
+    kwargs["vendor_interface_url"] = _vendor_interface_url(
+        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+    )
     send_file_not_loaded_email(**kwargs)
 
 

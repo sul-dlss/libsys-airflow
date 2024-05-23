@@ -66,7 +66,7 @@ def mock_folio_variables(monkeypatch):
     def mock_get(key):
         value = None
         match key:
-            case "AIRFLOW_VAR_FOLIO_URL":
+            case "FOLIO_URL":
                 value = "https://folio-stage.stanford.edu"
 
             case "VENDOR_LOADS_TO_EMAIL":

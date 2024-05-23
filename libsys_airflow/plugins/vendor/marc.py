@@ -13,7 +13,7 @@ from airflow.decorators import task
 from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.vendor.models import VendorFile, FileStatus
+from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
 from libsys_airflow.plugins.vendor.file_status import record_status_from_context
 
 from sqlalchemy.orm import Session
@@ -43,6 +43,7 @@ class ChangeField(BaseModel):
 
 
 def record_processed_filename(context):
+    vendor_uuid = context["params"]["vendor_uuid"]
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
     filename = context["params"]["filename"]
     processed_filename = context['ti'].xcom_pull(key='filename')
@@ -51,7 +52,12 @@ def record_processed_filename(context):
 
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        vendor_file = VendorFile.load(vendor_interface_uuid, filename, session)
+        vendor_interface = VendorInterface.load_with_vendor(
+            vendor_uuid, vendor_interface_uuid, session
+        )
+        vendor_file = VendorFile.load_with_vendor_interface(
+            vendor_interface, filename, session
+        )
         vendor_file.processed_filename = processed_filename
         session.commit()
 
