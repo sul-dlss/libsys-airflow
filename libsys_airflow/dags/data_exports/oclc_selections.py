@@ -5,7 +5,6 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     fetch_record_ids,
@@ -103,6 +102,6 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_fields >> divide_marc_records_by_library
 (
     divide_marc_records_by_library
-    >> [send_multiple_oclc_codes_email, send_to_vendor]
+    >> send_multiple_oclc_codes_email
     >> finish_processing_marc
 )
