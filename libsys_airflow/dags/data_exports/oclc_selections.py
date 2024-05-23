@@ -94,12 +94,6 @@ with DAG(
         },
     )
 
-    send_to_vendor = TriggerDagRunOperator(
-        task_id="send_oclc_records",
-        trigger_dag_id="send_oclc_records",
-        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
-    )
-
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
