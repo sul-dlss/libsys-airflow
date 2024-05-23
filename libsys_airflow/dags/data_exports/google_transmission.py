@@ -11,6 +11,10 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
 )
 
+from libsys_airflow.plugins.data_exports.email import (
+    failed_transmission_email,
+)
+
 logger = logging.getLogger(__name__)
 
 default_args = {
@@ -41,7 +45,9 @@ def send_google_records():
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
 
-    start >> gather_files >> transmit_data >> archive_data >> end
+    email_failures = failed_transmission_email(transmit_data["failures"])
+
+    start >> gather_files >> transmit_data >> [archive_data, email_failures] >> end
 
 
 send_google_records()
