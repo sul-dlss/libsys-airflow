@@ -80,7 +80,8 @@ def file_loaded_email_task(**kwargs):
     processed_params = kwargs["processed_params"]
     params = kwargs["params"]
     job_execution_id = kwargs["job_execution_id"]
-    kwargs = {**processed_params, **params}
+    job_summary = kwargs["job_summary"]
+    kwargs = {**processed_params, **params, **job_summary}
     kwargs["job_execution_id"] = job_execution_id
     send_file_loaded_email(**kwargs)
 
