@@ -95,12 +95,12 @@ class Transformer(object):
                         subfields_i = [
                             i for i in field_999.get_subfields("i") if regex.match(i)
                         ]
-                        if not subfields_i:
-                            raise Exception("No uuid in subfields")
 
-                    new_999s = self.add_holdings_items_fields(subfields_i)
-                    record.add_field(*new_999s)
-                    marc_records.append(record)
+                    if subfields_i:
+                        new_999s = self.add_holdings_items_fields(subfields_i)
+                        record.add_field(*new_999s)
+                        marc_records.append(record)
+
                     if not i % 100:
                         logger.info(f"{i:,} processed records")
                 except Exception as e:
