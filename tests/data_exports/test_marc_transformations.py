@@ -222,7 +222,14 @@ def test_skip_record_no_999i(
             subfields=[
                 pymarc.Subfield(code='i', value='not a uuid!'),
             ],
-        )
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='h', value='some other value'),
+            ],
+        ),
     )
     marc_file = tmp_path / "20240514.mrc"
     with marc_file.open('wb+') as fo:
@@ -231,9 +238,6 @@ def test_skip_record_no_999i(
 
     transformer = marc_transformer.Transformer()
     transformer.add_holdings_items(str(marc_file), full_dump=False)
-
-    with pytest.raises(Exception, match='No uuid in subfields'):
-        raise Exception('No uuid in subfields')
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
