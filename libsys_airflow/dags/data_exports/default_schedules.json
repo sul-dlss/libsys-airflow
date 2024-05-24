@@ -1,10 +1,18 @@
 {
   "schedule_gobi_days": 7,
+  "schedule_gobi_hours": 13,
   "schedule_google_days": 1,
+  "schedule_google_hours": 13,
   "schedule_hathi_days": 1,
+  "schedule_hathi_hours": 13,
   "schedule_nielsen_days": 1,
+  "schedule_nielsen_hours": 13,
   "schedule_oclc_days": 7,
+  "schedule_oclc_hours": 13,
   "schedule_pod_days": 1,
+  "schedule_pod_hours": 13,
   "schedule_sharevde_days": 1,
-  "schedule_west_days": 1
+  "schedule_sharevde_hours": 13,
+  "schedule_west_days": 1,
+  "schedule_west_hours": 13
 }

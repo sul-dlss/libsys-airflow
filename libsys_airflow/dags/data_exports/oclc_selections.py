@@ -33,7 +33,10 @@ default_args = {
 with DAG(
     "select_oclc_records",
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_oclc_days", 7))),
+    schedule=timedelta(
+        days=int(Variable.get("schedule_oclc_days", 7)),
+        hours=int(Variable.get("schedule_oclc_hours", 7)),
+    ),
     start_date=datetime(2024, 2, 25),
     catchup=False,
     tags=["data export"],
