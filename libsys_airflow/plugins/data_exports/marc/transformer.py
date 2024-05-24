@@ -4,6 +4,8 @@ import pathlib
 import pymarc
 import re
 
+from pytest import skip
+
 from libsys_airflow.plugins.folio_client import folio_client
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
@@ -128,6 +130,10 @@ class Transformer(object):
 
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
+                    if len(holding.get("discoverySuppress", "")) > 0:
+                        if bool(holding["discoverySuppress"]):
+                            continue
+
                     field_999 = self.add_holdings_subfields(holding)
 
                     holding_id = holding["id"]
@@ -139,22 +145,30 @@ class Transformer(object):
                         sql=f"select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = '{holding_id}'",
                     ).execute(get_current_context())
 
-                    match len(items_result):
+                    active_items = []
+                    for _item in items_result:
+                        try:
+                            if not bool(_item[0]["discoverySuppress"]):
+                                active_items.append(_item)
+                        except KeyError:
+                            active_items.append(_item)
+
+                    match len(active_items):
                         case 0:
                             if len(field_999.subfields) > 0:
                                 fields.append(field_999)
 
                         case 1:
-                            self.add_item_subfields(field_999, items_result[0][0])
+                            self.add_item_subfields(field_999, active_items[0][0])
                             if len(field_999.subfields) > 0:
                                 fields.append(field_999)
 
                         case _:
                             org_999 = copy.deepcopy(field_999)
-                            self.add_item_subfields(field_999, items_result[0][0])
+                            self.add_item_subfields(field_999, active_items[0][0])
                             if len(field_999.subfields) > 0:
                                 fields.append(field_999)
-                            for item_tuple in items_result[1:]:
+                            for item_tuple in active_items[1:]:
                                 item = item_tuple[0]
                                 new_999 = copy.deepcopy(org_999)
                                 self.add_item_subfields(new_999, item)
@@ -166,24 +180,22 @@ class Transformer(object):
 
         return fields
 
-    def add_holdings_subfields(self, holdings: dict) -> pymarc.Field:
+    def add_holdings_subfields(self, holding: dict) -> pymarc.Field:
         field_999 = pymarc.Field(tag="999", indicators=[' ', ' '])
-        if len(holdings.get("holdingsTypeId", "")) > 0:
-            holdings_type_name = self.holdings_type.get(holdings["holdingsTypeId"])
+        if len(holding.get("holdingsTypeId", "")) > 0:
+            holdings_type_name = self.holdings_type.get(holding["holdingsTypeId"])
             if holdings_type_name:
                 field_999.add_subfield('h', holdings_type_name)
-        if len(holdings.get("permanentLocationId", "")) > 0:
-            permanent_location_code = self.locations.get(
-                holdings['permanentLocationId']
-            )
+        if len(holding.get("permanentLocationId", "")) > 0:
+            permanent_location_code = self.locations.get(holding['permanentLocationId'])
             if permanent_location_code:
                 field_999.add_subfield('l', permanent_location_code)
-        if len(holdings.get("callNumberTypeId", "")) > 0:
-            call_number_type = self.call_numbers.get(holdings['callNumberTypeId'])
+        if len(holding.get("callNumberTypeId", "")) > 0:
+            call_number_type = self.call_numbers.get(holding['callNumberTypeId'])
             if call_number_type:
                 field_999.add_subfield('w', call_number_type)
-        if len(holdings.get("callNumber", "")) > 0:
-            field_999.add_subfield('a', holdings['callNumber'], 0)
+        if len(holding.get("callNumber", "")) > 0:
+            field_999.add_subfield('a', holding['callNumber'], 0)
         return field_999
 
     def add_item_subfields(self, field_999: pymarc.Field, item: dict):
