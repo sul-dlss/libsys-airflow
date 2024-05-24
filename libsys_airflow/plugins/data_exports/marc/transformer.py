@@ -4,8 +4,6 @@ import pathlib
 import pymarc
 import re
 
-from pytest import skip
-
 from libsys_airflow.plugins.folio_client import folio_client
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
