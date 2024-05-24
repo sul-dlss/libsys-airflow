@@ -344,7 +344,6 @@ def test_add_holdings_items_multiple_999(
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
 
     field_999s = mod_marc_records[0].get_fields('999')
-    # print([str(f) for f in field_999s])
 
     assert len(field_999s) == 3
     assert field_999s[1].get_subfields('a')[0] == "TA357.5 .T87 F74 V.17 1983"
