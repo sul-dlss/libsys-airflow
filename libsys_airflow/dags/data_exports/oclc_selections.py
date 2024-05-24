@@ -5,7 +5,6 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     fetch_record_ids,
@@ -34,7 +33,10 @@ default_args = {
 with DAG(
     "select_oclc_records",
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_oclc_days", 7))),
+    schedule=timedelta(
+        days=int(Variable.get("schedule_oclc_days", 7)),
+        hours=int(Variable.get("schedule_oclc_hours", 7)),
+    ),
     start_date=datetime(2024, 2, 25),
     catchup=False,
     tags=["data export"],
@@ -94,12 +96,6 @@ with DAG(
         },
     )
 
-    send_to_vendor = TriggerDagRunOperator(
-        task_id="send_oclc_records",
-        trigger_dag_id="send_oclc_records",
-        conf={"marc_file_list": "{{ ti.xcom_pull('tbd') }}"},
-    )
-
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
@@ -109,6 +105,6 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 fetch_marc_records >> transform_marc_fields >> divide_marc_records_by_library
 (
     divide_marc_records_by_library
-    >> [send_multiple_oclc_codes_email, send_to_vendor]
+    >> send_multiple_oclc_codes_email
     >> finish_processing_marc
 )

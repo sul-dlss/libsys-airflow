@@ -29,7 +29,10 @@ default_args = {
 with DAG(
     "select_hathi_records",
     default_args=default_args,
-    schedule=timedelta(days=int(Variable.get("schedule_hathi_days", 1))),
+    schedule=timedelta(
+        days=int(Variable.get("schedule_hathi_days", 1)),
+        hours=int(Variable.get("schedule_hathi_hours", 7)),
+    ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export"],
