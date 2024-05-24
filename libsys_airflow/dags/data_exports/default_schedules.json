@@ -12,7 +12,5 @@
   "schedule_pod_days": 1,
   "schedule_pod_hours": 13,
   "schedule_sharevde_days": 1,
-  "schedule_sharevde_hours": 13,
-  "schedule_west_days": 1,
-  "schedule_west_hours": 13
+  "schedule_sharevde_hours": 13
 }
