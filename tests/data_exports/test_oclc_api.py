@@ -81,9 +81,6 @@ def mock_metadata_session(authorization=None):
         mock_response.text = record.as_marc21()
         return mock_response
 
-    def mock_bib_validate(**kwargs):
-        pass
-
     def mock_holdings_set(**kwargs):
         if kwargs['oclcNumber'] == "456907809":
             raise WorldcatRequestError(b"400 Client Error")
@@ -105,7 +102,6 @@ def mock_metadata_session(authorization=None):
     mock_session.__enter__ = mock__enter__
     mock_session.__exit__ = mock__exit__
     mock_session.bib_create = mock_bib_create
-    mock_session.bib_validate = mock_bib_validate
     mock_session.holdings_set = mock_holdings_set
 
     return mock_session
@@ -129,12 +125,8 @@ def mock_httpx_client():
                     response = httpx.Response(
                         status_code=422, text='Failed to update SRS'
                     )
-                elif request.url.path.startswith('/source-storage/records'):
-                    response = httpx.Response(status_code=200)
-
-            case 'POST':
-                if request.url.path.startswith("/source-storage/snapshots"):
-                    response = httpx.Response(status_code=200)
+                elif request.url.path.startswith('/change-manager/parsedRecords'):
+                    response = httpx.Response(status_code=202)
 
         return response
 
@@ -152,6 +144,12 @@ def mock_folio_client(mocker):
             output = json.loads(sample_marc[2].as_json())
         if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
             output = {}
+        for instance_uuid in [
+            "f19fd2fc-586c-45df-9b0c-127af97aef34",
+            "958835d2-39cc-4ab3-9c56-53bf7940421b",
+        ]:
+            if args[0].endswith(instance_uuid):
+                output = {"_version": "2"}
         return output
 
     mock = mocker
