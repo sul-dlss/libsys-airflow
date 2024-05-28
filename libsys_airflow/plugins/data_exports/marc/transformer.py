@@ -197,6 +197,8 @@ class Transformer(object):
         return field_999
 
     def add_item_subfields(self, field_999: pymarc.Field, item: dict):
+        if 'barcode' in item:
+            field_999.add_subfield('i', item['barcode'])
         if 'materialTypeId' in item:
             field_999.add_subfield('t', self.materialtypes.get(item['materialTypeId']))
         if 'effectiveLocationId' in item:
