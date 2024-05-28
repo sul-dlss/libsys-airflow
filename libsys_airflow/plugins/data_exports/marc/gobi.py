@@ -22,6 +22,7 @@ def gobi_list_from_marc_files(marc_file_list: str):
 
 class GobiTransformer(Transformer):
     def generate_list(self, marc_file) -> pathlib.Path:
+
         # marc_path is data-export-files/gobi/marc-files/updates/YYYYMMDD.mrc
         marc_path = pathlib.Path(marc_file)
         gobi_list_name = marc_path.stem
@@ -42,6 +43,25 @@ class GobiTransformer(Transformer):
                 if not i % 100:
                     logger.info(f"{i:,} records processed")
 
+                fields035 = record.get_fields("035")
+                field856 = record.get_fields("856")
+                field856x = [s.get_subfields("x") for s in field856]
+                fields856x = list(itertools.chain.from_iterable(field856x))
+
+                field956 = record.get_fields("956")
+                field956x = [s.get_subfields("x") for s in field956]
+                fields956x = list(itertools.chain.from_iterable(field956x))
+
+                try:
+                    instance_id = self.instance_subfields(record)[0]
+                except IndexError:
+                    continue
+
+                holdings_result = self.folio_client.folio_get(
+                    f"/holdings-storage/holdings?query=(instanceId=={instance_id})"
+                )
+
+                stdnums = []
                 isbns = record.get_fields("020")
                 for stdnum in isbns:
                     try:
@@ -52,62 +72,44 @@ class GobiTransformer(Transformer):
                         """
                         isbn = isbn.replace("-", "")
                         isbn = re.sub(r"\s.*", "", isbn)
-                        if not re.search(
-                            r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
-                            isbn,
-                        ):
-                            continue
+                        if self.isbn_regex.match(isbn):
+                            stdnums.append(isbn)
 
                     except IndexError:
                         continue
 
-                    fields035 = record.get_fields("035")
-                    field856 = record.get_fields("856")
-                    field856x = [s.get_subfields("x") for s in field856]
-                    fields856x = list(itertools.chain.from_iterable(field856x))
+                for holding in holdings_result['holdingsRecords']:
+                    ebook = False
 
-                    field956 = record.get_fields("956")
-                    field956x = [s.get_subfields("x") for s in field956]
-                    fields956x = list(itertools.chain.from_iterable(field956x))
+                    campus = self.campus_lookup.get(holding.get('permanentLocationId'))
+                    if not campus == 'SUL':
+                        continue
 
-                    holdings_result = self.folio_client.folio_get(
-                        f"/holdings-storage/holdings?query=(isbn=={isbn})"
-                    )
+                    if len(holding.get("holdingsTypeId", "")) > 0:
+                        if (
+                            self.holdings_type.get(holding["holdingsTypeId"])
+                            == 'Electronic'
+                        ):
+                            ebook = True
 
-                    for holding in holdings_result['holdingsRecords']:
-                        ebook = False
-
-                        campus = self.campus_lookup.get(
-                            holding.get('permanentLocationId')
-                        )
-                        if not campus == 'SUL':
-                            continue
-
-                        if len(holding.get("holdingsTypeId", "")) > 0:
-                            if (
-                                self.holdings_type.get(holding["holdingsTypeId"])
-                                == 'Electronic'
+                            if set(['subscribed', 'gobi']).intersection(
+                                set([s.lower() for s in fields856x + fields956x])
                             ):
-                                ebook = True
-
-                                if set(['subscribed', 'gobi']).intersection(
-                                    set([s.lower() for s in fields856x + fields956x])
-                                ):
-                                    ebook = False
-
-                        for field035 in fields035:
-                            if re.search("^gls[0-9]+", field035.get_subfields("a")[0]):
                                 ebook = False
 
-                        if ebook:
-                            ebook_list.append(isbn)
+                    for field035 in fields035:
+                        if re.search("^gls[0-9]+", field035.get_subfields("a")[0]):
+                            ebook = False
 
-                        items_result = self.folio_client.folio_get(
-                            f"inventory/items?query=(holdingsRecordId=={holding['id']})"
-                        )
+                    if ebook:
+                        ebook_list.extend(stdnums)
 
-                        if len(items_result['items']):
-                            print_list.append(isbn)
+                    items_result = self.folio_client.folio_get(
+                        f"inventory/items?query=(holdingsRecordId=={holding['id']})"
+                    )
+
+                    if len(items_result['items']):
+                        print_list.extend(stdnums)
 
         with gobi_path.open("w+") as (fo):
             for p_isbn in print_list:

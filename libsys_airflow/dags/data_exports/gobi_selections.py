@@ -71,23 +71,6 @@ with DAG(
         op_kwargs={"vendor": "gobi"},
     )
 
-    transform_marc_record = PythonOperator(
-        task_id="transform_folio_marc_record",
-        python_callable=add_holdings_items_to_marc_files,
-        op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
-            "full_dump": False,
-        },
-    )
-
-    transform_marc_fields = PythonOperator(
-        task_id="transform_folio_remove_marc_fields",
-        python_callable=remove_fields_from_marc_files,
-        op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
-        },
-    )
-
     generate_isbn_list = PythonOperator(
         task_id="generate_isbn_lists",
         python_callable=gobi_list_from_marc_files,
@@ -102,5 +85,4 @@ with DAG(
 
 
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
-fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> generate_isbn_list >> finish_processing_marc
+fetch_marc_records >> generate_isbn_list >> finish_processing_marc

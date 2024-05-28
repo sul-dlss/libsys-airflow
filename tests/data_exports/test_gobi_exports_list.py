@@ -48,6 +48,15 @@ def record(**kwargs):
             )
         )
 
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=[' ', ' '],
+            subfields=[
+                pymarc.Subfield(code='i', value='5db0204e-0c10-40d7-8d11-26b94177b170')
+            ],
+        )
+    )
     return record
 
 
