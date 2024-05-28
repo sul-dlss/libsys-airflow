@@ -4,7 +4,6 @@ from sul_mod_inventory_storage.instance I
 inner join(
   select distinct on (external_id) external_id, id, generation
   from sul_mod_source_record_storage.records_lb
-  where state = 'ACTUAL'
   order by external_id, generation desc
 ) R
 on R.external_id = I.id
