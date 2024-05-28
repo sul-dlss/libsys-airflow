@@ -214,6 +214,14 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
                 fields956=["notsubscribed"],
             )
         )
+        marc_writer.write(
+            record(
+                isbns=[],  # <-- No ISBNs
+                fields035=["notgls12345"],
+                fields856=["notgobi"],
+                fields956=["notsubscribed"],
+            )
+        )
 
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)

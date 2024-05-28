@@ -44,18 +44,21 @@ class GobiTransformer(Transformer):
 
                 isbns = record.get_fields("020")
                 for stdnum in isbns:
-                    isbn = stdnum.get_subfields("a")[0]
+                    try:
+                        isbn = stdnum.get_subfields("a")[0]
+                        """
+                        Require 10 or 13 digits, except 10 digits can have "X" as last "digit".
+                        Some ISBNs are written with embedded hyphens to ignore, or additional text after a space.
+                        """
+                        isbn = isbn.replace("-", "")
+                        isbn = re.sub(r"\s.*", "", isbn)
+                        if not re.search(
+                            r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
+                            isbn,
+                        ):
+                            continue
 
-                    """
-                    Require 10 or 13 digits, except 10 digits can have "X" as last "digit".
-                    Some ISBNs are written with embedded hyphens to ignore, or additional text after a space.
-                    """
-                    isbn = isbn.replace("-", "")
-                    isbn = re.sub(r"\s.*", "", isbn)
-                    if not re.search(
-                        r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$",
-                        isbn,
-                    ):
+                    except IndexError:
                         continue
 
                     fields035 = record.get_fields("035")
