@@ -48,6 +48,17 @@ holdings_no_items = [
             'permanentLocationId': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
         },
     ),
+    (
+        {
+            'id': '9d69696b-b84e-4caa-bcdc-d517a8e242d9',
+            'instanceId': 'c77d294c-4d83-4fe0-87b1-f94a845c0d49',
+            'holdingsTypeId': '996f93e2-5b5e-4cf2-9168-33ced1f95eed',
+            'callNumberTypeId': '054d460d-d6b9-4469-9e37-7a78a2266655',
+            'callNumber': "QA 124378 C 2",
+            'permanentLocationId': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
+            'discoverySuppress': 'true',
+        },
+    ),
 ]
 
 
@@ -67,6 +78,15 @@ multiple_items = [
             'materialTypeId': 'd934e614-215d-4667-b231-aed97887f289',
             'enumeration': 'eV.17 1983',
             'effectiveLocationId': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
+        },
+    ),
+    (
+        {
+            'id': '94d81a9d-a9bb-4f2c-b5d7-e574f811f6bd',
+            'materialTypeId': 'd934e614-215d-4667-b231-aed97887f289',
+            'enumeration': 'eV.18 1993',
+            'effectiveLocationId': 'b0a1a8c3-cc9a-487c-a2ed-308fc3a49a91',
+            'discoverySuppress': 'true',
         },
     ),
 ]
