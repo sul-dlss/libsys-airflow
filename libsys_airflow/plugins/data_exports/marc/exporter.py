@@ -29,7 +29,7 @@ class Exporter(object):
     def check_008(self, fields008: list) -> bool:
         reject = False
         for field in fields008:
-            lang_code = field.value()[35:37]
+            lang_code = field.value()[35:38]
             if lang_code not in ["eng", "fre"]:
                 reject = True
         return reject
