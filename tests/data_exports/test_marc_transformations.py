@@ -95,6 +95,7 @@ single_item = [
             'numberOfPieces': '1',
             'enumeration': '1989',
             'effectiveLocationId': 'a8676073-7520-4f26-8573-55976301ab5d',
+            'barcode': '36105029044444',
         },
     ),
 ]
@@ -284,6 +285,7 @@ def test_add_holdings_items_single_999(
     assert field_999s[1].get_subfields('a')[0] == 'PQ8098.3.E4 A7 1989'
     assert field_999s[1].get_subfields('e')[0] == 'GRE-FOLIO-FLAT'
     assert field_999s[1].get_subfields('h')[0] == 'Monograph'
+    assert field_999s[1].get_subfields('i')[0] == '36105029044444'
     assert field_999s[1].get_subfields('j')[0] == '1'
     assert field_999s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
     assert field_999s[1].get_subfields('t')[0] == 'book'
