@@ -248,6 +248,8 @@ def test_exclude_marc_by_vendor_gobi(mocker):
     marc_record = pymarc.Record()
     marc_record.add_field(field_008)
 
+    field008 = marc_record['008'].value()
+    assert field008[35:38] == 'jpn'
     assert exporter.exclude_marc_by_vendor(marc_record, 'gobi')
 
 
