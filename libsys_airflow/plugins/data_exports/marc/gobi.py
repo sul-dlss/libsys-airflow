@@ -105,7 +105,7 @@ class GobiTransformer(Transformer):
                         ebook_list.extend(stdnums)
 
                     items_result = self.folio_client.folio_get(
-                        f"item-storage/items?query=(holdingsRecordId=={holding['id']})"
+                        f"/item-storage/items?query=(holdingsRecordId=={holding['id']})"
                     )
 
                     if len(items_result['items']):
