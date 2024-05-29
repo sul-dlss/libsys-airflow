@@ -136,8 +136,8 @@ def test_gather_full_dump_files(mocker):
 def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
-    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][-1]
-    assert len(marc_files["file_list"]) == 1
+    assert marc_files["file_list"][1] == mock_vendor_marc_files["file_list"][-1]
+    assert len(marc_files["file_list"]) == 2
 
 
 def test_retry_failed_files_task(mock_marc_files, caplog):
