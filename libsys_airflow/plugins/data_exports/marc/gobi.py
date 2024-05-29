@@ -21,7 +21,7 @@ def gobi_list_from_marc_files(marc_file_list: str):
 
 
 class GobiTransformer(Transformer):
-    def generate_list(self, marc_file) -> pathlib.Path:
+    def generate_list(self, marc_file) -> None:
 
         # marc_path is data-export-files/gobi/marc-files/updates/YYYYMMDD.mrc
         marc_path = pathlib.Path(marc_file)
@@ -118,4 +118,4 @@ class GobiTransformer(Transformer):
             for e_isbn in ebook_list:
                 fo.write(f"{e_isbn}|ebook|325099\n")
 
-        return gobi_path
+        return None
