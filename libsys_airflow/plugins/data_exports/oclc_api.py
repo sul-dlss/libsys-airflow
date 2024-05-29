@@ -75,7 +75,7 @@ class OCLCAPIWrapper(object):
                 "recordType": "MARC_BIB",
                 "relatedRecordVersion": version,
                 "parsedRecord": {"content": marc_json},
-                "externalidsHolder": {"instanceId": instance_uuid},
+                "externalIdsHolder": {"instanceId": instance_uuid},
             },
         )
         if put_result.status_code != 202:
