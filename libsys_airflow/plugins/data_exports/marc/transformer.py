@@ -128,9 +128,9 @@ class Transformer(object):
 
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
-                    if len(holding.get("discoverySuppress", "")) > 0:
-                        if bool(holding["discoverySuppress"]):
-                            continue
+
+                    if holding.get("discoverySuppress", False):
+                        continue
 
                     field_999 = self.add_holdings_subfields(holding)
 
@@ -145,10 +145,7 @@ class Transformer(object):
 
                     active_items = []
                     for _item in items_result:
-                        try:
-                            if not bool(_item[0]["discoverySuppress"]):
-                                active_items.append(_item)
-                        except KeyError:
+                        if not _item[0].get("discoverySuppress", False):
                             active_items.append(_item)
 
                     match len(active_items):
