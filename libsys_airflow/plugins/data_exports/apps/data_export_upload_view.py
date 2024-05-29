@@ -14,6 +14,10 @@ parent = pathlib.Path(__file__).resolve().parent
 vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
+uuid_regex = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+
 
 def upload_data_export_ids(
     ids_df: pd.DataFrame, vendor: str, kind: str
@@ -21,13 +25,16 @@ def upload_data_export_ids(
     if len(ids_df.columns) > 1:
         raise ValueError("ID file has more than one column.")
     tuples = list(ids_df.itertuples(index=False, name=None))
-    for id in tuples:
-        if not re.search(
-            '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', id[0]
-        ):
-            raise ValueError(f"{id[0]} is not a UUID.")
+    instance_uuids = []
+    for row in tuples:
+        id = row[0]
+        if not uuid_regex.search(id):
+            raise ValueError(f"{id} is not a UUID.")
+        instance_uuids.append(id)
 
-    ids_path = save_ids(airflow="/opt/airflow", vendor=vendor, data=tuples, kind=kind)
+    ids_path = save_ids(
+        airflow="/opt/airflow", vendor=vendor, data=instance_uuids, kind=kind
+    )
 
     return ids_path
 
