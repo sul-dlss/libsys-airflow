@@ -43,7 +43,6 @@ class GobiTransformer(Transformer):
                 if not i % 100:
                     logger.info(f"{i:,} records processed")
 
-                fields035 = record.get_fields("035")
                 field856 = record.get_fields("856")
                 field856x = [s.get_subfields("x") for s in field856]
                 fields856x = list(itertools.chain.from_iterable(field856x))
@@ -96,10 +95,6 @@ class GobiTransformer(Transformer):
                                 set([s.lower() for s in fields856x + fields956x])
                             ):
                                 ebook = False
-
-                    for field035 in fields035:
-                        if re.search("^gls[0-9]+", field035.get_subfields("a")[0]):
-                            ebook = False
 
                     if ebook:
                         ebook_list.extend(stdnums)
