@@ -137,7 +137,8 @@ def divide_into_oclc_libraries(**kwargs):
     oclc_transformer = OCLCTransformer()
 
     marc_list = ast.literal_eval(marc_file_list)
-    for marc_file in marc_list['updates']:
+    all_files = marc_list['new'] + marc_list['deletes']
+    for marc_file in all_files:
         oclc_transformer.divide(marc_file)
     oclc_transformer.save()
     task_instance.xcom_push(
