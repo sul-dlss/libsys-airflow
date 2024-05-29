@@ -126,7 +126,8 @@ oclc_excluded = [
 def add_holdings_items_to_marc_files(marc_file_list: str, full_dump: bool):
     transformer = Transformer()
     marc_list = ast.literal_eval(marc_file_list)
-    for marc_file in marc_list['updates']:
+    new_and_updates = marc_list['new'] + marc_list['updates']
+    for marc_file in new_and_updates:
         transformer.add_holdings_items(marc_file=marc_file, full_dump=full_dump)
 
 
