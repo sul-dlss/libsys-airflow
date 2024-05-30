@@ -19,7 +19,6 @@ class Transformer(object):
         self.holdings_type = self.holdings_type_lookup()
         self.locations = self.locations_lookup()
         self.materialtypes = self.materialtype_lookup()
-        self.library_lookup = self.library_by_locations_lookup()
         self.campus_lookup = self.campus_by_locations_lookup()
         self.uuid_regex = self.uuid_compile()
         self.isbn_regex = self.isbn_compile()
@@ -59,18 +58,6 @@ class Transformer(object):
             campus_lookup[campus['id']] = campus["code"]
         for location in self.folio_client.locations:
             lookup[location['id']] = campus_lookup.get(location['campusId'])
-        return lookup
-
-    def library_by_locations_lookup(self) -> dict:
-        lookup = {}
-        libraries_result = self.folio_client.folio_get(
-            "/location-units/libraries?limit=1000"
-        )
-        libraries_lookup = {}
-        for library in libraries_result.get("loclibs"):
-            libraries_lookup[library['id']] = library["code"]
-        for location in self.folio_client.locations:
-            lookup[location['id']] = libraries_lookup.get(location['libraryId'])
         return lookup
 
     def uuid_compile(self) -> re.Pattern:

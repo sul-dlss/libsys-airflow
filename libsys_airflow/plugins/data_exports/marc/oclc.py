@@ -62,17 +62,17 @@ class OCLCTransformer(Transformer):
         )
         codes = []
         for holding in holdings_result['holdingsRecords']:
-            library = self.library_lookup.get(holding.get('permanentLocationId'))
-            if library is None:
+            campus = self.campus_lookup.get(holding.get('permanentLocationId'))
+            if campus is None:
                 continue
-            match library:
-                case "BUSINESS":
+            match campus:
+                case "GSB":
                     oclc_code = "S7Z"
 
-                case "HILA":
+                case "HOOVER":
                     oclc_code = "HIN"
 
-                case "LANE":
+                case "MED":
                     oclc_code = "CASUM"
 
                 case "LAW":

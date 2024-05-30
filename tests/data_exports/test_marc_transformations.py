@@ -196,14 +196,6 @@ def mock_folio_client():
             {"id": "d934e614-215d-4667-b231-aed97887f289", "name": "periodical"},
             {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
         ],
-        "loclibs": [
-            {"id": 'f5c58187-3db6-4bda-b1bf-e5f0717e2149', "code": 'BUSINESS'},
-            {"id": "f6b5519e-88d9-413e-924d-9ed96255f72e", "code": "GREEN"},
-            {"id": "ffe6ea8e-1e14-482f-b3e9-66e05efb04dd", "code": "HILA"},
-            {"id": "5b2c8449-eed6-4bd3-bcef-af1e5a225400", "code": "LANE"},
-            {"id": "7e4c05e3-1ce6-427d-b9ce-03464245cd78", "code": "LAW"},
-            {"id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00', "code": 'SUL'},
-        ],
         "loccamps": [
             {"id": "c365047a-51f2-45ce-8601-e421ca3615c5", "code": "SUL"},
         ],
