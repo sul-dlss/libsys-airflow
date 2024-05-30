@@ -83,39 +83,34 @@ def mock_folio_client():
                     {"permanentLocationId": "11111-2222-333-444-555555"}
                 ]
             }
-        # Library Locations
-        if args[0].startswith("/location-units/libraries"):
+        # Campus locations
+        if args[0].startswith("/location-units/campuses"):
             return {
-                "loclibs": [
+                "loccamps": [
                     {
-                        "id": 'f5c58187-3db6-4bda-b1bf-e5f0717e2149',
-                        "campusId": "b89563c5-cb66-4de7-b63c-ca4d82e9d856",
-                        "code": 'BUSINESS',
+                        "id": "b89563c5-cb66-4de7-b63c-ca4d82e9d856",
+                        "name": "Graduate School of Business",
+                        "code": "GSB",
                     },
                     {
-                        "id": "f6b5519e-88d9-413e-924d-9ed96255f72e",
-                        "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
-                        "code": "GREEN",
+                        "id": "be6468b8-ed88-4876-93fe-5bdac764959c",
+                        "name": "Hoover Institution",
+                        "code": "HOOVER",
                     },
                     {
-                        "id": "ffe6ea8e-1e14-482f-b3e9-66e05efb04dd",
-                        "campusId": "be6468b8-ed88-4876-93fe-5bdac764959c",
-                        "code": "HILA",
-                    },
-                    {
-                        "id": "5b2c8449-eed6-4bd3-bcef-af1e5a225400",
-                        "campusId": "40b76104-95ea-4360-a2be-5fd887222e2d",
-                        "code": "LANE",
-                    },
-                    {
-                        "id": "7e4c05e3-1ce6-427d-b9ce-03464245cd78",
-                        "campusId": "7003123d-ef65-45f6-b469-d2b9839e1bb3",
+                        "id": "7003123d-ef65-45f6-b469-d2b9839e1bb3",
+                        "name": "Law School",
                         "code": "LAW",
                     },
                     {
-                        "id": 'c1a86906-ced0-46cb-8f5b-8cef542bdd00',
-                        "campusId": "c365047a-51f2-45ce-8601-e421ca3615c5",
-                        "code": 'SUL',
+                        "id": "40b76104-95ea-4360-a2be-5fd887222e2d",
+                        "name": "Medical Center",
+                        "code": "MED",
+                    },
+                    {
+                        "id": "c365047a-51f2-45ce-8601-e421ca3615c5",
+                        "name": "Stanford Libraries",
+                        "code": "SUL",
                     },
                 ]
             }
