@@ -1,7 +1,5 @@
-import json
 import logging
 import pathlib
-import uuid
 
 import httpx
 import pymarc
@@ -30,13 +28,10 @@ class OCLCAPIWrapper(object):
         client_id = kwargs["client_id"]
         secret = kwargs["secret"]
         self.httpx_client = httpx.Client()
-        self.snapshot = None
         self.__authenticate__(client_id, secret)
         self.folio_client = folio_client()
 
     def __del__(self):
-        if self.snapshot:
-            self.__close_snapshot__()
         self.httpx_client.close()
 
     def __authenticate__(self, client_key, secret) -> None:
@@ -49,25 +44,6 @@ class OCLCAPIWrapper(object):
             logger.error(msg)
             raise Exception(msg, e)
 
-    def __close_snapshot__(self) -> None:
-        post_result = self.httpx_client.post(
-            f"{self.folio_client.okapi_url}source-storage/snapshots",
-            headers=self.folio_client.okapi_headers,
-            json={"jobExecutionId": self.snapshot, "status": "PROCESSING_FINISHED"},
-        )
-
-        post_result.raise_for_status()
-
-    def __generate_snapshot__(self) -> None:
-        snapshot_uuid = str(uuid.uuid4())
-        post_result = self.httpx_client.post(
-            f"{self.folio_client.okapi_url}source-storage/snapshots",
-            headers=self.folio_client.okapi_headers,
-            json={"jobExecutionId": snapshot_uuid, "status": "NEW"},
-        )
-        post_result.raise_for_status()
-        self.snapshot = snapshot_uuid
-
     def __get_srs_record__(self, srs_uuid: str) -> Union[pymarc.Record, None]:
         marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
         marc_json_handler = pymarc.JSONHandler()
@@ -78,28 +54,38 @@ class OCLCAPIWrapper(object):
             logger.error(f"Failed converting {srs_uuid} to MARC JSON {e}")
             return None
 
+    def __instance_info__(self, record: pymarc.Record) -> tuple:
+        instance_uuid, _ = self.__record_uuids__(record)
+        instance = self.folio_client.folio_get(f"/inventory/instances/{instance_uuid}")
+        version = instance["_version"]
+        hrid = instance["hrid"]
+        return instance_uuid, version, hrid
+
     def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
         """
         Updates FOLIO SRS with updated MARC record with new OCLC Number
         in the 035 field
         """
         marc_json = record.as_json()
-        if self.snapshot is None:
-            self.__generate_snapshot__()
-
+        instance_uuid, version, instance_hrid = self.__instance_info__(record)
         put_result = self.httpx_client.put(
-            f"{self.folio_client.okapi_url}source-storage/records/{srs_uuid}",
+            f"{self.folio_client.okapi_url}change-manager/parsedRecords/{srs_uuid}",
             headers=self.folio_client.okapi_headers,
             json={
-                "snapshotId": self.snapshot,
-                "matchedId": srs_uuid,
+                "id": srs_uuid,
                 "recordType": "MARC_BIB",
-                "rawRecord": {"content": json.dumps(marc_json)},
+                "relatedRecordVersion": version,
                 "parsedRecord": {"content": marc_json},
+                "externalIdsHolder": {
+                    "instanceId": instance_uuid,
+                    "instanceHrid": instance_hrid,
+                },
             },
         )
-        if put_result.status_code != 200:
-            logger.error(f"Failed to update FOLIO for SRS {srs_uuid}")
+        if put_result.status_code != 202:
+            logger.error(
+                f"Failed to update FOLIO for Instance {instance_uuid} with SRS {srs_uuid}"
+            )
             return False
         return True
 
