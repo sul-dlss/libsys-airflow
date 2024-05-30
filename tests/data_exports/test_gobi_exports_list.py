@@ -7,7 +7,6 @@ from tests.data_exports.test_marc_transformations import mock_folio_client  # no
 
 def record(**kwargs):
     isbns = kwargs.get("isbns")
-    fields035 = kwargs.get("fields035")
     fields856 = kwargs.get("fields856")
     fields956 = kwargs.get("fields956")
 
@@ -16,15 +15,6 @@ def record(**kwargs):
         record.add_field(
             pymarc.Field(
                 tag='020',
-                indicators=[' ', ' '],
-                subfields=[pymarc.Subfield(code='a', value=field)],
-            )
-        )
-
-    for field in fields035:
-        record.add_field(
-            pymarc.Field(
-                tag='035',
                 indicators=[' ', ' '],
                 subfields=[pymarc.Subfield(code='a', value=field)],
             )
@@ -48,6 +38,15 @@ def record(**kwargs):
             )
         )
 
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=[' ', ' '],
+            subfields=[
+                pymarc.Subfield(code='i', value='5db0204e-0c10-40d7-8d11-26b94177b170')
+            ],
+        )
+    )
     return record
 
 
@@ -106,7 +105,6 @@ def test_with_ebook_and_print(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["1234567890123", "9876543212345"],
-                fields035=["notgls12345", "other1value"],
                 fields856=["notgobi", "other"],
                 fields956=["notsubscribed", "other"],
             )
@@ -157,7 +155,6 @@ def test_with_ebook_only(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["1234567890123"],
-                fields035=["notgls12345"],
                 fields856=["notgobi"],
                 fields956=["notsubscribed"],
             )
@@ -209,7 +206,6 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["42"],  # <-- Not a valid ISBN
-                fields035=["notgls12345"],
                 fields856=["notgobi"],
                 fields956=["notsubscribed"],
             )
@@ -217,7 +213,6 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=[],  # <-- No ISBNs
-                fields035=["notgls12345"],
                 fields856=["notgobi"],
                 fields956=["notsubscribed"],
             )
@@ -269,7 +264,6 @@ def test_with_modified_isbn(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["1234567890 some text", "9-876543212345"],
-                fields035=["notgls12345", "other1value"],
                 fields856=["notgobi", "other"],
                 fields956=["notsubscribed", "other"],
             )
@@ -320,62 +314,6 @@ def test_with_print_no_electronic_holding(tmp_path, mocker, mock_folio_client): 
         marc_writer.write(
             record(
                 isbns=["1234567890123"],
-                fields035=["notgls12345"],
-                fields856=["notgobi"],
-                fields956=["notsubscribed"],
-            )
-        )
-
-    transformer = gobi_transformer.GobiTransformer()
-    transformer.generate_list(marc_file)
-
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
-
-    with gobi_file.open('r+') as fo:
-        assert fo.readline() == "1234567890123|print|325099\n"
-        assert fo.readline() == ""
-
-
-def test_with_skipped_by_035(tmp_path, mocker, mock_folio_client):  # noqa
-    file_date = "20240105"
-
-    holdings = [
-        {
-            'id': '3bb4a439-842e-5c8d-b86c-eaad46b6a316',
-            'holdingsTypeId': '996f93e2-5b5e-4cf2-9168-33ced1f95eed',
-            'permanentLocationId': 'a8676073-7520-4f26-8573-55976301ab5d',
-        }
-    ]
-
-    items = [
-        {
-            'id': '3251f045-f80c-5c0d-8774-a75af8a6f01c',
-        }
-    ]
-
-    def mock_folio_get(*args):
-        result = folio_result
-        result["holdingsRecords"] = holdings
-        result["items"] = items
-        return result
-
-    mock_folio_client.folio_get = mock_folio_get
-
-    mocker.patch(
-        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
-        return_value=mock_folio_client,
-    )
-
-    marc_file = tmp_path / f"{file_date}.mrc"
-
-    with marc_file.open("wb+") as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        marc_writer.write(
-            record(
-                isbns=["1234567890123"],
-                fields035=[
-                    "gls12345"
-                ],  # <-- indicates an existing Gobi record, so no added line for "ebook"
                 fields856=["notgobi"],
                 fields956=["notsubscribed"],
             )
@@ -476,7 +414,6 @@ def test_with_skipped_by_956(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["1234567890123"],
-                fields035=["notgls12345"],
                 fields856=["notgobi"],
                 fields956=[
                     "subscribed",
@@ -532,7 +469,6 @@ def test_with_non_sul_holding(tmp_path, mocker, mock_folio_client):  # noqa
         marc_writer.write(
             record(
                 isbns=["1234567890123", "9876543212345"],
-                fields035=["notgls12345", "other1value"],
                 fields856=["notgobi", "other"],
                 fields956=["notsubscribed", "other"],
             )

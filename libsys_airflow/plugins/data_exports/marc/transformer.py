@@ -21,6 +21,8 @@ class Transformer(object):
         self.materialtypes = self.materialtype_lookup()
         self.library_lookup = self.library_by_locations_lookup()
         self.campus_lookup = self.campus_by_locations_lookup()
+        self.uuid_regex = self.uuid_compile()
+        self.isbn_regex = self.isbn_compile()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -71,6 +73,26 @@ class Transformer(object):
             lookup[location['id']] = libraries_lookup.get(location['libraryId'])
         return lookup
 
+    def uuid_compile(self) -> re.Pattern:
+        return re.compile(
+            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        )
+
+    def isbn_compile(self) -> re.Pattern:
+        return re.compile(r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$")
+
+    def instance_subfields(self, record):
+        subfields_i = []
+        fields_999 = record.get_fields("999")
+
+        for field_999 in fields_999:
+            uuids = field_999.get_subfields("i")
+            for uuid in uuids:
+                if self.uuid_regex.match(uuid):
+                    subfields_i.append(uuid)
+
+        return subfields_i
+
     def add_holdings_items(self, marc_file: str, full_dump: bool):
         """
         Adds FOLIO Holdings and Items information to MARC records
@@ -83,18 +105,11 @@ class Transformer(object):
 
         marc_records = []
         logger.info(f"Starting MARC processing on {marc_path}")
-        regex = re.compile(
-            r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-        )
 
         with marc_path.open('rb') as fo:
             for i, record in enumerate(pymarc.MARCReader(fo)):
                 try:
-                    fields_999 = record.get_fields("999")
-                    for field_999 in fields_999:
-                        subfields_i = [
-                            i for i in field_999.get_subfields("i") if regex.match(i)
-                        ]
+                    subfields_i = self.instance_subfields(record)
 
                     if subfields_i:
                         new_999s = self.add_holdings_items_fields(subfields_i)

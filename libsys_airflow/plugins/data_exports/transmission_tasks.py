@@ -31,7 +31,7 @@ def gather_files_task(**kwargs) -> dict:
     if vendor == "full-dump":
         marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
     if vendor == "gobi":
-        file_glob_pattern = "**/*.txt"
+        file_glob_pattern = r"**/*.[mt][rx][ct]"
     marc_filelist = []
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size == 0:
