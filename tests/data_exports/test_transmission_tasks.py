@@ -136,8 +136,8 @@ def test_gather_full_dump_files(mocker):
 def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
-    assert marc_files["file_list"][1] == mock_vendor_marc_files["file_list"][-1]
-    assert len(marc_files["file_list"]) == 2
+    assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][-1]
+    assert len(marc_files["file_list"]) == 1
 
 
 def test_retry_failed_files_task(mock_marc_files, caplog):
@@ -254,6 +254,23 @@ def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):
         assert (transmitted_dir / pathlib.Path(x).name).exists()
 
     assert (transmitted_dir / instance_id_file1.name).exists()
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
+def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    vendor_dir = airflow / "data-export-files/gobi/"
+    instance_id_dir = vendor_dir / "instanceids" / "updates"
+    instance_id_dir.mkdir(parents=True)
+    instance_id_file1 = instance_id_dir / "2024022914.csv"
+    instance_id_file1.touch()
+    archive_dir = vendor_dir / "transmitted" / "updates"
+    archive_dir.mkdir(parents=True)
+    archive_transmitted_data_task.function(mock_vendor_marc_files["file_list"])
+    for x in mock_vendor_marc_files["file_list"]:
+        assert (archive_dir / pathlib.Path(x).name).exists()
+
+    assert (archive_dir / instance_id_file1.name).exists()
 
 
 def test_archive_transmitted_data_task_no_files(caplog):

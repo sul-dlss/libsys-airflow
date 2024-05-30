@@ -31,7 +31,7 @@ def gather_files_task(**kwargs) -> dict:
     if vendor == "full-dump":
         marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
     if vendor == "gobi":
-        file_glob_pattern = r"**/*.[mt][rx][ct]"
+        file_glob_pattern = "**/*.txt"
     marc_filelist = []
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size == 0:
@@ -194,6 +194,7 @@ def archive_transmitted_data_task(files):
     Given a list of successfully transmitted files, move files to
     'transmitted' folder under each data-export-files/{vendor}.
     Also moves the instanceid file with the same vendor and filename
+    Also moves the marc files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
     logger.info("Moving transmitted files to archive directory")
     if len(files) < 1:
@@ -204,18 +205,33 @@ def archive_transmitted_data_task(files):
     archive_dir.mkdir(exist_ok=True)
     for x in files:
         kind = Path(x).parent.name
-        original_marc_path = Path(x)
+        # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.mrc|*.txt
+        original_transmitted_file_path = Path(x)
+        # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
         archive_path = archive_dir / kind
         archive_path.mkdir(exist_ok=True)
-        archive_path = archive_path / original_marc_path.name
+        archive_path = archive_path / original_transmitted_file_path.name
+        # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
         instance_path = (
-            original_marc_path.parent.parent.parent
-            / f"instanceids/{kind}/{original_marc_path.stem}.csv"
+            original_transmitted_file_path.parent.parent.parent
+            / f"instanceids/{kind}/{original_transmitted_file_path.stem}.csv"
         )
-        original_marc_path.replace(archive_path)
+        marc_path = (
+            original_transmitted_file_path.parent
+            / f"{original_transmitted_file_path.stem}.mrc"
+        )
+        marc_archive_path = archive_dir / kind / marc_path.name
 
+        # move transmitted files
+        original_transmitted_file_path.replace(archive_path)
+
+        # move instance id files with same stem as transmitted filename
         if instance_path.exists():
             instance_path.replace(archive_dir / kind / instance_path.name)
+
+        # move marc files with same stem as transmitted filename (when transmitted file is not *.mrc)
+        if marc_path.exists():
+            marc_path.replace(marc_archive_path)
 
 
 def is_production():
