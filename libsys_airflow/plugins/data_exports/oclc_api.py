@@ -58,7 +58,8 @@ class OCLCAPIWrapper(object):
         instance_uuid, _ = self.__record_uuids__(record)
         instance = self.folio_client.folio_get(f"/inventory/instances/{instance_uuid}")
         version = instance["_version"]
-        return instance_uuid, version
+        hrid = instance["hrid"]
+        return instance_uuid, version, hrid
 
     def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
         """
@@ -66,7 +67,7 @@ class OCLCAPIWrapper(object):
         in the 035 field
         """
         marc_json = record.as_json()
-        instance_uuid, version = self.__instance_info__(record)
+        instance_uuid, version, instance_hrid = self.__instance_info__(record)
         put_result = self.httpx_client.put(
             f"{self.folio_client.okapi_url}change-manager/parsedRecords/{srs_uuid}",
             headers=self.folio_client.okapi_headers,
@@ -75,7 +76,10 @@ class OCLCAPIWrapper(object):
                 "recordType": "MARC_BIB",
                 "relatedRecordVersion": version,
                 "parsedRecord": {"content": marc_json},
-                "externalIdsHolder": {"instanceId": instance_uuid},
+                "externalIdsHolder": {
+                    "instanceId": instance_uuid,
+                    "instanceHrid": instance_hrid,
+                },
             },
         )
         if put_result.status_code != 202:

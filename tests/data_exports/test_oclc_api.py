@@ -149,7 +149,7 @@ def mock_folio_client(mocker):
             "958835d2-39cc-4ab3-9c56-53bf7940421b",
         ]:
             if args[0].endswith(instance_uuid):
-                output = {"_version": "2"}
+                output = {"_version": "2", "hrid": "a345691"}
         return output
 
     mock = mocker
