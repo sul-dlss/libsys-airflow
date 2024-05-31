@@ -22,7 +22,7 @@ with DAG(
     "data_export_purge_archived_files",
     default_args=default_args,
     start_date=datetime(2024, 5, 30),
-    schedule=None,
+    schedule=timedelta(days=1),
     catchup=False,
     tags=["data export"],
 ) as dag:
