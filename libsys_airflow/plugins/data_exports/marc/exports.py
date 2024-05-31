@@ -1,3 +1,4 @@
+import ast
 import logging
 import pathlib
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
@@ -5,45 +6,24 @@ from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 logger = logging.getLogger(__name__)
 
 
-def instance_files_dir(**kwargs) -> list[pathlib.Path]:
-    """
-    Finds the instance id directory for a vendor
-    """
-    airflow = kwargs.get("airflow", "/opt/airflow")
-    vendor = kwargs.get("vendor")
-    kind = kwargs.get("kind")
-    instance_dir = (
-        pathlib.Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}"
-    )
-    instance_files = list(instance_dir.glob("*.csv"))
-
-    if not instance_files:
-        logger.warning(f"Vendor instance files do not exist for {kind}")
-
-    return instance_files
-
-
 def marc_for_instances(**kwargs) -> dict:
     """
     Retrieves the converted marc for each instance id file in vendor directory
     """
+    instance_files = ast.literal_eval(kwargs.get("instance_files", "[]"))
+
     new_updates_deletes = {"new": [], "updates": [], "deletes": []}  # type: dict
 
-    for kind in ["new", "updates", "deletes"]:
-        instance_files = instance_files_dir(
-            airflow=kwargs.get("airflow", "/opt/airflow"),
-            vendor=kwargs.get("vendor", ""),
-            kind=kind,
+    exporter = Exporter()
+    marc_files = []
+    for file_datename in instance_files:
+        file_path = pathlib.Path(file_datename)
+        kind = file_path.parent.stem
+        marc_file = exporter.retrieve_marc_for_instances(
+            instance_file=file_path, kind=kind
         )
-
-        exporter = Exporter()
-        marc_files = []
-        for file_datename in instance_files:
-            marc_file = exporter.retrieve_marc_for_instances(
-                instance_file=file_datename, kind=kind
-            )
-            marc_files.append(marc_file)
-
+        marc_files.append(marc_file)
+        logger.info(f"Retrieved marc files {marc_file} for instance file {file_path}")
         new_updates_deletes[kind].extend(str(f) for f in marc_files)
 
     return new_updates_deletes

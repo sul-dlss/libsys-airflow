@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.exports import (
     marc_for_instances,
-    instance_files_dir,
 )
 
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
@@ -185,26 +184,21 @@ def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog
     assert "response code 404" in caplog.text
 
 
-def test_fetch_marc_missing_instance_file(tmp_path, caplog):
-    setup_test_file_updates(tmp_path)
-
-    instance_files_dir(airflow=tmp_path, vendor="gobi")
-
-    assert "Vendor instance files do not exist" in caplog.text
-
-
 def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
-    setup_test_file_updates(tmp_path)
-    setup_test_file_deletes(tmp_path)
+    update_file_path = setup_test_file_updates(tmp_path)
+    delete_file_path = setup_test_file_deletes(tmp_path)
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
         return_value=mock_folio_client,
     )
 
-    files = marc_for_instances(airflow=tmp_path, vendor="pod")
+    instance_files = [str(update_file_path), str(delete_file_path)]
+
+    files = marc_for_instances(instance_files=f"{instance_files}")
 
     assert files["updates"][0].endswith('202402271159.mrc')
+    assert files["deletes"][0].endswith('202402271159.mrc')
 
 
 field_035 = pymarc.Field(
