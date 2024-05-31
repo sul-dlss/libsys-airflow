@@ -26,6 +26,7 @@ with DAG(
     schedule="@daily",
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    tags=["vma"],
 ) as dag:
 
     @task

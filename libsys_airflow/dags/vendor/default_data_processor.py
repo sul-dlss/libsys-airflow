@@ -48,6 +48,7 @@ with DAG(
     schedule=None,
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    tags=["vma"],
     params={
         "vendor_uuid": Param(
             "", type="string"

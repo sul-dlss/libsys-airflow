@@ -22,6 +22,7 @@ with DAG(
     schedule="@hourly",
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    tags=["vma"],
     params={},
 ) as dag:
 

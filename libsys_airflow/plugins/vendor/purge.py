@@ -16,7 +16,7 @@ from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorI
 logger = logging.getLogger(__name__)
 
 
-PRIOR_DAYS = 180
+PRIOR_DAYS = 90
 
 
 @task(multiple_outputs=True)
