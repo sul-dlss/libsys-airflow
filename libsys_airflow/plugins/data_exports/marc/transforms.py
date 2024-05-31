@@ -140,10 +140,11 @@ def divide_into_oclc_libraries(**kwargs):
     all_files = marc_list['new'] + marc_list['deletes']
     for marc_file in all_files:
         oclc_transformer.divide(marc_file)
-    oclc_transformer.save()
+    original_files = oclc_transformer.save()
     task_instance.xcom_push(
         key="multiple-oclc-codes", value=oclc_transformer.staff_notices
     )
+    return original_files
 
 
 def change_leader_for_deletes(marc_file_list: str):
@@ -221,3 +222,11 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
                 marc_writer.write(record)
     except pymarc.exceptions.WriteNeedsRecord as e:
         logger.warning(e)
+
+
+def remove_marc_files(marc_file_list: str):
+    marc_list = ast.literal_eval(marc_file_list)
+    for file_path_str in marc_list:
+        file_path = pathlib.Path(file_path_str)
+        file_path.unlink()
+        logger.info(f"Removed {file_path}")

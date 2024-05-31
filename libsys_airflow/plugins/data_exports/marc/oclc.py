@@ -39,7 +39,7 @@ class OCLCTransformer(Transformer):
         super().__init__()
         self.libraries = {}
         for code in ["CASUM", "HIN", "RCJ", "S7Z", "STF"]:
-            self.libraries[code] = {"holdings": [], "marc": []}
+            self.libraries[code] = {"holdings": {}, "marc": {}}
         self.staff_notices = []
 
     def __filter_999__(self, record: pymarc.Record) -> str:
@@ -88,9 +88,9 @@ class OCLCTransformer(Transformer):
         """
         Divides up MARC Export by Campus and presence of OCLC record id
         """
-        self.marc_path = pathlib.Path(marc_file)
+        marc_path = pathlib.Path(marc_file)
 
-        with self.marc_path.open('rb') as fo:
+        with marc_path.open('rb') as fo:
             marc_records = [record for record in pymarc.MARCReader(fo)]
 
         logger.info(f"Process {len(marc_records):,} record for OCLC data export")
@@ -101,17 +101,22 @@ class OCLCTransformer(Transformer):
 
             record_ids = get_record_id(record)
             campus_codes = self.determine_campus_code(record)
+
+            file_path = str(marc_path)
             for code in campus_codes:
                 match len(record_ids):
                     case 0:
-                        self.libraries[code]["marc"].append(record)
+                        if file_path not in self.libraries[code]["marc"]:
+                            self.libraries[code]["marc"][file_path] = []
+                        self.libraries[code]["marc"][file_path].append(record)
 
                     case 1:
-                        self.libraries[code]["holdings"].append(record)
+                        if file_path not in self.libraries[code]["holdings"]:
+                            self.libraries[code]["holdings"][file_path] = []
+                        self.libraries[code]["holdings"][file_path].append(record)
 
                     case _:
                         self.multiple_codes(record, code, record_ids)
-
 
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
         instance_id = record['999']['i']
@@ -122,20 +127,25 @@ class OCLCTransformer(Transformer):
         Saves existing holdings and marc records to file system
         """
 
-        def _save_file(records: list, file_name: str):
-            marc_file_path = oclc_parent / file_name
-            with marc_file_path.open("wb+") as fo:
-                marc_writer = pymarc.MARCWriter(fo)
-                for record in records:
-                    marc_writer.write(record)
+        def _save_file(records_by_file: dict, library_code: str, type_of: str):
+            for file_path_key, records in records_by_file.items():
+                file_path = pathlib.Path(file_path_key)
+                marc_file_path = (
+                    file_path.parent / f"{file_path.stem}-{library_code}-{type_of}.mrc"
+                )
+                with marc_file_path.open("wb+") as fo:
+                    marc_writer = pymarc.MARCWriter(fo)
+                    for record in records:
+                        marc_writer.write(record)
+                original_marc_files.add(str(file_path))
 
-        oclc_parent = self.marc_path.parent
+        original_marc_files = set()
         for library_code, values in self.libraries.items():
-            files_stem = f"{self.marc_path.stem}-{library_code}"
+            logger.info(f"Library code {library_code}")
             if len(values["marc"]) > 0:
-                _save_file(values["marc"], f"{files_stem}-new.mrc")
+                _save_file(values["marc"], library_code, "new")
                 logger.info(f"Export new records for {library_code}")
             if len(values["holdings"]) > 0:
-                _save_file(values["holdings"], f"{files_stem}-update.mrc")
+                _save_file(values["holdings"], library_code, "update")
                 logger.info(f"Updating records for {library_code}")
-        self.marc_path.unlink()
+        return list(original_marc_files)

@@ -339,7 +339,11 @@ def test_save(mocker, mock_folio_client, sample_marc_records, tmp_path):
         return_value=mock_folio_client,
     )
 
-    marc_file = tmp_path / "202401213.mrc"
+    new_dir = tmp_path / "new"
+
+    new_dir.mkdir(parents=True, exist_ok=True)
+
+    marc_file = new_dir / "202401213.mrc"
 
     hila_record = pymarc.Record()
     hila_record.add_field(
