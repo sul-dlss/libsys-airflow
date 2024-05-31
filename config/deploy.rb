@@ -104,7 +104,6 @@ namespace :airflow do
       execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
       execute "cd #{release_path}/migration && ./create_folder_structure.sh"
       execute "cd #{release_path}/migration && mkdir -p archive"
-      execute "cd #{release_path} && sudo ln -s /sirsi_prod symphony"
     end
   end
 
@@ -175,13 +174,6 @@ namespace :airflow do
       execute "docker image prune -f"
       execute "cd #{release_path} && releases=($(ls -tr ../.)) && cd ../${releases[0]} && source #{fetch(:venv)} && docker compose -f docker-compose.prod.yaml -p libsys_airflow stop"
       execute "[[ $(docker ps -aq) ]] && docker ps -aq | xargs docker stop | xargs docker rm || echo 'no containers to stop'"
-    end
-  end
-
-  desc 'list the contents of the symphony folder'
-  task :symphony do
-    on roles(:app) do
-      execute "ls -ltr #{release_path}/symphony/"
     end
   end
 end
