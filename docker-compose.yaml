@@ -94,7 +94,6 @@ x-airflow-common:
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/libsys_airflow:/opt/airflow/libsys_airflow
-    - ${AIRFLOW_PROJ_DIR:-.}/symphony:/opt/airflow/symphony
     - ${AIRFLOW_PROJ_DIR:-.}/migration:/opt/airflow/migration
     - ${AIRFLOW_PROJ_DIR:-.}/circ:/opt/airflow/circ
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-data:/opt/airflow/vendor-data
