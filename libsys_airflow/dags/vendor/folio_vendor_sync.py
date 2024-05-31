@@ -30,6 +30,7 @@ with DAG(
     schedule=None,  # change to daily?
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    tags=["vma"],
     params={
         "folio_org_uuid": Param(None, type=["null", "string"])
     },  # "57705203-3413-40aa-9bd5-35fafc6d72d7"

@@ -37,6 +37,7 @@ with DAG(
     schedule=None,
     catchup=False,
     start_date=datetime(2023, 1, 1),
+    tags=["vma"],
     params={
         "vendor_interface_name": Param("", type="string"),  # 'Gobi - Full bibs'
         "vendor_code": Param("", type="string"),  # 'YANKEE-SUL'
