@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def marc_for_instances(**kwargs) -> dict:
     """
-    Retrieves the converted marc for each instance id file in vendor directory
+    Retrieves the converted marc for each instance id file
     """
     instance_files = ast.literal_eval(kwargs.get("instance_files", "[]"))
 
