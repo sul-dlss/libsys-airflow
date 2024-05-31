@@ -69,7 +69,9 @@ with DAG(
     fetch_marc_records = PythonOperator(
         task_id="fetch_marc_records_from_folio",
         python_callable=marc_for_instances,
-        op_kwargs={"vendor": "oclc"},
+        op_kwargs={
+            "instance_files": "{{ ti.xcom_pull('save_ids_to_file') }}",
+        },
     )
 
     transform_marc_fields = PythonOperator(
