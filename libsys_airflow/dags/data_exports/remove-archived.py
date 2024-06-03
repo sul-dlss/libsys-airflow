@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from airflow.decorators import task
 
-from libsys_airflow.plugins.vendor.purge import remove_files
+from libsys_airflow.plugins.vendor.purge import remove_downloads_task
 
 
 default_args = {
@@ -32,7 +32,8 @@ with DAG(
         from libsys_airflow.plugins.vendor.purge import find_files
 
         airflow = kwargs.get("airflow", "/opt/airflow")
-        _directory = pathlib.Path((airflow) / "data-export-files/*/transmitted/")
+        _directory = pathlib.Path(airflow) / "data-export-files/*/transmitted/"
+
         return find_files(downloads_directory=_directory)
 
     start = EmptyOperator(task_id='start_removing_archived')
@@ -41,6 +42,6 @@ with DAG(
 
     gathered_files = gather_files_task()
 
-    remove_archived_files = remove_files(target_files=gathered_files)  # type: ignore
+    remove_archived_files = remove_downloads_task(gathered_files)  # type: ignore
 
     start >> gathered_files >> remove_archived_files >> finish
