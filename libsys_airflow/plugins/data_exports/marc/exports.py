@@ -24,6 +24,6 @@ def marc_for_instances(**kwargs) -> dict:
         )
         marc_files.append(marc_file)
         logger.info(f"Retrieved marc files {marc_file} for instance file {file_path}")
-        new_updates_deletes[kind].extend(str(f) for f in marc_files if kind in  str(f))
+        new_updates_deletes[kind].extend(str(f) for f in marc_files if kind in str(f))
 
     return new_updates_deletes
