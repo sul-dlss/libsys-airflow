@@ -200,6 +200,8 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
     assert files["updates"][0].endswith('202402271159.mrc')
     assert files["deletes"][0].endswith('202402271159.mrc')
 
+    assert not any("updates" in s for s in files["deletes"])
+
 
 field_035 = pymarc.Field(
     tag='035',
