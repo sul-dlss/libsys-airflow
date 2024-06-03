@@ -216,6 +216,8 @@ def archive_transmitted_data_task(files):
             original_transmitted_file_path.parent.parent.parent
             / f"instanceids/{kind}/{original_transmitted_file_path.stem}.csv"
         )
+        instance_archive_path = archive_dir / kind / instance_path.name
+
         marc_path = (
             original_transmitted_file_path.parent
             / f"{original_transmitted_file_path.stem}.mrc"
@@ -223,14 +225,21 @@ def archive_transmitted_data_task(files):
         marc_archive_path = archive_dir / kind / marc_path.name
 
         # move transmitted files
+        logger.info(
+            f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
+        )
         original_transmitted_file_path.replace(archive_path)
 
         # move instance id files with same stem as transmitted filename
         if instance_path.exists():
-            instance_path.replace(archive_dir / kind / instance_path.name)
+            logger.info(
+                f"Moving related instanceid file {instance_path} to {instance_archive_path}"
+            )
+            instance_path.replace(instance_archive_path)
 
         # move marc files with same stem as transmitted filename (when transmitted file is not *.mrc)
         if marc_path.exists():
+            logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
             marc_path.replace(marc_archive_path)
 
 
