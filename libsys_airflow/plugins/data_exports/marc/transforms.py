@@ -132,18 +132,15 @@ def add_holdings_items_to_marc_files(marc_file_list: str, full_dump: bool):
 
 
 def divide_into_oclc_libraries(**kwargs):
-    marc_file_list = kwargs.get("marc_file_list", "")
-    task_instance = kwargs["ti"]
+    marc_list = kwargs.get("marc_file_list", [])
+
     oclc_transformer = OCLCTransformer()
 
-    marc_list = ast.literal_eval(marc_file_list)
-    all_files = marc_list['new'] + marc_list['deletes']
-    for marc_file in all_files:
+    for marc_file in marc_list:
         oclc_transformer.divide(marc_file)
+
     original_files = oclc_transformer.save()
-    task_instance.xcom_push(
-        key="multiple-oclc-codes", value=oclc_transformer.staff_notices
-    )
+
     return original_files
 
 
@@ -188,8 +185,14 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 
 def remove_fields_from_marc_files(marc_file_list: str):
     marc_list = ast.literal_eval(marc_file_list)
+    for file in marc_list['new']:
+        remove_marc_fields(file, False)
+    logger.info(f"Removed MARC fields from these New files {marc_list['new']}")
+
     for file in marc_list['updates']:
         remove_marc_fields(file, False)
+    logger.info(f"Remove MARC fields from these Updated files {marc_list['updates']}")
+        
 
 
 def remove_marc_fields(marc_file: str, full_dump: bool):

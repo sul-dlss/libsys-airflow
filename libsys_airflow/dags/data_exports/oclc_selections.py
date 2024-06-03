@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -23,6 +24,8 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
 )
+
+logger = logging.getLogger(__name__)
 
 default_args = {
     "owner": "libsys",
@@ -73,15 +76,16 @@ with DAG(
         task_id="transform_folio_remove_marc_fields",
         python_callable=remove_fields_from_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull(task_ids='fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull(task_ids='retrieve_marc_records') }}"
         },
     )
 
-    @task
+    @task(multiple_outputs=True)
     def retrieve_marc_records(**kwargs):
         ti = kwargs.get("ti")
         instance_files = ti.xcom_pull(task_ids="save_ids_to_file")
-        return marc_for_instances(instance_files)
+        logger.info(f"Instance files {instance_files} {type(instance_files)}")
+        return marc_for_instances(instance_files=instance_files)
 
     @task
     def divide_new_records_by_library(**kwargs):
@@ -100,7 +104,7 @@ with DAG(
     )
 
     delete_records_by_library = divide_delete_records_by_library(
-        deleted_records=fetch_marc_records["delete"]  # type: ignore
+        deleted_records=fetch_marc_records["deletes"]  # type: ignore
     )
 
     finish_division = EmptyOperator(task_id="finish_division")
