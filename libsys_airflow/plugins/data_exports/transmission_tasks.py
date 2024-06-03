@@ -145,7 +145,8 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     success = []
     failures = []
     for f in gather_files["file_list"]:
-        remote_file_path = f"{remote_path}/{Path(f).name}"
+        remote_file_name = vendor_filename_spec(conn_id, f)
+        remote_file_path = f"{remote_path}/{remote_file_name}"
         try:
             logger.info(f"Start transmission of file {f}")
             hook.store_file(remote_file_path, f)
@@ -241,6 +242,19 @@ def archive_transmitted_data_task(files):
         if marc_path.exists():
             logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
             marc_path.replace(marc_archive_path)
+
+
+def vendor_filename_spec(conn_id, filename):
+    """
+    Returns a filename per the vendor's filenaming convention
+    """
+    if conn_id == "gobi":
+        # gobi should have "stf" prepended
+        return "stf" + Path(filename).name
+    elif conn_id == "sharevde":
+        return "tbd"
+    else:
+        Path(filename).name
 
 
 def is_production():
