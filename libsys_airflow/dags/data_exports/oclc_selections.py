@@ -97,6 +97,22 @@ with DAG(
         deleted_records = kwargs.get("deleted_records", [])
         return divide_into_oclc_libraries(marc_file_list=deleted_records)
 
+    @task
+    def aggregate_email_multiple_records(**kwargs):
+        ti = kwargs["ti"]
+        new_multiple_records = ti.xcom_pull(task_ids='divide_new_records_by_library')
+        deletes_multiple_records = ti.xcom_pull(
+            task_ids='divide_delete_records_by_library'
+        )
+        all_multiple_records = new_multiple_records + deletes_multiple_records
+        generate_multiple_oclc_identifiers_email(all_multiple_records)
+
+    @task
+    def remove_original_marc_files(**kwargs):
+        marc_file_list = kwargs["marc_file_list"]
+        remove_marc_files(str(marc_file_list['new']))
+        remove_marc_files(str(marc_file_list['deletes']))
+
     fetch_marc_records = retrieve_marc_records()
 
     new_records_by_library = divide_new_records_by_library(
@@ -109,21 +125,7 @@ with DAG(
 
     finish_division = EmptyOperator(task_id="finish_division")
 
-    remove_original_marc_files = PythonOperator(
-        task_id="remove_original_marc_files",
-        python_callable=remove_marc_files,
-        op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull(task_ids='divide_marc_records_by_library') }}"
-        },
-    )
-
-    send_multiple_oclc_codes_email = PythonOperator(
-        task_id="multiple_oclc_codes_email",
-        python_callable=generate_multiple_oclc_identifiers_email,
-        op_kwargs={
-            "multiple_codes": "{{ ti.xcom_pull(task_ids='divide_marc_records_by_library', key='multiple-oclc-codes')}}"
-        },
-    )
+    remove_original_marc = remove_original_marc_files(marc_file_list=fetch_marc_records)
 
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
@@ -139,6 +141,6 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 [new_records_by_library, delete_records_by_library] >> finish_division
 (
     finish_division
-    >> [send_multiple_oclc_codes_email, remove_original_marc_files]
+    >> [aggregate_email_multiple_records(), remove_original_marc]
     >> finish_processing_marc
 )

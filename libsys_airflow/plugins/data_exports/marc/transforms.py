@@ -139,9 +139,9 @@ def divide_into_oclc_libraries(**kwargs):
     for marc_file in marc_list:
         oclc_transformer.divide(marc_file)
 
-    original_files = oclc_transformer.save()
+    oclc_transformer.save()
 
-    return original_files
+    return oclc_transformer.staff_notices
 
 
 def change_leader_for_deletes(marc_file_list: str):
@@ -192,7 +192,6 @@ def remove_fields_from_marc_files(marc_file_list: str):
     for file in marc_list['updates']:
         remove_marc_fields(file, False)
     logger.info(f"Remove MARC fields from these Updated files {marc_list['updates']}")
-        
 
 
 def remove_marc_fields(marc_file: str, full_dump: bool):
