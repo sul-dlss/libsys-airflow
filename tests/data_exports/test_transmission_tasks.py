@@ -13,6 +13,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     retry_failed_files_task,
     transmit_data_http_task,
     transmit_data_ftp_task,
+    oclc_connections,
     archive_transmitted_data_task,
 )
 
@@ -100,6 +101,18 @@ def mock_ftphook_connection():
         password="pass",
         extra={"remote_path": "/remote/path/dir"},
         schema="ftp",
+    )
+
+
+@pytest.fixture
+def mock_oclc_connection():
+    return Connection(
+        conn_id="http.oclc-LIB",
+        conn_type="http",
+        host=None,
+        login="client_id",
+        password="secret",
+        extra={"oclc_code": "LIB"},
     )
 
 
@@ -240,6 +253,16 @@ def test_transmit_data_failed(
     )
     assert len(transmit_data["failures"]) == 3
     assert "Transmit data to pod" in caplog.text
+
+
+def test_oclc_connections(mocker, mock_oclc_connection):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_oclc_connection,
+    )
+    connection_lookup = oclc_connections(["http.oclc-LIB"])
+    assert connection_lookup["LIB"]["username"] == "client_id"
+    assert connection_lookup["LIB"]["password"] == "secret"
 
 
 def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):
