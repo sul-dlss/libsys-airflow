@@ -15,6 +15,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     transmit_data_ftp_task,
     oclc_connections,
     archive_transmitted_data_task,
+    gather_oclc_files_task,
 )
 
 
@@ -329,3 +330,41 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
 def test_archive_transmitted_data_task_no_files(caplog):
     archive_transmitted_data_task.function([])
     assert "No files to archive" in caplog.text
+
+
+def test_gather_oclc_files_task(tmp_path):
+    airflow = tmp_path
+    oclc_marc_path = airflow / "data-export-files/oclc/marc-files"
+    oclc_marc_path.mkdir(parents=True, exist_ok=True)
+
+    new_path = oclc_marc_path / "new"
+    new_path.mkdir(parents=True, exist_ok=True)
+    new_stf_marc_file = new_path / "20240603113-STF.mrc"
+    new_stf_marc_file.touch()
+    new_casum = new_path / "20240603113-CASUM.mrc"
+    new_casum.touch()
+
+    deletes_path = oclc_marc_path / "deletes"
+    deletes_path.mkdir(parents=True, exist_ok=True)
+    deletes_s7z = deletes_path / "20240603113-S7Z.mrc"
+    deletes_s7z.touch()
+    deletes_rcj = deletes_path / "2024060313-RCJ.mrc"
+    deletes_rcj.touch()
+
+    updates_path = oclc_marc_path / "updates"
+    updates_path.mkdir(parents=True, exist_ok=True)
+    updates_hin = updates_path / "20240603113-HIN.mrc"
+    updates_hin.touch()
+    updates_stf = updates_path / "20240603113-STF.mrc"
+    updates_stf.touch()
+
+    libraries = gather_oclc_files_task.function(airflow=airflow)
+
+    assert libraries["STF"] == {
+        "new": [str(new_stf_marc_file)],
+        "updates": [str(updates_stf)]
+    }
+
+    assert len(libraries["HIN"]["updates"]) == 1
+    assert "deletes" in libraries["RCJ"]
+    assert "updates" not in libraries["CASUM"]
