@@ -208,10 +208,12 @@ def archive_transmitted_data_task(files):
         kind = Path(x).parent.name
         # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.mrc|*.txt
         original_transmitted_file_path = Path(x)
+
         # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
         archive_path = archive_dir / kind
         archive_path.mkdir(exist_ok=True)
         archive_path = archive_path / original_transmitted_file_path.name
+
         # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
         instance_path = (
             original_transmitted_file_path.parent.parent.parent
@@ -225,7 +227,7 @@ def archive_transmitted_data_task(files):
         )
         marc_archive_path = archive_dir / kind / marc_path.name
 
-        # move transmitted files
+        # move transmitted files (for GOBI this will be *.txt files)
         logger.info(
             f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
         )
