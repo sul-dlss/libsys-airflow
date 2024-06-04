@@ -12,12 +12,12 @@ def marc_for_instances(**kwargs) -> dict:
     """
     instance_files = kwargs.get("instance_files", [])
     if isinstance(instance_files, str):
-        instance_files = ast.literal_eval()
+        instance_files = ast.literal_eval(instance_files)
 
     new_updates_deletes = {"new": [], "updates": [], "deletes": []}  # type: dict
 
     exporter = Exporter()
-    
+
     for file_datename in instance_files:
         file_path = pathlib.Path(file_datename)
         kind = file_path.parent.stem
