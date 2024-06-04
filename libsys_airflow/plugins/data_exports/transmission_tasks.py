@@ -145,7 +145,8 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     success = []
     failures = []
     for f in gather_files["file_list"]:
-        remote_file_path = f"{remote_path}/{Path(f).name}"
+        remote_file_name = vendor_filename_spec(conn_id, f)
+        remote_file_path = f"{remote_path}/{remote_file_name}"
         try:
             logger.info(f"Start transmission of file {f}")
             hook.store_file(remote_file_path, f)
@@ -207,31 +208,55 @@ def archive_transmitted_data_task(files):
         kind = Path(x).parent.name
         # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.mrc|*.txt
         original_transmitted_file_path = Path(x)
+
         # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
         archive_path = archive_dir / kind
         archive_path.mkdir(exist_ok=True)
         archive_path = archive_path / original_transmitted_file_path.name
+
         # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
         instance_path = (
             original_transmitted_file_path.parent.parent.parent
             / f"instanceids/{kind}/{original_transmitted_file_path.stem}.csv"
         )
+        instance_archive_path = archive_dir / kind / instance_path.name
+
         marc_path = (
             original_transmitted_file_path.parent
             / f"{original_transmitted_file_path.stem}.mrc"
         )
         marc_archive_path = archive_dir / kind / marc_path.name
 
-        # move transmitted files
+        # move transmitted files (for GOBI this will be *.txt files)
+        logger.info(
+            f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
+        )
         original_transmitted_file_path.replace(archive_path)
 
         # move instance id files with same stem as transmitted filename
         if instance_path.exists():
-            instance_path.replace(archive_dir / kind / instance_path.name)
+            logger.info(
+                f"Moving related instanceid file {instance_path} to {instance_archive_path}"
+            )
+            instance_path.replace(instance_archive_path)
 
         # move marc files with same stem as transmitted filename (when transmitted file is not *.mrc)
         if marc_path.exists():
+            logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
             marc_path.replace(marc_archive_path)
+
+
+def vendor_filename_spec(conn_id, filename):
+    """
+    Returns a filename per the vendor's filenaming convention
+    """
+    if conn_id == "gobi":
+        # gobi should have "stf" prepended
+        return "stf" + Path(filename).name
+    elif conn_id == "sharevde":
+        return "tbd"
+    else:
+        Path(filename).name
 
 
 def is_production():

@@ -26,8 +26,8 @@ class GobiTransformer(Transformer):
         # marc_path is data-export-files/gobi/marc-files/updates/YYYYMMDD.mrc
         marc_path = pathlib.Path(marc_file)
         gobi_list_name = marc_path.stem
-        # gobi_path is data-export-files/gobi/marc-files/updates/stf.YYYMMDD.txt
-        gobi_path = pathlib.Path(marc_path.parent) / f"stf.{gobi_list_name}.txt"
+        # gobi_path is data-export-files/gobi/marc-files/updates/YYYMMDD.txt
+        gobi_path = pathlib.Path(marc_path.parent) / f"{gobi_list_name}.txt"
 
         with marc_path.open('rb') as fo:
             marc_records = [record for record in pymarc.MARCReader(fo)]

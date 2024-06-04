@@ -171,6 +171,33 @@ def test_transmit_data_ftp_task(
     )
 
 
+@pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
+def test_transmit_gobi_data_ftp_task(
+    mocker, mock_ftphook_connection, mock_vendor_marc_files, tmp_path, caplog
+):
+    ftp_hook = mocker.patch(
+        "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_ftphook_connection,
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
+
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
+    transmit_data = transmit_data_ftp_task.function("ftp-example.com", marc_files)
+    assert len(transmit_data["success"]) == 1
+    assert "Start transmission of file" in caplog.text
+    assert ftp_hook.store_file.called_with(
+        "/remote/path/dir/2024030214.txt", "stf.2024030214.txt"
+    )
+
+
 def test_transmit_data_task(
     mocker, mock_httpx_connection, mock_httpx_success, mock_marc_files, caplog
 ):
@@ -262,14 +289,17 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
     vendor_dir = airflow / "data-export-files/gobi/"
     instance_id_dir = vendor_dir / "instanceids" / "updates"
     instance_id_dir.mkdir(parents=True)
-    instance_id_file1 = instance_id_dir / "2024022914.csv"
+    instance_id_file1 = instance_id_dir / "2024030214.csv"
     instance_id_file1.touch()
     archive_dir = vendor_dir / "transmitted" / "updates"
     archive_dir.mkdir(parents=True)
-    archive_transmitted_data_task.function(mock_vendor_marc_files["file_list"])
-    for x in mock_vendor_marc_files["file_list"]:
-        assert (archive_dir / pathlib.Path(x).name).exists()
-
+    transmitted_files = gather_files_task.function(airflow=airflow, vendor="gobi")
+    assert len(transmitted_files["file_list"]) == 1
+    archive_transmitted_data_task.function(transmitted_files["file_list"])
+    related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
+    related_marc_file = related_marc_file + ".mrc"
+    assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
+    assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
 
 

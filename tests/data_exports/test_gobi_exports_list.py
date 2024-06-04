@@ -113,7 +113,7 @@ def test_with_ebook_and_print(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890123|print|325099\n"
@@ -163,7 +163,7 @@ def test_with_ebook_only(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890123|ebook|325099\n"
@@ -221,7 +221,7 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == ""
@@ -272,7 +272,7 @@ def test_with_modified_isbn(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890|print|325099\n"
@@ -322,7 +322,7 @@ def test_with_print_no_electronic_holding(tmp_path, mocker, mock_folio_client): 
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890123|print|325099\n"
@@ -374,7 +374,7 @@ def test_with_skipped_by_856(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890123|print|325099\n"
@@ -425,7 +425,7 @@ def test_with_skipped_by_956(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == "1234567890123|print|325099\n"
@@ -477,7 +477,7 @@ def test_with_non_sul_holding(tmp_path, mocker, mock_folio_client):  # noqa
     transformer = gobi_transformer.GobiTransformer()
     transformer.generate_list(marc_file)
 
-    gobi_file = pathlib.Path(marc_file.parent / f"stf.{file_date}.txt")
+    gobi_file = pathlib.Path(marc_file.parent / f"{file_date}.txt")
 
     with gobi_file.open('r+') as fo:
         assert fo.readline() == ''
