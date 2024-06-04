@@ -162,14 +162,8 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
 
 @task
 def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
-    connection_lookup, success, failures = {}, {}, {}
-    for conn_id in connection_details:
-        connection = Connection.get_connection_from_secrets(conn_id)
-        oclc_code = connection.extra_dejson["oclc_code"]
-        connection_lookup[oclc_code] = {
-            "username": connection.login,
-            "password": connection.password,
-        }
+    success, failures = {}, {}
+    connection_lookup = oclc_connections(connection_details)
 
     for library, records in libraries.items():
         oclc_api = OCLCAPIWrapper(
@@ -266,3 +260,15 @@ def is_production():
 def return_success_test_instance(files) -> dict:
     logger.info("SKIPPING TRANSMISSION")
     return {"success": files["file_list"], "failures": []}
+
+
+def oclc_connections(connection_details: list) -> dict:
+    connection_lookup = {}
+    for conn_id in connection_details:
+        connection = Connection.get_connection_from_secrets(conn_id)
+        oclc_code = connection.extra_dejson["oclc_code"]
+        connection_lookup[oclc_code] = {
+            "username": connection.login,
+            "password": connection.password,
+        }
+    return connection_lookup
