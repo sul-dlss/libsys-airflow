@@ -130,9 +130,18 @@ class OCLCTransformer(Transformer):
         def _save_file(records_by_file: dict, library_code: str, type_of: str):
             for file_path_key, records in records_by_file.items():
                 file_path = pathlib.Path(file_path_key)
-                marc_file_path = (
-                    file_path.parent / f"{file_path.stem}-{library_code}-{type_of}.mrc"
-                )
+                # If "new" records actually are updates due to presence of an OCLC
+                # number in the 035, saves the records in the "updates" directory
+                if type_of.startswith("updates") and file_path.parent.name == "new":
+                    parent = file_path.parents[1] / "updates"
+                    parent.mkdir(parents=True, exist_ok=True)
+                    # Adds trailing 'mv' to file path stem to avoid overwriting an existing
+                    # updates file or being replaced by an incoming updates file
+                    file_name = f"{file_path.stem}mv-{library_code}.mrc"
+                else:
+                    parent = file_path.parent
+                    file_name = f"{file_path.stem}-{library_code}.mrc"
+                marc_file_path = parent / file_name
                 with marc_file_path.open("wb+") as fo:
                     marc_writer = pymarc.MARCWriter(fo)
                     for record in records:
@@ -146,6 +155,6 @@ class OCLCTransformer(Transformer):
                 _save_file(values["marc"], library_code, "new")
                 logger.info(f"Export new records for {library_code}")
             if len(values["holdings"]) > 0:
-                _save_file(values["holdings"], library_code, "update")
+                _save_file(values["holdings"], library_code, "updates")
                 logger.info(f"Updating records for {library_code}")
         return list(original_marc_files)

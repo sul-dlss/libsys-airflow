@@ -362,7 +362,7 @@ def test_gather_oclc_files_task(tmp_path):
 
     assert libraries["STF"] == {
         "new": [str(new_stf_marc_file)],
-        "updates": [str(updates_stf)]
+        "updates": [str(updates_stf)],
     }
 
     assert len(libraries["HIN"]["updates"]) == 1
