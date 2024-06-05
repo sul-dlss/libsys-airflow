@@ -251,6 +251,7 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
 
     assert updated_result['success'] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
     assert updated_result['failures'] == []
+    assert updated_result['archive'] == [str(marc_file.absolute())]
 
 
 def test_oclc_api_failed_authentication(mock_oclc_api):
@@ -328,6 +329,7 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
 
     assert new_results['success'] == []
     assert new_results['failures'] == ['f19fd2fc-586c-45df-9b0c-127af97aef34']
+    assert new_results['archive'] == []
 
 
 def test_no_update_records(mock_oclc_api, caplog):
@@ -392,7 +394,7 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
             ],
         ),
     )
-    marc_file = tmp_path / "202403273-STF-update.mrc"
+    marc_file = tmp_path / "202403273-STF.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -496,7 +498,7 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
         ),
     )
 
-    marc_file = tmp_path / "2024042413-STF-update.mrc"
+    marc_file = tmp_path / "2024042413-STF.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -508,4 +510,9 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
-    oclc_api_instance.update([str(marc_file)])
+    update_results = oclc_api_instance.update([str(marc_file)])
+
+    assert sorted(update_results["failures"]) == [
+        "958835d2-39cc-4ab3-9c56-53bf7940421b",
+        "f19fd2fc-586c-45df-9b0c-127af97aef34",
+    ]

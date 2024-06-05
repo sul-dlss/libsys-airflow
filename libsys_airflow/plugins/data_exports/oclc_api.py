@@ -96,7 +96,7 @@ class OCLCAPIWrapper(object):
             if marc_file_path.exists():
                 with marc_file_path.open('rb') as fo:
                     marc_reader = pymarc.MARCReader(fo)
-                    records.extend([r for r in marc_reader])
+                    records.extend([(r, str(marc_file_path)) for r in marc_reader])
         return records
 
     def __record_uuids__(self, record) -> tuple:
@@ -151,9 +151,9 @@ class OCLCAPIWrapper(object):
             logger.info("No new marc records")
             return output
         marc_records = self.__read_marc_files__(marc_files)
-
+        successful_files, failed_files = set(), set()
         with MetadataSession(authorization=self.oclc_token) as session:
-            for record in marc_records:
+            for record, file_name in marc_records:
                 instance_uuid, srs_uuid = self.__record_uuids__(record)
                 if srs_uuid is None:
                     continue
@@ -166,12 +166,16 @@ class OCLCAPIWrapper(object):
                     )
                     if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
                         output['success'].append(instance_uuid)
+                        successful_files.add(file_name)
                     else:
                         output['failures'].append(instance_uuid)
+                        failed_files.add(file_name)
                 except WorldcatRequestError as e:
                     logger.error(e)
                     output['failures'].append(instance_uuid)
+                    failed_files.add(file_name)
                     continue
+        output["archive"] = list(successful_files.difference(failed_files))
         return output
 
     def update(self, marc_files: List[str]):
@@ -180,9 +184,9 @@ class OCLCAPIWrapper(object):
             logger.info("No updated marc records")
             return output
         marc_records = self.__read_marc_files__(marc_files)
-
+        successful_files, failed_files = set(), set()
         with MetadataSession(authorization=self.oclc_token) as session:
-            for record in marc_records:
+            for record, file_name in marc_records:
                 instance_uuid, srs_uuid = self.__record_uuids__(record)
                 if srs_uuid is None:
                     continue
@@ -192,6 +196,7 @@ class OCLCAPIWrapper(object):
                     case 0:
                         logger.error(f"{srs_uuid} missing OCLC number")
                         output['failures'].append(instance_uuid)
+                        failed_files.add(file_name)
                         continue
 
                     case 1:
@@ -200,21 +205,27 @@ class OCLCAPIWrapper(object):
                     case _:
                         logger.error(f"Multiple OCLC ids for {srs_uuid}")
                         output['failures'].append(instance_uuid)
+                        failed_files.add(file_name)
                         continue
 
                 try:
                     response = session.holdings_set(oclcNumber=oclc_id[0])
                     if response is None:
                         output['failures'].append(instance_uuid)
+                        failed_files.add(file_name)
                         continue
                     if self.__update_oclc_number__(
                         response.json()['controlNumber'], srs_uuid
                     ):
                         output['success'].append(instance_uuid)
+                        successful_files.add(file_name)
                     else:
                         output['failures'].append(instance_uuid)
+                        failed_files.add(file_name)
                 except WorldcatRequestError as e:
                     logger.error(f"Failed to update record, error: {e}")
                     output['failures'].append(instance_uuid)
+                    failed_files.add(file_name)
                     continue
+        output["archive"] = list(successful_files.difference(failed_files))
         return output
