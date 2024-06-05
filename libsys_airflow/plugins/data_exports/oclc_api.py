@@ -145,6 +145,42 @@ class OCLCAPIWrapper(object):
         record.add_ordered_field(new_035)
         return self.__put_folio_record__(srs_uuid, record)
 
+    def delete(self, marc_files: List[str]) -> dict:
+        output: dict = {"success": [], "failures": []}
+        if len(marc_files) < 1:
+            logger.info("No marc records for deletes")
+            return output
+        marc_records = self.__read_marc_files__(marc_files)
+
+        with MetadataSession(authorization=self.oclc_token) as session:
+            for record in marc_records:
+                instance_uuid, srs_uuid = self.__record_uuids__(record)
+                if srs_uuid is None:
+                    continue
+                oclc_id = get_record_id(record)
+                if len(oclc_id) != 1:
+                    match len(oclc_id):
+
+                        case 0:
+                            logger.error(f"{srs_uuid} missing OCLC number")
+                            output['failures'].append(instance_uuid)
+
+                        case _:
+                            logger.error(f"Multiple OCLC ids for {srs_uuid}")
+                            output['failures'].append(instance_uuid)
+
+                    continue
+                try:
+                    response = session.holdings_unset(oclcNumber=oclc_id[0])
+                    if response is None:
+                        output['failures'].append(instance_uuid)
+                        continue
+                except WorldcatRequestError as e:
+                    logger.error(f"Failed to unset record, error: {e}")
+                    output['failures'].append(instance_uuid)
+                    continue
+            return output
+
     def new(self, marc_files: List[str]) -> dict:
         output: dict = {"success": [], "failures": []}
         if len(marc_files) < 1:

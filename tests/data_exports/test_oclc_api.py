@@ -516,3 +516,14 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
         "958835d2-39cc-4ab3-9c56-53bf7940421b",
         "f19fd2fc-586c-45df-9b0c-127af97aef34",
     ]
+    oclc_api_instance.update([str(marc_file)])
+
+
+def test_no_delete_records(mock_oclc_api, caplog):
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+    oclc_api_instance.delete([])
+
+    assert "No marc records for deletes" in caplog.text
