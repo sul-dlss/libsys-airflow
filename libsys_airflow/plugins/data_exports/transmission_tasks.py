@@ -4,11 +4,11 @@ from s3path import S3Path
 import httpx
 
 from airflow.decorators import task
-from airflow.models import Variable
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
 from libsys_airflow.plugins.data_exports.oclc_api import OCLCAPIWrapper
+from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
 
@@ -251,10 +251,6 @@ def vendor_filename_spec(conn_id, filename):
         return "tbd"
     else:
         Path(filename).name
-
-
-def is_production():
-    return bool(Variable.get("OKAPI_URL").find("prod") > 0)
 
 
 def return_success_test_instance(files) -> dict:

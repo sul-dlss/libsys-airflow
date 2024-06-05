@@ -3,7 +3,7 @@ import pytest
 import os
 
 from datetime import datetime, timedelta
-from libsys_airflow.plugins.vendor.purge import find_files, remove_files
+from libsys_airflow.plugins.shared.purge import find_files, remove_files
 from tests.data_exports.test_transmission_tasks import mock_file_system  # noqa
 
 

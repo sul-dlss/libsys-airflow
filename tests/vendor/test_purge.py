@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorInterface, VendorFile
 
-from libsys_airflow.plugins.vendor.purge import (
+from libsys_airflow.plugins.shared.purge import (
     find_directories,
     find_files,
     remove_archived,

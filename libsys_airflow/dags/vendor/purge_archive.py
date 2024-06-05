@@ -4,7 +4,7 @@ import logging
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 
-from libsys_airflow.plugins.vendor.purge import (
+from libsys_airflow.plugins.shared.purge import (
     discover_task,
     remove_archives_task,
     remove_downloads_task,

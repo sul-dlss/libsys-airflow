@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from airflow.decorators import task
 
-from libsys_airflow.plugins.vendor.purge import remove_downloads_task
+from libsys_airflow.plugins.shared.purge import remove_downloads_task
 
 
 default_args = {
@@ -29,7 +29,7 @@ with DAG(
 
     @task
     def gather_files_task(**kwargs) -> list[pathlib.Path]:
-        from libsys_airflow.plugins.vendor.purge import find_files
+        from libsys_airflow.plugins.shared.purge import find_files
 
         airflow = kwargs.get("airflow", "/opt/airflow")
         _directory = pathlib.Path(airflow) / "data-export-files/*/transmitted/"
