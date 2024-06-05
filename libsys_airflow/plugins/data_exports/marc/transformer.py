@@ -4,7 +4,7 @@ import pathlib
 import pymarc
 import re
 
-from libsys_airflow.plugins.folio_client import folio_client
+from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from s3path import S3Path
