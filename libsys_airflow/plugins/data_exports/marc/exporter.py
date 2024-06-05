@@ -84,7 +84,7 @@ class Exporter(object):
         """
         if not instance_file.exists():
             raise ValueError(
-                "Instance file does not exist for retrieve_marc_for_instances"
+                f"Instance file does not exist for retrieve_marc_for_instances {instance_file}"
             )
 
         vendor_name = instance_file.parent.parent.parent.name

@@ -80,11 +80,9 @@ def gather_oclc_files_task(**kwargs) -> dict:
         "STF": {},  # SUL
     }
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
-    for marc_file_path in oclc_directory.glob("*.mrc"):
-        file_parts = marc_file_path.name.split("-")
-        if len(file_parts) < 3:
-            continue
-        library, type_of = file_parts[1], file_parts[2].split(".")[0]
+    for marc_file_path in oclc_directory.glob("**/*.mrc"):
+        type_of = marc_file_path.parent.name
+        library = marc_file_path.stem.split("-")[1]
         if type_of in libraries[library]:
             libraries[library][type_of].append(str(marc_file_path))
         else:

@@ -51,7 +51,7 @@ def send_oclc_records():
         gather_files,
     )
 
-    archive_data = archive_transmitted_data_task(transmit_data['success'])
+    archive_data = archive_transmitted_data_task(transmit_data['archive'])
 
     start >> gather_files >> transmit_data >> archive_data >> end
 

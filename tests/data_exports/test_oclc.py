@@ -339,7 +339,11 @@ def test_save(mocker, mock_folio_client, sample_marc_records, tmp_path):
         return_value=mock_folio_client,
     )
 
-    marc_file = tmp_path / "202401213.mrc"
+    new_dir = tmp_path / "new"
+
+    new_dir.mkdir(parents=True, exist_ok=True)
+
+    marc_file = new_dir / "202401213.mrc"
 
     hila_record = pymarc.Record()
     hila_record.add_field(
@@ -385,9 +389,9 @@ def test_save(mocker, mock_folio_client, sample_marc_records, tmp_path):
 
     oclc_transformer.save()
 
-    assert (marc_file.parent / "202401213-STF-new.mrc").exists()
-    assert (marc_file.parent / "202401213-STF-update.mrc").exists()
-    assert (marc_file.parent / "202401213-HIN-new.mrc").exists()
+    assert (marc_file.parent / "202401213-STF.mrc").exists()
+    assert (marc_file.parents[1] / "updates/202401213mv-STF.mrc").exists()
+    assert (marc_file.parent / "202401213-HIN.mrc").exists()
 
     assert (
         oclc_transformer.staff_notices[0][0] == '7cf53d65-973b-441c-a7c4-f66467ee077f'
