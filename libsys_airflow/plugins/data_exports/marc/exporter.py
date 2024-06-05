@@ -7,7 +7,7 @@ from pymarc import (
     Record as marcRecord,
 )
 
-from libsys_airflow.plugins.folio_client import folio_client
+from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.models import Variable
 from s3path import S3Path
 from typing import Union
