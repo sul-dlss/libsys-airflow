@@ -6,9 +6,7 @@ from airflow.decorators import task
 from airflow.models import Variable
 from airflow.utils.email import send_email
 
-from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    is_production,
-)
+from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
 
