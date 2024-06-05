@@ -17,8 +17,29 @@ def mock_folio_variables(monkeypatch):
             case "AIRFLOW__WEBSERVER__BASE_URL":
                 value = "example.com"
 
+            case "FOLIO_URL":
+                value = "folio-test"
+
             case "EMAIL_DEVS":
                 value = "test@stanford.edu"
+
+            case "OCLC_EMAIL_BUS":
+                value = "bus@example.com"
+
+            case "OCLC_EMAIL_HOOVER":
+                value = "hoover@example.com"
+
+            case "OCLC_EMAIL_LANE":
+                value = "lane@example.com"
+
+            case "OCLC_EMAIL_LAW":
+                value = "law@example.com"
+
+            case "OCLC_EMAIL_SUL":
+                value = "sul@example.com"
+
+            case "OKAPI_URL":
+                value = "okapi-test"
 
             case _:
                 raise ValueError("")
@@ -36,14 +57,9 @@ def mock_dag_run(mocker):
     return dag_run
 
 
-def test_multiple_oclc_email(mocker):
+def test_multiple_oclc_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email"
-    )
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.Variable.get",
-        return_value="test@stanford.edu",
     )
 
     generate_multiple_oclc_identifiers_email(
@@ -85,17 +101,47 @@ def test_multiple_oclc_email(mocker):
     )
 
 
-def test_no_multiple_oclc_code_email(mocker, caplog):
+def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
     mocker.patch("libsys_airflow.plugins.data_exports.email.send_email")
-
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.Variable.get",
-        return_value="test@stanford.edu",
-    )
 
     generate_multiple_oclc_identifiers_email([])
 
     assert "No multiple OCLC Identifiers" in caplog.text
+
+
+def test_nonprod_oclc_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=False,
+    )
+
+    generate_multiple_oclc_identifiers_email(
+        [
+            (
+                "ae0b6949-6219-51cd-9a61-7794c2081fe7",
+                "STF",
+                ["(OCoLC-M)21184692", "(OCoLC-I)272673749"],
+            ),
+            (
+                "0221724f-2bca-497b-8d42-6786295e7173",
+                "HIN",
+                ["(OCoLC-M)99087632", "(OCoLC-I)889220055"],
+            ),
+        ]
+    )
+    assert mock_send_email.called
+
+    assert (
+        mock_send_email.call_args[1]["subject"]
+        == "folio-test - Review Instances with Multiple OCLC Indentifiers"
+    )
+    assert mock_send_email.call_args[1]['to'] == [
+        'test@stanford.edu',
+    ]
 
 
 def test_no_failed_transmission_email(mock_dag_run, caplog):

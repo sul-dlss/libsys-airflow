@@ -6,6 +6,10 @@ from airflow.decorators import task
 from airflow.models import Variable
 from airflow.utils.email import send_email
 
+from libsys_airflow.plugins.data_exports.transmission_tasks import (
+    is_production,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,21 +44,37 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
         f"Generating Email of Multiple OCLC Identifiers for {len(multiple_codes)}"
     )
     folio_url = Variable.get("FOLIO_URL")
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    devs_email = Variable.get("EMAIL_DEVS")
+    bus_email = Variable.get("OCLC_EMAIL_BUS")
+    hoover_email = Variable.get("OCLC_EMAIL_HOOVER")
+    lane_email = Variable.get("OCLC_EMAIL_LANE")
+    law_email = Variable.get("OCLC_EMAIL_LAW")
+    sul_email = Variable.get("OCLC_EMAIL_SUL")
 
     html_content = _oclc_identifiers(multiple_codes, folio_url)
 
-    send_email(
-        to=[
-            sul_to_email_addr,
-            law_to_email_addr,
-            devs_to_email_addr,
-        ],
-        subject="Review Instances with Multiple OCLC Indentifiers",
-        html_content=html_content,
-    )
+    if is_production():
+        send_email(
+            to=[
+                devs_email,
+                bus_email,
+                hoover_email,
+                lane_email,
+                law_email,
+                sul_email,
+            ],
+            subject="Review Instances with Multiple OCLC Indentifiers",
+            html_content=html_content,
+        )
+    else:
+        folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
+        send_email(
+            to=[
+                devs_email,
+            ],
+            subject=f"{folio_url} - Review Instances with Multiple OCLC Indentifiers",
+            html_content=html_content,
+        )
 
 
 def _failed_transmission_email_body(
