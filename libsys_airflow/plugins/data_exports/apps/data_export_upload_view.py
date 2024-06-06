@@ -3,6 +3,10 @@ import pandas as pd
 import pathlib
 import re
 
+from airflow.models import DagBag
+from airflow.utils import timezone
+from airflow.utils.state import State
+
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 from typing import Union
@@ -49,10 +53,28 @@ class DataExportUploadView(AppBuilderBaseView):
     default_view = "data_export_upload_home"
     route_base = "/data_export_upload"
 
+    def _trigger_dag_run(self, vendor, kind):
+        dagbag = DagBag("/opt/airflow/dags")
+        dag = dagbag.get_dag(f"select_{vendor}_records")
+        execution_date = timezone.utcnow()
+        run_id = f"manual__{execution_date.isoformat()}"
+        dag.create_dagrun(
+            run_id=run_id,
+            execution_date=execution_date,
+            state=State.RUNNING,
+            conf={
+                "fetch_folio_record_ids": False,
+                "saved_record_ids_kind": kind,
+            },
+            external_trigger=True,
+        )
+        return run_id
+
     @expose("/create", methods=["POST"])
     def run_data_export_upload(self):
         if "upload-data-export-ids" not in request.files:
             flash("Missing Instance UUID File.")
+            return default_rendered_page(self)
         else:
             try:
                 raw_csv = request.files["upload-data-export-ids"]
@@ -64,11 +86,14 @@ class DataExportUploadView(AppBuilderBaseView):
                 else:
                     upload_data_export_ids(ids_df, vendor, kind)
                     flash("Sucessfully uploaded ID file.")
+                    dag_run_id = self._trigger_dag_run(vendor, kind)
+                    flash(f"Starting {vendor} DAG run {dag_run_id}.")
             except pd.errors.EmptyDataError:
                 flash("Warning! Empty UUID file.")
             except Exception as e:
                 flash(f"Error: {e}")
-            return default_rendered_page(self)
+            finally:
+                return default_rendered_page(self)
 
     @expose("/")
     def data_export_upload_home(self):

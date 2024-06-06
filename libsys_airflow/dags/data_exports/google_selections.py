@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
+    choose_fetch_folio_ids,
     fetch_record_ids,
     save_ids_to_fs,
 )
@@ -25,6 +27,7 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
+
 
 with DAG(
     "select_google_records",
@@ -49,8 +52,16 @@ with DAG(
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
+        "fetch_folio_record_ids": True,
+        "saved_record_ids_kind": None,
     },
 ) as dag:
+    check_record_ids = BranchPythonOperator(
+        task_id="check_record_ids",
+        python_callable=choose_fetch_folio_ids,
+        op_kwargs={"fetch_folio_record_ids": "{{ params.fetch_folio_record_ids }}"},
+    )
+
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
@@ -59,7 +70,10 @@ with DAG(
     save_ids_to_file = PythonOperator(
         task_id="save_ids_to_file",
         python_callable=save_ids_to_fs,
-        op_kwargs={"vendor": "google"},
+        op_kwargs={
+            "vendor": "google",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+        },
     )
 
     fetch_marc_records = PythonOperator(
@@ -92,6 +106,9 @@ with DAG(
     )
 
 
+check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
+save_ids_to_file >> fetch_marc_records
+
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
 transform_marc_fields >> finish_processing_marc

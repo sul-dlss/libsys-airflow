@@ -1,3 +1,4 @@
+import ast
 import logging
 import numpy as np
 from datetime import datetime, timedelta
@@ -8,6 +9,17 @@ from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 logger = logging.getLogger(__name__)
+
+
+def choose_fetch_folio_ids(**kwargs):
+    fetch_records = kwargs.get("fetch_folio_record_ids", True)
+    if isinstance(fetch_records, str):
+        fetch_records = ast.literal_eval(fetch_records)
+
+    if fetch_records:
+        return "fetch_record_ids_from_folio"
+    else:
+        return "save_ids_to_file"
 
 
 def fetch_record_ids(**kwargs) -> dict:
@@ -55,15 +67,21 @@ def sql_files(**kwargs) -> list:
 
 
 def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
-    ids_path = []
+    ids_path: list[str | None] = []
     airflow = kwargs.get("airflow", "/opt/airflow")
     task_instance = kwargs["task_instance"]
     vendor = kwargs["vendor"]
+    kind = kwargs.get("record_id_kind", "")
     data = task_instance.xcom_pull(task_ids="fetch_record_ids_from_folio")
 
-    for kind in ["new", "updates", "deletes"]:
-        ids = save_ids(airflow=airflow, data=data[kind], kind=kind, vendor=vendor)
-        ids_path.append(ids)
+    if kind:
+        data_path = Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}/"
+        for file in data_path.glob("*.csv"):
+            ids_path.append(str(file))
+    else:
+        for kind in ["new", "updates", "deletes"]:
+            ids = save_ids(airflow=airflow, data=data[kind], kind=kind, vendor=vendor)
+            ids_path.append(ids)
 
     return ids_path
 

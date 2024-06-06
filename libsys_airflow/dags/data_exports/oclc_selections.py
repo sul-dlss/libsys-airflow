@@ -5,11 +5,13 @@ from airflow import DAG
 
 from airflow.decorators import task
 from airflow.models.param import Param
+from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
+    choose_fetch_folio_ids,
     fetch_record_ids,
     save_ids_to_fs,
 )
@@ -59,8 +61,16 @@ with DAG(
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
+        "fetch_folio_record_ids": True,
+        "saved_record_ids_kind": None,
     },
 ) as dag:
+    check_record_ids = BranchPythonOperator(
+        task_id="check_record_ids",
+        python_callable=choose_fetch_folio_ids,
+        op_kwargs={"fetch_folio_record_ids": "{{ params.fetch_folio_record_ids }}"},
+    )
+
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
@@ -132,12 +142,20 @@ with DAG(
     )
 
 
+check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 (
     fetch_marc_records
     >> transform_marc_fields
     >> [new_records_by_library, delete_records_by_library]
 )
+save_ids_to_file >> fetch_marc_records
+(
+    fetch_marc_records
+    >> transform_marc_fields
+    >> [new_records_by_library, delete_records_by_library]
+)
+
 [new_records_by_library, delete_records_by_library] >> finish_division
 (
     finish_division
