@@ -161,7 +161,7 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
 @task
 def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
     success: dict = {}
-    failures: dict = {} 
+    failures: dict = {}
     archive: list = []
 
     connection_lookup = oclc_connections(connection_details)
