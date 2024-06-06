@@ -156,7 +156,7 @@ class OCLCAPIWrapper(object):
             return output
 
         marc_records = self.__read_marc_files__(marc_files)
-        successful_files: set = set() 
+        successful_files: set = set()
         failed_files: set = set()
         with MetadataSession(authorization=self.oclc_token) as session:
             for record, file_name in marc_records:
@@ -195,6 +195,7 @@ class OCLCAPIWrapper(object):
             failures: set = kwargs["failures"]
 
             oclc_id = get_record_id(record)
+
             if len(oclc_id) != 1:
                 failures.add(file_name)
                 output['failures'].append(instance_uuid)
@@ -213,6 +214,7 @@ class OCLCAPIWrapper(object):
                 output['failures'].append(instance_uuid)
                 failures.add(file_name)
             else:
+                output['success'].append(instance_uuid)
                 successes.add(file_name)
 
         output = self.__oclc_operations__(
