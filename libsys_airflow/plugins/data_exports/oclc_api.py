@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 class OCLCAPIWrapper(object):
     # Helper class for transmitting MARC records to OCLC Worldcat API
 
-    auth_url = "https://oauth.oclc.org/token?grant_type=client_credentials&scope=WorldCatMetadataAPI"
-    worldcat_metadata_url = "https://metadata.api.oclc.org/worldcat"
-
     def __init__(self, **kwargs):
         self.oclc_token = None
         client_id = kwargs["client_id"]
