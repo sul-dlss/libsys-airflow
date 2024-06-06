@@ -415,7 +415,7 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
         'f8fa3682-fef8-4810-b8da-8f51b73785ac',
     ]
 
-    assert "Failed to update record" in caplog.text
+    assert "Failed to update FOLIO for Instance" in caplog.text
 
 
 def test_already_exists_control_number(tmp_path, mock_oclc_api):
