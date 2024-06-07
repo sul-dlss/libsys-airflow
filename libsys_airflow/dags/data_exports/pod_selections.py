@@ -53,7 +53,7 @@ with DAG(
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
-        "fetch_folio_record_ids": True,
+        "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": None,
     },
 ) as dag:
@@ -70,6 +70,7 @@ with DAG(
 
     save_ids_to_file = PythonOperator(
         task_id="save_ids_to_file",
+        trigger_rule="none_failed_min_one_success",
         python_callable=save_ids_to_fs,
         trigger_rule="none_failed_min_one_success",
         op_kwargs={
