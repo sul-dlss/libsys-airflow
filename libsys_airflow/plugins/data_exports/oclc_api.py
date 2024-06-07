@@ -28,9 +28,6 @@ class OCLCAPIWrapper(object):
         self.__authenticate__(client_id, secret)
         self.folio_client = folio_client()
 
-    def __del__(self):
-        self.httpx_client.close()
-
     def __authenticate__(self, client_key, secret) -> None:
         try:
             self.oclc_token = WorldcatAccessToken(
