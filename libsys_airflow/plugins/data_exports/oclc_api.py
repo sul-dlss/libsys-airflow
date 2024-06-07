@@ -4,7 +4,7 @@ import pathlib
 import httpx
 import pymarc
 
-from typing import List, Union
+from typing import List, Union, Callable
 
 from bookops_worldcat import WorldcatAccessToken, MetadataSession
 from bookops_worldcat.errors import WorldcatRequestError
@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 
 class OCLCAPIWrapper(object):
     # Helper class for transmitting MARC records to OCLC Worldcat API
-
-    auth_url = "https://oauth.oclc.org/token?grant_type=client_credentials&scope=WorldCatMetadataAPI"
-    worldcat_metadata_url = "https://metadata.api.oclc.org/worldcat"
 
     def __init__(self, **kwargs):
         self.oclc_token = None
@@ -145,31 +142,35 @@ class OCLCAPIWrapper(object):
         record.add_ordered_field(new_035)
         return self.__put_folio_record__(srs_uuid, record)
 
-    def new(self, marc_files: List[str]) -> dict:
+    def __oclc_operations__(self, **kwargs) -> dict:
+        marc_files: List[str] = kwargs['marc_files']
+        function: Callable = kwargs['function']
+        no_recs_message: str = kwargs.get("no_recs_message", "")
         output: dict = {"success": [], "failures": []}
+
         if len(marc_files) < 1:
-            logger.info("No new marc records")
+            logger.info(no_recs_message)
             return output
+
         marc_records = self.__read_marc_files__(marc_files)
-        successful_files, failed_files = set(), set()
+        successful_files: set = set()
+        failed_files: set = set()
         with MetadataSession(authorization=self.oclc_token) as session:
             for record, file_name in marc_records:
                 instance_uuid, srs_uuid = self.__record_uuids__(record)
                 if srs_uuid is None:
                     continue
                 try:
-                    record.remove_fields(*oclc_excluded)
-                    marc21 = record.as_marc21()
-                    new_record = session.bib_create(
-                        record=marc21,
-                        recordFormat="application/marc",
+                    function(
+                        session=session,
+                        output=output,
+                        record=record,
+                        file_name=file_name,
+                        srs_uuid=srs_uuid,
+                        instance_uuid=instance_uuid,
+                        successes=successful_files,
+                        failures=failed_files,
                     )
-                    if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
-                        output['success'].append(instance_uuid)
-                        successful_files.add(file_name)
-                    else:
-                        output['failures'].append(instance_uuid)
-                        failed_files.add(file_name)
                 except WorldcatRequestError as e:
                     logger.error(e)
                     output['failures'].append(instance_uuid)
@@ -178,54 +179,120 @@ class OCLCAPIWrapper(object):
         output["archive"] = list(successful_files.difference(failed_files))
         return output
 
-    def update(self, marc_files: List[str]):
-        output: dict = {"success": [], "failures": []}
-        if len(marc_files) < 1:
-            logger.info("No updated marc records")
-            return output
-        marc_records = self.__read_marc_files__(marc_files)
-        successful_files, failed_files = set(), set()
-        with MetadataSession(authorization=self.oclc_token) as session:
-            for record, file_name in marc_records:
-                instance_uuid, srs_uuid = self.__record_uuids__(record)
-                if srs_uuid is None:
-                    continue
-                oclc_id = get_record_id(record)
+    def delete(self, marc_files: List[str]) -> dict:
+
+        def __delete_oclc__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            output: dict = kwargs["output"]
+            record: pymarc.Record = kwargs["record"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            srs_uuid: str = kwargs["srs_uuid"]
+            file_name: str = kwargs["file_name"]
+            successes: set = kwargs["successes"]
+            failures: set = kwargs["failures"]
+
+            oclc_id = get_record_id(record)
+
+            if len(oclc_id) != 1:
+                failures.add(file_name)
+                output['failures'].append(instance_uuid)
                 match len(oclc_id):
 
                     case 0:
                         logger.error(f"{srs_uuid} missing OCLC number")
-                        output['failures'].append(instance_uuid)
-                        failed_files.add(file_name)
-                        continue
-
-                    case 1:
-                        pass
 
                     case _:
                         logger.error(f"Multiple OCLC ids for {srs_uuid}")
-                        output['failures'].append(instance_uuid)
-                        failed_files.add(file_name)
-                        continue
 
-                try:
-                    response = session.holdings_set(oclcNumber=oclc_id[0])
-                    if response is None:
-                        output['failures'].append(instance_uuid)
-                        failed_files.add(file_name)
-                        continue
-                    if self.__update_oclc_number__(
-                        response.json()['controlNumber'], srs_uuid
-                    ):
-                        output['success'].append(instance_uuid)
-                        successful_files.add(file_name)
-                    else:
-                        output['failures'].append(instance_uuid)
-                        failed_files.add(file_name)
-                except WorldcatRequestError as e:
-                    logger.error(f"Failed to update record, error: {e}")
-                    output['failures'].append(instance_uuid)
-                    failed_files.add(file_name)
-                    continue
-        output["archive"] = list(successful_files.difference(failed_files))
+                return
+
+            response = session.holdings_unset(oclcNumber=oclc_id[0])
+            if response is None:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+            else:
+                output['success'].append(instance_uuid)
+                successes.add(file_name)
+
+        output = self.__oclc_operations__(
+            marc_files=marc_files,
+            function=__delete_oclc__,
+            no_recs_message="No marc records for deletes",
+        )
+        return output
+
+    def new(self, marc_files: List[str]) -> dict:
+
+        def __new_oclc__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            output: dict = kwargs["output"]
+            record: pymarc.Record = kwargs["record"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            srs_uuid: str = kwargs["srs_uuid"]
+            file_name: str = kwargs["file_name"]
+            successes: set = kwargs["successes"]
+            failures: set = kwargs["failures"]
+
+            record.remove_fields(*oclc_excluded)
+            marc21 = record.as_marc21()
+            new_record = session.bib_create(
+                record=marc21,
+                recordFormat="application/marc",
+            )
+            if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
+                output['success'].append(instance_uuid)
+                successes.add(file_name)
+            else:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+
+        output = self.__oclc_operations__(
+            marc_files=marc_files,
+            function=__new_oclc__,
+            no_recs_message="No new marc records",
+        )
+        return output
+
+    def update(self, marc_files: List[str]):
+        def __update_oclc__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            output: dict = kwargs["output"]
+            record: pymarc.Record = kwargs["record"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            srs_uuid: str = kwargs["srs_uuid"]
+            file_name: str = kwargs["file_name"]
+            successes: set = kwargs["successes"]
+            failures: set = kwargs["failures"]
+
+            oclc_id = get_record_id(record)
+            if len(oclc_id) != 1:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+
+                match len(oclc_id):
+
+                    case 0:
+                        logger.error(f"{srs_uuid} missing OCLC number")
+
+                    case _:
+                        logger.error(f"Multiple OCLC ids for {srs_uuid}")
+
+                return
+            response = session.holdings_set(oclcNumber=oclc_id[0])
+            if response is None:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+                return
+            if self.__update_oclc_number__(response.json()['controlNumber'], srs_uuid):
+                output['success'].append(instance_uuid)
+                successes.add(file_name)
+            else:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+
+        output = self.__oclc_operations__(
+            marc_files=marc_files,
+            function=__update_oclc__,
+            no_recs_message="No updated marc records",
+        )
         return output
