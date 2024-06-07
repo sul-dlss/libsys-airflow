@@ -70,7 +70,6 @@ with DAG(
 
     save_ids_to_file = PythonOperator(
         task_id="save_ids_to_file",
-        trigger_rule="none_failed_min_one_success",
         python_callable=save_ids_to_fs,
         trigger_rule="none_failed_min_one_success",
         op_kwargs={
