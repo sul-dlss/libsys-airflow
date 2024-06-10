@@ -53,7 +53,7 @@ with DAG(
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
-        "fetch_folio_record_ids": True,
+        "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": None,
     },
 ) as dag:
