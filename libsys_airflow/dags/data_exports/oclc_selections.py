@@ -80,7 +80,10 @@ with DAG(
         task_id="save_ids_to_file",
         trigger_rule="none_failed_min_one_success",
         python_callable=save_ids_to_fs,
-        op_kwargs={"vendor": "oclc"},
+        op_kwargs={
+            "vendor": "oclc",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+        },
     )
 
     transform_marc_fields = PythonOperator(
@@ -109,6 +112,11 @@ with DAG(
         return divide_into_oclc_libraries(marc_file_list=deleted_records)
 
     @task
+    def divide_updates_records_by_library(**kwargs):
+        updates_records = kwargs.get("updates_records", [])
+        return divide_into_oclc_libraries(marc_file_list=updates_records)
+
+    @task
     def aggregate_email_multiple_records(**kwargs):
         ti = kwargs["ti"]
         new_multiple_records = ti.xcom_pull(task_ids='divide_new_records_by_library')
@@ -122,6 +130,7 @@ with DAG(
     def remove_original_marc_files(**kwargs):
         marc_file_list = kwargs["marc_file_list"]
         remove_marc_files(str(marc_file_list['new']))
+        remove_marc_files(str(marc_file_list['updates']))
         remove_marc_files(str(marc_file_list['deletes']))
 
     fetch_marc_records = retrieve_marc_records()
@@ -132,6 +141,10 @@ with DAG(
 
     delete_records_by_library = divide_delete_records_by_library(
         deleted_records=fetch_marc_records["deletes"]  # type: ignore
+    )
+
+    updates_records_by_library = divide_updates_records_by_library(
+        updates_records=fetch_marc_records["updates"]  # type: ignore
     )
 
     finish_division = EmptyOperator(task_id="finish_division")
@@ -148,16 +161,20 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 (
     fetch_marc_records
     >> transform_marc_fields
-    >> [new_records_by_library, delete_records_by_library]
+    >> [new_records_by_library, delete_records_by_library, updates_records_by_library]
 )
 save_ids_to_file >> fetch_marc_records
 (
     fetch_marc_records
     >> transform_marc_fields
-    >> [new_records_by_library, delete_records_by_library]
+    >> [new_records_by_library, delete_records_by_library, updates_records_by_library]
 )
 
-[new_records_by_library, delete_records_by_library] >> finish_division
+[
+    new_records_by_library,
+    delete_records_by_library,
+    updates_records_by_library,
+] >> finish_division
 (
     finish_division
     >> [aggregate_email_multiple_records(), remove_original_marc]
