@@ -41,8 +41,9 @@ class OCLCAPIWrapper(object):
     def __get_srs_record__(self, srs_uuid: str) -> Union[pymarc.Record, None]:
         marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
         marc_json_handler = pymarc.JSONHandler()
+
         try:
-            marc_json_handler.elements(marc_json)
+            marc_json_handler.elements(marc_json['parsedRecord']['content'])
             return marc_json_handler.records[0]
         except KeyError as e:
             logger.error(f"Failed converting {srs_uuid} to MARC JSON {e}")
