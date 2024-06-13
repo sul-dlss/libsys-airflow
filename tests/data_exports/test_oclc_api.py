@@ -258,9 +258,9 @@ def mock_folio_client(mocker):
     def mock_folio_get(*args, **kwargs):
         output = {}
         if args[0].endswith("08ca5a68-241a-4a5f-89b9-5af5603981ad"):
-            output = json.loads(sample_marc[0].as_json())
+            output = {"parsedRecord": {"content": json.loads(sample_marc[0].as_json())}}
         if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
-            output = json.loads(sample_marc[2].as_json())
+            output = {"parsedRecord": {"content": json.loads(sample_marc[2].as_json())}}
         if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
             output = {}
         for instance_uuid in [

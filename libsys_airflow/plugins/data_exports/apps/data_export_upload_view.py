@@ -4,7 +4,6 @@ import pathlib
 import re
 
 from airflow.models import DagBag
-from airflow.models.param import Param
 from airflow.utils import timezone
 from airflow.utils.state import State
 
@@ -64,7 +63,7 @@ class DataExportUploadView(AppBuilderBaseView):
             execution_date=execution_date,
             state=State.RUNNING,
             conf={
-                "fetch_folio_record_ids": Param(False, type="boolean"),
+                "fetch_folio_record_ids": False,
                 "saved_record_ids_kind": kind,
             },
             external_trigger=True,

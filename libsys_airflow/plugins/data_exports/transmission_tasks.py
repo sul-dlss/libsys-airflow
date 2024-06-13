@@ -186,8 +186,8 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
             failures[library].extend(new_result['failures'])
             archive.extend(new_result['archive'])
 
-        if len(records.get("update", [])) > 0:
-            updated_result = oclc_api.update(records['update'])
+        if len(records.get("updates", [])) > 0:
+            updated_result = oclc_api.update(records['updates'])
             success[library].extend(updated_result['success'])
             failures[library].extend(updated_result['failures'])
             archive.extend(updated_result['archive'])
