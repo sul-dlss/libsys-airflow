@@ -1,4 +1,3 @@
-import ast
 import itertools
 import logging
 import pathlib
@@ -10,11 +9,10 @@ from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 logger = logging.getLogger(__name__)
 
 
-def gobi_list_from_marc_files(marc_file_list: str):
+def gobi_list_from_marc_files(marc_file_list: list):
     gobi_lists = []
     gobi_transformer = GobiTransformer()
-    marc_list = ast.literal_eval(marc_file_list)
-    for file in marc_list['new']:
+    for file in marc_file_list['new']:
         gobi_lists.append(gobi_transformer.generate_list(marc_file=file))
 
     return gobi_lists
