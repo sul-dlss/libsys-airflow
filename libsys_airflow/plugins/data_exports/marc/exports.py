@@ -19,6 +19,8 @@ def marc_for_instances(**kwargs) -> dict:
     exporter = Exporter()
 
     for file_datename in instance_files:
+        if not file_datename:
+            continue
         file_path = pathlib.Path(file_datename)
         kind = file_path.parent.stem
         marc_file = exporter.retrieve_marc_for_instances(
