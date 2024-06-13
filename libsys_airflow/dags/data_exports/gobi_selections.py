@@ -51,8 +51,9 @@ with DAG(
             description="The latest date to select record IDs from FOLIO.",
         ),
         "fetch_folio_record_ids": Param(True, type="boolean"),
-        "saved_record_ids_kind": None,
+        "saved_record_ids_kind": Param(None, type=["null", "string"]),
     },
+    render_template_as_native_obj=True,
 ) as dag:
     check_record_ids = BranchPythonOperator(
         task_id="check_record_ids",
