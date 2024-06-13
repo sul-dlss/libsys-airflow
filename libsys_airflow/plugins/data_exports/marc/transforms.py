@@ -122,7 +122,7 @@ oclc_excluded = [
 ]
 
 
-def add_holdings_items_to_marc_files(marc_file_list: list, full_dump: bool):
+def add_holdings_items_to_marc_files(marc_file_list: dict, full_dump: bool):
     transformer = Transformer()
     new_and_updates = marc_file_list['new'] + marc_file_list['updates']
     for marc_file in new_and_updates:
@@ -142,7 +142,7 @@ def divide_into_oclc_libraries(**kwargs):
     return oclc_transformer.staff_notices
 
 
-def change_leader_for_deletes(marc_file_list: list):
+def change_leader_for_deletes(marc_file_list: dict):
     for file in marc_file_list['deletes']:
         leader_for_deletes(file, False)
 
@@ -180,7 +180,7 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
         logger.warning(e)
 
 
-def remove_fields_from_marc_files(marc_file_list: list):
+def remove_fields_from_marc_files(marc_file_list: dict):
     for file in marc_file_list['new']:
         remove_marc_fields(file, False)
     logger.info(f"Removed MARC fields from these New files {marc_file_list['new']}")

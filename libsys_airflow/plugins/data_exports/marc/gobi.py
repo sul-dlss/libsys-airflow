@@ -9,7 +9,7 @@ from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 logger = logging.getLogger(__name__)
 
 
-def gobi_list_from_marc_files(marc_file_list: list):
+def gobi_list_from_marc_files(marc_file_list: dict):
     gobi_lists = []
     gobi_transformer = GobiTransformer()
     for file in marc_file_list['new']:
