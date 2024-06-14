@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import re
 
 import httpx
 import pymarc
@@ -17,6 +18,9 @@ from libsys_airflow.plugins.shared.folio_client import folio_client
 from pymarc import Record
 
 logger = logging.getLogger(__name__)
+
+# If we want to also match on OCoLC-I, just replace -[M] with -[MI]
+OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
 
 
 class OCLCAPIWrapper(object):
@@ -136,15 +140,18 @@ class OCLCAPIWrapper(object):
         needs_new_035 = True
         for field in record.get_fields('035'):
             for i, subfield in enumerate(field.subfields):
-                if subfield.code == "a" and control_number in subfield.value:
-                    # Control number already exists
-                    if subfield.value.startswith("(OCoLC)"):
-                        # Change prefix to include -M
-                        new_prefix = subfield.value.replace("(OCoLC)", "(OCoLC-M)")
-                        field.subfields.pop(i)
-                        field.add_subfield(code="a", value=new_prefix, pos=i)
-                    needs_new_035 = False
-                    break
+                if subfield.code == "a":
+                    matched_oclc = OCLC_REGEX.match(subfield.value)
+                    if matched_oclc:
+                        suffix, oclc_number = matched_oclc.groups()
+                        # Test if control number already exists
+                        if suffix is None and oclc_number == control_number:
+                            # Change prefix to include -M
+                            new_prefix = subfield.value.replace("(OCoLC)", "(OCoLC-M)")
+                            field.subfields.pop(i)
+                            field.add_subfield(code="a", value=new_prefix, pos=i)
+                            needs_new_035 = False
+                            break
         if needs_new_035:
             new_035 = pymarc.Field(
                 tag='035',
