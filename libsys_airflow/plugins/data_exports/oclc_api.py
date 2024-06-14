@@ -156,7 +156,9 @@ class OCLCAPIWrapper(object):
             new_035 = pymarc.Field(
                 tag='035',
                 indicators=[' ', ' '],
-                subfields=[pymarc.Subfield(code='a', value=f"(OCoLC){control_number}")],
+                subfields=[
+                    pymarc.Subfield(code='a', value=f"(OCoLC-M){control_number}")
+                ],
             )
             record.add_ordered_field(new_035)
         return record
