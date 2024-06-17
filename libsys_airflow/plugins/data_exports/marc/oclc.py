@@ -8,6 +8,18 @@ from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 logger = logging.getLogger(__name__)
 
 
+def archive_instanceid_csv(instance_id_csvs: list):
+    for instance_id_csv in instance_id_csvs:
+        csv_file_path = pathlib.Path(instance_id_csv)
+        if csv_file_path.exists():
+            kind = csv_file_path.parent.name
+            archive_dir = csv_file_path.parent.parent.parent / "transmitted" / kind
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            archive_instance_ids_path = archive_dir / csv_file_path.name
+            csv_file_path.replace(archive_instance_ids_path)
+            logger.info(f"Archived {csv_file_path} to {archive_instance_ids_path}")
+
+
 def get_record_id(record: pymarc.Record) -> list:
     """
     Extracts OCLC control number from 035 field
