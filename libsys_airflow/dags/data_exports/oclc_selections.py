@@ -130,9 +130,9 @@ with DAG(
     @task
     def remove_original_marc_files(**kwargs):
         marc_file_list = kwargs["marc_file_list"]
-        remove_marc_files(str(marc_file_list['new']))
-        remove_marc_files(str(marc_file_list['updates']))
-        remove_marc_files(str(marc_file_list['deletes']))
+        remove_marc_files(marc_file_list['new'])
+        remove_marc_files(marc_file_list['updates'])
+        remove_marc_files(marc_file_list['deletes'])
 
     fetch_marc_records = retrieve_marc_records()
 
