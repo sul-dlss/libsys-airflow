@@ -235,6 +235,7 @@ def mock_worldcat_access_token(**kwargs):
 
 
 def mock_httpx_client():
+
     def mock_response(request):
         response = None
         match request.method:
@@ -504,9 +505,11 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
-    assert oclc_api_instance.__update_oclc_number__(
+    modified_marc_record = oclc_api_instance.__update_oclc_number__(
         '445667', 'd63085c0-cab6-4bdd-95e8-d53696919ac1'
     )
+
+    assert modified_marc_record.get_fields('035')[0].value() == "(OCoLC-M)445667"
 
 
 def test_missing_marc_json(mock_oclc_api, caplog):
@@ -522,10 +525,10 @@ def test_missing_marc_json(mock_oclc_api, caplog):
     assert update_035_result is False
     assert "Failed converting 6aabb9cd-64cc-4673-b63b-d35fa015b91c" in caplog.text
 
-    update_oclc_number_result = oclc_api_instance.__update_oclc_number__(
+    update_oclc_number_record = oclc_api_instance.__update_oclc_number__(
         "22345", "6aabb9cd-64cc-4673-b63b-d35fa015b91c"
     )
-    assert update_oclc_number_result is False
+    assert update_oclc_number_record is None
 
 
 def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):

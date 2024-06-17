@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import re
 
 import httpx
 import pymarc
@@ -14,7 +15,12 @@ from libsys_airflow.plugins.data_exports.marc.transforms import oclc_excluded
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
+from pymarc import Record
+
 logger = logging.getLogger(__name__)
+
+# If we want to also match on OCoLC-I, just replace -[M] with -[MI]
+OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
 
 
 class OCLCAPIWrapper(object):
@@ -38,7 +44,7 @@ class OCLCAPIWrapper(object):
             logger.error(msg)
             raise Exception(msg, e)
 
-    def __get_srs_record__(self, srs_uuid: str) -> Union[pymarc.Record, None]:
+    def __get_srs_record__(self, srs_uuid: str) -> Union[Record, None]:
         marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
         marc_json_handler = pymarc.JSONHandler()
 
@@ -49,14 +55,14 @@ class OCLCAPIWrapper(object):
             logger.error(f"Failed converting {srs_uuid} to MARC JSON {e}")
             return None
 
-    def __instance_info__(self, record: pymarc.Record) -> tuple:
+    def __instance_info__(self, record: Record) -> tuple:
         instance_uuid, _ = self.__record_uuids__(record)
         instance = self.folio_client.folio_get(f"/inventory/instances/{instance_uuid}")
         version = instance["_version"]
         hrid = instance["hrid"]
         return instance_uuid, version, hrid
 
-    def __put_folio_record__(self, srs_uuid: str, record: pymarc.Record) -> bool:
+    def __put_folio_record__(self, srs_uuid: str, record: Record) -> bool:
         """
         Updates FOLIO SRS with updated MARC record with new OCLC Number
         in the 035 field
@@ -121,24 +127,41 @@ class OCLCAPIWrapper(object):
                     break
         return self.__put_folio_record__(srs_uuid, record)
 
-    def __update_oclc_number__(self, control_number: str, srs_uuid: str) -> bool:
+    def __update_oclc_number__(
+        self, control_number: str, srs_uuid: str
+    ) -> Union[Record, None]:
         """
         Updates 035 field if control_number has changed
         """
         record = self.__get_srs_record__(srs_uuid)
         if record is None:
-            return False
+            return None
+
+        needs_new_035 = True
         for field in record.get_fields('035'):
-            for subfield in field.get_subfields("a"):
-                if control_number in subfield:
-                    return True  # Control number already exists
-        new_035 = pymarc.Field(
-            tag='035',
-            indicators=[' ', ' '],
-            subfields=[pymarc.Subfield(code='a', value=f"(OCoLC){control_number}")],
-        )
-        record.add_ordered_field(new_035)
-        return self.__put_folio_record__(srs_uuid, record)
+            for i, subfield in enumerate(field.subfields):
+                if subfield.code == "a":
+                    matched_oclc = OCLC_REGEX.match(subfield.value)
+                    if matched_oclc:
+                        suffix, oclc_number = matched_oclc.groups()
+                        # Test if control number already exists
+                        if suffix is None and oclc_number == control_number:
+                            # Change prefix to include -M
+                            new_prefix = subfield.value.replace("(OCoLC)", "(OCoLC-M)")
+                            field.subfields.pop(i)
+                            field.add_subfield(code="a", value=new_prefix, pos=i)
+                            needs_new_035 = False
+                            break
+        if needs_new_035:
+            new_035 = pymarc.Field(
+                tag='035',
+                indicators=[' ', ' '],
+                subfields=[
+                    pymarc.Subfield(code='a', value=f"(OCoLC-M){control_number}")
+                ],
+            )
+            record.add_ordered_field(new_035)
+        return record
 
     def __oclc_operations__(self, **kwargs) -> dict:
         marc_files: List[str] = kwargs['marc_files']
@@ -281,7 +304,10 @@ class OCLCAPIWrapper(object):
                 output['failures'].append(instance_uuid)
                 failures.add(file_name)
                 return
-            if self.__update_oclc_number__(response.json()['controlNumber'], srs_uuid):
+            modified_marc_record = self.__update_oclc_number__(
+                response.json()['controlNumber'], srs_uuid
+            )
+            if self.__put_folio_record__(srs_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
