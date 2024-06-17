@@ -3,7 +3,11 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer, get_record_id
+from libsys_airflow.plugins.data_exports.marc.oclc import (
+    OCLCTransformer,
+    archive_instanceid_csv,
+    get_record_id,
+)
 
 
 @pytest.fixture
@@ -181,6 +185,28 @@ def mock_folio_client():
     mock_client.folio_get = mock_folio_get
     mock_client.locations = mock_locations
     return mock_client
+
+
+def test_archive_instanceid_csv(tmp_path):
+    oclc_dir = tmp_path / "oclc"
+    oclc_dir.mkdir(parents=True, exist_ok=True)
+    instance_ids_dir = oclc_dir / "instanceids"
+    transmitted_dir = oclc_dir / "transmitted"
+
+    new_instance_ids = instance_ids_dir / "new/202406171725.csv"
+    new_instance_ids.parent.mkdir(parents=True, exist_ok=True)
+    new_instance_ids.touch()
+
+    update_instance_ids = instance_ids_dir / "updates/202406171725.csv"
+    update_instance_ids.parent.mkdir(parents=True, exist_ok=True)
+    update_instance_ids.touch()
+
+    archive_instanceid_csv([str(new_instance_ids), str(update_instance_ids)])
+
+    assert (transmitted_dir / "new/202406171725.csv").exists()
+    assert (transmitted_dir / "updates/202406171725.csv").exists()
+    assert new_instance_ids.exists() is False
+    assert update_instance_ids.exists() is False
 
 
 def test_determine_campus_code(mocker, mock_folio_client):
