@@ -16,6 +16,8 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
+from libsys_airflow.plugins.data_exports.marc.oclc import archive_instanceid_csv
+
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
@@ -92,6 +94,14 @@ with DAG(
         python_callable=remove_fields_from_marc_files,
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull(task_ids='retrieve_marc_records') }}"
+        },
+    )
+
+    archive_csv = PythonOperator(
+        task_id="archive_instance_ids_csv",
+        python_callable=archive_instanceid_csv,
+        op_kwargs={
+            "instance_id_csvs": "{{ ti.xcom_pull(task_ids='save_ids_to_file') }}"
         },
     )
 
@@ -178,6 +188,6 @@ save_ids_to_file >> fetch_marc_records
 ] >> finish_division
 (
     finish_division
-    >> [aggregate_email_multiple_records(), remove_original_marc]
+    >> [aggregate_email_multiple_records(), remove_original_marc, archive_csv]
     >> finish_processing_marc
 )
