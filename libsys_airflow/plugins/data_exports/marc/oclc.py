@@ -108,12 +108,14 @@ class OCLCTransformer(Transformer):
                     case 0:
                         if file_path not in self.libraries[code]["marc"]:
                             self.libraries[code]["marc"][file_path] = []
-                        self.libraries[code]["marc"][file_path].append(record)
+                        if record not in self.libraries[code]["marc"][file_path]:
+                            self.libraries[code]["marc"][file_path].append(record)
 
                     case 1:
                         if file_path not in self.libraries[code]["holdings"]:
                             self.libraries[code]["holdings"][file_path] = []
-                        self.libraries[code]["holdings"][file_path].append(record)
+                        if record not in self.libraries[code]["holdings"][file_path]:
+                            self.libraries[code]["holdings"][file_path].append(record)
 
                     case _:
                         self.multiple_codes(record, code, record_ids)
