@@ -70,7 +70,7 @@ class OCLCAPIWrapper(object):
         marc_json = record.as_json()
         instance_uuid, version, instance_hrid = self.__instance_info__(record)
         put_result = self.httpx_client.put(
-            f"{self.folio_client.okapi_url}change-manager/parsedRecords/{srs_uuid}",
+            f"{self.folio_client.okapi_url}/change-manager/parsedRecords/{srs_uuid}",
             headers=self.folio_client.okapi_headers,
             json={
                 "id": srs_uuid,

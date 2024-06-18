@@ -274,7 +274,7 @@ def mock_folio_client(mocker):
 
     mock = mocker
     mock.okapi_headers = {}
-    mock.okapi_url = "https://okapi.stanford.edu/"
+    mock.okapi_url = "https://okapi.stanford.edu"
     mock.folio_get = mock_folio_get
     return mock
 
@@ -305,7 +305,7 @@ def test_oclc_api_class_init(mock_oclc_api):
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
-    assert oclc_api_instance.folio_client.okapi_url == "https://okapi.stanford.edu/"
+    assert oclc_api_instance.folio_client.okapi_url == "https://okapi.stanford.edu"
     assert oclc_api_instance.oclc_token == "tk_6e302a204c2bfa4d266813cO647d62a77b10"
 
 
