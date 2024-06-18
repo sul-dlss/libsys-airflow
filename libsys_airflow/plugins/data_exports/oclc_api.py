@@ -44,31 +44,52 @@ class OCLCAPIWrapper(object):
             logger.error(msg)
             raise Exception(msg, e)
 
-    def __get_srs_record__(self, srs_uuid: str) -> Union[Record, None]:
-        marc_json = self.folio_client.folio_get(f"/source-storage/records/{srs_uuid}")
-        marc_json_handler = pymarc.JSONHandler()
+    def __get_srs_record_id__(self, instance_uuid: str) -> Union[str, None]:
+        source_storage_result = self.folio_client.folio_get(
+            f"/source-storage/source-records?instanceId={instance_uuid}"
+        )
 
         try:
-            marc_json_handler.elements(marc_json['parsedRecord']['content'])
-            return marc_json_handler.records[0]
-        except KeyError as e:
-            logger.error(f"Failed converting {srs_uuid} to MARC JSON {e}")
+            source_records = source_storage_result['sourceRecords']
+            if len(source_records) < 1:
+                logger.error(f"No Active SRS record found for {instance_uuid}")
+                return None
+            return source_records[0]['recordId']
+
+        except Exception as e:
+            logger.error(
+                f"Failed to retrieve Active SRS record id for Instance {instance_uuid} error: {e}"
+            )
             return None
 
-    def __instance_info__(self, record: Record) -> tuple:
-        instance_uuid, _ = self.__record_uuids__(record)
+    def __instance_info__(self, instance_uuid: str) -> tuple:
         instance = self.folio_client.folio_get(f"/inventory/instances/{instance_uuid}")
         version = instance["_version"]
         hrid = instance["hrid"]
-        return instance_uuid, version, hrid
+        return version, hrid
 
-    def __put_folio_record__(self, srs_uuid: str, record: Record) -> bool:
+    def __instance_uuid__(self, record) -> Union[str, None]:
+        instance_uuid = None
+        for field in record.get_fields("999"):
+            if field.indicators == ["f", "f"]:
+                instance_uuid = field["i"]
+        if instance_uuid is None:
+            logger.error("No instance UUID found in MARC record")
+        return instance_uuid
+
+    def __put_folio_record__(self, instance_uuid: str, record: Record) -> bool:
         """
         Updates FOLIO SRS with updated MARC record with new OCLC Number
         in the 035 field
         """
         marc_json = record.as_json()
-        instance_uuid, version, instance_hrid = self.__instance_info__(record)
+        version, instance_hrid = self.__instance_info__(instance_uuid)
+        srs_uuid = self.__get_srs_record_id__(instance_uuid)
+        if srs_uuid is None:
+            logger.error(
+                f"Failed to retrieve Active SRS uuid for Instance {instance_uuid}"
+            )
+            return False
         put_result = self.httpx_client.put(
             f"{self.folio_client.okapi_url}/change-manager/parsedRecords/{srs_uuid}",
             headers=self.folio_client.okapi_headers,
@@ -100,43 +121,30 @@ class OCLCAPIWrapper(object):
                     records.extend([(r, str(marc_file_path)) for r in marc_reader])
         return records
 
-    def __record_uuids__(self, record) -> tuple:
-        instance_uuid, srs_uuid = None, None
-        for field in record.get_fields("999"):
-            if field.indicators == ["f", "f"]:
-                srs_uuid = field["s"]
-                instance_uuid = field["i"]
-        if srs_uuid is None:
-            logger.error("Record Missing SRS uuid")
-        return instance_uuid, srs_uuid
-
-    def __update_035__(self, oclc_put_result: bytes, srs_uuid: str) -> bool:
+    def __extract_control_number_035__(
+        self, oclc_put_result: bytes
+    ) -> Union[str, None]:
         """
-        Extracts 035 field with new OCLC number and adds to existing MARC21
-        record
+        Extracts new OCLC number from 035 record
         """
-        record = self.__get_srs_record__(srs_uuid)
-        if record is None:
-            return False
+        control_number = None
         oclc_record = pymarc.Record(data=oclc_put_result)  # type: ignore
         fields_035 = oclc_record.get_fields('035')
         for field in fields_035:
             for subfield in field.get_subfields("a"):
-                if subfield.startswith("(OCoLC"):
-                    record.add_ordered_field(field)
+                matched_oclc = OCLC_REGEX.match(subfield)
+                if matched_oclc:
+                    _, control_number = matched_oclc.groups()
                     break
-        return self.__put_folio_record__(srs_uuid, record)
+            if control_number:
+                break
+        return control_number
 
-    def __update_oclc_number__(
-        self, control_number: str, srs_uuid: str
-    ) -> Union[Record, None]:
+    def __update_oclc_number__(self, control_number: str, record: Record) -> Record:
         """
-        Updates 035 field if control_number has changed
+        Updates 035 field if control_number has changed or adds new 035 field if control_number
+        is not found
         """
-        record = self.__get_srs_record__(srs_uuid)
-        if record is None:
-            return None
-
         needs_new_035 = True
         for field in record.get_fields('035'):
             for i, subfield in enumerate(field.subfields):
@@ -178,8 +186,8 @@ class OCLCAPIWrapper(object):
         failed_files: set = set()
         with MetadataSession(authorization=self.oclc_token) as session:
             for record, file_name in marc_records:
-                instance_uuid, srs_uuid = self.__record_uuids__(record)
-                if srs_uuid is None:
+                instance_uuid = self.__instance_uuid__(record)
+                if instance_uuid is None:
                     continue
                 try:
                     function(
@@ -187,7 +195,6 @@ class OCLCAPIWrapper(object):
                         output=output,
                         record=record,
                         file_name=file_name,
-                        srs_uuid=srs_uuid,
                         instance_uuid=instance_uuid,
                         successes=successful_files,
                         failures=failed_files,
@@ -207,7 +214,6 @@ class OCLCAPIWrapper(object):
             output: dict = kwargs["output"]
             record: pymarc.Record = kwargs["record"]
             instance_uuid: str = kwargs["instance_uuid"]
-            srs_uuid: str = kwargs["srs_uuid"]
             file_name: str = kwargs["file_name"]
             successes: set = kwargs["successes"]
             failures: set = kwargs["failures"]
@@ -220,10 +226,10 @@ class OCLCAPIWrapper(object):
                 match len(oclc_id):
 
                     case 0:
-                        logger.error(f"{srs_uuid} missing OCLC number")
+                        logger.error(f"{instance_uuid} missing OCLC number")
 
                     case _:
-                        logger.error(f"Multiple OCLC ids for {srs_uuid}")
+                        logger.error(f"Multiple OCLC ids for {instance_uuid}")
 
                 return
 
@@ -249,7 +255,6 @@ class OCLCAPIWrapper(object):
             output: dict = kwargs["output"]
             record: pymarc.Record = kwargs["record"]
             instance_uuid: str = kwargs["instance_uuid"]
-            srs_uuid: str = kwargs["srs_uuid"]
             file_name: str = kwargs["file_name"]
             successes: set = kwargs["successes"]
             failures: set = kwargs["failures"]
@@ -260,7 +265,21 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
-            if self.__update_035__(new_record.text, srs_uuid):  # type: ignore
+            control_number = self.__extract_control_number_035__(new_record.text)
+
+            if control_number is None:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+                return
+
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
+
+            if modified_marc_record is None:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+                return
+
+            if self.__put_folio_record__(instance_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
@@ -280,7 +299,6 @@ class OCLCAPIWrapper(object):
             output: dict = kwargs["output"]
             record: pymarc.Record = kwargs["record"]
             instance_uuid: str = kwargs["instance_uuid"]
-            srs_uuid: str = kwargs["srs_uuid"]
             file_name: str = kwargs["file_name"]
             successes: set = kwargs["successes"]
             failures: set = kwargs["failures"]
@@ -293,10 +311,10 @@ class OCLCAPIWrapper(object):
                 match len(oclc_id):
 
                     case 0:
-                        logger.error(f"{srs_uuid} missing OCLC number")
+                        logger.error(f"{instance_uuid} missing OCLC number")
 
                     case _:
-                        logger.error(f"Multiple OCLC ids for {srs_uuid}")
+                        logger.error(f"Multiple OCLC ids for {instance_uuid}")
 
                 return
             response = session.holdings_set(oclcNumber=oclc_id[0])
@@ -305,9 +323,9 @@ class OCLCAPIWrapper(object):
                 failures.add(file_name)
                 return
             modified_marc_record = self.__update_oclc_number__(
-                response.json()['controlNumber'], srs_uuid
+                response.json()['controlNumber'], record
             )
-            if self.__put_folio_record__(srs_uuid, modified_marc_record):
+            if self.__put_folio_record__(instance_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
