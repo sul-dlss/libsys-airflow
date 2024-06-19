@@ -185,8 +185,10 @@ class OCLCAPIWrapper(object):
             return output
 
         marc_records = self.__read_marc_files__(marc_files)
+
         successful_files: set = set()
         failed_files: set = set()
+
         with MetadataSession(authorization=self.oclc_token) as session:
             for record, file_name in marc_records:
                 instance_uuid = self.__instance_uuid__(record)
@@ -268,6 +270,7 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
+
             control_number = self.__extract_control_number_035__(new_record.text)
 
             if control_number is None:
@@ -276,11 +279,6 @@ class OCLCAPIWrapper(object):
                 return
 
             modified_marc_record = self.__update_oclc_number__(control_number, record)
-
-            if modified_marc_record is None:
-                output['failures'].append(instance_uuid)
-                failures.add(file_name)
-                return
 
             if self.__put_folio_record__(instance_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)

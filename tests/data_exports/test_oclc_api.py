@@ -172,13 +172,23 @@ def mock_metadata_session(authorization=None):
         record = pymarc.Record(data=kwargs['record'])
         if "008" in record and record["008"].value() == "00a":
             raise WorldcatRequestError(b"400 Client Error")
-        record.add_field(
-            pymarc.Field(
-                tag='035',
-                indicators=['', ''],
-                subfields=[pymarc.Subfield(code='a', value='(OCoLC)345678')],
+
+        if "024" in record and record["024"]["a"] == "gtfo-78901":
+            record.add_field(
+                pymarc.Field(
+                    tag='035',
+                    indicators=['', ''],
+                    subfields=[pymarc.Subfield(code='b', value='39710')],
+                )
             )
-        )
+        else:
+            record.add_field(
+                pymarc.Field(
+                    tag='035',
+                    indicators=['', ''],
+                    subfields=[pymarc.Subfield(code='a', value='(OCoLC)345678')],
+                )
+            )
         mock_response.text = record.as_marc21()
         return mock_response
 
@@ -464,6 +474,39 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
     assert new_response["success"] == []
     assert new_response["failures"] == ['e15e3707-f012-482f-a13b-34556b6d0946']
+
+
+def test_new_no_control_number(mock_oclc_api, tmp_path):
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    instance_uuid = "a3b25c31-04c0-44d3-b894-e6e41f128f32"
+    marc_file = tmp_path / "2024061913-CASUM.mrc"
+
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='024',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value="gtfo-78901")],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[pymarc.Subfield(code='i', value=instance_uuid)],
+        ),
+    )
+
+    with marc_file.open('wb+') as fo:
+        writer = pymarc.MARCWriter(fo)
+        writer.write(record)
+
+    new_response = oclc_api_instance.new([str(marc_file.absolute())])
+
+    assert new_response["success"] == []
+    assert new_response["failures"] == [instance_uuid]
 
 
 def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
