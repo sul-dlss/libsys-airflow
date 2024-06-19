@@ -241,7 +241,7 @@ def mock_httpx_client():
         match request.method:
 
             case 'PUT':
-                if request.url.path.endswith('d63085c0-cab6-4bdd-95e8-d53696919ac1'):
+                if request.url.path.endswith('4c2d955a-b024-448f-9f7a-6fc1f51416d8'):
                     response = httpx.Response(
                         status_code=422, text='Failed to update SRS'
                     )
@@ -258,18 +258,54 @@ def mock_folio_client(mocker):
 
     def mock_folio_get(*args, **kwargs):
         output = {}
-        if args[0].endswith("08ca5a68-241a-4a5f-89b9-5af5603981ad"):
-            output = {"parsedRecord": {"content": json.loads(sample_marc[0].as_json())}}
-        if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
-            output = {"parsedRecord": {"content": json.loads(sample_marc[2].as_json())}}
-        if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
-            output = {}
-        for instance_uuid in [
-            "f19fd2fc-586c-45df-9b0c-127af97aef34",
-            "958835d2-39cc-4ab3-9c56-53bf7940421b",
-        ]:
-            if args[0].endswith(instance_uuid):
-                output = {"_version": "2", "hrid": "a345691"}
+        if args[0].startswith("/source-storage/source-records"):
+            if args[0].endswith("958835d2-39cc-4ab3-9c56-53bf7940421b"):
+                output = {
+                    "sourceRecords": [
+                        {
+                            "recordId": "e941404e-2dab-4a34-8aa5-3dcaef62736b",
+                            "parsedRecord": {
+                                "content": json.loads(sample_marc[0].as_json())
+                            }
+                        }
+                    ]
+                }
+            if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
+                output = {
+                    "sourceRecords": [
+                        {
+                            "recordId": "d63085c0-cab6-4bdd-95e8-d53696919ac1",
+                            "parsedRecord": {
+                                "content": json.loads(sample_marc[2].as_json())
+                            }
+                        }
+                    ]
+                }
+            if args[0].endswith("38a7bb66-cd11-4af6-a339-c13f5855b36f"):
+                output = {
+                    "sourceRecords": [
+                        {
+                            "recordId": "4c2d955a-b024-448f-9f7a-6fc1f51416d8",
+                            "parsedRecord": {
+                                "content": json.loads(sample_marc[1].as_json())
+                            }
+                        }
+                    ]
+                }
+            if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
+                output = {
+                    "sourceRecords": []
+                }
+        if args[0].startswith("/inventory/instances/"):
+            for instance_uuid in [
+                "f19fd2fc-586c-45df-9b0c-127af97aef34",
+                "958835d2-39cc-4ab3-9c56-53bf7940421b",
+                "00b492cb-704d-41f4-bd12-74cfe643aea9",
+                "38a7bb66-cd11-4af6-a339-c13f5855b36f",
+            ]:
+                if args[0].endswith(instance_uuid):
+                    output = {"_version": "2", "hrid": "a345691"}
+        
         return output
 
     mock = mocker
@@ -382,7 +418,7 @@ def test_oclc_api_failed_authentication(mock_oclc_api):
         )
 
 
-def test_oclc_api_missing_srs(mock_oclc_api, caplog):
+def test_oclc_api_missing_instance_uuid(mock_oclc_api, caplog):
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
@@ -391,9 +427,9 @@ def test_oclc_api_missing_srs(mock_oclc_api, caplog):
 
     record = pymarc.Record()
 
-    oclc_api_instance.__record_uuids__(record)
+    oclc_api_instance.__instance_uuid__(record)
 
-    assert "Record Missing SRS uuid" in caplog.text
+    assert "No instance UUID found in MARC record" in caplog.text
 
 
 def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
@@ -486,7 +522,7 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
         'f8fa3682-fef8-4810-b8da-8f51b73785ac',
     ]
 
-    assert "Failed to update FOLIO for Instance" in caplog.text
+    assert "400 Client Error" in caplog.text
 
 
 def test_already_exists_control_number(tmp_path, mock_oclc_api):
@@ -506,29 +542,23 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
     )
 
     modified_marc_record = oclc_api_instance.__update_oclc_number__(
-        '445667', 'd63085c0-cab6-4bdd-95e8-d53696919ac1'
+        '445667', marc_record
     )
 
     assert modified_marc_record.get_fields('035')[0].value() == "(OCoLC-M)445667"
 
 
-def test_missing_marc_json(mock_oclc_api, caplog):
+def test_missing_srs_record_id(mock_oclc_api, caplog):
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
-    update_035_result = oclc_api_instance.__update_035__(
-        b"", "6aabb9cd-64cc-4673-b63b-d35fa015b91c"
-    )
+    srs_record_id = oclc_api_instance.__get_srs_record_id__("6aabb9cd-64cc-4673-b63b-d35fa015b91c")
 
-    assert update_035_result is False
-    assert "Failed converting 6aabb9cd-64cc-4673-b63b-d35fa015b91c" in caplog.text
+    assert srs_record_id is None
+    assert "No Active SRS record found for 6aabb9cd-64cc-4673-b63b-d35fa015b91c" in caplog.text
 
-    update_oclc_number_record = oclc_api_instance.__update_oclc_number__(
-        "22345", "6aabb9cd-64cc-4673-b63b-d35fa015b91c"
-    )
-    assert update_oclc_number_record is None
 
 
 def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
@@ -552,6 +582,22 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
         "f19fd2fc-586c-45df-9b0c-127af97aef34",
     ]
 
+
+def test_failed_folio_put(mock_oclc_api, caplog):
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    put_result = oclc_api_instance.__put_folio_record__(
+        "38a7bb66-cd11-4af6-a339-c13f5855b36f",
+        pymarc.Record()
+    )
+
+    assert put_result is False
+
+    
 
 def test_no_delete_records(mock_oclc_api, caplog):
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
