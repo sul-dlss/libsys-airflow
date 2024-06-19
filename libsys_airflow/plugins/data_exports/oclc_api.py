@@ -153,11 +153,14 @@ class OCLCAPIWrapper(object):
                     if matched_oclc:
                         suffix, oclc_number = matched_oclc.groups()
                         # Test if control number already exists
-                        if suffix is None and oclc_number == control_number:
-                            # Change prefix to include -M
-                            new_prefix = subfield.value.replace("(OCoLC)", "(OCoLC-M)")
-                            field.subfields.pop(i)
-                            field.add_subfield(code="a", value=new_prefix, pos=i)
+                        if oclc_number == control_number:
+                            if suffix is None:
+                                # Change prefix to include -M
+                                new_prefix = subfield.value.replace(
+                                    "(OCoLC)", "(OCoLC-M)"
+                                )
+                                field.subfields.pop(i)
+                                field.add_subfield(code="a", value=new_prefix, pos=i)
                             needs_new_035 = False
                             break
         if needs_new_035:
