@@ -271,7 +271,6 @@ class OCLCAPIWrapper(object):
                 recordFormat="application/marc",
             )
 
-            logging.info(f"Instance UUID {instance_uuid} MARC record added to OCLC {new_record}")
             control_number = self.__extract_control_number_035__(new_record.content)
 
             if control_number is None:

@@ -159,7 +159,7 @@ def missing_or_multiple_oclc_records():
     return sample
 
 
-def mock_metadata_session(authorization=None):
+def mock_metadata_session(authorization=None, timeout=None):
     mock_response = MagicMock()
 
     def mock__enter__(*args):
@@ -189,7 +189,7 @@ def mock_metadata_session(authorization=None):
                     subfields=[pymarc.Subfield(code='a', value='(OCoLC)345678')],
                 )
             )
-        mock_response.text = record.as_marc21()
+        mock_response.content = record.as_marc21()
         return mock_response
 
     def mock_holdings_set(**kwargs):
