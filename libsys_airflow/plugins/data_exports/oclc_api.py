@@ -189,7 +189,7 @@ class OCLCAPIWrapper(object):
         successful_files: set = set()
         failed_files: set = set()
 
-        with MetadataSession(authorization=self.oclc_token) as session:
+        with MetadataSession(authorization=self.oclc_token, timeout=30) as session:
             for record, file_name in marc_records:
                 instance_uuid = self.__instance_uuid__(record)
                 if instance_uuid is None:
