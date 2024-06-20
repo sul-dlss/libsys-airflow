@@ -205,7 +205,7 @@ class OCLCAPIWrapper(object):
                         failures=failed_files,
                     )
                 except WorldcatRequestError as e:
-                    logger.error(e)
+                    logger.error(f"Instance UUID {instance_uuid} Error: {e}")
                     output['failures'].append(instance_uuid)
                     failed_files.add(file_name)
                     continue
@@ -271,7 +271,8 @@ class OCLCAPIWrapper(object):
                 recordFormat="application/marc",
             )
 
-            control_number = self.__extract_control_number_035__(new_record.text)
+            logging.info(f"Instance UUID {instance_uuid} MARC record added to OCLC {new_record}")
+            control_number = self.__extract_control_number_035__(new_record.content)
 
             if control_number is None:
                 output['failures'].append(instance_uuid)
