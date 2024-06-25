@@ -23,27 +23,41 @@ logger = logging.getLogger(__name__)
 OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
 
 
-def oclc_record_operation(**kwargs):
-    oclc_api_function: Callable = kwargs["oclc_function"]
-    library: str = kwargs["library"]
-    type_of: str = kwargs["type_of"]
-    type_of_records: list = kwargs["records"]
+def oclc_records_operation(**kwargs) -> dict:
+
+    function_name: str = kwargs["oclc_function"]
+    connection_lookup: dict = kwargs["connections"]
+
+    type_of_records: dict = kwargs["records"]
     success: dict = kwargs.get("success", {})
     failures: dict = kwargs.get("failures", {})
 
-    for records in type_of_records:
+    for library, records in type_of_records.items():
         success[library] = []
         failures[library] = []
 
-        if len(records) > 0:
-            oclc_result = oclc_api_function(records)
-            success[library].extend(oclc_result['success'])
-            failures[library].extend(oclc_result['failures'])
-            logger.info(
-                f"Processed {type_of} for {library} successful {len(success[library])} failures {len(failures[library])}"
-            )
-        else:
-            logger.info(f"No {type_of} records for {library}")
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+
+        oclc_api_function = getattr(oclc_api, function_name)
+
+        for records in records:
+            success[library] = []
+            failures[library] = []
+
+            if len(records) > 0:
+                oclc_result = oclc_api_function(records)
+                success[library].extend(oclc_result['success'])
+                failures[library].extend(oclc_result['failures'])
+                logger.info(
+                    f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
+                )
+            else:
+                logger.info(f"No {function_name} records for {library}")
+
+    return {"success": success, "failures": failures}
 
 
 class OCLCAPIWrapper(object):

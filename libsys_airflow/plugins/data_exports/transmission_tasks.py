@@ -207,7 +207,7 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
 
 
 @task(multiple_outputs=True)
-def delete_from_oclc_task(connection_details: list, delete_records: list) -> dict:
+def delete_from_oclc_task(connection_details: list, delete_records: dict) -> dict:
     success: dict = {}
     failures: dict = {}
 
@@ -222,7 +222,7 @@ def delete_from_oclc_task(connection_details: list, delete_records: list) -> dic
         oclc_record_operation(
             library=library,
             failures=failures,
-            oclc_api_fucntion=oclc_api.delete,
+            oclc_api_function=oclc_api.delete,
             success=success,
             type_of="deletes",
             type_of_records=records,
@@ -231,7 +231,7 @@ def delete_from_oclc_task(connection_details: list, delete_records: list) -> dic
 
 
 @task(multiple_outputs=True)
-def match_oclc_task(connection_details: list, new_records: list) -> dict:
+def match_oclc_task(connection_details: list, new_records: dict) -> dict:
     success: dict = {}
     failures: dict = {}
 
@@ -246,9 +246,34 @@ def match_oclc_task(connection_details: list, new_records: list) -> dict:
         oclc_record_operation(
             library=library,
             failures=failures,
-            oclc_api_fucntion=oclc_api.match,
+            oclc_api_function=oclc_api.match,
             success=success,
             type_of="deletes",
+            type_of_records=records,
+        )
+
+    return {"success": success, "failures": failures}
+
+
+@task(multiple_outputs=True)
+def update_oclc_task(connection_details: list, update_records: dict) -> dict:
+    success: dict = {}
+    failures: dict = {}
+
+    connection_lookup = oclc_connections(connection_details)
+
+    for library, records in update_records.items():
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+
+        oclc_record_operation(
+            library=library,
+            failures=failures,
+            oclc_api_function=oclc_api.update,
+            success=success,
+            type_of="updates",
             type_of_records=records,
         )
 
