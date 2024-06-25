@@ -358,13 +358,17 @@ def test_gather_oclc_files_task(tmp_path):
     updates_stf = updates_path / "20240603113-STF.mrc"
     updates_stf.touch()
 
-    libraries = gather_oclc_files_task.function(airflow=airflow)
+    oclc_ops_libraries = gather_oclc_files_task.function(airflow=airflow)
 
-    assert libraries["STF"] == {
-        "new": [str(new_stf_marc_file)],
-        "updates": [str(updates_stf)],
+    assert oclc_ops_libraries["deletes"] == {
+        "CASUM": [],
+        "HIN": [],
+        "RCJ": [str(deletes_rcj)],
+        "S7Z": [str(deletes_s7z)],
+        "STF": [],
     }
 
-    assert len(libraries["HIN"]["updates"]) == 1
-    assert "deletes" in libraries["RCJ"]
-    assert "updates" not in libraries["CASUM"]
+    assert oclc_ops_libraries["new"]["STF"] == [str(new_stf_marc_file)]
+    assert len(oclc_ops_libraries["new"]["CASUM"]) == 1
+    assert len(oclc_ops_libraries["updates"]["HIN"]) == 1
+    assert len(oclc_ops_libraries["updates"]["CASUM"]) == 0
