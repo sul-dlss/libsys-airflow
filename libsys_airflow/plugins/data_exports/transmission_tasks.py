@@ -1,13 +1,21 @@
+import copy
 import logging
-from pathlib import Path
-from s3path import S3Path
+
 import httpx
+
+from pathlib import Path
+from typing import Callable
+from s3path import S3Path
+
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
-from libsys_airflow.plugins.data_exports.oclc_api import OCLCAPIWrapper
+from libsys_airflow.plugins.data_exports.oclc_api import (
+    OCLCAPIWrapper,
+    oclc_record_operation,
+)
 from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
@@ -68,26 +76,28 @@ def retry_failed_files_task(**kwargs) -> dict:
 @task(multiple_outputs=True)
 def gather_oclc_files_task(**kwargs) -> dict:
     """
-    Gets new and updated MARC files by library (SUL, Business, Hoover, and Law)
+    Gets deleted, new, and updated MARC files by library (SUL, Business, Hoover, and Law)
     to send to OCLC
     """
     airflow = kwargs.get("airflow", "/opt/airflow")
     libraries: dict = {
-        "S7Z": {},  # Business
-        "HIN": {},  # Hoover
-        "CASUM": {},  # Lane
-        "RCJ": {},  # Law
-        "STF": {},  # SUL
+        "S7Z": [],  # Business
+        "HIN": [],  # Hoover
+        "CASUM": [],  # Lane
+        "RCJ": [],  # Law
+        "STF": [],  # SUL
+    }
+    output = {
+        "deletes": copy.deepcopy(libraries),
+        "new": copy.deepcopy(libraries),
+        "updates": copy.deepcopy(libraries),
     }
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
     for marc_file_path in oclc_directory.glob("**/*.mrc"):
         type_of = marc_file_path.parent.name
         library = marc_file_path.stem.split("-")[1]
-        if type_of in libraries[library]:
-            libraries[library][type_of].append(str(marc_file_path))
-        else:
-            libraries[library][type_of] = [str(marc_file_path)]
-    return libraries
+        output[type_of][library].append(str(marc_file_path))
+    return output
 
 
 @task
@@ -158,7 +168,7 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     return {"success": success, "failures": failures}
 
 
-@task
+@task(multiple_outputs=True)
 def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
     success: dict = {}
     failures: dict = {}
@@ -194,6 +204,30 @@ def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
 
     archive = list(set(archive))
     return {"success": success, "failures": failures, "archive": archive}
+
+
+@task(multiple_outputs=True)
+def delete_from_oclc_task(connection_details: list, delete_records: list) -> dict:
+    success: dict = {}
+    failures: dict = {}
+
+    connection_lookup = oclc_connections(connection_details)
+
+    for library, records in delete_records.items():
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+
+        oclc_record_operation(
+            library=library,
+            failures=failures,
+            oclc_api_fucntion=oclc_api.delete,
+            success=success,
+            type_of="deletes",
+            type_of_records=records,
+        )
+    return {"success": success, "failures": failures}
 
 
 @task

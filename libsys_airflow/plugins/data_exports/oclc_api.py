@@ -23,6 +23,29 @@ logger = logging.getLogger(__name__)
 OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
 
 
+def oclc_record_operation(**kwargs):
+    oclc_api_function: Callable = kwargs["oclc_function"]
+    library: str = kwargs["library"]
+    type_of: str = kwargs["type_of"]
+    type_of_records: list = kwargs["records"]
+    success: dict = kwargs.get("success", {})
+    failures: dict = kwargs.get("failures", {})
+
+    for records in type_of_records:
+        success[library] = []
+        failures[library] = []
+
+        if len(records) > 0:
+            oclc_result = oclc_api_function(records)
+            success[library].extend(oclc_result['success'])
+            failures[library].extend(oclc_result['failures'])
+            logger.info(
+                f"Processed {type_of} for {library} successful {len(success[library])} failures {len(failures[library])}"
+            )
+        else:
+            logger.info(f"No {type_of} records for {library}")
+
+
 class OCLCAPIWrapper(object):
     # Helper class for transmitting MARC records to OCLC Worldcat API
 
