@@ -5,6 +5,7 @@ import pymarc
 
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
+from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from s3path import S3Path
 
 logger = logging.getLogger(__name__)
@@ -121,12 +122,20 @@ oclc_excluded = [
     '999',
 ]
 
+"""
+Called by the vendor selection DAGs except oclc and the full record selections
+"""
+
 
 def add_holdings_items_to_marc_files(marc_file_list: dict, full_dump: bool):
-    transformer = Transformer()
+    connection_pool = SQLPool().pool()
+    _connection = connection_pool.getconn()
+    transformer = Transformer(connection=_connection)
     new_and_updates = marc_file_list['new'] + marc_file_list['updates']
     for marc_file in new_and_updates:
         transformer.add_holdings_items(marc_file=marc_file, full_dump=full_dump)
+
+    connection_pool.putconn(_connection, close=True)
 
 
 def divide_into_oclc_libraries(**kwargs):

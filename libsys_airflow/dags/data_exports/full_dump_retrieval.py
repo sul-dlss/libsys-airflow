@@ -101,29 +101,34 @@ with DAG(
 
     @task
     def fetch_folio_records(batch_size, start, stop):
+        _connection = connection_pool.getconn()
         marc_file_list = []
-        connection_pool = SQLPool().pool()
 
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
                 marc = fetch_full_dump_marc(
-                    offset=offset, batch_size=batch_size, pool=connection_pool
+                    offset=offset, batch_size=batch_size, connection=_connection
                 )
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
                 logger.warning(f"{err} for offset {offset}")
                 continue
 
+        connection_pool.putconn(_connection, close=True)  # type: ignore
         return marc_file_list
 
     @task_group(group_id="transform_marc")
     def marc_transformations(marc_files: list):
         @task
         def transform_marc_records_add_holdings(marc_files: list):
-            transformer = Transformer()
+            _connection = connection_pool.getconn()
+            transformer = Transformer(connection=_connection)
+
             for marc_file in marc_files:
                 transformer.add_holdings_items(marc_file=marc_file, full_dump=True)
+
+            connection_pool.putconn(_connection, close=True)
 
         @task
         def transform_marc_records_remove_fields(marc_files: list):
@@ -133,6 +138,8 @@ with DAG(
         transform_marc_records_add_holdings(
             marc_files
         ) >> transform_marc_records_remove_fields(marc_files)
+
+    connection_pool = SQLPool().pool()
 
     number_of_jobs = do_concurrency()
 

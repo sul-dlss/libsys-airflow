@@ -161,14 +161,17 @@ def mock_get_current_context(mocker):
 def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
-    # mocker.patch.object(full_dump_marc, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
         return_value=mock_airflow_connection,
     )
 
-    full_dump_marc.fetch_full_dump_marc(offset=0, batch_size=3, pool=MockPool())
+    full_dump_marc.fetch_full_dump_marc(
+        offset=0, batch_size=3, connection=MockConnection()
+    )
     assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text
 
-    full_dump_marc.fetch_full_dump_marc(offset=3, batch_size=3, pool=MockPool())
+    full_dump_marc.fetch_full_dump_marc(
+        offset=3, batch_size=3, connection=MockConnection()
+    )
     assert "Saving 3 marc records to 3_6.mrc in bucket" in caplog.text

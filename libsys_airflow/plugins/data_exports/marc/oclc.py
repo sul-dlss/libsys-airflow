@@ -1,6 +1,7 @@
 import logging
 import pathlib
 
+import httpx
 import pymarc
 
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
@@ -68,11 +69,15 @@ class OCLCTransformer(Transformer):
 
     def determine_campus_code(self, record: pymarc.Record):
         instance_uuid = self.__filter_999__(record)
+        codes: list = []
+        try:
+            holdings_result = self.folio_client.folio_get(
+                f"/holdings-storage/holdings?query=(instanceId=={instance_uuid})"
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to retrieve holdings; error {e}")
+            return codes
 
-        holdings_result = self.folio_client.folio_get(
-            f"/holdings-storage/holdings?query=(instanceId=={instance_uuid})"
-        )
-        codes = []
         for holding in holdings_result['holdingsRecords']:
             campus = self.campus_lookup.get(holding.get('permanentLocationId'))
             if campus is None:
@@ -114,6 +119,9 @@ class OCLCTransformer(Transformer):
             record_ids = get_record_id(record)
             campus_codes = self.determine_campus_code(record)
 
+            if len(campus_codes) < 1:
+                continue
+
             file_path = str(marc_path)
             for code in campus_codes:
                 match len(record_ids):
@@ -133,8 +141,12 @@ class OCLCTransformer(Transformer):
                         self.multiple_codes(record, code, record_ids)
 
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
-        instance_id = record['999']['i']
-        self.staff_notices.append((instance_id, code, record_ids))
+        fields999 = record.get_fields('999')
+        for field in fields999:
+            if field.indicators == ['f', 'f']:
+                instance_id = field['i']
+                self.staff_notices.append((instance_id, code, record_ids))
+                break
 
     def save(self):
         """

@@ -7,8 +7,12 @@ from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
+    consolidate_oclc_archive_files,
+    delete_from_oclc_task,
+    match_oclc_task,
+    new_to_oclc_task,
+    set_holdings_oclc_task,
     gather_oclc_files_task,
-    transmit_data_oclc_api_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,6 +25,14 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
+
+connections = [
+    "http-web.oclc-Business",
+    "http-web.oclc-Hoover",
+    "http-web.oclc-Lane",
+    "http-web.oclc-Law",
+    "http-web.oclc-SUL",
+]
 
 
 @dag(
@@ -40,20 +52,33 @@ def send_oclc_records():
 
     gather_files = gather_oclc_files_task()
 
-    transmit_data = transmit_data_oclc_api_task(
-        [
-            "http-web.oclc-Business",
-            "http-web.oclc-Hoover",
-            "http-web.oclc-Lane",
-            "http-web.oclc-Law",
-            "http-web.oclc-SUL",
-        ],
-        gather_files,
+    deleted_records = delete_from_oclc_task(
+        connection_details=connections, delete_records=gather_files["deletes"]
     )
 
-    archive_data = archive_transmitted_data_task(transmit_data['archive'])
+    set_holdings_for_records = set_holdings_oclc_task(
+        connection_details=connections, update_records=gather_files["updates"]
+    )
 
-    start >> gather_files >> transmit_data >> archive_data >> end
+    matched_records = match_oclc_task(
+        connection_details=connections, new_records=gather_files["new"]
+    )
+
+    new_records = new_to_oclc_task(
+        connection_details=connections, new_records=matched_records["failures"]
+    )
+
+    archive_files = consolidate_oclc_archive_files(
+        deleted_records["archive"],
+        new_records["archive"],
+        matched_records["archive"],
+        set_holdings_for_records["archive"],
+    )
+
+    archive_data = archive_transmitted_data_task(archive_files)
+
+    start >> gather_files
+    archive_data >> end
 
 
 send_oclc_records()
