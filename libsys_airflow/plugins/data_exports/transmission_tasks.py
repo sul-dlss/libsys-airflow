@@ -4,9 +4,7 @@ import logging
 import httpx
 
 from pathlib import Path
-from typing import Callable
 from s3path import S3Path
-
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
@@ -263,6 +261,14 @@ def update_oclc_task(connection_details: list, update_records: dict) -> dict:
 
 
 @task
+def consolidate_oclc_success_files(
+    deleted, matched: list, new_files: list, updated: list
+) -> list:
+    unique_files = set(deleted + matched + new_files + updated)
+    return list(unique_files)
+
+
+@task
 def archive_transmitted_data_task(files):
     """
     Given a list of successfully transmitted files, move files to
@@ -271,6 +277,7 @@ def archive_transmitted_data_task(files):
     Also moves the marc files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
     logger.info("Moving transmitted files to archive directory")
+
     if len(files) < 1:
         logger.warning("No files to archive")
         return
