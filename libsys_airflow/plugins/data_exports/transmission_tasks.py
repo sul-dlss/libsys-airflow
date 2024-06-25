@@ -10,10 +10,8 @@ from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
-from libsys_airflow.plugins.data_exports.oclc_api import (
-    OCLCAPIWrapper,
-    oclc_records_operation,
-)
+from libsys_airflow.plugins.data_exports.oclc_api import oclc_records_operation
+
 from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
@@ -164,44 +162,6 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
             failures.append(f)
 
     return {"success": success, "failures": failures}
-
-
-@task(multiple_outputs=True)
-def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
-    success: dict = {}
-    failures: dict = {}
-    archive: list = []
-
-    connection_lookup = oclc_connections(connection_details)
-
-    for library, records in libraries.items():
-        success[library] = []
-        failures[library] = []
-
-        oclc_api = OCLCAPIWrapper(
-            client_id=connection_lookup[library]["username"],
-            secret=connection_lookup[library]["password"],
-        )
-        if len(records.get("deletes", [])) > 0:
-            delete_result = oclc_api.delete(records['deletes'])
-            success[library].extend(delete_result['success'])
-            failures[library].extend(delete_result['failures'])
-            archive.extend(delete_result['archive'])
-
-        if len(records.get("new", [])) > 0:
-            new_result = oclc_api.new(records['new'])
-            success[library].extend(new_result['success'])
-            failures[library].extend(new_result['failures'])
-            archive.extend(new_result['archive'])
-
-        if len(records.get("updates", [])) > 0:
-            updated_result = oclc_api.update(records['updates'])
-            success[library].extend(updated_result['success'])
-            failures[library].extend(updated_result['failures'])
-            archive.extend(updated_result['archive'])
-
-    archive = list(set(archive))
-    return {"success": success, "failures": failures, "archive": archive}
 
 
 @task(multiple_outputs=True)
