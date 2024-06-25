@@ -276,6 +276,50 @@ class OCLCAPIWrapper(object):
         )
         return output
 
+    def match(self, marc_files: List[str]) -> dict:
+
+        def __match_oclc__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            output: dict = kwargs["output"]
+            record: pymarc.Record = kwargs["record"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            file_name: str = kwargs["file_name"]
+            failures: set = kwargs["failures"]
+            successes: set = kwargs["successes"]
+
+            record.remove_fields(*oclc_excluded)
+            marc21 = record.as_marc21()
+
+            matched_record_result = session.bib_match(
+                record=marc21,
+                recordFormat="application/marc",
+            )
+            matched_record = matched_record_result.json()
+            if matched_record['numberOfRecords'] < 1:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+                return
+
+            # Use first brief record's oclcNumber to add to existing MARC
+            # record
+            control_number = matched_record['briefRecords'][0]['oclcNumber']
+
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
+
+            if self.__put_folio_record__(instance_uuid, modified_marc_record):
+                output['success'].append(instance_uuid)
+                successes.add(file_name)
+            else:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+
+        output = self.__oclc_operations__(
+            marc_files=marc_files,
+            function=__match_oclc__,
+            no_recs_message="No new marc records",
+        )
+        return output
+
     def new(self, marc_files: List[str]) -> dict:
 
         def __new_oclc__(**kwargs):

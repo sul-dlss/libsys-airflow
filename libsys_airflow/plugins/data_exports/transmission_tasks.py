@@ -230,6 +230,31 @@ def delete_from_oclc_task(connection_details: list, delete_records: list) -> dic
     return {"success": success, "failures": failures}
 
 
+@task(multiple_outputs=True)
+def match_oclc_task(connection_details: list, new_records: list) -> dict:
+    success: dict = {}
+    failures: dict = {}
+
+    connection_lookup = oclc_connections(connection_details)
+
+    for library, records in new_records.items():
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+
+        oclc_record_operation(
+            library=library,
+            failures=failures,
+            oclc_api_fucntion=oclc_api.match,
+            success=success,
+            type_of="deletes",
+            type_of_records=records,
+        )
+
+    return {"success": success, "failures": failures}
+
+
 @task
 def archive_transmitted_data_task(files):
     """
