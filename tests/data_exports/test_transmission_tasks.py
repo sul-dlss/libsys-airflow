@@ -1,5 +1,6 @@
 import pytest  # noqa
 import pathlib
+
 import httpx
 
 from http import HTTPStatus
@@ -15,6 +16,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     transmit_data_ftp_task,
     oclc_connections,
     archive_transmitted_data_task,
+    delete_from_oclc_task,
     gather_oclc_files_task,
 )
 
@@ -372,3 +374,44 @@ def test_gather_oclc_files_task(tmp_path):
     assert len(oclc_ops_libraries["new"]["CASUM"]) == 1
     assert len(oclc_ops_libraries["updates"]["HIN"]) == 1
     assert len(oclc_ops_libraries["updates"]["CASUM"]) == 0
+
+
+def test_delete_from_oclc_task(mocker, mock_oclc_connection):
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
+        return_value={"CASUM": {"username": "lane-user", "password": "8de1a51e"}},
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_records_operation",
+        return_value={
+            "success": {
+                "CASUM": [],
+                "HIN": ["160ef499-18a2-47a4-bdab-a31522b10508"],
+                "RCJ": [],
+                "S7Z": [],
+                "STF": [],
+            },
+            "failures": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": [],
+                "S7Z": [],
+                "STF": ["d0725143-3ab5-472a-bc1e-b11321d72a13"],
+            },
+        },
+    )
+
+    delete_records = {
+        "CASUM": [],
+        "HIN": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024062612-HIN.mrc"],
+        "RCJ": [],
+        "S7Z": [],
+        "STF": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024062612-STF.mrc"],
+    }
+
+    result = delete_from_oclc_task.function(["http-web.oclc-Lane"], delete_records)
+
+    assert result['success']["HIN"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
+    assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
