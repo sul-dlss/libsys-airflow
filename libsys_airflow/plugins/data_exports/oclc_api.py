@@ -189,7 +189,7 @@ class OCLCAPIWrapper(object):
         successful_files: set = set()
         failed_files: set = set()
 
-        with MetadataSession(authorization=self.oclc_token) as session:
+        with MetadataSession(authorization=self.oclc_token, timeout=30) as session:
             for record, file_name in marc_records:
                 instance_uuid = self.__instance_uuid__(record)
                 if instance_uuid is None:
@@ -205,7 +205,7 @@ class OCLCAPIWrapper(object):
                         failures=failed_files,
                     )
                 except WorldcatRequestError as e:
-                    logger.error(e)
+                    logger.error(f"Instance UUID {instance_uuid} Error: {e}")
                     output['failures'].append(instance_uuid)
                     failed_files.add(file_name)
                     continue
@@ -271,7 +271,7 @@ class OCLCAPIWrapper(object):
                 recordFormat="application/marc",
             )
 
-            control_number = self.__extract_control_number_035__(new_record.text)
+            control_number = self.__extract_control_number_035__(new_record.content)
 
             if control_number is None:
                 output['failures'].append(instance_uuid)
