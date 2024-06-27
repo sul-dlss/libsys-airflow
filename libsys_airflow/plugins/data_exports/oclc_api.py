@@ -45,18 +45,19 @@ def oclc_records_operation(**kwargs) -> dict:
 
         success[library] = []
         failures[library] = []
-
+        archive_files = []
         if len(records) > 0:
             oclc_result = oclc_api_function(records)
             success[library].extend(oclc_result['success'])
             failures[library].extend(oclc_result['failures'])
+            archive_files.extend(oclc_result['archive'])
             logger.info(
                 f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
             )
         else:
             logger.info(f"No {function_name} records for {library}")
 
-    return {"success": success, "failures": failures}
+    return {"success": success, "failures": failures, "archive": archive_files}
 
 
 class OCLCAPIWrapper(object):

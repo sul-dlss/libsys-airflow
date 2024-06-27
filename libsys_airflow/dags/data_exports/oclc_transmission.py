@@ -7,7 +7,7 @@ from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
-    consolidate_oclc_success_files,
+    consolidate_oclc_archive_files,
     delete_from_oclc_task,
     match_oclc_task,
     new_to_oclc_task,
@@ -68,14 +68,14 @@ def send_oclc_records():
         connection_details=connections, new_records=matched_records["failures"]
     )
 
-    success_files = consolidate_oclc_success_files(
-        deleted_records["success"],
-        new_records["success"],
-        matched_records["success"],
-        updated_records["success"],
+    archive_files = consolidate_oclc_archive_files(
+        deleted_records["archive"],
+        new_records["archive"],
+        matched_records["archive"],
+        updated_records["archive"],
     )
 
-    archive_data = archive_transmitted_data_task(success_files)
+    archive_data = archive_transmitted_data_task(archive_files)
 
     start >> gather_files
     archive_data >> end

@@ -213,7 +213,7 @@ def update_oclc_task(connection_details: list, update_records: dict) -> dict:
 
 
 @task
-def consolidate_oclc_success_files(
+def consolidate_oclc_archive_files(
     deleted, matched: list, new_files: list, updated: list
 ) -> list:
     unique_files = set(deleted + matched + new_files + updated)
