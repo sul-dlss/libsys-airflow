@@ -320,7 +320,18 @@ class OCLCAPIWrapper(object):
 
             modified_marc_record = self.__update_oclc_number__(control_number, record)
 
+            successful_match = False
             if self.__put_folio_record__(instance_uuid, modified_marc_record):
+
+                # Sets holdings using the OCLC number
+                update_holding_result = session.holdings_set(oclcNumber=control_number)
+                if update_holding_result:
+                    logger.info(
+                        f"Sets new holdings for {instance_uuid} OCLC {update_holding_result}"
+                    )
+                    successful_match = True
+
+            if successful_match:
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
@@ -354,14 +365,22 @@ class OCLCAPIWrapper(object):
 
             control_number = self.__extract_control_number_035__(new_record.content)
 
-            if control_number is None:
-                output['failures'].append(instance_uuid)
-                failures.add(file_name)
-                return
+            successful_add = False
+            if control_number:
+                modified_marc_record = self.__update_oclc_number__(
+                    control_number, record
+                )
 
-            modified_marc_record = self.__update_oclc_number__(control_number, record)
+                if self.__put_folio_record__(instance_uuid, modified_marc_record):
+                    # Sets holdings using the OCLC number
+                    new_holding_result = session.holdings_set(oclcNumber=control_number)
+                    if new_holding_result:
+                        logger.info(
+                            f"Sets new holdings for {instance_uuid} OCLC {new_holding_result}"
+                        )
+                        successful_add = True
 
-            if self.__put_folio_record__(instance_uuid, modified_marc_record):
+            if successful_add:
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
