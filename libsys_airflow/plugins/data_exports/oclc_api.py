@@ -43,19 +43,18 @@ def oclc_records_operation(**kwargs) -> dict:
 
         oclc_api_function = getattr(oclc_api, function_name)
 
-        for records in records:
-            success[library] = []
-            failures[library] = []
+        success[library] = []
+        failures[library] = []
 
-            if len(records) > 0:
-                oclc_result = oclc_api_function(records)
-                success[library].extend(oclc_result['success'])
-                failures[library].extend(oclc_result['failures'])
-                logger.info(
-                    f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
-                )
-            else:
-                logger.info(f"No {function_name} records for {library}")
+        if len(records) > 0:
+            oclc_result = oclc_api_function(records)
+            success[library].extend(oclc_result['success'])
+            failures[library].extend(oclc_result['failures'])
+            logger.info(
+                f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
+            )
+        else:
+            logger.info(f"No {function_name} records for {library}")
 
     return {"success": success, "failures": failures}
 

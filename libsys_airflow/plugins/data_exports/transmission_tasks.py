@@ -169,13 +169,11 @@ def delete_from_oclc_task(connection_details: list, delete_records: dict) -> dic
 
     connection_lookup = oclc_connections(connection_details)
 
-    success, failures = oclc_records_operation(
+    return oclc_records_operation(
         connections=connection_lookup,
-        oclc_api_function="delete",
-        type_of_records=delete_records,
+        oclc_function="delete",
+        records=delete_records,
     )
-
-    return {"success": success, "failures": failures}
 
 
 @task(multiple_outputs=True)
@@ -183,13 +181,11 @@ def match_oclc_task(connection_details: list, new_records: dict) -> dict:
 
     connection_lookup = oclc_connections(connection_details)
 
-    success, failures = oclc_records_operation(
+    return oclc_records_operation(
         connections=connection_lookup,
-        oclc_api_function="delete",
-        type_of_records=new_records,
+        oclc_function="match",
+        records=new_records,
     )
-
-    return {"success": success, "failures": failures}
 
 
 @task(multiple_outputs=True)
@@ -197,13 +193,11 @@ def new_to_oclc_task(connection_details: list, new_records: dict) -> dict:
 
     connection_lookup = oclc_connections(connection_details)
 
-    success, failures = oclc_records_operation(
+    return oclc_records_operation(
         connections=connection_lookup,
-        oclc_api_function="new",
-        type_of_records=new_records,
+        oclc_function="new",
+        records=new_records,
     )
-
-    return {"success": success, "failures": failures}
 
 
 @task(multiple_outputs=True)
@@ -211,13 +205,11 @@ def update_oclc_task(connection_details: list, update_records: dict) -> dict:
 
     connection_lookup = oclc_connections(connection_details)
 
-    success, failures = oclc_records_operation(
+    return oclc_records_operation(
         connections=connection_lookup,
-        oclc_api_function="update",
-        type_of_records=update_records,
+        oclc_function="update",
+        records=update_records,
     )
-
-    return {"success": success, "failures": failures}
 
 
 @task
