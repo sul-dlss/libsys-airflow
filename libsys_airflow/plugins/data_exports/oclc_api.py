@@ -1,3 +1,4 @@
+import copy
 import logging
 import pathlib
 import re
@@ -301,8 +302,9 @@ class OCLCAPIWrapper(object):
             failures: set = kwargs["failures"]
             successes: set = kwargs["successes"]
 
-            record.remove_fields(*oclc_excluded)
-            marc21 = record.as_marc21()
+            export_record = copy.deepcopy(record)
+            export_record.remove_fields(*oclc_excluded)
+            marc21 = export_record.as_marc21()
 
             matched_record_result = session.bib_match(
                 record=marc21,
@@ -356,8 +358,10 @@ class OCLCAPIWrapper(object):
             successes: set = kwargs["successes"]
             failures: set = kwargs["failures"]
 
-            record.remove_fields(*oclc_excluded)
-            marc21 = record.as_marc21()
+            export_record = copy.deepcopy(record)
+            export_record.remove_fields(*oclc_excluded)
+
+            marc21 = export_record.as_marc21()
             new_record = session.bib_create(
                 record=marc21,
                 recordFormat="application/marc",
