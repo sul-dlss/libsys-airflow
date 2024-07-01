@@ -192,6 +192,27 @@ def mock_metadata_session(authorization=None, timeout=None):
         mock_response.content = record.as_marc21()
         return mock_response
 
+    def mock_bib_match(**kwargs):
+        raw_record = kwargs["record"]
+
+        record = pymarc.Record(data=raw_record)
+
+        payload = {"numberOfRecords": 1, "briefRecords": []}
+
+        match record['008'].value():
+
+            case "a4589":
+                payload['briefRecords'].append({'oclcNumber': "8891340"})
+
+            case "a9007876":
+                payload['numberOfRecords'] = 0
+
+            case "a60987":
+                payload['briefRecords'].append({'oclcNumber': '456907809'})
+
+        mock_response.json = lambda: payload
+        return mock_response
+
     def mock_holdings_set(**kwargs):
         if kwargs['oclcNumber'] == "456907809":
             raise WorldcatRequestError(b"400 Client Error")
@@ -230,6 +251,7 @@ def mock_metadata_session(authorization=None, timeout=None):
     mock_session.__enter__ = mock__enter__
     mock_session.__exit__ = mock__exit__
     mock_session.bib_create = mock_bib_create
+    mock_session.bib_match = mock_bib_match
     mock_session.holdings_set = mock_holdings_set
     mock_session.holdings_unset = mock_holdings_unset
 
@@ -310,6 +332,8 @@ def mock_folio_client(mocker):
                 "958835d2-39cc-4ab3-9c56-53bf7940421b",
                 "00b492cb-704d-41f4-bd12-74cfe643aea9",
                 "38a7bb66-cd11-4af6-a339-c13f5855b36f",
+                "a3a6f1c4-152c-4f8f-9763-07a49cd6fa5a",
+                "2023473e-802a-4bd2-9ca1-5d2e360a0fbd",
             ]:
                 if args[0].endswith(instance_uuid):
                     output = {"_version": "2", "hrid": "a345691"}
@@ -732,6 +756,69 @@ def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
     ]
 
 
+def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
+    existing_record = pymarc.Record()
+
+    existing_record.add_field(
+        pymarc.Field(tag='008', data="a4589"),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='958835d2-39cc-4ab3-9c56-53bf7940421b')
+            ],
+        ),
+    )
+
+    new_record = pymarc.Record()
+
+    new_record.add_field(
+        pymarc.Field(tag='008', data="a9007876"),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='2023473e-802a-4bd2-9ca1-5d2e360a0fbd')
+            ],
+        ),
+    )
+
+    bad_oclc_num = pymarc.Record()
+
+    bad_oclc_num.add_field(
+        pymarc.Field(tag='008', data="a9007876"),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='00b492cb-704d-41f4-bd12-74cfe643aea9')
+            ],
+        ),
+    )
+
+    marc_file = tmp_path / "2024070114-STF.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for row in [existing_record, new_record, bad_oclc_num]:
+            marc_writer.write(row)
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    result = oclc_api_instance.match([str(marc_file)])
+
+    result["success"] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
+    result["failures"] == [
+        '2023473e-802a-4bd2-9ca1-5d2e360a0fbd',
+        '00b492cb-704d-41f4-bd12-74cfe643aea9',
+    ]
+
+    assert "Sets new holdings for 958835d2-39cc-4ab3-9c56-53bf7940421b" in caplog.text
+
+
 def test_oclc_records_operation_no_records(mock_oclc_api, caplog):
     connections = {"STF": {"username": "sul-admin", "password": "123245"}}
     test_records_dict = {"STF": []}
@@ -762,4 +849,5 @@ def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
         oclc_function="delete", connections=connections, records=test_records_dict
     )
 
-    assert result
+    assert result['success'] == {'STF': []}
+    assert result['failures'] == {'STF': []}
