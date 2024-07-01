@@ -18,6 +18,9 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
     delete_from_oclc_task,
     gather_oclc_files_task,
+    match_oclc_task,
+    new_to_oclc_task,
+    update_oclc_task,
 )
 
 
@@ -414,4 +417,124 @@ def test_delete_from_oclc_task(mocker, mock_oclc_connection):
     result = delete_from_oclc_task.function(["http-web.oclc-Lane"], delete_records)
 
     assert result['success']["HIN"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
+    assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+
+
+def test_match_oclc_task(mocker, mock_oclc_connection):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
+        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_records_operation",
+        return_value={
+            "success": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": [],
+                "S7Z": ["160ef499-18a2-47a4-bdab-a31522b10508"],
+                "STF": [],
+            },
+            "failures": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": [],
+                "S7Z": [],
+                "STF": ["d0725143-3ab5-472a-bc1e-b11321d72a13"],
+            },
+        },
+    )
+
+    match_records = {
+        "CASUM": [],
+        "HIN": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-HIN.mrc"],
+        "RCJ": [],
+        "S7Z": [],
+        "STF": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-STF.mrc"],
+    }
+
+    result = match_oclc_task.function(['http-web.oclc-SUL'], match_records)
+
+    assert result['success']["S7Z"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
+    assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+
+
+def test_new_to_oclc_task(mocker, mock_oclc_connection):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
+        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_records_operation",
+        return_value={
+            "success": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": [],
+                "S7Z": [],
+                "STF": ["d0725143-3ab5-472a-bc1e-b11321d72a13"],
+            },
+            "failures": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": ["160ef499-18a2-47a4-bdab-a31522b10508"],
+                "S7Z": [],
+                "STF": [],
+            },
+        },
+    )
+
+    update_records = {
+        "CASUM": [],
+        "HIN": [],
+        "RCJ": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-RCJ.mrc"],
+        "S7Z": [],
+        "STF": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-STF.mrc"],
+    }
+
+    result = new_to_oclc_task.function(['http-web.oclc-SUL'], update_records)
+
+    assert result['success']["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+    assert result["failures"]["RCJ"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
+
+
+def test_update_oclc_task(mocker, mock_oclc_connection):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
+        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_records_operation",
+        return_value={
+            "success": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": ["160ef499-18a2-47a4-bdab-a31522b10508"],
+                "S7Z": [],
+                "STF": [],
+            },
+            "failures": {
+                "CASUM": [],
+                "HIN": [],
+                "RCJ": [],
+                "S7Z": [],
+                "STF": ["d0725143-3ab5-472a-bc1e-b11321d72a13"],
+            },
+        },
+    )
+
+    update_records = {
+        "CASUM": [],
+        "HIN": [],
+        "RCJ": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-RCJ.mrc"],
+        "S7Z": [],
+        "STF": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-STF.mrc"],
+    }
+
+    result = update_oclc_task.function(['http-web.oclc-SUL'], update_records)
+
+    assert result['success']["RCJ"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
     assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
