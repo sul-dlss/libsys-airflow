@@ -730,3 +730,36 @@ def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
         "958835d2-39cc-4ab3-9c56-53bf7940421b",
         "f19fd2fc-586c-45df-9b0c-127af97aef34",
     ]
+
+
+def test_oclc_records_operation_no_records(mock_oclc_api, caplog):
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+    test_records_dict = {"STF": []}
+
+    result = oclc_api.oclc_records_operation(
+        oclc_function="delete",
+        connections=connections,
+        records=test_records_dict,
+    )
+
+    assert result['success']['STF'] == []
+    assert "No delete records for STF" in caplog.text
+
+
+def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+
+    marc_file = tmp_path / "2024070113-STF.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in missing_or_multiple_oclc_records():
+            marc_writer.write(record)
+
+    test_records_dict = {"STF": [str(marc_file.absolute)]}
+
+    result = oclc_api.oclc_records_operation(
+        oclc_function="delete", connections=connections, records=test_records_dict
+    )
+
+    assert result
