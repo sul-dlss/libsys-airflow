@@ -141,8 +141,12 @@ class OCLCTransformer(Transformer):
                         self.multiple_codes(record, code, record_ids)
 
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
-        instance_id = record['999']['i']
-        self.staff_notices.append((instance_id, code, record_ids))
+        fields999 = record.get_fields('999')
+        for field in fields999:
+            if field.indicators == ['f', 'f']:
+                instance_id = field['i']
+                self.staff_notices.append((instance_id, code, record_ids))
+                break
 
     def save(self):
         """
