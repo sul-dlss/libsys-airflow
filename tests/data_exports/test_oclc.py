@@ -1,3 +1,4 @@
+import httpx
 import pymarc
 import pytest
 
@@ -39,7 +40,10 @@ def sample_marc_records():
         )
     )
 
-    return [record, new_record]
+    no_999_record = pymarc.Record()
+    no_999_record.add_field(pymarc.Field(tag='001', data='123456abc'))
+
+    return [record, new_record, no_999_record]
 
 
 @pytest.fixture
@@ -87,6 +91,14 @@ def mock_folio_client():
                     {"permanentLocationId": "11111-2222-333-444-555555"}
                 ]
             }
+        # Raises 400 Error for missing instanceId
+        if args[0].endswith("instanceId==)"):
+            raise httpx.HTTPStatusError(
+                f"400 Bad Request for url '{args[0]}'",
+                request=httpx.Request('GET', args[0]),
+                response=httpx.Response(400),
+            )
+
         # Campus locations
         if args[0].startswith("/location-units/campuses"):
             return {
@@ -334,6 +346,20 @@ def test_determine_campus_code_no_library(mocker, mock_folio_client):
             ],
         )
     )
+    oclc_transformer = OCLCTransformer()
+    codes = oclc_transformer.determine_campus_code(record)
+    assert codes == []
+
+
+def test_determine_campus_code_http_error(mocker, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    record = pymarc.Record()
+    record.add_field(pymarc.Field(tag='001', data='123456abc'))
+
     oclc_transformer = OCLCTransformer()
     codes = oclc_transformer.determine_campus_code(record)
     assert codes == []

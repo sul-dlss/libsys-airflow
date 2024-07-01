@@ -1,3 +1,4 @@
+import copy
 import logging
 import pathlib
 import re
@@ -21,6 +22,43 @@ logger = logging.getLogger(__name__)
 
 # If we want to also match on OCoLC-I, just replace -[M] with -[MI]
 OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
+
+
+def oclc_records_operation(**kwargs) -> dict:
+
+    function_name: str = kwargs["oclc_function"]
+    connection_lookup: dict = kwargs["connections"]
+
+    type_of_records: dict = kwargs["records"]
+    success: dict = kwargs.get("success", {})
+    failures: dict = kwargs.get("failures", {})
+
+    for library, records in type_of_records.items():
+        success[library] = []
+        failures[library] = []
+
+        oclc_api = OCLCAPIWrapper(
+            client_id=connection_lookup[library]["username"],
+            secret=connection_lookup[library]["password"],
+        )
+
+        oclc_api_function = getattr(oclc_api, function_name)
+
+        success[library] = []
+        failures[library] = []
+        archive_files = []
+        if len(records) > 0:
+            oclc_result = oclc_api_function(records)
+            success[library].extend(oclc_result['success'])
+            failures[library].extend(oclc_result['failures'])
+            archive_files.extend(oclc_result['archive'])
+            logger.info(
+                f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
+            )
+        else:
+            logger.info(f"No {function_name} records for {library}")
+
+    return {"success": success, "failures": failures, "archive": archive_files}
 
 
 class OCLCAPIWrapper(object):
@@ -253,6 +291,62 @@ class OCLCAPIWrapper(object):
         )
         return output
 
+    def match(self, marc_files: List[str]) -> dict:
+
+        def __match_oclc__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            output: dict = kwargs["output"]
+            record: pymarc.Record = kwargs["record"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            file_name: str = kwargs["file_name"]
+            failures: set = kwargs["failures"]
+            successes: set = kwargs["successes"]
+
+            export_record = copy.deepcopy(record)
+            export_record.remove_fields(*oclc_excluded)
+            marc21 = export_record.as_marc21()
+
+            matched_record_result = session.bib_match(
+                record=marc21,
+                recordFormat="application/marc",
+            )
+            matched_record = matched_record_result.json()
+            if matched_record['numberOfRecords'] < 1:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+                return
+
+            # Use first brief record's oclcNumber to add to existing MARC
+            # record
+            control_number = matched_record['briefRecords'][0]['oclcNumber']
+
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
+
+            successful_match = False
+            if self.__put_folio_record__(instance_uuid, modified_marc_record):
+
+                # Sets holdings using the OCLC number
+                update_holding_result = session.holdings_set(oclcNumber=control_number)
+                if update_holding_result:
+                    logger.info(
+                        f"Sets new holdings for {instance_uuid} OCLC {update_holding_result}"
+                    )
+                    successful_match = True
+
+            if successful_match:
+                output['success'].append(instance_uuid)
+                successes.add(file_name)
+            else:
+                output['failures'].append(instance_uuid)
+                failures.add(file_name)
+
+        output = self.__oclc_operations__(
+            marc_files=marc_files,
+            function=__match_oclc__,
+            no_recs_message="No new marc records",
+        )
+        return output
+
     def new(self, marc_files: List[str]) -> dict:
 
         def __new_oclc__(**kwargs):
@@ -264,8 +358,10 @@ class OCLCAPIWrapper(object):
             successes: set = kwargs["successes"]
             failures: set = kwargs["failures"]
 
-            record.remove_fields(*oclc_excluded)
-            marc21 = record.as_marc21()
+            export_record = copy.deepcopy(record)
+            export_record.remove_fields(*oclc_excluded)
+
+            marc21 = export_record.as_marc21()
             new_record = session.bib_create(
                 record=marc21,
                 recordFormat="application/marc",
@@ -273,14 +369,22 @@ class OCLCAPIWrapper(object):
 
             control_number = self.__extract_control_number_035__(new_record.content)
 
-            if control_number is None:
-                output['failures'].append(instance_uuid)
-                failures.add(file_name)
-                return
+            successful_add = False
+            if control_number:
+                modified_marc_record = self.__update_oclc_number__(
+                    control_number, record
+                )
 
-            modified_marc_record = self.__update_oclc_number__(control_number, record)
+                if self.__put_folio_record__(instance_uuid, modified_marc_record):
+                    # Sets holdings using the OCLC number
+                    new_holding_result = session.holdings_set(oclcNumber=control_number)
+                    if new_holding_result:
+                        logger.info(
+                            f"Sets new holdings for {instance_uuid} OCLC {new_holding_result}"
+                        )
+                        successful_add = True
 
-            if self.__put_folio_record__(instance_uuid, modified_marc_record):
+            if successful_add:
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
