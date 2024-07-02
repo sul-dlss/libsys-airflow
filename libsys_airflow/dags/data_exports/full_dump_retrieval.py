@@ -105,9 +105,7 @@ with DAG(
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
-                marc = fetch_full_dump_marc(
-                    offset=offset, batch_size=batch_size
-                )
+                marc = fetch_full_dump_marc(offset=offset, batch_size=batch_size)
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
                 logger.warning(f"{err} for offset {offset}")

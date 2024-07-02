@@ -222,7 +222,9 @@ def test_skip_record_no_999i(
     mocker.patch.object(
         marc_transformer, "get_current_context", mock_get_current_context
     )
-    mocker.patch.object(marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator)
+    mocker.patch.object(
+        marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator
+    )
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -265,7 +267,9 @@ def test_add_holdings_items_single_999(
     mocker.patch.object(
         marc_transformer, "get_current_context", mock_get_current_context
     )
-    mocker.patch.object(marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator)
+    mocker.patch.object(
+        marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator
+    )
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -355,7 +359,9 @@ def test_add_holdings_items_no_items(
     mocker.patch.object(
         marc_transformer, "get_current_context", mock_get_current_context
     )
-    mocker.patch.object(marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator)
+    mocker.patch.object(
+        marc_transformer, "psycopg2.pool.SimpleConnectionPool", MockSQLOperator
+    )
     mocker.patch(
         "libsys_airflow.plugins.data_exports.marc.transformer.get_current_context",
         return_value=mock_get_current_context,

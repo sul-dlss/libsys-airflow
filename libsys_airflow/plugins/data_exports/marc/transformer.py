@@ -67,7 +67,6 @@ class Transformer(object):
     def isbn_compile(self) -> re.Pattern:
         return re.compile(r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$")
 
-
     def instance_subfields(self, record):
         subfields_i = []
         fields_999 = record.get_fields("999")

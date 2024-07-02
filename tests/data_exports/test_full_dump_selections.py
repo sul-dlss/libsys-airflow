@@ -8,6 +8,7 @@ from libsys_airflow.plugins.data_exports import sql_pool
 
 from unittest.mock import MagicMock
 
+
 def mock_number_of_records(mock_result_set):
     return len(mock_result_set)
 
@@ -159,12 +160,10 @@ def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
     #     'libsys_airflow.plugins.data_exports.full_dump_marc.fetch_number_of_records',
     #     return_value=mock_number_of_records(mock_result_set()),
     # )
-    mocker.patch.object(
-        full_dump_marc, "SQLPool", mock_pool
-    )
+    mocker.patch.object(full_dump_marc, "SQLPool", mock_pool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
-        return_value=mock_airflow_connection
+        return_value=mock_airflow_connection,
     )
 
     full_dump_marc.fetch_full_dump_marc(offset=0, batch_size=3)
