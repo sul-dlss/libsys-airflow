@@ -4,9 +4,37 @@ import pytest
 from airflow.models import Connection
 from libsys_airflow.plugins.data_exports import full_dump_marc
 from libsys_airflow.plugins.data_exports.marc import exporter
-from libsys_airflow.plugins.data_exports import sql_pool
 
-from unittest.mock import MagicMock
+
+class MockCursor(pydantic.BaseModel):
+    batch_size: int = 0
+    offset: int = 0
+
+    def fetchall(self):
+        return mock_result_set()[self.offset : self.batch_size + self.offset]
+
+    def execute(self, sql_stmt, batch_size, offset):
+        self.batch_size = batch_size
+        self.offset = offset
+
+
+class MockConnection(pydantic.BaseModel):
+
+    def cursor(self):
+        return MockCursor()
+
+
+class MockPool(pydantic.BaseModel):
+    connection: MockConnection = MockConnection()
+
+    def pool(self):
+        return self
+
+    def getconn(self):
+        return self.connection
+
+    def putconn(self, connection):
+        return None
 
 
 def mock_number_of_records(mock_result_set):
@@ -26,29 +54,6 @@ def mock_airflow_connection():
         password="pass",
         port=9999,
     )
-
-
-def mock_pool():
-    mocker = MagicMock()
-
-    def mock_fetchall(*args):
-        return mock_result_set()
-
-    def mock_execute(*args, batch_size, offset):
-        return None
-
-    def pool(*args):
-        pool_mock = mocker.stub()
-        mock_conn = mocker.stub()
-        mock_cursor = mocker.stub()
-        mock_cursor.execute = mock_execute
-        mock_cursor.fetchall = mock_fetchall
-        mock_conn.cursor = lambda *args: mock_cursor
-        pool_mock.getconn = lambda *args: mock_conn
-        return pool_mock
-
-    mocker.pool = pool
-    return mocker
 
 
 def mock_result_set():
@@ -156,11 +161,7 @@ def mock_get_current_context(mocker):
 def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
-    # mocker.patch(
-    #     'libsys_airflow.plugins.data_exports.full_dump_marc.fetch_number_of_records',
-    #     return_value=mock_number_of_records(mock_result_set()),
-    # )
-    mocker.patch.object(full_dump_marc, "SQLPool", mock_pool)
+    mocker.patch.object(full_dump_marc, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
         return_value=mock_airflow_connection,

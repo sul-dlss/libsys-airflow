@@ -21,6 +21,7 @@ class Transformer(object):
         self.campus_lookup = self.campus_by_locations_lookup()
         self.uuid_regex = self.uuid_compile()
         self.isbn_regex = self.isbn_compile()
+        self.connection_pool = SQLPool()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -120,13 +121,15 @@ class Transformer(object):
         fields = []
         for uuid in instance_subfields:
             try:
-                holdings_conn = SQLPool.pool().getconn()
+                holdings_conn = self.connection_pool.pool().getconn()
                 cursor = holdings_conn.cursor()
                 cursor.execute(
-                    f"select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = '{uuid}'"
+                    "select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = :uuid",
+                    parameters={"uuid": uuid},
                 )
                 holdings_result = cursor.fetchall()
-                SQLPool.pool().putconn(holdings_conn)
+
+                self.connection_pool.pool().putconn(holdings_conn)
 
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
@@ -138,14 +141,15 @@ class Transformer(object):
 
                     holding_id = holding["id"]
 
-                    items_conn_var = globals()[f"items_conn_{i}"]
-                    items_conn_var = SQLPool.pool().getconn()
-                    cursor = items_conn_var.cursor()
+                    items_conn = self.connection_pool.pool().getconn()
+                    cursor = items_conn.cursor()
+
                     cursor.execute(
-                        f"select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = '{holding_id}'"
+                        "select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = :holding_id",
+                        parameters={"holding_id": holding_id},
                     )
                     items_result = cursor.fetchall()
-                    SQLPool.pool().putconn(items_conn_var)
+                    self.connection_pool.pool().putconn(items_conn)
 
                     active_items = []
                     for _item in items_result:
