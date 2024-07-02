@@ -6,25 +6,24 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
+from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 
 logger = logging.getLogger(__name__)
 
 
 def fetch_full_dump_marc(**kwargs) -> str:
-    context = get_current_context()
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
-    task_id = f"postgres_full_dump_query_{offset}"
-
-    query = "SELECT id, content FROM public.data_export_marc LIMIT %(limit)s OFFSET %(offset)s"
-
-    tuples = SQLExecuteQueryOperator(
-        task_id=task_id,
-        conn_id="postgres_folio",
-        database=kwargs.get("database", "okapi"),
-        sql=query,
-        parameters={"offset": offset, "limit": batch_size},
-    ).execute(context)
+    connection_pool = SQLPool()
+    conn_var = connection_pool.pool().getconn()
+    cursor = conn_var.cursor()
+    cursor.execute(
+        "SELECT id, content FROM public.data_export_marc LIMIT %(batch_size)s OFFSET %(offset)s",
+        batch_size=batch_size,
+        offset=offset,
+    )
+    tuples = cursor.fetchall()
+    connection_pool.pool().putconn(conn_var)
 
     exporter = Exporter()
     marc_file = exporter.retrieve_marc_for_full_dump(

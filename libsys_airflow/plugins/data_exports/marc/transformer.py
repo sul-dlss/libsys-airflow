@@ -5,8 +5,7 @@ import pymarc
 import re
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
-from airflow.operators.python import get_current_context
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from s3path import S3Path
 
 logger = logging.getLogger(__name__)
@@ -68,6 +67,7 @@ class Transformer(object):
     def isbn_compile(self) -> re.Pattern:
         return re.compile(r"^(?=(?:\d){9}[\dX](?:(?:\D*\d){3})?$)(?:[\dX]{10}|\d{13})$")
 
+
     def instance_subfields(self, record):
         subfields_i = []
         fields_999 = record.get_fields("999")
@@ -121,12 +121,13 @@ class Transformer(object):
         fields = []
         for uuid in instance_subfields:
             try:
-                holdings_result = SQLExecuteQueryOperator(
-                    task_id="query-holdings",
-                    conn_id="postgres_folio",
-                    database="okapi",
-                    sql=f"select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = '{uuid}'",
-                ).execute(get_current_context())
+                holdings_conn = SQLPool.pool().getconn()
+                cursor = holdings_conn.cursor()
+                cursor.execute(
+                    f"select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = '{uuid}'"
+                )
+                holdings_result = cursor.fetchall()
+                SQLPool.pool().putconn(holdings_conn)
 
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
@@ -138,12 +139,14 @@ class Transformer(object):
 
                     holding_id = holding["id"]
 
-                    items_result = SQLExecuteQueryOperator(
-                        task_id="query-items",
-                        conn_id="postgres_folio",
-                        database="okapi",
-                        sql=f"select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = '{holding_id}'",
-                    ).execute(get_current_context())
+                    items_conn_var = globals()[f"items_conn_{i}"]
+                    items_conn_var = SQLPool.pool().getconn()
+                    cursor = items_conn_var.cursor()
+                    cursor.execute(
+                        f"select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = '{holding_id}'"
+                    )
+                    items_result = cursor.fetchall()
+                    SQLPool.pool().putconn(items_conn_var)
 
                     active_items = []
                     for _item in items_result:
