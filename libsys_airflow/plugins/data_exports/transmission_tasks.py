@@ -201,7 +201,7 @@ def new_to_oclc_task(connection_details: list, new_records: dict) -> dict:
 
 
 @task(multiple_outputs=True)
-def update_oclc_task(connection_details: list, update_records: dict) -> dict:
+def set_holdings_oclc_task(connection_details: list, update_records: dict) -> dict:
 
     connection_lookup = oclc_connections(connection_details)
 

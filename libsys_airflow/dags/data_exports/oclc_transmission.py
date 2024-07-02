@@ -11,7 +11,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     delete_from_oclc_task,
     match_oclc_task,
     new_to_oclc_task,
-    update_oclc_task,
+    set_holdings_oclc_task,
     gather_oclc_files_task,
 )
 
@@ -56,7 +56,7 @@ def send_oclc_records():
         connection_details=connections, delete_records=gather_files["deletes"]
     )
 
-    updated_records = update_oclc_task(
+    set_holdings_for_records = set_holdings_oclc_task(
         connection_details=connections, update_records=gather_files["updates"]
     )
 
@@ -72,7 +72,7 @@ def send_oclc_records():
         deleted_records["archive"],
         new_records["archive"],
         matched_records["archive"],
-        updated_records["archive"],
+        set_holdings_for_records["archive"],
     )
 
     archive_data = archive_transmitted_data_task(archive_files)

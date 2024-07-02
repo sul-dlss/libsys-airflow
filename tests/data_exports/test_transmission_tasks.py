@@ -20,7 +20,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_oclc_files_task,
     match_oclc_task,
     new_to_oclc_task,
-    update_oclc_task,
+    set_holdings_oclc_task,
 )
 
 
@@ -500,7 +500,7 @@ def test_new_to_oclc_task(mocker, mock_oclc_connection):
     assert result["failures"]["RCJ"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
 
 
-def test_update_oclc_task(mocker, mock_oclc_connection):
+def test_set_holdings_oclc_task(mocker, mock_oclc_connection):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
         return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
@@ -534,7 +534,7 @@ def test_update_oclc_task(mocker, mock_oclc_connection):
         "STF": ["/opt/airflow/data-exports/oclc/marc-files/deletes/2024070111-STF.mrc"],
     }
 
-    result = update_oclc_task.function(['http-web.oclc-SUL'], update_records)
+    result = set_holdings_oclc_task.function(['http-web.oclc-SUL'], update_records)
 
     assert result['success']["RCJ"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
     assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
