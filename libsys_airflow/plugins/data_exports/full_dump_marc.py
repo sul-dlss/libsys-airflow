@@ -14,13 +14,13 @@ def fetch_full_dump_marc(**kwargs) -> str:
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
     connection_pool = kwargs.get("pool")
-    conn_var = connection_pool.getconn() # type: ignore
+    conn_var = connection_pool.getconn()  # type: ignore
     cursor = conn_var.cursor()
     sql = "SELECT id, content FROM public.data_export_marc LIMIT (%s) OFFSET( %s)"
     params = (batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
-    connection_pool.putconn(conn_var) # type: ignore
+    connection_pool.putconn(conn_var)  # type: ignore
 
     exporter = Exporter()
     marc_file = exporter.retrieve_marc_for_full_dump(
