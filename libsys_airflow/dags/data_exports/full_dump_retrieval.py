@@ -16,6 +16,7 @@ from libsys_airflow.plugins.data_exports.full_dump_marc import (
     reset_s3,
 )
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
+from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from libsys_airflow.plugins.data_exports.marc.transforms import remove_marc_fields
 from sqlalchemy import exc
 
@@ -101,11 +102,14 @@ with DAG(
     @task
     def fetch_folio_records(batch_size, start, stop):
         marc_file_list = []
+        connection_pool = SQLPool().pool()
 
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
-                marc = fetch_full_dump_marc(offset=offset, batch_size=batch_size)
+                marc = fetch_full_dump_marc(
+                    offset=offset, batch_size=batch_size, pool=connection_pool
+                )
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
                 logger.warning(f"{err} for offset {offset}")

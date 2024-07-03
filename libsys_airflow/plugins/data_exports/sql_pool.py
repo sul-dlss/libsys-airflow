@@ -10,12 +10,13 @@ class SQLPool:
         return Connection.get_connection_from_secrets('postgres_folio')
 
     def pool(self):
-        SimpleConnectionPool(
+        conn = self.conn
+        return SimpleConnectionPool(
             12,
             144,
             database='okapi',
-            host=self.conn.host,
-            password=self.conn.conn_id,
-            port=self.conn.port,
+            host=conn.host,
+            password=conn.password,
+            port=conn.port,
             user='okapi',
         )

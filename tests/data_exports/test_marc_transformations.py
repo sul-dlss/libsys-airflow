@@ -28,11 +28,23 @@ class MockCursor(pydantic.BaseModel):
 
         return mock_result
 
-    def execute(self, sql_stmt, parameters):
-        if 'uuid' in parameters:
-            self.uuid = parameters['uuid']
-        if 'holding_id' in parameters:
-            self.holding_id = parameters['holding_id']
+    def execute(self, sql_stmt, param):
+        """
+        Specify whether the uuid is for the instance holding sql query
+        in order to mock the correct statement:
+        """
+        if param in [
+            '5face3a3-9804-5034-aa02-1eb5db0c191c',
+            'e1797b62-a8b1-5f3d-8e85-934d58bd9395',
+            'c77d294c-4d83-4fe0-87b1-f94a845c0d49',
+        ]:
+            self.uuid = param
+        if param in [
+            '10be3fec-48ea-5099-9d5f-ab4875c62481',
+            '3bb4a439-842e-5c8d-b86c-eaad46b6a316',
+            '194f153f-3f76-5383-b18c-18d67dc5ffa8',
+        ]:
+            self.holding_id = param
 
 
 class MockConnection(pydantic.BaseModel):

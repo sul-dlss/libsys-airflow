@@ -6,7 +6,6 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
-from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +13,14 @@ logger = logging.getLogger(__name__)
 def fetch_full_dump_marc(**kwargs) -> str:
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
-    connection_pool = SQLPool()
-    conn_var = connection_pool.pool().getconn()
+    connection_pool = kwargs.get("pool")
+    conn_var = connection_pool.getconn() # type: ignore
     cursor = conn_var.cursor()
-    cursor.execute(
-        "SELECT id, content FROM public.data_export_marc LIMIT %(batch_size)s OFFSET %(offset)s",
-        batch_size=batch_size,
-        offset=offset,
-    )
+    sql = "SELECT id, content FROM public.data_export_marc LIMIT (%s) OFFSET( %s)"
+    params = (batch_size, offset)
+    cursor.execute(sql, params)
     tuples = cursor.fetchall()
-    connection_pool.pool().putconn(conn_var)
+    connection_pool.putconn(conn_var) # type: ignore
 
     exporter = Exporter()
     marc_file = exporter.retrieve_marc_for_full_dump(

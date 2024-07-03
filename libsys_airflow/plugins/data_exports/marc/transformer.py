@@ -119,14 +119,14 @@ class Transformer(object):
 
     def add_holdings_items_fields(self, instance_subfields: list) -> list:
         fields = []
+        holdings_conn = self.connection_pool.pool().getconn()
+        items_conn = self.connection_pool.pool().getconn()
+
         for uuid in instance_subfields:
             try:
-                holdings_conn = self.connection_pool.pool().getconn()
                 cursor = holdings_conn.cursor()
-                cursor.execute(
-                    "select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = :uuid",
-                    parameters={"uuid": uuid},
-                )
+                sql = "select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = (%s)"
+                cursor.execute(sql, uuid)
                 holdings_result = cursor.fetchall()
 
                 self.connection_pool.pool().putconn(holdings_conn)
@@ -141,13 +141,9 @@ class Transformer(object):
 
                     holding_id = holding["id"]
 
-                    items_conn = self.connection_pool.pool().getconn()
                     cursor = items_conn.cursor()
-
-                    cursor.execute(
-                        "select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = :holding_id",
-                        parameters={"holding_id": holding_id},
-                    )
+                    sql = "select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = (%s)"
+                    cursor.execute(sql, holding_id)
                     items_result = cursor.fetchall()
                     self.connection_pool.pool().putconn(items_conn)
 
