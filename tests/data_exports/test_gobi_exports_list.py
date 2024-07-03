@@ -93,6 +93,7 @@ def test_with_ebook_and_print(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -143,6 +144,7 @@ def test_with_ebook_only(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -194,6 +196,7 @@ def test_with_no_isbn(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -252,6 +255,7 @@ def test_with_modified_isbn(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -302,6 +306,7 @@ def test_with_print_no_electronic_holding(tmp_path, mocker, mock_folio_client): 
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -350,6 +355,7 @@ def test_with_skipped_by_856(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -402,6 +408,7 @@ def test_with_skipped_by_956(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -457,6 +464,7 @@ def test_with_non_sul_holding(tmp_path, mocker, mock_folio_client):  # noqa
 
     mock_folio_client.folio_get = mock_folio_get
 
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,

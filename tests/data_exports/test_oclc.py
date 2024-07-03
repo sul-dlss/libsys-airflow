@@ -210,6 +210,7 @@ def test_archive_instanceid_csv(tmp_path):
 
 
 def test_determine_campus_code(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -232,6 +233,7 @@ def test_determine_campus_code(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_business(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -253,6 +255,7 @@ def test_determine_campus_code_business(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_hoover(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -275,6 +278,7 @@ def test_determine_campus_code_hoover(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_lane(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -297,6 +301,7 @@ def test_determine_campus_code_lane(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_law(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -319,6 +324,7 @@ def test_determine_campus_code_law(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_no_library(mocker, mock_folio_client):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -340,6 +346,7 @@ def test_determine_campus_code_no_library(mocker, mock_folio_client):
 
 
 def test_oclc_division(mocker, tmp_path, mock_folio_client, sample_marc_records):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -360,6 +367,7 @@ def test_oclc_division(mocker, tmp_path, mock_folio_client, sample_marc_records)
 
 
 def test_save(mocker, mock_folio_client, sample_marc_records, tmp_path):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
