@@ -37,7 +37,9 @@ def fetch_record_ids(**kwargs) -> dict:
                 query = sqf.read()
 
             from_date = params.get("from_date", datetime.now().strftime('%Y-%m-%d'))
-            to_date = (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
+            to_date = params.get(
+                "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
+            )
 
             results[kind].extend(
                 SQLExecuteQueryOperator(
