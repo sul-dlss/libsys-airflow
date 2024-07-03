@@ -85,7 +85,8 @@ def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
     else:
         for kind in ["new", "updates", "deletes"]:
             ids = save_ids(airflow=airflow, data=data[kind], kind=kind, vendor=vendor)
-            ids_path.append(ids)
+            if ids:
+                ids_path.append(ids)
 
     return ids_path
 
