@@ -16,7 +16,10 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
-from libsys_airflow.plugins.data_exports.marc.oclc import archive_instanceid_csv
+from libsys_airflow.plugins.data_exports.marc.oclc import (
+    archive_instanceid_csv,
+    filter_updates,
+)
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
@@ -79,6 +82,14 @@ with DAG(
         python_callable=fetch_record_ids,
     )
 
+    filter_out_updates_ids = PythonOperator(
+        task_id="filters_updates_ids",
+        python_callable=filter_updates,
+        op_kwargs={
+            "all_records_ids": "{{ ti.xcom_pull(task_ids='fetch_record_ids_from_folio') }}"
+        },
+    )
+
     save_ids_to_file = PythonOperator(
         task_id="save_ids_to_file",
         trigger_rule="none_failed_min_one_success",
@@ -86,6 +97,7 @@ with DAG(
         op_kwargs={
             "vendor": "oclc",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
+            "upstream_task_id": "filters_updates_ids",
         },
     )
 
@@ -167,8 +179,8 @@ with DAG(
     )
 
 
-check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
-fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
+check_record_ids >> fetch_folio_record_ids >> filter_out_updates_ids >> save_ids_to_file
+check_record_ids >> save_ids_to_file >> fetch_marc_records
 (
     fetch_marc_records
     >> transform_marc_fields
