@@ -47,6 +47,14 @@ def get_record_id(record: pymarc.Record) -> list:
     return list(oclc_ids)
 
 
+def filter_updates(**kwargs) -> dict:
+    all_records_ids: dict = kwargs['all_records_ids']
+    update_instance_uuids = all_records_ids.pop('updates')
+    logger.info(f"Removing {len(update_instance_uuids)} from records_id")
+    all_records_ids['updates'] = []
+    return all_records_ids
+
+
 class OCLCTransformer(Transformer):
     def __init__(self):
         super().__init__()
