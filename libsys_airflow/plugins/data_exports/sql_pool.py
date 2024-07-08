@@ -1,4 +1,4 @@
-from airflow.models import Connection
+from airflow.models import Connection, Variable
 from psycopg2.pool import SimpleConnectionPool
 
 
@@ -13,7 +13,7 @@ class SQLPool:
         conn = self.conn
         return SimpleConnectionPool(
             12,
-            144,
+            Variable.get('folio_sql_max_pool_size', 48),
             database='okapi',
             host=conn.host,
             password=conn.password,
