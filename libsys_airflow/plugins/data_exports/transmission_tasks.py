@@ -1,13 +1,17 @@
+import copy
 import logging
+
+import httpx
+
 from pathlib import Path
 from s3path import S3Path
-import httpx
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
-from libsys_airflow.plugins.data_exports.oclc_api import OCLCAPIWrapper
+from libsys_airflow.plugins.data_exports.oclc_api import oclc_records_operation
+
 from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
@@ -68,26 +72,28 @@ def retry_failed_files_task(**kwargs) -> dict:
 @task(multiple_outputs=True)
 def gather_oclc_files_task(**kwargs) -> dict:
     """
-    Gets new and updated MARC files by library (SUL, Business, Hoover, and Law)
+    Gets deleted, new, and updated MARC files by library (SUL, Business, Hoover, and Law)
     to send to OCLC
     """
     airflow = kwargs.get("airflow", "/opt/airflow")
     libraries: dict = {
-        "S7Z": {},  # Business
-        "HIN": {},  # Hoover
-        "CASUM": {},  # Lane
-        "RCJ": {},  # Law
-        "STF": {},  # SUL
+        "S7Z": [],  # Business
+        "HIN": [],  # Hoover
+        "CASUM": [],  # Lane
+        "RCJ": [],  # Law
+        "STF": [],  # SUL
+    }
+    output = {
+        "deletes": copy.deepcopy(libraries),
+        "new": copy.deepcopy(libraries),
+        "updates": copy.deepcopy(libraries),
     }
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
     for marc_file_path in oclc_directory.glob("**/*.mrc"):
         type_of = marc_file_path.parent.name
         library = marc_file_path.stem.split("-")[1]
-        if type_of in libraries[library]:
-            libraries[library][type_of].append(str(marc_file_path))
-        else:
-            libraries[library][type_of] = [str(marc_file_path)]
-    return libraries
+        output[type_of][library].append(str(marc_file_path))
+    return output
 
 
 @task
@@ -158,42 +164,60 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     return {"success": success, "failures": failures}
 
 
-@task
-def transmit_data_oclc_api_task(connection_details, libraries) -> dict:
-    success: dict = {}
-    failures: dict = {}
-    archive: list = []
+@task(multiple_outputs=True)
+def delete_from_oclc_task(connection_details: list, delete_records: dict) -> dict:
 
     connection_lookup = oclc_connections(connection_details)
 
-    for library, records in libraries.items():
-        success[library] = []
-        failures[library] = []
+    return oclc_records_operation(
+        connections=connection_lookup,
+        oclc_function="delete",
+        records=delete_records,
+    )
 
-        oclc_api = OCLCAPIWrapper(
-            client_id=connection_lookup[library]["username"],
-            secret=connection_lookup[library]["password"],
-        )
-        if len(records.get("deletes", [])) > 0:
-            delete_result = oclc_api.delete(records['deletes'])
-            success[library].extend(delete_result['success'])
-            failures[library].extend(delete_result['failures'])
-            archive.extend(delete_result['archive'])
 
-        if len(records.get("new", [])) > 0:
-            new_result = oclc_api.new(records['new'])
-            success[library].extend(new_result['success'])
-            failures[library].extend(new_result['failures'])
-            archive.extend(new_result['archive'])
+@task(multiple_outputs=True)
+def match_oclc_task(connection_details: list, new_records: dict) -> dict:
 
-        if len(records.get("updates", [])) > 0:
-            updated_result = oclc_api.update(records['updates'])
-            success[library].extend(updated_result['success'])
-            failures[library].extend(updated_result['failures'])
-            archive.extend(updated_result['archive'])
+    connection_lookup = oclc_connections(connection_details)
 
-    archive = list(set(archive))
-    return {"success": success, "failures": failures, "archive": archive}
+    return oclc_records_operation(
+        connections=connection_lookup,
+        oclc_function="match",
+        records=new_records,
+    )
+
+
+@task(multiple_outputs=True)
+def new_to_oclc_task(connection_details: list, new_records: dict) -> dict:
+
+    connection_lookup = oclc_connections(connection_details)
+
+    return oclc_records_operation(
+        connections=connection_lookup,
+        oclc_function="new",
+        records=new_records,
+    )
+
+
+@task(multiple_outputs=True)
+def set_holdings_oclc_task(connection_details: list, update_records: dict) -> dict:
+
+    connection_lookup = oclc_connections(connection_details)
+
+    return oclc_records_operation(
+        connections=connection_lookup,
+        oclc_function="update",
+        records=update_records,
+    )
+
+
+@task
+def consolidate_oclc_archive_files(
+    deleted, matched: list, new_files: list, updated: list
+) -> list:
+    unique_files = set(deleted + matched + new_files + updated)
+    return list(unique_files)
 
 
 @task
@@ -205,6 +229,7 @@ def archive_transmitted_data_task(files):
     Also moves the marc files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
     logger.info("Moving transmitted files to archive directory")
+
     if len(files) < 1:
         logger.warning("No files to archive")
         return
