@@ -12,15 +12,58 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 from libsys_airflow.plugins.data_exports.marc import transformer as marc_transformer
 
 
-class MockSQLOperator(pydantic.BaseModel):
-    task_id: str
-    conn_id: str
-    database: str
-    sql: str
+class MockCursor(pydantic.BaseModel):
+    uuid: str = ''
+    holding_id: str = ''
 
-    def execute(self, context):
-        mock_result = mock_sql_query_result(self.sql)
+    def fetchall(self):
+        if len(self.uuid) > 0:
+            mock_result = mock_sql_query_result(self.uuid)
+        else:
+            mock_result = mock_sql_query_result(self.holding_id)
+
+        # Resets variables for next call
+        self.uuid = ''
+        self.holding_id = ''
+
         return mock_result
+
+    def execute(self, sql_stmt, param):
+        """
+        Specify whether the uuid is for the instance holding sql query
+        in order to mock the correct statement:
+        """
+        if param in [
+            '5face3a3-9804-5034-aa02-1eb5db0c191c',
+            'e1797b62-a8b1-5f3d-8e85-934d58bd9395',
+            'c77d294c-4d83-4fe0-87b1-f94a845c0d49',
+        ]:
+            self.uuid = param
+        if param in [
+            '10be3fec-48ea-5099-9d5f-ab4875c62481',
+            '3bb4a439-842e-5c8d-b86c-eaad46b6a316',
+            '194f153f-3f76-5383-b18c-18d67dc5ffa8',
+        ]:
+            self.holding_id = param
+
+
+class MockConnection(pydantic.BaseModel):
+
+    def cursor(self):
+        return MockCursor()
+
+
+class MockPool(pydantic.BaseModel):
+    connection: MockConnection = MockConnection()
+
+    def pool(self):
+        return self
+
+    def getconn(self):
+        return self.connection
+
+    def putconn(self, connection):
+        return None
 
 
 holdings_multiple_items = [
@@ -126,24 +169,24 @@ def mock_sql_query_result(*args):
     result = [
         ({},),
     ]
-    if args[0].endswith("'a75a9e59-8e9a-55cd-8414-f71c1194493b'"):
+    if args[0].endswith("a75a9e59-8e9a-55cd-8414-f71c1194493b"):
         result = {"permanentLocationId": "148e598c-bb58-4e6d-b313-4933e6a4534c"}
-    if args[0].endswith("'2aa4c0b3-4db6-5c71-a4e2-7fdc672b6b94'"):
+    if args[0].endswith("2aa4c0b3-4db6-5c71-a4e2-7fdc672b6b94"):
         result = {"permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3"}
-    if args[0].endswith("'5face3a3-9804-5034-aa02-1eb5db0c191c'"):
+    if args[0].endswith("5face3a3-9804-5034-aa02-1eb5db0c191c"):
         result = single_holdings
-    if args[0].endswith("'8b373183-2b6f-5a6b-82ab-5f4e6e70d0f8'"):
+    if args[0].endswith("8b373183-2b6f-5a6b-82ab-5f4e6e70d0f8"):
         result = {"permanentLocationId": "c9cef3c6-5874-4bae-b90b-2e1d1f4674db"}
-    if args[0].endswith("'8e9eb01b-1249-5ef8-b9ea-e16496ca64cc'"):
+    if args[0].endswith("8e9eb01b-1249-5ef8-b9ea-e16496ca64cc"):
         result = {"permanentLocationId": "46eb9191-1f6f-44ba-a67c-610f868dd429"}
-    if args[0].endswith("'e1797b62-a8b1-5f3d-8e85-934d58bd9395'"):
+    if args[0].endswith("e1797b62-a8b1-5f3d-8e85-934d58bd9395"):
         result = holdings_multiple_items
-    if args[0].endswith("'c77d294c-4d83-4fe0-87b1-f94a845c0d49'"):
+    if args[0].endswith("c77d294c-4d83-4fe0-87b1-f94a845c0d49"):
         result = holdings_no_items
     # Items
-    if args[0].endswith("'10be3fec-48ea-5099-9d5f-ab4875c62481'"):
+    if args[0].endswith("10be3fec-48ea-5099-9d5f-ab4875c62481"):
         result = single_item
-    if args[0].endswith("'3bb4a439-842e-5c8d-b86c-eaad46b6a316'"):
+    if args[0].endswith("3bb4a439-842e-5c8d-b86c-eaad46b6a316"):
         result = multiple_items
 
     return result
@@ -209,20 +252,9 @@ def mock_folio_client():
     return mock_client
 
 
-@pytest.fixture
-def mock_get_current_context(mocker):
-    context = mocker.stub(name="context")
-    context.get = lambda arg: {}
-    return context
+def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
+    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
 
-
-def test_skip_record_no_999i(
-    mocker, tmp_path, mock_folio_client, mock_get_current_context
-):
-    mocker.patch.object(
-        marc_transformer, "get_current_context", mock_get_current_context
-    )
-    mocker.patch.object(marc_transformer, "SQLExecuteQueryOperator", MockSQLOperator)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -258,13 +290,8 @@ def test_skip_record_no_999i(
     assert len(mod_marc_records) == 0
 
 
-def test_add_holdings_items_single_999(
-    mocker, tmp_path, mock_folio_client, mock_get_current_context
-):
-    mocker.patch.object(
-        marc_transformer, "get_current_context", mock_get_current_context
-    )
-    mocker.patch.object(marc_transformer, "SQLExecuteQueryOperator", MockSQLOperator)
+def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
+    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -304,13 +331,8 @@ def test_add_holdings_items_single_999(
     assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
 
 
-def test_add_holdings_items_multiple_999(
-    mocker, tmp_path, mock_folio_client, mock_get_current_context
-):
-    mocker.patch.object(
-        marc_transformer, "get_current_context", mock_get_current_context
-    )
-    mocker.patch.object(marc_transformer, "SQLExecuteQueryOperator", MockSQLOperator)
+def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
+    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -348,17 +370,8 @@ def test_add_holdings_items_multiple_999(
     assert field_999s[1].get_subfields('l') == field_999s[2].get_subfields('l')
 
 
-def test_add_holdings_items_no_items(
-    mocker, tmp_path, mock_folio_client, mock_get_current_context
-):
-    mocker.patch.object(
-        marc_transformer, "get_current_context", mock_get_current_context
-    )
-    mocker.patch.object(marc_transformer, "SQLExecuteQueryOperator", MockSQLOperator)
-    mocker.patch(
-        "libsys_airflow.plugins.data_exports.marc.transformer.get_current_context",
-        return_value=mock_get_current_context,
-    )
+def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
+    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,

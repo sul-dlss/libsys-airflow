@@ -5,8 +5,7 @@ import pymarc
 import re
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
-from airflow.operators.python import get_current_context
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from s3path import S3Path
 
 logger = logging.getLogger(__name__)
@@ -22,6 +21,7 @@ class Transformer(object):
         self.campus_lookup = self.campus_by_locations_lookup()
         self.uuid_regex = self.uuid_compile()
         self.isbn_regex = self.isbn_compile()
+        self.connection_pool = SQLPool()
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -119,14 +119,17 @@ class Transformer(object):
 
     def add_holdings_items_fields(self, instance_subfields: list) -> list:
         fields = []
+        holdings_conn = self.connection_pool.pool().getconn()
+        items_conn = self.connection_pool.pool().getconn()
+
         for uuid in instance_subfields:
             try:
-                holdings_result = SQLExecuteQueryOperator(
-                    task_id="query-holdings",
-                    conn_id="postgres_folio",
-                    database="okapi",
-                    sql=f"select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = '{uuid}'",
-                ).execute(get_current_context())
+                cursor = holdings_conn.cursor()
+                sql = "select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = (%s)"
+                cursor.execute(sql, uuid)
+                holdings_result = cursor.fetchall()
+
+                self.connection_pool.pool().putconn(holdings_conn)
 
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
@@ -138,12 +141,11 @@ class Transformer(object):
 
                     holding_id = holding["id"]
 
-                    items_result = SQLExecuteQueryOperator(
-                        task_id="query-items",
-                        conn_id="postgres_folio",
-                        database="okapi",
-                        sql=f"select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = '{holding_id}'",
-                    ).execute(get_current_context())
+                    cursor = items_conn.cursor()
+                    sql = "select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = (%s)"
+                    cursor.execute(sql, holding_id)
+                    items_result = cursor.fetchall()
+                    self.connection_pool.pool().putconn(items_conn)
 
                     active_items = []
                     for _item in items_result:
