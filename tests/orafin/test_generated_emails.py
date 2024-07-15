@@ -136,6 +136,7 @@ def test_generate_ap_error_report_email(mocker):
         'test@stanford.edu',
         'test@stanford.edu',
         'test@stanford.edu',
+        'test@stanford.edu',
     ]
 
     html_body = BeautifulSoup(
@@ -355,7 +356,7 @@ def test_generate_invoice_error_email(mocker):
 
     assert mock_send_email.called
 
-    assert len(mock_send_email.call_args[1]['to']) == 3
+    assert len(mock_send_email.call_args[1]['to']) == 4
 
     assert mock_send_email.call_args[1]['to'][1] == "test@stanford.edu"
 
