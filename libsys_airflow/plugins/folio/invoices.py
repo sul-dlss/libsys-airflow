@@ -72,7 +72,8 @@ def invoices_awaiting_payment_task() -> list:
     folio_client = _folio_client()
     sul_invoices = "(acqUnitIds==*\"bd6c5f05-9ab3-41f7-8361-1c1e847196d3\"*) and exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"Pending\""
     law_invoices = "(acqUnitIds==*\"556eb26f-dbea-41c1-a1de-9a88ad950d95\"*) and exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"Pending\""
-    query = f"""({sul_invoices}) or ({law_invoices})"""
+    business_invoices = "(acqUnitIds==*\"c74ceb20-33fb-4b50-914e-a056db67feea\"*) and exportToAccounting=true and status=\"Awaiting payment\" and cql.allRecords=1 not disbursementNumber=\"Pending\""
+    query = f"""({sul_invoices}) or ({law_invoices}) or ({business_invoices})"""
     invoice_ids = _get_ids_from_vouchers(query, folio_client)
     return invoice_ids
 
