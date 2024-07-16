@@ -38,7 +38,7 @@ with DAG(
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
-    tags=["data export"],
+    tags=["data export", "sharevde"],
     params={
         "from_date": Param(
             f"{datetime.now().strftime('%Y-%m-%d')}",
