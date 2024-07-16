@@ -358,7 +358,6 @@ def test_determine_campus_code_no_library(mocker, mock_folio_client):
 
 
 def test_determine_campus_code_http_error(mocker, mock_folio_client):
-    # mocker.patch('libsys_airflow.plugins.data_exports.marc.transformer.SQLPool')
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
