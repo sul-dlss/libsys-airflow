@@ -255,8 +255,6 @@ def mock_folio_client():
 
 
 def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
-    # mocker.patch.object(marc_transformer, "SQLPool", MockPool)
-
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -293,7 +291,6 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
-    # mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -334,7 +331,6 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
-    # mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -373,7 +369,6 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
-    # mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
