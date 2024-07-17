@@ -74,7 +74,9 @@ def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
     task_instance = kwargs["task_instance"]
     vendor = kwargs["vendor"]
     kind = kwargs.get("record_id_kind", "")
-    data = task_instance.xcom_pull(task_ids="fetch_record_ids_from_folio")
+    upstream_task_id = kwargs.get("upstream_task_id", "fetch_record_ids_from_folio")
+
+    data = task_instance.xcom_pull(task_ids=upstream_task_id)
 
     if kind:
         data_path = Path(airflow) / f"data-export-files/{vendor}/instanceids/{kind}/"
@@ -83,7 +85,8 @@ def save_ids_to_fs(**kwargs) -> list[Union[str, None]]:
     else:
         for kind in ["new", "updates", "deletes"]:
             ids = save_ids(airflow=airflow, data=data[kind], kind=kind, vendor=vendor)
-            ids_path.append(ids)
+            if ids:
+                ids_path.append(ids)
 
     return ids_path
 

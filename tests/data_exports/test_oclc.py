@@ -8,6 +8,7 @@ from libsys_airflow.plugins.data_exports.marc.oclc import (
     OCLCTransformer,
     archive_instanceid_csv,
     get_record_id,
+    filter_updates,
 )
 
 
@@ -506,3 +507,26 @@ def test_get_record_id(mocker, mock_folio_client):
     oclc_ids = get_record_id(record_dup_and_prefixes)
 
     assert oclc_ids == ["1427207959"]
+
+
+def test_filter_updates():
+    record_ids = {
+        "new": [
+            '0425b476-39ac-4383-b8e5-e1e102292854',
+            '047df446-0398-47b0-aa9f-3031306cb709',
+        ],
+        "updates": [
+            '00ad48e0-ec9b-4b5c-890e-dbacb339ad1d',
+            '012537af-58e9-4ff0-9160-deaad27907eb',
+        ],
+        "deletes": [
+            '06232691-ac1b-4b75-84f5-2570ab2fb532',
+            '07331c12-b52e-4b3c-8018-db41b524b2df',
+        ],
+    }
+
+    new_record_ids = filter_updates(all_records_ids=record_ids)
+
+    assert new_record_ids['updates'] == []
+    assert len(new_record_ids['deletes']) == 2
+    assert len(new_record_ids['new']) == 2
