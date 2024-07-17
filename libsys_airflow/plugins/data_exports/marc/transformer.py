@@ -5,14 +5,13 @@ import pymarc
 import re
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
-from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from s3path import S3Path
 
 logger = logging.getLogger(__name__)
 
 
 class Transformer(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.folio_client = folio_client()
         self.call_numbers = self.call_number_lookup()
         self.holdings_type = self.holdings_type_lookup()
@@ -21,7 +20,7 @@ class Transformer(object):
         self.campus_lookup = self.campus_by_locations_lookup()
         self.uuid_regex = self.uuid_compile()
         self.isbn_regex = self.isbn_compile()
-        self.connection_pool = SQLPool()
+        self.connection = kwargs.get("connection")
 
     def call_number_lookup(self) -> dict:
         lookup = {}
@@ -119,18 +118,13 @@ class Transformer(object):
 
     def add_holdings_items_fields(self, instance_subfields: list) -> list:
         fields = []
-        holdings_conn = self.connection_pool.pool().getconn()
-        items_conn = self.connection_pool.pool().getconn()
 
         for uuid in instance_subfields:
             try:
-                cursor = holdings_conn.cursor()
+                cursor = self.connection.cursor()
                 sql = "select jsonb from sul_mod_inventory_storage.holdings_record where instanceid = (%s)"
-                cursor.execute(sql, uuid)
+                cursor.execute(sql, (uuid,))
                 holdings_result = cursor.fetchall()
-
-                self.connection_pool.pool().putconn(holdings_conn)
-
                 for holding_tuple in holdings_result:
                     holding = holding_tuple[0]
 
@@ -141,11 +135,10 @@ class Transformer(object):
 
                     holding_id = holding["id"]
 
-                    cursor = items_conn.cursor()
+                    cursor = self.connection.cursor()
                     sql = "select jsonb from sul_mod_inventory_storage.item where holdingsrecordid = (%s)"
-                    cursor.execute(sql, holding_id)
+                    cursor.execute(sql, (holding_id,))
                     items_result = cursor.fetchall()
-                    self.connection_pool.pool().putconn(items_conn)
 
                     active_items = []
                     for _item in items_result:
@@ -173,6 +166,7 @@ class Transformer(object):
                                 self.add_item_subfields(new_999, item)
                                 if len(new_999.subfields) > 0:
                                     fields.append(new_999)
+
             except Exception as e:
                 logger.warning(f"Error with holdings or items: {e}")
                 continue

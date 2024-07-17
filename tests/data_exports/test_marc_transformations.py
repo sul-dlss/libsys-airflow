@@ -34,16 +34,17 @@ class MockCursor(pydantic.BaseModel):
         in order to mock the correct statement:
         """
         if param in [
-            '5face3a3-9804-5034-aa02-1eb5db0c191c',
-            'e1797b62-a8b1-5f3d-8e85-934d58bd9395',
-            'c77d294c-4d83-4fe0-87b1-f94a845c0d49',
+            ('5face3a3-9804-5034-aa02-1eb5db0c191c',),
+            ('e1797b62-a8b1-5f3d-8e85-934d58bd9395',),
+            ('c77d294c-4d83-4fe0-87b1-f94a845c0d49',),
         ]:
             self.uuid = param
         if param in [
-            '10be3fec-48ea-5099-9d5f-ab4875c62481',
-            '3bb4a439-842e-5c8d-b86c-eaad46b6a316',
-            '194f153f-3f76-5383-b18c-18d67dc5ffa8',
+            ('10be3fec-48ea-5099-9d5f-ab4875c62481',),
+            ('3bb4a439-842e-5c8d-b86c-eaad46b6a316',),
+            ('194f153f-3f76-5383-b18c-18d67dc5ffa8',),
         ]:
+            print(F"HERE2:{param}")
             self.holding_id = param
 
 
@@ -169,24 +170,25 @@ def mock_sql_query_result(*args):
     result = [
         ({},),
     ]
-    if args[0].endswith("a75a9e59-8e9a-55cd-8414-f71c1194493b"):
+    tuple = args[0][0]
+    if tuple.endswith("a75a9e59-8e9a-55cd-8414-f71c1194493b"):
         result = {"permanentLocationId": "148e598c-bb58-4e6d-b313-4933e6a4534c"}
-    if args[0].endswith("2aa4c0b3-4db6-5c71-a4e2-7fdc672b6b94"):
+    if tuple.endswith("2aa4c0b3-4db6-5c71-a4e2-7fdc672b6b94"):
         result = {"permanentLocationId": "0edeef57-074a-4f07-aee2-9f09d55e65c3"}
-    if args[0].endswith("5face3a3-9804-5034-aa02-1eb5db0c191c"):
+    if tuple.endswith("5face3a3-9804-5034-aa02-1eb5db0c191c"):
         result = single_holdings
-    if args[0].endswith("8b373183-2b6f-5a6b-82ab-5f4e6e70d0f8"):
+    if tuple.endswith("8b373183-2b6f-5a6b-82ab-5f4e6e70d0f8"):
         result = {"permanentLocationId": "c9cef3c6-5874-4bae-b90b-2e1d1f4674db"}
-    if args[0].endswith("8e9eb01b-1249-5ef8-b9ea-e16496ca64cc"):
+    if tuple.endswith("8e9eb01b-1249-5ef8-b9ea-e16496ca64cc"):
         result = {"permanentLocationId": "46eb9191-1f6f-44ba-a67c-610f868dd429"}
-    if args[0].endswith("e1797b62-a8b1-5f3d-8e85-934d58bd9395"):
+    if tuple.endswith("e1797b62-a8b1-5f3d-8e85-934d58bd9395"):
         result = holdings_multiple_items
-    if args[0].endswith("c77d294c-4d83-4fe0-87b1-f94a845c0d49"):
+    if tuple.endswith("c77d294c-4d83-4fe0-87b1-f94a845c0d49"):
         result = holdings_no_items
     # Items
-    if args[0].endswith("10be3fec-48ea-5099-9d5f-ab4875c62481"):
+    if tuple.endswith("10be3fec-48ea-5099-9d5f-ab4875c62481"):
         result = single_item
-    if args[0].endswith("3bb4a439-842e-5c8d-b86c-eaad46b6a316"):
+    if tuple.endswith("3bb4a439-842e-5c8d-b86c-eaad46b6a316"):
         result = multiple_items
 
     return result
@@ -253,8 +255,6 @@ def mock_folio_client():
 
 
 def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
-    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
-
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -281,7 +281,7 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    transformer = marc_transformer.Transformer()
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
 
     with marc_file.open('rb') as fo:
@@ -291,7 +291,6 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
-    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -312,7 +311,7 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    transformer = marc_transformer.Transformer()
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
 
     with marc_file.open('rb') as fo:
@@ -332,7 +331,6 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
-    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -353,7 +351,7 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    transformer = marc_transformer.Transformer()
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
 
     with marc_file.open('rb') as fo:
@@ -371,7 +369,6 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
 
 
 def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
-    mocker.patch.object(marc_transformer, "SQLPool", MockPool)
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -393,12 +390,13 @@ def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    transformer = marc_transformer.Transformer()
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
 
+    print(mod_marc_records)
     field_999s = mod_marc_records[0].get_fields('999')
 
     assert len(field_999s) == 2
