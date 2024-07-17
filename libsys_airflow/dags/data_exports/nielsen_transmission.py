@@ -35,7 +35,7 @@ default_args = {
     ),
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    tags=["data export"],
+    tags=["data export", "nielsen"],
 )
 def send_nielsen_records():
     start = EmptyOperator(task_id="start")
