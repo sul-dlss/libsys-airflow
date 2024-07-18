@@ -213,14 +213,16 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
 
     grouped_invoices = _group_excluded_invoices(invoices_reasons)
+    bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", {})
+    law_invoices = grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", {})
+    sul_invoices = grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", {})
 
-    sul_html_content = _excluded_email_body(
-        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", {}), folio_url
-    )
+    sul_html_content = _excluded_email_body(sul_invoices, folio_url)
     if len(sul_html_content.strip()) > 0:
-        logger.info(f"Sending email to {sul_to_email_addr} for rejected invoices")
+        logger.info(f"Sending email to {sul_to_email_addr} for SUL rejected invoices")
         send_email(
             to=[
                 sul_to_email_addr,
@@ -230,11 +232,21 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
             html_content=sul_html_content,
         )
 
-    law_html_content = _excluded_email_body(
-        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", {}), folio_url
-    )
+    bus_html_content = _excluded_email_body(bus_invoices, folio_url)
+
+    if len(bus_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {bus_to_email_addr} for Business rejected invoices"
+        )
+        send_email(
+            to=[bus_to_email_addr, devs_to_email_addr],
+            subject="Rejected Invoices for Business",
+            html_content=bus_html_content,
+        )
+
+    law_html_content = _excluded_email_body(law_invoices, folio_url)
     if len(law_html_content.strip()) > 0:
-        logger.info(f"Sending email to {law_to_email_addr} for rejected invoices")
+        logger.info(f"Sending email to {law_to_email_addr} for Law rejected invoices")
         send_email(
             to=[
                 law_to_email_addr,
@@ -253,6 +265,7 @@ def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
     ap_report_row = ti.xcom_pull(task_ids="retrieve_invoice_task", key=invoice_id)
 
     template = Template(
@@ -283,6 +296,7 @@ def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
     send_email(
         to=[
             sul_to_email_addr,
+            bus_to_email_addr,
             law_to_email_addr,
             devs_to_email_addr,
         ],
@@ -328,9 +342,10 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
 
     logger.info(
-        f"Sending email to {sul_to_email_addr} and {law_to_email_addr} for {total_errors} error reports"
+        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} for {total_errors} error reports"
     )
 
     html_content = _ap_report_errors_email_body(
@@ -341,6 +356,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
         to=[
             sul_to_email_addr,
             law_to_email_addr,
+            bus_to_email_addr,
             devs_to_email_addr,
         ],
         subject="Invoice Errors from AP Report",
@@ -360,16 +376,21 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+
+    bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", [])
+    law_invoices = grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", [])
+    sul_invoices = grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", [])
 
     sul_html_content = _ap_report_paid_email_body(
-        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", []),
+        sul_invoices,
         ap_report_name,
         folio_url,
     )
 
     if len(sul_html_content.strip()) > 0:
         logger.info(
-            f"Sending email to {sul_to_email_addr} for {len(grouped_invoices.get('bd6c5f05-9ab3-41f7-8361-1c1e847196d3', [])):,} invoices"
+            f"Sending email to {sul_to_email_addr} for {len(sul_invoices):,} invoices"
         )
         send_email(
             to=[
@@ -380,14 +401,28 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
             html_content=sul_html_content,
         )
 
+    business_html_content = _ap_report_paid_email_body(
+        bus_invoices, ap_report_name, folio_url
+    )
+
+    if len(business_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
+        )
+        send_email(
+            to=[bus_to_email_addr, devs_to_email_addr],
+            subject=f"Paid Invoices from {ap_report_name} for Business",
+            html_content=business_html_content,
+        )
+
     law_html_content = _ap_report_paid_email_body(
-        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", []),
+        law_invoices,
         ap_report_name,
         folio_url,
     )
     if len(law_html_content.strip()) > 0:
         logger.info(
-            f"Sending email to {law_to_email_addr} for {len(grouped_invoices.get('556eb26f-dbea-41c1-a1de-9a88ad950d95', [])):,} invoices"
+            f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
         )
         send_email(
             to=[
@@ -408,15 +443,18 @@ def generate_summary_email(invoices: list, folio_url: str):
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
 
     grouped_invoices = _group_invoices_by_acqunit(invoices)
 
-    sul_html_content = _summary_email_body(
-        grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", []), folio_url
-    )
+    bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", [])
+    law_invoices = grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", [])
+    sul_invoices = grouped_invoices.get("bd6c5f05-9ab3-41f7-8361-1c1e847196d3", [])
+
+    sul_html_content = _summary_email_body(sul_invoices, folio_url)
     if len(sul_html_content.strip()) > 0:
         logger.info(
-            f"Sending email to {sul_to_email_addr} for {len(grouped_invoices.get('bd6c5f05-9ab3-41f7-8361-1c1e847196d3', [])):,} invoices"
+            f"Sending email to {sul_to_email_addr} for {len(sul_invoices)} invoices"
         )
         send_email(
             to=[
@@ -427,12 +465,23 @@ def generate_summary_email(invoices: list, folio_url: str):
             html_content=sul_html_content,
         )
 
-    law_html_content = _summary_email_body(
-        grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", []), folio_url
-    )
+    business_html_content = _summary_email_body(bus_invoices, folio_url)
+
+    if len(business_html_content.strip()) > 0:
+        logger.info(
+            f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
+        )
+        send_email(
+            to=[bus_to_email_addr, devs_to_email_addr],
+            subject="Approved Invoices Sent to AP for Business",
+            html_content=business_html_content,
+        )
+
+    law_html_content = _summary_email_body(law_invoices, folio_url)
+
     if len(law_html_content.strip()) > 0:
         logger.info(
-            f"Sending email to {law_to_email_addr} for {len(grouped_invoices.get('556eb26f-dbea-41c1-a1de-9a88ad950d95', [])):,} invoices"
+            f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
         )
         send_email(
             to=[

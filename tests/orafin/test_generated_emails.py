@@ -13,6 +13,34 @@ from libsys_airflow.plugins.orafin.emails import (
 
 from test_payments import invoice_dict, invoice_lines, vendor
 
+business_invoice = {
+    "id": "00e0b6e7-a336-49e6-9e24-d4c23c4345fd",
+    "accountingCode": "",
+    "acqUnitIds": ["c74ceb20-33fb-4b50-914e-a056db67feea"],
+    "invoiceDate": "2024-07-17T00:00:00.000+00:00",
+    'folioInvoiceNo': "",
+    'subTotal': 0.0,
+    'total': 0.0,
+    "lines": invoice_lines,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+    "vendorInvoiceNo": "242428ZP1",
+    "vendor": vendor,
+}
+
+law_invoice = {
+    "id": "7b8d6012-e2eb-41c5-82b4-5e14f29a6e04",
+    "accountingCode": "",
+    "acqUnitIds": ["556eb26f-dbea-41c1-a1de-9a88ad950d95"],
+    "invoiceDate": "2024-07-17T00:00:00.000+00:00",
+    'folioInvoiceNo': "",
+    'subTotal': 0.0,
+    'total': 0.0,
+    "lines": invoice_lines,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+    "vendorInvoiceNo": "242428ZP1",
+    "vendor": vendor,
+}
+
 
 def mock_retrieve_invoice_task_xcom_pull(**kwargs):
     key = kwargs.get("key")
@@ -136,6 +164,7 @@ def test_generate_ap_error_report_email(mocker):
         'test@stanford.edu',
         'test@stanford.edu',
         'test@stanford.edu',
+        'test@stanford.edu',
     ]
 
     html_body = BeautifulSoup(
@@ -222,7 +251,13 @@ def test_generate_ap_paid_report_email(mocker):
                     "vendorInvoiceNo": "23-24364",
                     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
                     "accountingCode": "031134FEEDER",
-                }
+                },
+                {
+                    "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
+                    "vendorInvoiceNo": "56-23478",
+                    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+                    "accountingCode": "071724FEEDER",
+                },
             ]
 
     mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
@@ -239,7 +274,7 @@ def test_generate_ap_paid_report_email(mocker):
         "http://folio.stanford.edu", task_instance
     )
 
-    assert total_invoices == 1
+    assert total_invoices == 2
     assert mock_send_email.called
 
     html_body = BeautifulSoup(
@@ -291,22 +326,31 @@ def test_generate_excluded_email(mocker):
 
     generate_excluded_email(
         [
+            {"invoice": business_invoice, "reason": "Zero subtotal"},
+            {"invoice": law_invoice, "reason": "Amount split"},
             {"invoice": invoice_dict, "reason": "Amount split"},
             {"invoice": invoice_dict, "reason": "Zero subtotal"},
             {"invoice": invoice_dict, "reason": "Future invoice date"},
+            {"invoice": invoice_dict, "reason": "Amount split"},
         ],
         "https://folio.stanford.edu",
     )
 
-    assert mock_send_email.called
-    assert mock_send_email.call_args[1]['to'] == [
+    assert mock_send_email.call_count == 3
+
+    sul_call = mock_send_email.mock_calls[0].call_list()
+    bis_call = mock_send_email.mock_calls[1].call_list()
+    law_call = mock_send_email.mock_calls[2].call_list()
+
+    assert bis_call[0][2]['subject'] == 'Rejected Invoices for Business'
+    assert law_call[0][2]['subject'] == 'Rejected Invoices for LAW'
+
+    assert sul_call[0][2]['to'] == [
         'test@stanford.edu',
         'test@stanford.edu',
     ]
 
-    html_body = BeautifulSoup(
-        mock_send_email.call_args[1]['html_content'], 'html.parser'
-    )
+    html_body = BeautifulSoup(sul_call[0][2]['html_content'], 'html.parser')
 
     found_h2s = html_body.findAll("h2")
     assert found_h2s[0].text == "Amount split"
@@ -355,7 +399,7 @@ def test_generate_invoice_error_email(mocker):
 
     assert mock_send_email.called
 
-    assert len(mock_send_email.call_args[1]['to']) == 3
+    assert len(mock_send_email.call_args[1]['to']) == 4
 
     assert mock_send_email.call_args[1]['to'][1] == "test@stanford.edu"
 
