@@ -12,7 +12,7 @@ from bookops_worldcat import WorldcatAccessToken, MetadataSession
 from bookops_worldcat.errors import WorldcatRequestError
 
 from libsys_airflow.plugins.data_exports.marc.oclc import get_record_id
-from libsys_airflow.plugins.data_exports.marc.transforms import oclc_excluded
+from libsys_airflow.plugins.data_exports.marc.excluded_tags import oclc_excluded
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
