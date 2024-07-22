@@ -263,6 +263,7 @@ def test_transmit_data_from_s3_task(
         params={"vendor": "pod", "bucket": "data-export-test"},
     )
     assert len(transmit_data_from_s3["success"]) == 3
+    assert "Setting url_params to" in caplog.text
 
 
 def test_transmit_data_failed(

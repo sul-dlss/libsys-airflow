@@ -5,6 +5,7 @@ import httpx
 
 from pathlib import Path
 from s3path import S3Path
+from datetime import datetime
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
@@ -110,6 +111,11 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     url_params = kwargs.get("url_params", {})
     params = kwargs.get("params", {})
     conn_id = params["vendor"]
+    # sets stream for POD full dumps
+    if conn_id == "pod" and gather_files["s3"]:
+        url_params = {"stream": datetime.now().strftime('%Y-%m-%d')}
+        logger.info(f"Setting url_params to {url_params}")
+
     logger.info(f"Transmit data to {conn_id}")
     connection = Connection.get_connection_from_secrets(conn_id)
     if gather_files["s3"]:
