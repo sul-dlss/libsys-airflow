@@ -4,6 +4,7 @@ import pathlib
 import httpx
 
 from http import HTTPStatus
+from datetime import datetime
 
 from airflow.models import Connection
 
@@ -237,6 +238,7 @@ def test_transmit_data_task(
     )
     assert len(transmit_data["success"]) == 3
     assert "Transmit data to pod" in caplog.text
+    assert not "Setting URL params to" in caplog.text
 
 
 def test_transmit_data_from_s3_task(
@@ -263,7 +265,8 @@ def test_transmit_data_from_s3_task(
         params={"vendor": "pod", "bucket": "data-export-test"},
     )
     assert len(transmit_data_from_s3["success"]) == 3
-    assert "Setting url_params to" in caplog.text
+    stream = {"stream": datetime.now().strftime('%Y-%m-%d')}
+    assert f"Setting URL params to {stream}" in caplog.text
 
 
 def test_transmit_data_failed(

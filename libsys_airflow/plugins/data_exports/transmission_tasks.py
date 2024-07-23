@@ -108,14 +108,8 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     success = []
     failures = []
     files_params = kwargs.get("files_params", "upload")
-    url_params = kwargs.get("url_params", {})
     params = kwargs.get("params", {})
     conn_id = params["vendor"]
-    # sets stream for POD full dumps
-    if conn_id == "pod" and gather_files["s3"]:
-        url_params = {"stream": datetime.now().strftime('%Y-%m-%d')}
-        logger.info(f"Setting url_params to {url_params}")
-
     logger.info(f"Transmit data to {conn_id}")
     connection = Connection.get_connection_from_secrets(conn_id)
     if gather_files["s3"]:
@@ -123,7 +117,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     else:
         path_module = Path
     with httpx.Client(
-        headers=connection.extra_dejson, params=url_params, follow_redirects=True
+        headers=connection.extra_dejson, params=vendor_url_params(conn_id, gather_files["s3"]), follow_redirects=True
     ) as client:
         for f in gather_files["file_list"]:
             files = {files_params: path_module(f).open("rb")}
@@ -295,6 +289,19 @@ def vendor_filename_spec(conn_id, filename):
         return "tbd"
     else:
         Path(filename).name
+
+
+def vendor_url_params(conn_id, is_s3_path) -> dict:
+    """
+    Sets vendor specific URL paramters for transmitting data with httpx client
+    """
+    if conn_id == "pod" and is_s3_path:
+        url_params = {"stream": datetime.now().strftime('%Y-%m-%d')}
+        logger.info(f"Setting URL params to {url_params}")
+    else:
+        url_params = {}
+    
+    return url_params
 
 
 def return_success_test_instance(files) -> dict:
