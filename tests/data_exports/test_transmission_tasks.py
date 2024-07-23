@@ -238,7 +238,7 @@ def test_transmit_data_task(
     )
     assert len(transmit_data["success"]) == 3
     assert "Transmit data to pod" in caplog.text
-    assert not "Setting URL params to" in caplog.text
+    assert "Setting URL params to" not in caplog.text
 
 
 def test_transmit_data_from_s3_task(
