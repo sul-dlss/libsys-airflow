@@ -117,7 +117,9 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     else:
         path_module = Path
     with httpx.Client(
-        headers=connection.extra_dejson, params=vendor_url_params(conn_id, gather_files["s3"]), follow_redirects=True
+        headers=connection.extra_dejson,
+        params=vendor_url_params(conn_id, gather_files["s3"]),
+        follow_redirects=True,
     ) as client:
         for f in gather_files["file_list"]:
             files = {files_params: path_module(f).open("rb")}
@@ -300,7 +302,7 @@ def vendor_url_params(conn_id, is_s3_path) -> dict:
         logger.info(f"Setting URL params to {url_params}")
     else:
         url_params = {}
-    
+
     return url_params
 
 
