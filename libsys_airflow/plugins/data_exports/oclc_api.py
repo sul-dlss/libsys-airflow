@@ -109,7 +109,7 @@ class OCLCAPIWrapper(object):
     def __instance_uuid__(self, record) -> Union[str, None]:
         instance_uuid = None
         for field in record.get_fields("999"):
-            if field.indicators == ["f", "f"]:
+            if field.indicators == pymarc.Indicators(first="f", second="f"):
                 instance_uuid = field["i"]
         if instance_uuid is None:
             logger.error("No instance UUID found in MARC record")

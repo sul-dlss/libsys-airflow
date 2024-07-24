@@ -70,7 +70,7 @@ class OCLCTransformer(Transformer):
         fields999 = record.get_fields("999")
         instance_uuid = ""
         for field in fields999:
-            if field.indicators == ["f", "f"]:
+            if field.indicators == pymarc.Indicators(first="f", second="f"):
                 instance_uuid = field.get_subfields("i")[0]
                 break
         return instance_uuid
@@ -151,7 +151,7 @@ class OCLCTransformer(Transformer):
     def multiple_codes(self, record: pymarc.Record, code: str, record_ids: list):
         fields999 = record.get_fields('999')
         for field in fields999:
-            if field.indicators == ['f', 'f']:
+            if field.indicators == pymarc.Indicators(first='f', second='f'):
                 instance_id = field['i']
                 self.staff_notices.append((instance_id, code, record_ids))
                 break

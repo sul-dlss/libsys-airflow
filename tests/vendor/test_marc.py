@@ -125,7 +125,7 @@ def test_add_fields(tmp_path, marc_path):
         for record in marc_reader:
             field = record["910"]
             assert field
-            assert field.indicators == [' ', 'x']
+            assert field.indicators == pymarc.Indicators(first=' ', second='x')
             assert field["a"] == "MarcIt"
 
 
