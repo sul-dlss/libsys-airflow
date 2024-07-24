@@ -112,7 +112,6 @@ with DAG(
     def retrieve_marc_records(**kwargs):
         ti = kwargs.get("ti")
         instance_files = ti.xcom_pull(task_ids="save_ids_to_file")
-        logger.info(f"Instance files {instance_files} {type(instance_files)}")
         return marc_for_instances(instance_files=instance_files)
 
     @task

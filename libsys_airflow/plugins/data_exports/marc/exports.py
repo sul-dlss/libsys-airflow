@@ -26,7 +26,13 @@ def marc_for_instances(**kwargs) -> dict:
         marc_file = exporter.retrieve_marc_for_instances(
             instance_file=file_path, kind=kind
         )
-        logger.info(f"Retrieved marc files {marc_file} for instance file {file_path}")
-        new_updates_deletes[kind].append(str(marc_file))
+        marc_file_str = str(marc_file)
+
+        if len(marc_file_str) < 1:
+            continue
+        logger.info(
+            f"Retrieved marc files {marc_file_str} for instance file {file_path}"
+        )
+        new_updates_deletes[kind].append(marc_file_str)
 
     return new_updates_deletes
