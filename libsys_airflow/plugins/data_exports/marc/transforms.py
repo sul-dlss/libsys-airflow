@@ -62,7 +62,6 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 
     for i, record in enumerate(marc_records):
         try:
-            record.leader = pymarc.leader.Leader(record.leader)
             record.leader[5] = "d"  # type: ignore
             if not i % 100:
                 logger.info(f"{i:,} records processed")
