@@ -204,7 +204,7 @@ class OCLCAPIWrapper(object):
         if needs_new_035:
             new_035 = pymarc.Field(
                 tag='035',
-                indicators=[' ', ' '],
+                indicators=[' ', ' '],  # type: ignore
                 subfields=[
                     pymarc.Subfield(code='a', value=f"(OCoLC-M){control_number}")
                 ],
