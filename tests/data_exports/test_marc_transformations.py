@@ -44,7 +44,6 @@ class MockCursor(pydantic.BaseModel):
             ('3bb4a439-842e-5c8d-b86c-eaad46b6a316',),
             ('194f153f-3f76-5383-b18c-18d67dc5ffa8',),
         ]:
-            print(F"HERE2:{param}")
             self.holding_id = param
 
 
@@ -276,7 +275,11 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
             ],
         ),
     )
-    marc_file = tmp_path / "20240514.mrc"
+
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "20240514.mrc"
+
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
@@ -296,6 +299,7 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
         return_value=mock_folio_client,
     )
     record = pymarc.Record()
+    # record.leader = 'abcdefghijk'
     record.add_field(
         pymarc.Field(
             tag='999',
@@ -306,13 +310,18 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
             ],
         )
     )
-    marc_file = tmp_path / "20240228.mrc"
+
+    marc_dir = tmp_path / "pod" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "20240228.mrc"
+
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
     transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
+    transformer.write_serialized_marc(marc_file, record)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
@@ -346,7 +355,10 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
         )
     )
 
-    marc_file = tmp_path / "2024022911.mrc"
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "2024022911.mrc"
+
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
@@ -385,7 +397,10 @@ def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
         )
     )
 
-    marc_file = tmp_path / "2024022914.mrc"
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "2024022914.mrc"
+
     with marc_file.open("wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
@@ -430,7 +445,9 @@ def test_remove_marc_fields(tmp_path):
         ),
     )
 
-    marc_file = tmp_path / "20240228.mrc"
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "20240228.mrc"
 
     with marc_file.open("wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -451,7 +468,9 @@ def test_remove_marc_fields(tmp_path):
 
 
 def test_change_leader(tmp_path):
-    marc_file = tmp_path / "20240509.mrc"
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "20240509.mrc"
 
     record = pymarc.Record()
     record.add_field(
