@@ -306,9 +306,9 @@ def _has_matching_field(record: pymarc.Record, field: MarcField):
 
 
 def _field_match(field: MarcField, check_field: pymarc.Field):
-    if field.indicator1 and check_field.indicators[0] != field.indicator1:
+    if field.indicator1 and check_field.indicators[0] != field.indicator1:  # type: ignore
         return False
-    if field.indicator2 and check_field.indicators[1] != field.indicator2:
+    if field.indicator2 and check_field.indicators[1] != field.indicator2:  # type: ignore
         return False
     for subfield in field.subfields:
         check_subfield_value = ''.join(check_field.get_subfields(subfield.code))

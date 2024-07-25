@@ -174,7 +174,7 @@ class Transformer(object):
         return fields
 
     def add_holdings_subfields(self, holding: dict) -> pymarc.Field:
-        field_999 = pymarc.Field(tag="999", indicators=[' ', ' '])
+        field_999 = pymarc.Field(tag="999", indicators=[' ', ' '])  # type: ignore
         if len(holding.get("holdingsTypeId", "")) > 0:
             holdings_type_name = self.holdings_type.get(holding["holdingsTypeId"])
             if holdings_type_name:

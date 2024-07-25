@@ -205,7 +205,7 @@ def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
 
 field_035 = pymarc.Field(
     tag='035',
-    indicators=[' ', '9'],
+    indicators=[' ', '9'],  # type: ignore
     subfields=[pymarc.Subfield(code='a', value='gls19291491')],
 )
 
@@ -213,13 +213,13 @@ field_008 = pymarc.Field(tag='008', data='920218s1990    ja a          000 0 jpn
 
 field_590 = pymarc.Field(
     tag="590",
-    indicators=[' ', ' '],
+    indicators=[' ', ' '],  # type: ignore
     subfields=[pymarc.Subfield(code='a', value='MARCit brief record')],
 )
 
 field_915 = pymarc.Field(
     tag="915",
-    indicators=['1', '0'],
+    indicators=['1', '0'],  # type: ignore
     subfields=[
         pymarc.Subfield(code='a', value='NO EXPORT'),
         pymarc.Subfield(code='b', value='FOR SU ONLY'),
@@ -228,7 +228,7 @@ field_915 = pymarc.Field(
 
 field_915_alt = pymarc.Field(
     tag='915',
-    indicators=[' ', '1'],
+    indicators=[' ', '1'],  # type: ignore
     subfields=[pymarc.Subfield(code='a', value='NO EXPORT')],
 )
 
