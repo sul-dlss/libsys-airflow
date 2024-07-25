@@ -25,7 +25,6 @@ from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     divide_into_oclc_libraries,
-    remove_fields_from_marc_files,
     remove_marc_files,
 )
 from libsys_airflow.plugins.data_exports.email import (
@@ -101,14 +100,6 @@ with DAG(
         },
     )
 
-    transform_marc_fields = PythonOperator(
-        task_id="transform_folio_remove_marc_fields",
-        python_callable=remove_fields_from_marc_files,
-        op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull(task_ids='retrieve_marc_records') }}"
-        },
-    )
-
     archive_csv = PythonOperator(
         task_id="archive_instance_ids_csv",
         python_callable=archive_instanceid_csv,
@@ -121,7 +112,6 @@ with DAG(
     def retrieve_marc_records(**kwargs):
         ti = kwargs.get("ti")
         instance_files = ti.xcom_pull(task_ids="save_ids_to_file")
-        logger.info(f"Instance files {instance_files} {type(instance_files)}")
         return marc_for_instances(instance_files=instance_files)
 
     @task
@@ -181,23 +171,18 @@ with DAG(
 
 check_record_ids >> fetch_folio_record_ids >> filter_out_updates_ids >> save_ids_to_file
 check_record_ids >> save_ids_to_file >> fetch_marc_records
+
+
 (
     fetch_marc_records
-    >> transform_marc_fields
-    >> [new_records_by_library, delete_records_by_library, updates_records_by_library]
-)
-save_ids_to_file >> fetch_marc_records
-(
-    fetch_marc_records
-    >> transform_marc_fields
-    >> [new_records_by_library, delete_records_by_library, updates_records_by_library]
+    >> [
+        new_records_by_library,
+        delete_records_by_library,
+        updates_records_by_library,
+    ]
+    >> finish_division
 )
 
-[
-    new_records_by_library,
-    delete_records_by_library,
-    updates_records_by_library,
-] >> finish_division
 (
     finish_division
     >> [aggregate_email_multiple_records(), remove_original_marc, archive_csv]
