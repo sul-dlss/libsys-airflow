@@ -293,13 +293,13 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
     assert len(mod_marc_records) == 0
 
 
-def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
+def test_add_holdings_items_single_999_XML(mocker, tmp_path, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
     )
     record = pymarc.Record()
-    # record.leader = 'abcdefghijk'
+    record.leader = pymarc.Leader("00475cas a2200169 i 4500")
     record.add_field(
         pymarc.Field(
             tag='999',
@@ -321,7 +321,52 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
 
     transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
-    transformer.write_serialized_marc(marc_file, record)
+
+    with marc_file.open('rb') as fo:
+        print(f"HERE:{fo}")
+        mod_marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    # field_999s = mod_marc_records[0].get_fields('999')
+
+    # assert len(field_999s) == 2
+    # assert field_999s[1].get_subfields('a')[0] == 'PQ8098.3.E4 A7 1989'
+    # assert field_999s[1].get_subfields('e')[0] == 'GRE-FOLIO-FLAT'
+    # assert field_999s[1].get_subfields('h')[0] == 'Monograph'
+    # assert field_999s[1].get_subfields('i')[0] == '36105029044444'
+    # assert field_999s[1].get_subfields('j')[0] == '1'
+    # assert field_999s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
+    # assert field_999s[1].get_subfields('t')[0] == 'book'
+    # assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
+
+def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
+
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+    record = pymarc.Record()
+    record.leader = pymarc.Leader("00475cas a2200169 i 4500")
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='not a uuid!'),
+                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c'),
+            ],
+        )
+    )
+
+    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+    marc_file = marc_dir / "20240228.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
+    transformer.add_holdings_items(str(marc_file), full_dump=False)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
