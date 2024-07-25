@@ -1,3 +1,4 @@
+import gzip
 import logging
 import pathlib
 
@@ -100,7 +101,10 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
         logger.info(f"Removing MARC fields using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
-        marc_records = [record for record in pymarc.MARCReader(fo)]
+        if marc_path.suffix.endswith("xml"):
+            marc_records = pymarc.parse_xml_to_array(fo)
+        else:
+            marc_records = [record for record in pymarc.MARCReader(fo)]
 
     logger.info(f"Removing MARC fields for {len(marc_records):,} records")
 
@@ -115,9 +119,14 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
 
     try:
         with marc_path.open("wb") as fo:
-            marc_writer = pymarc.MARCWriter(fo)
+            if marc_path.suffix.endswith("xml"):
+                marc_writer = pymarc.XMLWriter(fo)
+            else:
+                marc_writer = pymarc.MARCWriter(fo)  # type: ignore
             for record in marc_records:
                 marc_writer.write(record)
+            marc_writer.close()
+
     except pymarc.exceptions.WriteNeedsRecord as e:
         logger.warning(e)
 
@@ -127,3 +136,27 @@ def remove_marc_files(marc_file_list: list):
         file_path = pathlib.Path(file_path_str)
         file_path.unlink()
         logger.info(f"Removed {file_path}")
+
+
+def zip_marc_file(marc_file: str, full_dump: bool = True):
+    if full_dump:
+        marc_path = S3Path(marc_file)
+    else:
+        marc_path = pathlib.Path(marc_file)  # type: ignore
+
+    # For now only compress POD files
+    vendor = marc_path.parent.parent.name
+    compress_for = ['pod', 'full-dump']
+    if not any(str in vendor for str in compress_for):
+        return
+
+    try:
+        format = marc_path.suffix
+        raw_metadata = marc_path.read_bytes()
+        gzip_path = marc_path.with_name(f"{marc_path.stem}{format}.gz")
+        compressed_metadata = gzip.compress(raw_metadata)
+        gzip_path.write_bytes(compressed_metadata)
+        logger.info(f"Compressed METADATA records to {gzip_path}")
+        marc_path.unlink()
+    except Exception as e:
+        logger.warn(e)

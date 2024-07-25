@@ -1,5 +1,6 @@
 import logging
 import math
+import pathlib
 
 from datetime import datetime, timedelta
 
@@ -8,6 +9,7 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 from airflow.decorators import task, task_group
+from zipp import Path
 
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
     fetch_number_of_records,
@@ -17,7 +19,10 @@ from libsys_airflow.plugins.data_exports.full_dump_marc import (
 )
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
-from libsys_airflow.plugins.data_exports.marc.transforms import remove_marc_fields
+from libsys_airflow.plugins.data_exports.marc.transforms import (
+    remove_marc_fields,
+    zip_marc_file,
+)
 from sqlalchemy import exc
 
 logger = logging.getLogger(__name__)
@@ -135,9 +140,19 @@ with DAG(
             for marc_file in marc_files:
                 remove_marc_fields(marc_file, full_dump=True)
 
-        transform_marc_records_add_holdings(
-            marc_files
-        ) >> transform_marc_records_remove_fields(marc_files)
+        @task
+        def compress_marc_files(marc_files: list):
+            for marc_file in marc_files:
+                stem = pathlib.Path(marc_file).suffix
+                xml = marc_file.replace(stem,'.xml')
+                zip_marc_file(marc_file)
+                zip_marc_file(xml)
+
+        (
+            transform_marc_records_add_holdings(marc_files)
+            >> transform_marc_records_remove_fields(marc_files)
+            >> compress_marc_files(marc_files)
+        )
 
     connection_pool = SQLPool().pool()
 

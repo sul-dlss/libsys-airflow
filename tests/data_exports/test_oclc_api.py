@@ -452,14 +452,9 @@ def test_oclc_api_failed_authentication(mock_oclc_api):
 
 def test_oclc_api_missing_instance_uuid(mock_oclc_api, caplog):
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
-        secret="c867b1dd75e6490f99d1cd1c9252ef22",
-    )
-
     record = pymarc.Record()
 
-    oclc_api_instance.__instance_uuid__(record)
+    oclc_api.get_instance_uuid(record)
 
     assert "No instance UUID found in MARC record" in caplog.text
 

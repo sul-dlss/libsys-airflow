@@ -2,6 +2,7 @@ import pytest  # noqa
 import pathlib
 
 import httpx
+import pymarc
 
 from http import HTTPStatus
 from datetime import datetime
@@ -18,6 +19,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     oclc_connections,
     archive_transmitted_data_task,
     delete_from_oclc_task,
+    filter_new_marc_records_task,
     gather_oclc_files_task,
     match_oclc_task,
     new_to_oclc_task,
@@ -34,9 +36,9 @@ def mock_vendor_marc_files(tmp_path, request):
     marc_file_dir.mkdir(parents=True)
     setup_files = {
         "filenames": [
-            "2024022914.mrc",
-            "2024030114.mrc",
-            "2024030214.mrc",
+            "2024020314.gz",
+            "2024020314.xml",
+            "2024030214.xml",
             "2024030214.txt",
         ]
     }
@@ -44,7 +46,7 @@ def mock_vendor_marc_files(tmp_path, request):
     for i, x in enumerate(setup_files['filenames']):
         file = pathlib.Path(f"{marc_file_dir}/{x}")
         file.touch()
-        if i in [0, 3, 4]:
+        if i in [0, 2, 3]:
             file.write_text("hello world")
         files.append(str(file))
     return {"file_list": files, "s3": False}
@@ -69,9 +71,9 @@ def mock_marc_files(mock_file_system):
     marc_file_dir = mock_file_system[1]
     setup_marc_files = {
         "marc_files": [
-            "2024022914.mrc",
-            "2024030114.mrc",
-            "2024030214.mrc",
+            "2024022914.xml",
+            "2024030114.xml",
+            "2024030214.xml",
         ]
     }
     marc_files = []
@@ -142,6 +144,7 @@ def test_gather_files_task(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     marc_files = gather_files_task.function(airflow=airflow, vendor="pod")
     assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][0]
+    assert len(marc_files["file_list"]) == 1
 
 
 def test_gather_full_dump_files(mocker):
@@ -187,7 +190,7 @@ def test_transmit_data_ftp_task(
     assert len(transmit_data["success"]) == 3
     assert "Start transmission of file" in caplog.text
     assert ftp_hook.store_file.called_with(
-        "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
+        "/remote/path/dir/2024022914.xml", "2024022914.xml"
     )
 
 
@@ -330,7 +333,27 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
     related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
-    related_marc_file = related_marc_file + ".mrc"
+    related_marc_file = related_marc_file + ".xml"
+    assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
+    assert (archive_dir / pathlib.Path(related_marc_file)).exists()
+    assert (archive_dir / instance_id_file1.name).exists()
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["pod"], indirect=True)
+def test_archive_pod_files(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    vendor_dir = airflow / "data-export-files/pod/"
+    instance_id_dir = vendor_dir / "instanceids" / "updates"
+    instance_id_dir.mkdir(parents=True)
+    instance_id_file1 = instance_id_dir / "2024020314.csv"
+    instance_id_file1.touch()
+    archive_dir = vendor_dir / "transmitted" / "updates"
+    archive_dir.mkdir(parents=True)
+    transmitted_files = gather_files_task.function(airflow=airflow, vendor="pod")
+    assert len(transmitted_files["file_list"]) == 1
+    archive_transmitted_data_task.function(transmitted_files["file_list"])
+    related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
+    related_marc_file = related_marc_file + ".xml"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
@@ -422,6 +445,100 @@ def test_delete_from_oclc_task(mocker, mock_oclc_connection):
 
     assert result['success']["HIN"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
     assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+
+
+def test_filter_new_marc_records_task(mocker, tmp_path):
+    record_01 = pymarc.Record()
+    record_01.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='4fb17691-4984-4407-81de-c30894c1226e')
+            ],
+        )
+    )
+    record_02 = pymarc.Record()
+    record_02.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='d50e776b-a2ed-4740-a94d-9d858db98ccb')
+            ],
+        )
+    )
+    record_03 = pymarc.Record()
+    record_03.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='8576f36e-0ab5-4146-9b6b-9f0b84f7fc74')
+            ],
+        )
+    )
+    marc_file = tmp_path / "2024072516.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in [record_01, record_02, record_03]:
+            marc_writer.write(record)
+
+    new_records = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [str(marc_file)],
+    }
+
+    new_uuids = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [
+            '4fb17691-4984-4407-81de-c30894c1226e',
+            'd50e776b-a2ed-4740-a94d-9d858db98ccb',
+        ],
+    }
+
+    filter_new_marc_records_task.function(
+        new_records=new_records, new_instance_uuids=new_uuids
+    )
+
+    with marc_file.open("rb") as fo:
+        filtered_marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    assert len(filtered_marc_records) == 2
+
+
+def test_filter_new_marc_records_task_no_records(mocker, tmp_path):
+    marc_file = tmp_path / "202408010.mrc"
+    marc_file.touch()
+
+    new_records = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [str(marc_file)],
+    }
+
+    new_uuids = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [],
+    }
+
+    filtered_new_records = filter_new_marc_records_task.function(
+        new_records=new_records, new_instance_uuids=new_uuids
+    )
+
+    assert filtered_new_records['STF'] == []
 
 
 def test_match_oclc_task(mocker, mock_oclc_connection):

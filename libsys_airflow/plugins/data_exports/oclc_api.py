@@ -24,6 +24,16 @@ logger = logging.getLogger(__name__)
 OCLC_REGEX = re.compile(r"\(OCoLC(-[M])?\)(\w+)")
 
 
+def get_instance_uuid(record) -> Union[str, None]:
+    instance_uuid = None
+    for field in record.get_fields("999"):
+        if field.indicators == pymarc.Indicators(first="f", second="f"):
+            instance_uuid = field["i"]
+    if instance_uuid is None:
+        logger.error("No instance UUID found in MARC record")
+    return instance_uuid
+
+
 def oclc_records_operation(**kwargs) -> dict:
 
     function_name: str = kwargs["oclc_function"]
@@ -105,15 +115,6 @@ class OCLCAPIWrapper(object):
         version = instance["_version"]
         hrid = instance["hrid"]
         return version, hrid
-
-    def __instance_uuid__(self, record) -> Union[str, None]:
-        instance_uuid = None
-        for field in record.get_fields("999"):
-            if field.indicators == pymarc.Indicators(first="f", second="f"):
-                instance_uuid = field["i"]
-        if instance_uuid is None:
-            logger.error("No instance UUID found in MARC record")
-        return instance_uuid
 
     def __put_folio_record__(self, instance_uuid: str, record: Record) -> bool:
         """
@@ -229,7 +230,7 @@ class OCLCAPIWrapper(object):
 
         with MetadataSession(authorization=self.oclc_token, timeout=30) as session:
             for record, file_name in marc_records:
-                instance_uuid = self.__instance_uuid__(record)
+                instance_uuid = get_instance_uuid(record)
                 if instance_uuid is None:
                     continue
                 try:
@@ -278,9 +279,11 @@ class OCLCAPIWrapper(object):
 
             response = session.holdings_unset(oclcNumber=oclc_id[0])
             if response is None:
+                logger.info(f"Failed to match {instance_uuid}")
                 output['failures'].append(instance_uuid)
                 failures.add(file_name)
             else:
+                logger.info(f"Matched {instance_uuid} result {response.json()}")
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
 
@@ -310,6 +313,7 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
+            logger.info(f"Matched Record Result {matched_record_result.json()}")
             matched_record = matched_record_result.json()
             if matched_record['numberOfRecords'] < 1:
                 output['failures'].append(instance_uuid)
@@ -327,6 +331,7 @@ class OCLCAPIWrapper(object):
 
                 # Sets holdings using the OCLC number
                 update_holding_result = session.holdings_set(oclcNumber=control_number)
+
                 if update_holding_result:
                     logger.info(
                         f"Sets new holdings for {instance_uuid} OCLC {update_holding_result}"
@@ -347,7 +352,7 @@ class OCLCAPIWrapper(object):
         )
         return output
 
-    def new(self, marc_files: List[str]) -> dict:
+    def new(self, marc_files: dict) -> dict:
 
         def __new_oclc__(**kwargs):
             session: MetadataSession = kwargs["session"]
@@ -366,7 +371,9 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
-
+            logger.info(
+                f"New record result {new_record.status_code} {new_record.content}"
+            )
             control_number = self.__extract_control_number_035__(new_record.content)
 
             successful_add = False
