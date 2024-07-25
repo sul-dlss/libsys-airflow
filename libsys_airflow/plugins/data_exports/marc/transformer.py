@@ -111,10 +111,26 @@ class Transformer(object):
         logger.info(
             f"Writing {len(marc_records):,} modified MARC records to {marc_path}"
         )
+
+        self.write_serialized_marc(marc_path, marc_records)
+
+    def write_serialized_marc(self, marc_path, marc_records):
+        vendor_path = pathlib.Path(marc_path.parent.parent)
         with marc_path.open("wb") as fo:
-            marc_writer = pymarc.MARCWriter(fo)
-            for record in marc_records:
-                marc_writer.write(record)
+            if vendor_path.name == "pod":
+                xml_path = pathlib.Path(fo.name.replace('mrc', 'xml'))
+                with xml_path.open("wb") as xo:
+                    marc_writer = pymarc.XMLWriter(xo)
+                    marc_xml = pymarc.marcxml.record_to_xml(marc_records)
+                    for record in marc_records:
+                        marc_writer.write(marc_xml)
+
+                    marc_writer.close()
+            else:
+                marc_writer = pymarc.MARCWriter(fo)
+                for record in marc_records:
+                    marc_writer.write(record)
+
 
     def add_holdings_items_fields(self, instance_subfields: list) -> list:
         fields = []
