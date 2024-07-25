@@ -118,8 +118,8 @@ class Transformer(object):
     def write_serialized_marc(self, marc_path: pathlib.Path, marc_records: list):
         vendor_path = pathlib.Path(marc_path.parent.parent)
         if vendor_path.name == "pod":
-            xml_path = marc_path.with_suffix(".xml")
-            with xml_path.open("wb+") as fo:
+            xml_file = marc_path.with_suffix(".xml")
+            with xml_file.open("wb+") as fo:
                 marc_writer = pymarc.XMLWriter(fo)
                 for record in marc_records:
                     marc_writer.write(record)

@@ -322,9 +322,10 @@ def test_add_holdings_items_single_999_XML(mocker, tmp_path, mock_folio_client):
     transformer = marc_transformer.Transformer(connection=MockPool().getconn())
     transformer.add_holdings_items(str(marc_file), full_dump=False)
 
-    with marc_file.open('rb') as fo:
-        print(f"HERE:{fo}")
+    xml_file = marc_file.with_suffix(".xml")
+    with xml_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
+        print(mod_marc_records)
 
     # field_999s = mod_marc_records[0].get_fields('999')
 
