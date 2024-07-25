@@ -2,6 +2,7 @@ import copy
 import logging
 
 import httpx
+import pymarc
 
 from pathlib import Path
 from s3path import S3Path
@@ -11,7 +12,10 @@ from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 
-from libsys_airflow.plugins.data_exports.oclc_api import oclc_records_operation
+from libsys_airflow.plugins.data_exports.oclc_api import (
+    oclc_records_operation,
+    get_instance_uuid,
+)
 
 from libsys_airflow.plugins.shared.utils import is_production
 
@@ -176,6 +180,33 @@ def delete_from_oclc_task(connection_details: list, delete_records: dict) -> dic
         oclc_function="delete",
         records=delete_records,
     )
+
+
+def __filter_save_marc__(file_str: str, instance_uuids: list):
+    new_records = []
+    file_path = Path(file_str)
+    with file_path.open('rb') as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            instance_uuid = get_instance_uuid(record)
+            if instance_uuid in instance_uuids:
+                new_records.append(record)
+    if len(new_records) > 0:
+        logger.info(f"Replacing {len(new_records)} in {file_path}")
+        with file_path.open('wb+') as fo:
+            marc_writer = pymarc.MARCWriter(fo)
+            for record in new_records:
+                marc_writer.write(record)
+
+
+@task(multiple_outputs=True)
+def filter_new_marc_records_task(new_records: dict, new_instance_uuids: dict) -> dict:
+    for library, uuids in new_instance_uuids.items():
+        if len(uuids) > 0:
+            new_files = new_records[library]
+            for row in new_files:
+                __filter_save_marc__(row, uuids)
+    return new_records
 
 
 @task(multiple_outputs=True)
