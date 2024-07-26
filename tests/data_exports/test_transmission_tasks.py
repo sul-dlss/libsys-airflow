@@ -142,6 +142,7 @@ def test_gather_files_task(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     marc_files = gather_files_task.function(airflow=airflow, vendor="pod")
     assert marc_files["file_list"][0] == mock_vendor_marc_files["file_list"][0]
+    assert len(marc_files["file_list"]) == 1
 
 
 def test_gather_full_dump_files(mocker):
