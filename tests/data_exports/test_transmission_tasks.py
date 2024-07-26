@@ -34,9 +34,9 @@ def mock_vendor_marc_files(tmp_path, request):
     marc_file_dir.mkdir(parents=True)
     setup_files = {
         "filenames": [
-            "2024022914.mrc",
-            "2024030114.mrc",
-            "2024030214.mrc",
+            "2024020314.gz",
+            "2024020314.xml",
+            "2024030214.xml",
             "2024030214.txt",
         ]
     }
@@ -44,7 +44,7 @@ def mock_vendor_marc_files(tmp_path, request):
     for i, x in enumerate(setup_files['filenames']):
         file = pathlib.Path(f"{marc_file_dir}/{x}")
         file.touch()
-        if i in [0, 3, 4]:
+        if i in [0, 2, 3]:
             file.write_text("hello world")
         files.append(str(file))
     return {"file_list": files, "s3": False}
@@ -69,9 +69,9 @@ def mock_marc_files(mock_file_system):
     marc_file_dir = mock_file_system[1]
     setup_marc_files = {
         "marc_files": [
-            "2024022914.mrc",
-            "2024030114.mrc",
-            "2024030214.mrc",
+            "2024022914.xml",
+            "2024030114.xml",
+            "2024030214.xml",
         ]
     }
     marc_files = []
@@ -187,7 +187,7 @@ def test_transmit_data_ftp_task(
     assert len(transmit_data["success"]) == 3
     assert "Start transmission of file" in caplog.text
     assert ftp_hook.store_file.called_with(
-        "/remote/path/dir/2024022914.mrc", "2024022914.mrc"
+        "/remote/path/dir/2024022914.xml", "2024022914.xml"
     )
 
 
@@ -330,7 +330,27 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
     related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
-    related_marc_file = related_marc_file + ".mrc"
+    related_marc_file = related_marc_file + ".xml"
+    assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
+    assert (archive_dir / pathlib.Path(related_marc_file)).exists()
+    assert (archive_dir / instance_id_file1.name).exists()
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["pod"], indirect=True)
+def test_archive_pod_files(tmp_path, mock_vendor_marc_files):
+    airflow = tmp_path / "airflow"
+    vendor_dir = airflow / "data-export-files/pod/"
+    instance_id_dir = vendor_dir / "instanceids" / "updates"
+    instance_id_dir.mkdir(parents=True)
+    instance_id_file1 = instance_id_dir / "2024020314.csv"
+    instance_id_file1.touch()
+    archive_dir = vendor_dir / "transmitted" / "updates"
+    archive_dir.mkdir(parents=True)
+    transmitted_files = gather_files_task.function(airflow=airflow, vendor="pod")
+    assert len(transmitted_files["file_list"]) == 1
+    archive_transmitted_data_task.function(transmitted_files["file_list"])
+    related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
+    related_marc_file = related_marc_file + ".xml"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
