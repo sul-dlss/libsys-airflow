@@ -9,6 +9,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
     consolidate_oclc_archive_files,
     delete_from_oclc_task,
+    filter_new_marc_records_task,
     match_oclc_task,
     new_to_oclc_task,
     set_holdings_oclc_task,
@@ -64,8 +65,13 @@ def send_oclc_records():
         connection_details=connections, new_records=gather_files["new"]
     )
 
+    filtered_new_records = filter_new_marc_records_task(
+        new_records=gather_files["new"],
+        new_instance_uuids=matched_records["failures"],
+    )
+
     new_records = new_to_oclc_task(
-        connection_details=connections, new_records=matched_records["failures"]
+        connection_details=connections, new_records=filtered_new_records
     )
 
     archive_files = consolidate_oclc_archive_files(

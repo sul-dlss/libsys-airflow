@@ -2,6 +2,7 @@ import pytest  # noqa
 import pathlib
 
 import httpx
+import pymarc
 
 from http import HTTPStatus
 from datetime import datetime
@@ -18,6 +19,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     oclc_connections,
     archive_transmitted_data_task,
     delete_from_oclc_task,
+    filter_new_marc_records_task,
     gather_oclc_files_task,
     match_oclc_task,
     new_to_oclc_task,
@@ -422,6 +424,73 @@ def test_delete_from_oclc_task(mocker, mock_oclc_connection):
 
     assert result['success']["HIN"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
     assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+
+
+def test_filter_new_marc_records_task(mocker, tmp_path):
+    record_01 = pymarc.Record()
+    record_01.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='4fb17691-4984-4407-81de-c30894c1226e')
+            ],
+        )
+    )
+    record_02 = pymarc.Record()
+    record_02.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='d50e776b-a2ed-4740-a94d-9d858db98ccb')
+            ],
+        )
+    )
+    record_03 = pymarc.Record()
+    record_03.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='8576f36e-0ab5-4146-9b6b-9f0b84f7fc74')
+            ],
+        )
+    )
+    marc_file = tmp_path / "2024072516.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in [record_01, record_02, record_03]:
+            marc_writer.write(record)
+
+    new_records = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [str(marc_file)],
+    }
+
+    new_uuids = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [
+            '4fb17691-4984-4407-81de-c30894c1226e',
+            'd50e776b-a2ed-4740-a94d-9d858db98ccb',
+        ],
+    }
+
+    filter_new_marc_records_task.function(
+        new_records=new_records, new_instance_uuids=new_uuids
+    )
+
+    with marc_file.open("rb") as fo:
+        filtered_marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    assert len(filtered_marc_records) == 2
 
 
 def test_match_oclc_task(mocker, mock_oclc_connection):
