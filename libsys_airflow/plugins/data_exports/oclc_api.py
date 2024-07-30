@@ -279,9 +279,11 @@ class OCLCAPIWrapper(object):
 
             response = session.holdings_unset(oclcNumber=oclc_id[0])
             if response is None:
+                logger.info(f"Failed to match {instance_uuid}")
                 output['failures'].append(instance_uuid)
                 failures.add(file_name)
             else:
+                logger.info(f"Matched {instance_uuid} result {response.json()}")
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
 
@@ -311,6 +313,7 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
+            logger.info(f"Matched Record Result {matched_record_result.json()}")
             matched_record = matched_record_result.json()
             if matched_record['numberOfRecords'] < 1:
                 output['failures'].append(instance_uuid)
@@ -328,6 +331,7 @@ class OCLCAPIWrapper(object):
 
                 # Sets holdings using the OCLC number
                 update_holding_result = session.holdings_set(oclcNumber=control_number)
+
                 if update_holding_result:
                     logger.info(
                         f"Sets new holdings for {instance_uuid} OCLC {update_holding_result}"
@@ -367,7 +371,9 @@ class OCLCAPIWrapper(object):
                 record=marc21,
                 recordFormat="application/marc",
             )
-
+            logger.info(
+                f"New record result {new_record.status_code} {new_record.content}"
+            )
             control_number = self.__extract_control_number_035__(new_record.content)
 
             successful_add = False
