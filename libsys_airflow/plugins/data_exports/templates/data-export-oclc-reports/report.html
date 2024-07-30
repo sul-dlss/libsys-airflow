@@ -1,0 +1,10 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <h3>{{ library_name }}</h3>
+  <div>
+    {{ contents|safe }}
+  </div>
+</div>
+{% endblock %}
