@@ -493,6 +493,33 @@ def test_filter_new_marc_records_task(mocker, tmp_path):
     assert len(filtered_marc_records) == 2
 
 
+def test_filter_new_marc_records_task_no_records(mocker, tmp_path):
+    marc_file = tmp_path / "202408010.mrc"
+    marc_file.touch()
+
+    new_records = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [str(marc_file)],
+    }
+
+    new_uuids = {
+        'S7Z': [],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [],
+    }
+
+    filtered_new_records = filter_new_marc_records_task.function(
+        new_records=new_records, new_instance_uuids=new_uuids
+    )
+
+    assert filtered_new_records['STF'] == []
+
+
 def test_match_oclc_task(mocker, mock_oclc_connection):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
