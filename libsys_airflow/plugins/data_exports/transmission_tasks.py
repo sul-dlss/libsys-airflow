@@ -36,11 +36,9 @@ def gather_files_task(**kwargs) -> dict:
     params = kwargs.get("params", {})
     bucket = params.get("bucket", {})
     marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
-    file_glob_pattern = "**/*.mrc"
+    file_glob_pattern = vendor_fileformat_spec(vendor)
     if vendor == "full-dump":
         marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
-    if vendor == "gobi":
-        file_glob_pattern = "**/*.txt"
     marc_filelist = []
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size == 0:
@@ -263,7 +261,7 @@ def archive_transmitted_data_task(files):
     Given a list of successfully transmitted files, move files to
     'transmitted' folder under each data-export-files/{vendor}.
     Also moves the instanceid file with the same vendor and filename
-    Also moves the marc files with the same filename as what was transmitted (i.e. GOBI txt files)
+    Also moves the xml or gz files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
     logger.info("Moving transmitted files to archive directory")
 
@@ -275,7 +273,7 @@ def archive_transmitted_data_task(files):
     archive_dir.mkdir(exist_ok=True)
     for x in files:
         kind = Path(x).parent.name
-        # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.mrc|*.txt
+        # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.xml|*.gz|*.txt
         original_transmitted_file_path = Path(x)
 
         # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
@@ -292,11 +290,11 @@ def archive_transmitted_data_task(files):
 
         marc_path = (
             original_transmitted_file_path.parent
-            / f"{original_transmitted_file_path.stem}.mrc"
+            / f"{original_transmitted_file_path.stem}.xml"
         )
         marc_archive_path = archive_dir / kind / marc_path.name
 
-        # move transmitted files (for GOBI this will be *.txt files)
+        # move transmitted files (for GOBI this will be *.txt files; for POD this will be *.gz files)
         logger.info(
             f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
         )
@@ -309,10 +307,25 @@ def archive_transmitted_data_task(files):
             )
             instance_path.replace(instance_archive_path)
 
-        # move marc files with same stem as transmitted filename (when transmitted file is not *.mrc)
+        # move marc files with same stem as transmitted filename (when transmitted file is not *.xml)
         if marc_path.exists():
             logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
             marc_path.replace(marc_archive_path)
+
+
+def vendor_fileformat_spec(vendor):
+    """
+    Returns file glob pattern depending on vendor's requirement for uncompressed or compressed MARCXML or text files
+    """
+    match vendor:
+        case "pod":
+            return "**/*.gz"
+        case "full-dump":
+            return "**/*.gz"
+        case "gobi":
+            return "**/*.txt"
+        case _:
+            return "**/*.xml"
 
 
 def vendor_filename_spec(conn_id, filename):
