@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, UTC
+from datetime import datetime
 from pathlib import Path
 
 from airflow.decorators import task
@@ -38,7 +38,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     dag_run: dict = kwargs['dag_run']
     multiple_codes: list = kwargs['all_multiple_codes']
     folio_base_url: str = kwargs['folio_url']
-    date: datetime = kwargs.get('date', datetime.now(UTC))
+    date: datetime = kwargs.get('date', datetime.utcnow())
 
     def _folio_url(instance_uuid: dict):
         return f"{folio_base_url}/inventory/view/{instance_uuid}"

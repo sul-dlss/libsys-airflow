@@ -8,7 +8,7 @@ from libsys_airflow.plugins.data_exports.apps.data_export_download_view import (
     DataExportDownloadView,
 )
 from libsys_airflow.plugins.data_exports.apps.data_export_oclc_reports_view import (
-    DataExportOCLCReportsView
+    DataExportOCLCReportsView,
 )
 
 data_export_upload_bp = Blueprint(
@@ -39,8 +39,9 @@ data_export_oclc_reports_view = DataExportOCLCReportsView()
 data_export_oclc_reports_view_package = {
     "name": "Data Export OCLC Reports",
     "category": "FOLIO",
-    "view": data_export_oclc_reports_view
+    "view": data_export_oclc_reports_view,
 }
+
 
 class DataExportUploadPlugin(AirflowPlugin):
     name = "Data Export CSV Upload"
