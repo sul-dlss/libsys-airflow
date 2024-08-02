@@ -9,7 +9,6 @@ from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 from airflow.decorators import task, task_group
-from zipp import Path
 
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
     fetch_number_of_records,
@@ -144,7 +143,7 @@ with DAG(
         def compress_marc_files(marc_files: list):
             for marc_file in marc_files:
                 stem = pathlib.Path(marc_file).suffix
-                xml = marc_file.replace(stem,'.xml')
+                xml = marc_file.replace(stem, '.xml')
                 zip_marc_file(marc_file)
                 zip_marc_file(xml)
 
