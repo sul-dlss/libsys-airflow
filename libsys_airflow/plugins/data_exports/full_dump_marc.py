@@ -76,7 +76,7 @@ def reset_s3(**kwargs) -> None:
     if reset:
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
         s3_dir = S3Path(f"/{bucket}/data-export-files/full-dump/marc-files/")
-        s3_files = s3_dir.glob("*")
+        s3_files = s3_dir.glob("*.*")
         for file in s3_files:
             file.unlink()
     else:
