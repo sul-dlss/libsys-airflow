@@ -263,7 +263,7 @@ class OCLCAPIWrapper(object):
 
                 case _:
                     msg = "Multiple OCLC ids"
-                    error_payload = (instance_uuid, msg, sorted(oclc_numbers))
+                    error_payload = (instance_uuid, msg, sorted(oclc_numbers))  # type: ignore
 
             logger.error(msg)
 
@@ -447,7 +447,7 @@ class OCLCAPIWrapper(object):
                 return
 
             if successful_add:
-                if not instance_uuid in output['success']:
+                if instance_uuid not in output['success']:
                     output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
