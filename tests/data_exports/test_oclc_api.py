@@ -932,7 +932,7 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
     )
     assert sorted_failures[1] == (
         '7063655a-6196-416f-94e7-8d540e014805',
-        'Failed to update holdings',
+        'Failed to update holdings after match',
         {
             'controlNumber': '39301853',
             'requestedControlNumber': '39301853',

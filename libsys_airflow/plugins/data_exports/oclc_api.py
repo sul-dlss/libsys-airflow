@@ -359,7 +359,11 @@ class OCLCAPIWrapper(object):
                     return
 
                 output['failures'].append(
-                    (instance_uuid, "Failed to update holdings", update_holding_result)
+                    (
+                        instance_uuid,
+                        "Failed to update holdings after match",
+                        update_holding_result,
+                    )
                 )
                 failures.add(file_name)
             else:
