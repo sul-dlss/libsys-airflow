@@ -41,7 +41,7 @@ def gather_files_task(**kwargs) -> dict:
         marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/marc-files/")
     marc_filelist = []
     for f in marc_filepath.glob(file_glob_pattern):
-        if f.stat().st_size == 0:
+        if f.stat().st_size in [0, 112]:
             continue
         marc_filelist.append(str(f))
 
