@@ -180,8 +180,11 @@ def delete_from_oclc_task(connection_details: list, delete_records: dict) -> dic
     )
 
 
-def __filter_save_marc__(file_str: str, instance_uuids: list):
-    new_records = []
+def __filter_save_marc__(file_str: str, info: list):
+    new_records, instance_uuids = [], []
+    for row in info:
+        if row[1].startswith("Match failed"):
+            instance_uuids.append(row[0])
     file_path = Path(file_str)
     with file_path.open('rb') as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -198,14 +201,14 @@ def __filter_save_marc__(file_str: str, instance_uuids: list):
 
 
 @task(multiple_outputs=True)
-def filter_new_marc_records_task(new_records: dict, new_instance_uuids: dict) -> dict:
+def filter_new_marc_records_task(new_records: dict, failed_matches: dict) -> dict:
     filtered_new_records: dict = {}
-    for library, uuids in new_instance_uuids.items():
+    for library, info in failed_matches.items():
         filtered_new_records[library] = []
-        if len(uuids) > 0:
+        if len(info) > 0:
             new_files = new_records[library]
             for row in new_files:
-                __filter_save_marc__(row, uuids)
+                __filter_save_marc__(row, info)
             filtered_new_records[library] = new_files
 
     return filtered_new_records

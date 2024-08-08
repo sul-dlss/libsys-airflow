@@ -499,13 +499,13 @@ def test_filter_new_marc_records_task(mocker, tmp_path):
         'CASUM': [],
         'RCJ': [],
         'STF': [
-            '4fb17691-4984-4407-81de-c30894c1226e',
-            'd50e776b-a2ed-4740-a94d-9d858db98ccb',
+            ('4fb17691-4984-4407-81de-c30894c1226e', "Match failed"),
+            ('d50e776b-a2ed-4740-a94d-9d858db98ccb', "Match failed"),
         ],
     }
 
     filter_new_marc_records_task.function(
-        new_records=new_records, new_instance_uuids=new_uuids
+        new_records=new_records, failed_matches=new_uuids
     )
 
     with marc_file.open("rb") as fo:
@@ -535,7 +535,7 @@ def test_filter_new_marc_records_task_no_records(mocker, tmp_path):
     }
 
     filtered_new_records = filter_new_marc_records_task.function(
-        new_records=new_records, new_instance_uuids=new_uuids
+        new_records=new_records, failed_matches=new_uuids
     )
 
     assert filtered_new_records['STF'] == []

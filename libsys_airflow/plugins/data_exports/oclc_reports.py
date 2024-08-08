@@ -5,9 +5,41 @@ from pathlib import Path
 
 from airflow.decorators import task
 from airflow.models import Variable
-from jinja2 import Template
+from jinja2 import Environment, DictLoader
 
 logger = logging.getLogger(__name__)
+
+holdings_set_template = """
+<h1>OCLC Holdings {% if match %}Matched{% endif %} Set Errors on {{ date }} for {{ library }}</h1>
+<p>
+  <a href="{{ dag_run.url }}">DAG Run</a>
+</p>
+<h2>FOLIO Instances that failed trying to set Holdings</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>OCLC Response</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for instance in instances.values() %}
+  <tr>
+    <td>
+      <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>
+    </td>
+    <td>
+    {% if instance.oclc_error %}
+    {% include 'oclc-payload-template.html' %}
+    {% else %}
+     No response from OCLC set API call
+     {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+  </tbody>
+</table>
+"""
 
 multiple_oclc_numbers_template = """
  <h1>Multiple OCLC Numbers on {{ date }} for {{ library }}</h1>
@@ -32,19 +64,61 @@ multiple_oclc_numbers_template = """
 """
 
 
-def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
+oclc_payload_template = """<ul>
+        <li><strong>Control Number:</strong> {{ instance.oclc_error.controlNumber }}</li>
+        <li><strong>Requested Control Number:</strong> {{ instance.oclc_error.requestedControlNumber }}</li>
+        <li><strong>Institution:</strong>
+           <ul>
+             <li><em>Code:</em> {{ instance.oclc_error.institutionCode }}</li>
+             <li><em>Symbol:</em> {{ instance.oclc_error.institutionSymbol }}</li>
+           </ul>
+        </li>
+        <li><strong>First Time Use:</strong> {{ instance.oclc_error.firstTimeUse }}</li>
+        <li><strong>Success:</strong> {{ instance.oclc_error.success }}</li>
+        <li><strong>Message:</strong> {{ instance.oclc_error.message }}</li>
+        <li><strong>Action:</strong> {{ instance.oclc_error.action }}</li>
+     </ul>
+"""
+
+jinja_env = Environment(
+    loader=DictLoader(
+        {
+            "holdings-set.html": holdings_set_template,
+            "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
+            "oclc-payload-template.html": oclc_payload_template,
+        }
+    )
+)
+
+
+def _generate_holdings_set_report(**kwargs) -> dict:
     airflow_dir: str = kwargs.get('airflow', '/opt/airflow')
     airflow = Path(airflow_dir)
+    dag_run: dict = kwargs['dag_run']
+    folio_base_url: str = kwargs['folio_url']
+    date: datetime = kwargs.get('date', datetime.utcnow())
+
+    reports: dict = {}
+    report_template = jinja_env.get_template("multiple-oclc-numbers.html")
+
+    library_instances: dict = {}
+
+    return _save_reports(
+        name="set_holdings",
+        reports=reports,
+        date=date
+    )
+
+
+def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
+
     dag_run: dict = kwargs['dag_run']
     multiple_codes: list = kwargs['all_multiple_codes']
     folio_base_url: str = kwargs['folio_url']
     date: datetime = kwargs.get('date', datetime.utcnow())
 
-    def _folio_url(instance_uuid: dict):
-        return f"{folio_base_url}/inventory/view/{instance_uuid}"
-
     reports: dict = {}
-    report_template = Template(multiple_oclc_numbers_template)
+    report_template = jinja_env.get_template("multiple-oclc-numbers.html")
 
     library_instances: dict = {}
 
@@ -64,7 +138,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
 
     for library, instances in library_instances.items():
         for uuid, info in instances.items():
-            info['folio_url'] = _folio_url(uuid)
+            info['folio_url'] = _folio_url(folio_base_url, uuid)
             info['uuid'] = uuid
         reports[library] = report_template.render(
             dag_run=dag_run,
@@ -73,22 +147,25 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
             instances=instances,
         )
 
-    reports_path = airflow / "data-export-files/oclc/reports"
-
     return _save_reports(
         name="multiple_oclc_numbers",
         reports=reports,
-        reports_path=reports_path,
         date=date,
     )
+
+
+def _folio_url(folio_base_url: str, instance_uuid: dict):
+    return f"{folio_base_url}/inventory/view/{instance_uuid}"
 
 
 def _save_reports(**kwargs) -> dict:
     name: str = kwargs['name']
     libraries_reports: dict = kwargs['reports']
-    reports_directory: Path = kwargs['reports_path']
+    airflow_dir: str = kwargs.get('airflow', '/opt/airflow')
     time_stamp: datetime = kwargs['date']
 
+    airflow = Path(airflow_dir)
+    reports_directory = airflow / "data-export-files/oclc/reports"
     output: dict = {}
 
     for library, report in libraries_reports.items():
@@ -100,6 +177,18 @@ def _save_reports(**kwargs) -> dict:
         output[library] = str(report_path)
 
     return output
+
+
+@task
+def filter_failures_task(update_failures, match_failures, new_failures) -> dict:
+    filtered_errors: dict = dict()
+
+    return filtered_errors
+
+
+@task
+def holdings_set_errors_task(**kwargs):
+    failures = kwargs['failures']
 
 
 @task
