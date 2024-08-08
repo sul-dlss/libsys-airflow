@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import pathlib
 import re
@@ -246,7 +247,13 @@ class OCLCAPIWrapper(object):
                 except WorldcatRequestError as e:
                     msg = f"Instance UUID {instance_uuid} Error: {e}"
                     logger.error(msg)
-                    output['failures'].append((instance_uuid, msg))
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "WorldcatRequest Error",
+                            "context": str(e),
+                        }
+                    )
                     failed_files.add(file_name)
                     continue
         output["archive"] = list(successful_files.difference(failed_files))
@@ -259,11 +266,19 @@ class OCLCAPIWrapper(object):
 
                 case 0:
                     msg = "Missing OCLC number"
-                    error_payload = (instance_uuid, msg)
+                    error_payload = {
+                        "uuid": instance_uuid,
+                        "reason": msg,
+                        "context": None,
+                    }
 
                 case _:
                     msg = "Multiple OCLC ids"
-                    error_payload = (instance_uuid, msg, sorted(oclc_numbers))  # type: ignore
+                    error_payload = {
+                        "uuid": instance_uuid,
+                        "reason": msg,
+                        "context": sorted(oclc_numbers),  # type: ignore
+                    }
 
             logger.error(msg)
 
@@ -298,7 +313,9 @@ class OCLCAPIWrapper(object):
             else:
                 msg = "Failed holdings_unset"
                 logger.info(f"{msg} for {instance_uuid} OCLC response: {response}")
-                output['failures'].append((instance_uuid, msg, response))
+                output['failures'].append(
+                    {"uuid": instance_uuid, "reason": msg, "context": response}
+                )
                 failures.add(file_name)
 
         output = self.__oclc_operations__(
@@ -331,7 +348,11 @@ class OCLCAPIWrapper(object):
             matched_record = matched_record_result.json()
             if matched_record['numberOfRecords'] < 1:
                 output['failures'].append(
-                    (instance_uuid, "Match failed", matched_record)
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Match failed",
+                        "context": matched_record,
+                    }
                 )
                 failures.add(file_name)
                 return
@@ -359,16 +380,20 @@ class OCLCAPIWrapper(object):
                     return
 
                 output['failures'].append(
-                    (
-                        instance_uuid,
-                        "Failed to update holdings after match",
-                        update_holding_result,
-                    )
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to update holdings after match",
+                        "context": update_holding_result,
+                    }
                 )
                 failures.add(file_name)
             else:
                 output['failures'].append(
-                    (instance_uuid, f"FOLIO failed to Add OCLC number {control_number}")
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
                 )
                 failures.add(file_name)
 
@@ -405,7 +430,13 @@ class OCLCAPIWrapper(object):
                         output['success'].append(instance_uuid)
                         successful_add = True
                     else:
-                        output['failures'].append((instance_uuid, payload))
+                        output['failures'].append(
+                            {
+                                "uuid": instance_uuid,
+                                "reason": "Failed to update holdings for new record",
+                                "context": payload,
+                            }
+                        )
                         failures.add(file_name)
             return successful_add
 
@@ -445,7 +476,11 @@ class OCLCAPIWrapper(object):
                 )
             else:
                 output['failures'].append(
-                    (instance_uuid, "Failed to extract OCLC number")
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to extract OCLC number",
+                        "context": None,
+                    }
                 )
                 failures.add(file_name)
                 return
@@ -456,7 +491,11 @@ class OCLCAPIWrapper(object):
                 successes.add(file_name)
             else:
                 output['failures'].append(
-                    (instance_uuid, f"FOLIO failed to Add OCLC number {control_number}")
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
                 )
 
         output = self.__oclc_operations__(
@@ -487,7 +526,25 @@ class OCLCAPIWrapper(object):
             response = session.holdings_set(oclcNumber=oclc_id[0])
 
             if response is None:
-                output['failures'].append((instance_uuid, "No response from OCLC"))
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "No response from OCLC",
+                        "context": None,
+                    }
+                )
+                failures.add(file_name)
+                return
+
+            set_payload = response.json()
+            if not set_payload['success']:
+                output["failures"].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to update holdings",
+                        "context": set_payload,
+                    }
+                )
                 failures.add(file_name)
                 return
 
@@ -499,7 +556,11 @@ class OCLCAPIWrapper(object):
                 successes.add(file_name)
             else:
                 output['failures'].append(
-                    (instance_uuid, f"FOLIO failed to Add OCLC number {control_number}")
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
                 )
                 failures.add(file_name)
 
