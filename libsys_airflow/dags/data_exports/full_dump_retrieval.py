@@ -144,7 +144,6 @@ with DAG(
             for marc_file in marc_files:
                 stem = pathlib.Path(marc_file).suffix
                 xml = marc_file.replace(stem, '.xml')
-                zip_marc_file(marc_file)
                 zip_marc_file(xml)
 
         (
