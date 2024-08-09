@@ -10,11 +10,11 @@ from jinja2 import Environment, DictLoader
 logger = logging.getLogger(__name__)
 
 holdings_set_template = """
-<h1>OCLC Holdings {% if match %}Matched{% endif %} Set Errors on {{ date }} for {{ library }}</h1>
+<h1>OCLC Holdings {% if match %}Matched {% endif %}Set Errors on {{ date }} for {{ library }}</h1>
 <p>
   <a href="{{ dag_run.url }}">DAG Run</a>
 </p>
-<h2>FOLIO Instances that failed trying to set Holdings</h2>
+<h2>FOLIO Instances that failed trying to set Holdings {% if match %}after successful Match{% endif %}</h2>
 <table>
   <thead>
     <tr>
@@ -114,15 +114,50 @@ def _folio_url(folio_base_url: str, instance_uuid: dict):
     return f"{folio_base_url}/inventory/view/{instance_uuid}"
 
 
-def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
-
-    dag_run: dict = kwargs['dag_run']
-    multiple_codes: list = kwargs['all_multiple_codes']
-    folio_base_url: str = kwargs['folio_url']
+def _generate_holdings_set_report(**kwargs) -> dict:
     date: datetime = kwargs.get('date', datetime.utcnow())
+    failures: dict = kwargs.pop('failures')
 
-    reports: dict = {}
-    report_template = jinja_env.get_template("multiple-oclc-numbers.html")
+    match = kwargs.get("match", False)
+
+    error_key = "Failed to update holdings"
+    report_name = "set_holdings"
+    if match:
+        report_name = "set_holdings_match"
+        error_key = "Failed to update holdings after match"
+
+    kwargs["error_key"] = error_key
+
+    library_instances: dict = {}
+
+    for library_code, errors in failures.items():
+        update_holdings_errors = errors.get(error_key, [])
+        if len(update_holdings_errors) < 1:
+            continue
+        if library_code not in library_instances:
+            library_instances[library_code] = {}
+        for row in update_holdings_errors:
+            library_instances[library_code][row['uuid']] = {
+                "uuid": row['uuid'],
+                "oclc_error": row['context'],
+            }
+
+    kwargs['library_instances'] = library_instances
+    kwargs['report_template'] = "holdings-set.html"
+
+    reports = _reports_by_library(**kwargs)
+
+    return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
+        name=report_name,
+        reports=reports,
+        date=date,
+    )
+
+
+def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
+    multiple_codes: list = kwargs['all_multiple_codes']
+    date: datetime = kwargs.get('date', datetime.utcnow())
 
     library_instances: dict = {}
 
@@ -140,16 +175,10 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
                 instance_uuid: {"oclc_numbers": oclc_codes}
             }
 
-    for library, instances in library_instances.items():
-        for uuid, info in instances.items():
-            info['folio_url'] = _folio_url(folio_base_url, uuid)
-            info['uuid'] = uuid
-        reports[library] = report_template.render(
-            dag_run=dag_run,
-            date=date.strftime("%d %B %Y"),
-            library=library,
-            instances=instances,
-        )
+    kwargs['library_instances'] = library_instances
+    kwargs['report_template'] = "multiple-oclc-numbers.html"
+
+    reports = _reports_by_library(**kwargs)
 
     return _save_reports(
         airflow=kwargs.get('airflow', '/opt/airflow'),
@@ -157,6 +186,30 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
         reports=reports,
         date=date,
     )
+
+
+def _reports_by_library(**kwargs) -> dict:
+    library_instances: dict = kwargs['library_instances']
+    folio_base_url: str = kwargs['folio_url']
+    report_template_name: str = kwargs['report_template']
+    date: datetime = kwargs['date']
+
+    reports: dict = dict()
+
+    report_template = jinja_env.get_template(report_template_name)
+
+    for library, instances in library_instances.items():
+        if len(instances) < 1:
+            continue
+        for uuid, info in instances.items():
+            info['folio_url'] = _folio_url(folio_base_url, uuid)
+            info['uuid'] = uuid
+        kwargs["library"] = library
+        kwargs["instances"] = instances
+        kwargs["date"] = date.strftime("%d %B %Y")
+        reports[library] = report_template.render(**kwargs)
+
+    return reports
 
 
 def _save_reports(**kwargs) -> dict:
@@ -206,6 +259,13 @@ def filter_failures_task(**kwargs) -> dict:
 
     logger.info(filtered_errors)
     return filtered_errors
+
+
+@task
+def holdings_set_errors_task(**kwargs):
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+
+    return _generate_holdings_set_report(**kwargs)
 
 
 @task
