@@ -9,6 +9,38 @@ from jinja2 import DictLoader, Environment
 
 logger = logging.getLogger(__name__)
 
+holdings_set_template = """
+<h1>OCLC Holdings {% if match %}Matched {% endif %}Set Errors on {{ date }} for {{ library }}</h1>
+<p>
+  <a href="{{ dag_run.url }}">DAG Run</a>
+</p>
+<h2>FOLIO Instances that failed trying to set Holdings {% if match %}after successful Match{% endif %}</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>OCLC Response</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for instance in instances.values() %}
+  <tr>
+    <td>
+      <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>
+    </td>
+    <td>
+    {% if instance.oclc_error %}
+    {% include 'oclc-payload-template.html' %}
+    {% else %}
+     No response from OCLC set API call
+     {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+  </tbody>
+</table>
+"""
+
 multiple_oclc_numbers_template = """
  <h1>Multiple OCLC Numbers on {{ date }} for {{ library }}</h1>
 
@@ -64,11 +96,50 @@ def _folio_url(folio_base_url: str, instance_uuid: dict):
     return f"{folio_base_url}/inventory/view/{instance_uuid}"
 
 
+def _generate_holdings_set_report(**kwargs) -> dict:
+    date: datetime = kwargs.get('date', datetime.utcnow())
+    failures: dict = kwargs.pop('failures')
+
+    match = kwargs.get("match", False)
+
+    error_key = "Failed to update holdings"
+    report_name = "set_holdings"
+    if match:
+        report_name = "set_holdings_match"
+        error_key = "Failed to update holdings after match"
+
+    kwargs["error_key"] = error_key
+
+    library_instances: dict = {}
+
+    for library_code, errors in failures.items():
+        update_holdings_errors = errors.get(error_key, [])
+        if len(update_holdings_errors) < 1:
+            continue
+        if library_code not in library_instances:
+            library_instances[library_code] = {}
+        for row in update_holdings_errors:
+            library_instances[library_code][row['uuid']] = {
+                "uuid": row['uuid'],
+                "oclc_error": row['context'],
+            }
+
+    kwargs['library_instances'] = library_instances
+    kwargs['report_template'] = "holdings-set.html"
+
+    reports = _reports_by_library(**kwargs)
+
+    return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
+        name=report_name,
+        reports=reports,
+        date=date,
+    )
+
+
 def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     multiple_codes: list = kwargs['all_multiple_codes']
     date: datetime = kwargs.get('date', datetime.utcnow())
-
-    reports: dict = {}
 
     library_instances: dict = {}
 
@@ -170,6 +241,13 @@ def filter_failures_task(**kwargs) -> dict:
 
     logger.info(filtered_errors)
     return filtered_errors
+
+
+@task
+def holdings_set_errors_task(**kwargs):
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+
+    return _generate_holdings_set_report(**kwargs)
 
 
 @task

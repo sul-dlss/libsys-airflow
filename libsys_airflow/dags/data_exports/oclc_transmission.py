@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task_group
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
@@ -18,6 +18,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 
 from libsys_airflow.plugins.data_exports.oclc_reports import (
     filter_failures_task,
+    holdings_set_errors_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,14 @@ def send_oclc_records():
         match=matched_records['failures'],
         new=new_records['failures'],
     )
+
+    @task_group(group_id="reports-email")
+    def reports_email():
+        holdings_set_reports = holdings_set_errors_task(failures=filtered_errors)
+
+        holdings_set_match_report = holdings_set_errors_task(
+            failures=filtered_errors, match=True
+        )
 
     archive_files = consolidate_oclc_archive_files(
         deleted_records["archive"],
