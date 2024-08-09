@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from libsys_airflow.plugins.data_exports.oclc_reports import (
     filter_failures_task,
     holdings_set_errors_task,
+    holdings_unset_errors_task,
     multiple_oclc_numbers_task,
 )
 
@@ -314,6 +315,34 @@ def test_holdings_set_errors_match_task(tmp_path, mocker, mock_dag_run):
     assert h2.text.startswith(
         "FOLIO Instances that failed trying to set Holdings after successful Match"
     )
+
+
+def test_holdings_unset_errors_task(tmp_path, mocker, mock_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
+        return_value="https://folio-stanford.edu",
+    )
+
+    failures = {
+        "STF": {
+            "Failed holdings_unset": [
+                {"uuid": ERRORS[4]["uuid"], "context": ERRORS[4]["context"]}
+            ]
+        }
+    }
+
+    reports = holdings_unset_errors_task.function(
+        airflow=tmp_path,
+        date=datetime.datetime(2024, 8, 9, 12, 15, 13, 445),
+        failures=failures,
+        dag_run=mock_dag_run,
+    )
+
+    sul_report = pathlib.Path(reports['STF'])
+    sul_report_html = BeautifulSoup(sul_report.read_text(), 'html.parser')
+
+    h1 = sul_report_html.find("h1")
+    assert h1.text == "OCLC Holdings Unset Errors on 09 August 2024 for STF"
 
 
 def test_multiple_oclc_numbers_task(tmp_path, mocker, mock_task_instance, mock_dag_run):
