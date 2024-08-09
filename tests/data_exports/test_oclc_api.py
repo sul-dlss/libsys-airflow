@@ -112,6 +112,41 @@ def bad_records():
         ),
     )
     sample.append(no_response_record)
+    failed_response_record = pymarc.Record()
+    failed_response_record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)17032778')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='ce4b5983-ff44-4b27-ab3c-d63a38095e30')
+            ],
+        ),
+    )
+    sample.append(failed_response_record)
+    bad_oclc_num = pymarc.Record()
+
+    bad_oclc_num.add_field(
+        pymarc.Field(tag='008', data="a7340114"),
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC)39301853")],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='7063655a-6196-416f-94e7-8d540e014805'),
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
+            ],
+        ),
+    )
+    sample.append(bad_oclc_num)
     return sample
 
 
@@ -492,7 +527,13 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
     new_response = oclc_api_instance.new([str(marc_file.absolute())])
 
     assert new_response["success"] == []
-    assert new_response["failures"] == ['e15e3707-f012-482f-a13b-34556b6d0946']
+    assert new_response["failures"] == [
+        {
+            "uuid": 'e15e3707-f012-482f-a13b-34556b6d0946',
+            "reason": "WorldcatRequest Error",
+            "context": "b'400 Client Error'",
+        }
+    ]
 
 
 def test_new_no_control_number(mock_oclc_api, tmp_path):
@@ -525,7 +566,13 @@ def test_new_no_control_number(mock_oclc_api, tmp_path):
     new_response = oclc_api_instance.new([str(marc_file.absolute())])
 
     assert new_response["success"] == []
-    assert new_response["failures"] == [instance_uuid]
+    assert new_response["failures"] == [
+        {
+            "uuid": instance_uuid,
+            "reason": 'Failed to extract OCLC number',
+            "context": None,
+        }
+    ]
 
 
 def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
@@ -544,7 +591,13 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
     new_results = oclc_api_instance.new([str(marc_file.absolute())])
 
     assert new_results['success'] == []
-    assert new_results['failures'] == ['f19fd2fc-586c-45df-9b0c-127af97aef34']
+    assert new_results['failures'] == [
+        {
+            "uuid": 'f19fd2fc-586c-45df-9b0c-127af97aef34',
+            "reason": "FOLIO failed to Add OCLC number",
+            "context": "445667",
+        }
+    ]
     assert new_results['archive'] == []
 
 
@@ -576,11 +629,41 @@ def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
     update_result = oclc_api_instance.update([str(marc_file.absolute())])
 
     assert update_result['success'] == []
-    assert sorted(update_result['failures']) == [
-        '00b492cb-704d-41f4-bd12-74cfe643aea9',
-        '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
-        'f8fa3682-fef8-4810-b8da-8f51b73785ac',
-    ]
+    sorted_failures = sorted(update_result['failures'], key=lambda x: x['uuid'])
+
+    assert sorted_failures[0] == {
+        "uuid": '00b492cb-704d-41f4-bd12-74cfe643aea9',
+        "reason": 'FOLIO failed to Add OCLC number',
+        "context": "439887343",
+    }
+    assert sorted_failures[1] == {
+        'uuid': '7063655a-6196-416f-94e7-8d540e014805',
+        'reason': 'Failed to update holdings',
+        'context': {
+            'controlNumber': '39301853',
+            'requestedControlNumber': '39301853',
+            'institutionCode': '158223',
+            'institutionSymbol': 'STF',
+            'success': False,
+            'message': 'Holding Updated Failed',
+            'action': 'Set Holdings',
+        },
+    }
+    assert sorted_failures[2] == {
+        "uuid": '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
+        "reason": "WorldcatRequest Error",
+        "context": "b'400 Client Error'",
+    }
+    assert sorted_failures[3] == {
+        "uuid": 'ce4b5983-ff44-4b27-ab3c-d63a38095e30',
+        "reason": "FOLIO failed to Add OCLC number",
+        "context": '439887343',
+    }
+    assert sorted_failures[4] == {
+        "uuid": 'f8fa3682-fef8-4810-b8da-8f51b73785ac',
+        "reason": 'No response from OCLC',
+        "context": None,
+    }
 
     assert "400 Client Error" in caplog.text
 
@@ -641,10 +724,19 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
 
     update_results = oclc_api_instance.update([str(marc_file)])
 
-    assert sorted(update_results["failures"]) == [
-        "958835d2-39cc-4ab3-9c56-53bf7940421b",
-        "f19fd2fc-586c-45df-9b0c-127af97aef34",
-    ]
+    sorted_errors = sorted(update_results["failures"], key=lambda x: x['uuid'])
+
+    assert sorted_errors[0] == {
+        "uuid": "958835d2-39cc-4ab3-9c56-53bf7940421b",
+        "reason": "Missing OCLC number",
+        "context": None,
+    }
+
+    assert sorted_errors[1] == {
+        "uuid": "f19fd2fc-586c-45df-9b0c-127af97aef34",
+        "reason": "Multiple OCLC ids",
+        "context": ['2369001', '456789'],
+    }
 
 
 def test_failed_folio_put(mock_oclc_api, caplog):
@@ -722,11 +814,39 @@ def test_delete_errors(mock_oclc_api, caplog, tmp_path):
 
     result = oclc_api_instance.delete([str(marc_file)])
 
-    assert result['success'] == ['00b492cb-704d-41f4-bd12-74cfe643aea9']
-    assert sorted(result['failures']) == [
-        '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
-        'f8fa3682-fef8-4810-b8da-8f51b73785ac',
+    assert result['success'] == [
+        '00b492cb-704d-41f4-bd12-74cfe643aea9',
+        '7063655a-6196-416f-94e7-8d540e014805',
     ]
+
+    sorted_failures = sorted(result['failures'], key=lambda x: x['uuid'])
+
+    assert sorted_failures[0] == {
+        "uuid": '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
+        "reason": "WorldcatRequest Error",
+        "context": "b'400 Client Error'",
+    }
+
+    assert sorted_failures[1] == {
+        "uuid": 'ce4b5983-ff44-4b27-ab3c-d63a38095e30',
+        "reason": "Failed holdings_unset",
+        "context": {
+            'controlNumber': '17032778',
+            'requestedControlNumber': '17032778',
+            'institutionCode': '158223',
+            'institutionSymbol': 'STF',
+            'firstTimeUse': False,
+            'success': False,
+            'message': 'Unset Holdings Failed',
+            'action': 'Unset Holdings',
+        },
+    }
+    assert sorted_failures[2] == {
+        "uuid": 'f8fa3682-fef8-4810-b8da-8f51b73785ac',
+        "reason": "Failed holdings_unset",
+        "context": None,
+    }
+
     assert result['archive'] == []
 
 
@@ -745,10 +865,19 @@ def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
 
     results = oclc_api_instance.delete([str(marc_file)])
 
-    assert sorted(results["failures"]) == [
-        "958835d2-39cc-4ab3-9c56-53bf7940421b",
-        "f19fd2fc-586c-45df-9b0c-127af97aef34",
-    ]
+    sorted_failures = sorted(results["failures"], key=lambda x: x['uuid'])
+
+    assert sorted_failures[0] == {
+        "uuid": "958835d2-39cc-4ab3-9c56-53bf7940421b",
+        "reason": "Missing OCLC number",
+        "context": None,
+    }
+
+    assert sorted_failures[1] == {
+        "uuid": "f19fd2fc-586c-45df-9b0c-127af97aef34",
+        "reason": 'Multiple OCLC ids',
+        "context": ['2369001', '456789'],
+    }
 
 
 def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
@@ -778,18 +907,7 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
         ),
     )
 
-    bad_oclc_num = pymarc.Record()
-
-    bad_oclc_num.add_field(
-        pymarc.Field(tag='008', data="a9007876"),
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='i', value='00b492cb-704d-41f4-bd12-74cfe643aea9')
-            ],
-        ),
-    )
+    bad_oclc_num = bad_records()[-1]
 
     marc_file = tmp_path / "2024070114-STF.mrc"
 
@@ -805,11 +923,35 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
 
     result = oclc_api_instance.match([str(marc_file)])
 
-    result["success"] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
-    result["failures"] == [
-        '2023473e-802a-4bd2-9ca1-5d2e360a0fbd',
-        '00b492cb-704d-41f4-bd12-74cfe643aea9',
-    ]
+    assert result["success"] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
+
+    sorted_failures = sorted(result["failures"], key=lambda x: x['uuid'])
+
+    assert sorted_failures[0] == {
+        "uuid": '2023473e-802a-4bd2-9ca1-5d2e360a0fbd',
+        "reason": 'Match failed',
+        "context": {'numberOfRecords': 0, 'briefRecords': []},
+    }
+
+    assert sorted_failures[1] == {
+        "uuid": '7063655a-6196-416f-94e7-8d540e014805',
+        "reason": 'Failed to update holdings after match',
+        "context": {
+            'controlNumber': '39301853',
+            'requestedControlNumber': '39301853',
+            'institutionCode': '158223',
+            'institutionSymbol': 'STF',
+            'success': False,
+            'message': 'Holding Updated Failed',
+            'action': 'Set Holdings',
+        },
+    }
+
+    assert sorted_failures[2] == {
+        "uuid": 'f19fd2fc-586c-45df-9b0c-127af97aef34',
+        "reason": "FOLIO failed to Add OCLC number",
+        "context": '445667',
+    }
 
     assert "Sets new holdings for 958835d2-39cc-4ab3-9c56-53bf7940421b" in caplog.text
 

@@ -499,8 +499,16 @@ def test_filter_new_marc_records_task(mocker, tmp_path):
         'CASUM': [],
         'RCJ': [],
         'STF': [
-            '4fb17691-4984-4407-81de-c30894c1226e',
-            'd50e776b-a2ed-4740-a94d-9d858db98ccb',
+            {
+                "uuid": '4fb17691-4984-4407-81de-c30894c1226e',
+                "reason": "Match failed",
+                "context": {'numberOfRecords': 0, 'briefRecords': []},
+            },
+            {
+                "uuid": 'd50e776b-a2ed-4740-a94d-9d858db98ccb',
+                "reason": "Match failed",
+                "context": {'numberOfRecords': 0, 'briefRecords': []},
+            },
         ],
     }
 
