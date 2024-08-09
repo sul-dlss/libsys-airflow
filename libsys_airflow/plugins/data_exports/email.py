@@ -1,7 +1,9 @@
 import logging
+import pathlib
 
 from jinja2 import Template
 
+from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 from airflow.utils.email import send_email
@@ -28,6 +30,70 @@ def _oclc_identifiers(multiple_codes: list, folio_url: str):
     )
 
     return template.render(folio_url=folio_url, multiple_codes=multiple_codes)
+
+
+def generate_holdings_errors_emails(error_reports: dict):
+    """
+    Generates emails for holdings set errors for cohort libraries
+    """
+    devs_email = Variable.get("EMAIL_DEVS")
+    bus_email = Variable.get("OCLC_EMAIL_BUS")
+    hoover_email = Variable.get("OCLC_EMAIL_HOOVER")
+    lane_email = Variable.get("OCLC_EMAIL_LANE")
+    law_email = Variable.get("OCLC_EMAIL_LAW")
+    sul_email = Variable.get("OCLC_EMAIL_SUL")
+
+    airflow_url = conf.get('webserver')  # type: ignore
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+
+    for library, report in error_reports.items():
+        to_emails = [
+            devs_email,
+        ]
+        report_path = pathlib.Path(report)
+        report_type = report_path.parent.name
+        match report_type:
+
+            case "set_holdings_match":
+                subject_line = "OCLC: Set holdings match error for"
+
+            case "holdings_unset":
+                subject_line = "OCLC: Unset holdings error for"
+
+            case _:
+                subject_line = "OCLC: Set holdings error for"
+
+        match library:
+            case "CASUM":
+                to_emails.insert(0, lane_email)
+                subject_line += " Lane"
+
+            case "HIN":
+                to_emails.insert(0, hoover_email)
+                subject_line += " Hoover"
+
+            case "RCJ":
+                to_emails.insert(0, law_email)
+                subject_line += " Law"
+
+            case "S7Z":
+                to_emails.insert(0, bus_email)
+                subject_line += " Business"
+
+            case "STF":
+                to_emails.insert(0, sul_email)
+                subject_line += " SUL"
+
+        if not is_production():
+            to_emails.pop(0)  # Should only send report to libsys devs
+
+        report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
+
+        html_content = (
+            f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
+        )
+        send_email(to=to_emails, subject=subject_line, html_content=html_content)
 
 
 def generate_multiple_oclc_identifiers_email(multiple_codes: list):

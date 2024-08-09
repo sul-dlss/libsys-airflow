@@ -151,6 +151,9 @@ def _generate_holdings_set_report(**kwargs) -> dict:
 
     match = kwargs.get("match", False)
 
+    if date not in kwargs:
+        kwargs["date"] = date
+
     error_key = "Failed to update holdings"
     report_name = "set_holdings"
     if match:
@@ -176,6 +179,9 @@ def _generate_holdings_unset_report(**kwargs) -> dict:
     date: datetime = kwargs.get('date', datetime.utcnow())
     failures: dict = kwargs.pop('failures')
 
+    if date not in kwargs:
+        kwargs["date"] = date
+
     library_instances = _library_instances(failures, 'Failed holdings_unset')
 
     kwargs['library_instances'] = library_instances
@@ -185,7 +191,7 @@ def _generate_holdings_unset_report(**kwargs) -> dict:
 
     return _save_reports(
         airflow=kwargs.get('airflow', '/opt/airflow'),
-        name="holdings_unset",
+        name="unset_holdings",
         reports=reports,
         date=date,
     )
@@ -323,7 +329,7 @@ def holdings_set_errors_task(**kwargs):
 @task
 def holdings_unset_errors_task(**kwargs):
     kwargs['folio_url'] = Variable.get("FOLIO_URL")
-    
+
     return _generate_holdings_unset_report(**kwargs)
 
 
