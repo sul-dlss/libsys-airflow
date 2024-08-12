@@ -75,7 +75,7 @@ def send_oclc_records():
 
     filtered_new_records = filter_new_marc_records_task(
         new_records=gather_files["new"],
-        new_instance_uuids=matched_records["failures"],
+        failed_matches=matched_records["failures"],
     )
 
     new_records = new_to_oclc_task(

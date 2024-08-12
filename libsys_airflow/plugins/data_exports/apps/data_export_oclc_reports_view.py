@@ -15,6 +15,7 @@ LOOKUP_REPORT_NAME = {
     "match": "Match BIB Record Errors",
     "multiple_oclc_numbers": "Multiple OCLC Numbers",
     "set_holdings": "Set OCLC Holdings Errors",
+    "unset_holdings": "Unset (delete) OCLC Holdings Errors",
 }
 
 
