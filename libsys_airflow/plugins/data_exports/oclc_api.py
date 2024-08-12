@@ -244,12 +244,44 @@ class OCLCAPIWrapper(object):
                         failures=failed_files,
                     )
                 except WorldcatRequestError as e:
-                    logger.error(f"Instance UUID {instance_uuid} Error: {e}")
-                    output['failures'].append(instance_uuid)
+                    msg = f"Instance UUID {instance_uuid} Error: {e}"
+                    logger.error(msg)
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "WorldcatRequest Error",
+                            "context": str(e),
+                        }
+                    )
                     failed_files.add(file_name)
                     continue
         output["archive"] = list(successful_files.difference(failed_files))
         return output
+
+    def __test_oclc_numbers__(self, oclc_numbers: list, instance_uuid: str):
+        error_payload = None
+        if len(oclc_numbers) != 1:
+            match len(oclc_numbers):
+
+                case 0:
+                    msg = "Missing OCLC number"
+                    error_payload = {
+                        "uuid": instance_uuid,
+                        "reason": msg,
+                        "context": None,
+                    }
+
+                case _:
+                    msg = "Multiple OCLC ids"
+                    error_payload = {
+                        "uuid": instance_uuid,
+                        "reason": msg,
+                        "context": sorted(oclc_numbers),  # type: ignore
+                    }
+
+            logger.error(msg)
+
+        return error_payload
 
     def delete(self, marc_files: List[str]) -> dict:
 
@@ -264,28 +296,28 @@ class OCLCAPIWrapper(object):
 
             oclc_id = get_record_id(record)
 
-            if len(oclc_id) != 1:
+            error_payload = self.__test_oclc_numbers__(oclc_id, instance_uuid)
+
+            if error_payload:
+                output['failures'].append(error_payload)
                 failures.add(file_name)
-                output['failures'].append(instance_uuid)
-                match len(oclc_id):
-
-                    case 0:
-                        logger.error(f"{instance_uuid} missing OCLC number")
-
-                    case _:
-                        logger.error(f"Multiple OCLC ids for {instance_uuid}")
-
                 return
 
             response = session.holdings_unset(oclcNumber=oclc_id[0])
-            if response is None:
-                logger.info(f"Failed to match {instance_uuid}")
-                output['failures'].append(instance_uuid)
-                failures.add(file_name)
-            else:
+            if response:
+                response = response.json()
+
+            if response and response['success']:
                 logger.info(f"Matched {instance_uuid} result {response.json()}")
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
+            else:
+                msg = "Failed holdings_unset"
+                logger.info(f"{msg} for {instance_uuid} OCLC response: {response}")
+                output['failures'].append(
+                    {"uuid": instance_uuid, "reason": msg, "context": response}
+                )
+                failures.add(file_name)
 
         output = self.__oclc_operations__(
             marc_files=marc_files,
@@ -316,7 +348,13 @@ class OCLCAPIWrapper(object):
             logger.info(f"Matched Record Result {matched_record_result.json()}")
             matched_record = matched_record_result.json()
             if matched_record['numberOfRecords'] < 1:
-                output['failures'].append(instance_uuid)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Match failed",
+                        "context": matched_record,
+                    }
+                )
                 failures.add(file_name)
                 return
 
@@ -326,23 +364,38 @@ class OCLCAPIWrapper(object):
 
             modified_marc_record = self.__update_oclc_number__(control_number, record)
 
-            successful_match = False
             if self.__put_folio_record__(instance_uuid, modified_marc_record):
 
                 # Sets holdings using the OCLC number
                 update_holding_result = session.holdings_set(oclcNumber=control_number)
 
-                if update_holding_result:
+                if update_holding_result is not None:
+                    update_holding_result = update_holding_result.json()
+
+                if update_holding_result and update_holding_result['success']:
                     logger.info(
                         f"Sets new holdings for {instance_uuid} OCLC {update_holding_result}"
                     )
-                    successful_match = True
+                    output['success'].append(instance_uuid)
+                    successes.add(file_name)
+                    return
 
-            if successful_match:
-                output['success'].append(instance_uuid)
-                successes.add(file_name)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to update holdings after match",
+                        "context": update_holding_result,
+                    }
+                )
+                failures.add(file_name)
             else:
-                output['failures'].append(instance_uuid)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
+                )
                 failures.add(file_name)
 
         output = self.__oclc_operations__(
@@ -353,6 +406,40 @@ class OCLCAPIWrapper(object):
         return output
 
     def new(self, marc_files: dict) -> dict:
+
+        def __add_update_control_number__(**kwargs):
+            session: MetadataSession = kwargs["session"]
+            control_number: str = kwargs["control_number"]
+            record: pymarc.Record = kwargs["record"]
+            output: dict = kwargs["output"]
+            instance_uuid: str = kwargs["instance_uuid"]
+            file_name: str = kwargs["file_name"]
+            failures: set = kwargs["failures"]
+
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
+            successful_add = False
+
+            if self.__put_folio_record__(instance_uuid, modified_marc_record):
+                # Sets holdings using the OCLC number
+                new_holding_result = session.holdings_set(oclcNumber=control_number)
+                if new_holding_result:
+                    payload = new_holding_result.json()
+                    if payload['success']:
+                        logger.info(
+                            f"Sets new holdings for {instance_uuid} OCLC {payload}"
+                        )
+                        output['success'].append(instance_uuid)
+                        successful_add = True
+                    else:
+                        output['failures'].append(
+                            {
+                                "uuid": instance_uuid,
+                                "reason": "Failed to update holdings for new record",
+                                "context": payload,
+                            }
+                        )
+                        failures.add(file_name)
+            return successful_add
 
         def __new_oclc__(**kwargs):
             session: MetadataSession = kwargs["session"]
@@ -378,25 +465,40 @@ class OCLCAPIWrapper(object):
 
             successful_add = False
             if control_number:
-                modified_marc_record = self.__update_oclc_number__(
-                    control_number, record
+                successful_add = __add_update_control_number__(
+                    session=session,
+                    instance_uuid=instance_uuid,
+                    control_number=control_number,
+                    output=output,
+                    record=record,
+                    successes=successes,
+                    failures=failures,
+                    file_name=file_name,
                 )
 
-                if self.__put_folio_record__(instance_uuid, modified_marc_record):
-                    # Sets holdings using the OCLC number
-                    new_holding_result = session.holdings_set(oclcNumber=control_number)
-                    if new_holding_result:
-                        logger.info(
-                            f"Sets new holdings for {instance_uuid} OCLC {new_holding_result}"
-                        )
-                        successful_add = True
+            else:
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to extract OCLC number",
+                        "context": None,
+                    }
+                )
+                failures.add(file_name)
+                return
 
             if successful_add:
-                output['success'].append(instance_uuid)
+                if instance_uuid not in output['success']:
+                    output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
-                output['failures'].append(instance_uuid)
-                failures.add(file_name)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
+                )
 
         output = self.__oclc_operations__(
             marc_files=marc_files,
@@ -416,32 +518,51 @@ class OCLCAPIWrapper(object):
             failures: set = kwargs["failures"]
 
             oclc_id = get_record_id(record)
-            if len(oclc_id) != 1:
-                output['failures'].append(instance_uuid)
+            error_payload = self.__test_oclc_numbers__(oclc_id, instance_uuid)
+            if error_payload:
+                output['failures'].append(error_payload)
                 failures.add(file_name)
-
-                match len(oclc_id):
-
-                    case 0:
-                        logger.error(f"{instance_uuid} missing OCLC number")
-
-                    case _:
-                        logger.error(f"Multiple OCLC ids for {instance_uuid}")
-
                 return
+
             response = session.holdings_set(oclcNumber=oclc_id[0])
+
             if response is None:
-                output['failures'].append(instance_uuid)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "No response from OCLC",
+                        "context": None,
+                    }
+                )
                 failures.add(file_name)
                 return
-            modified_marc_record = self.__update_oclc_number__(
-                response.json()['controlNumber'], record
-            )
+
+            set_payload = response.json()
+            if not set_payload['success']:
+                output["failures"].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "Failed to update holdings",
+                        "context": set_payload,
+                    }
+                )
+                failures.add(file_name)
+                return
+
+            control_number = set_payload['controlNumber']
+
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
             if self.__put_folio_record__(instance_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
-                output['failures'].append(instance_uuid)
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "FOLIO failed to Add OCLC number",
+                        "context": control_number,
+                    }
+                )
                 failures.add(file_name)
 
         output = self.__oclc_operations__(

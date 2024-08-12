@@ -16,6 +16,10 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_oclc_files_task,
 )
 
+from libsys_airflow.plugins.data_exports.oclc_reports import (
+    filter_failures_task,
+)
+
 logger = logging.getLogger(__name__)
 
 default_args = {
@@ -74,6 +78,13 @@ def send_oclc_records():
         connection_details=connections, new_records=filtered_new_records
     )
 
+    filtered_errors = filter_failures_task(
+        update=set_holdings_for_records['failures'],
+        deleted=deleted_records['failures'],
+        match=matched_records['failures'],
+        new=new_records['failures'],
+    )
+
     archive_files = consolidate_oclc_archive_files(
         deleted_records["archive"],
         new_records["archive"],
@@ -83,8 +94,9 @@ def send_oclc_records():
 
     archive_data = archive_transmitted_data_task(archive_files)
 
-    start >> gather_files
-    archive_data >> end
+    start >> gather_files >> filtered_errors
+
+    [archive_data] >> end
 
 
 send_oclc_records()

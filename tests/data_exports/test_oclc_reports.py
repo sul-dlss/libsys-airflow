@@ -43,6 +43,187 @@ def mock_task_instance(mocker):
     return mock_ti
 
 
+ERRORS = [
+    {
+        "uuid": 'f8fa3682-fef8-4810-b8da-8f51b73785ac',
+        "reason": "Failed holdings_unset",
+        "context": None,
+    },
+    {
+        "uuid": '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
+        "reason": "WorldcatRequest Error",
+        "context": "b'400 Client Error'",
+    },
+    {
+        "uuid": '2023473e-802a-4bd2-9ca1-5d2e360a0fbd',
+        "reason": 'Match failed',
+        "context": {'numberOfRecords': 0, 'briefRecords': []},
+    },
+    {
+        'uuid': '16da5eed-69e7-46da-9d6d-6077543e3e01',
+        "reason": "WorldcatRequest Error",
+        "context": {
+            'errorCount': 21,
+            'errors': [
+                'Invalid code in Encoding Level (Leader/17).',
+                'Invalid relationship - when 1st $e in 040 is equal to rda, then 336 must be present.',
+                'Invalid code in indicator 1 in 655.',
+                'Invalid relationship - when indicator 2 in 655 is equal to 7, then $2 in 655 must be present.',
+                '1st $0 in 655 is in the wrong format.',
+            ],
+            'fixedFieldErrors': [
+                {
+                    'tag': '000',
+                    'errorLevel': 'SEVERE',
+                    'message': 'Invalid code in Encoding Level (Leader/17).',
+                }
+            ],
+            'variableFieldErrors': [
+                {
+                    'tag': '040',
+                    'errorLevel': 'MINOR',
+                    'message': 'Invalid relationship - when 1st $e in 040 is equal to rda, then 336 must be present.',
+                },
+                {
+                    'tag': '040',
+                    'errorLevel': 'MINOR',
+                    'message': 'Invalid relationship - when 1st $e in 040 is equal to rda, then 338 must be present.',
+                },
+                {
+                    'tag': '245',
+                    'errorLevel': 'MINOR',
+                    'message': 'Invalid relationship - when $h in 245 is present, then $e in 040 must not be equal to rda.',
+                },
+                {
+                    'tag': '655',
+                    'errorLevel': 'MINOR',
+                    'message': 'Invalid relationship - when indicator 2 in 655 is equal to 7, then $2 in 655 must be present.',
+                },
+                {
+                    'tag': '655',
+                    'errorLevel': 'MINOR',
+                    'message': '1st $0 in 655 is in the wrong format.',
+                },
+            ],
+        },
+    },
+    {
+        'uuid': '0cb6a16c-751e-5006-8a27-739eaa069917',
+        'reason': 'Failed holdings_unset',
+        'context': {
+            'controlNumber': '1107750624',
+            'requestedControlNumber': '1107750624',
+            'institutionCode': '6617',
+            'institutionSymbol': 'STF',
+            'firstTimeUse': False,
+            'success': False,
+            'message': 'Unset Holdings Failed. Local bibliographic data (LBD) is attached to this record. To unset the holding, delete attached LBD first and try again.',
+            'action': 'Unset Holdings',
+        },
+    },
+    {
+        "uuid": '7063655a-6196-416f-94e7-8d540e014805',
+        "reason": 'Failed to update holdings after match',
+        "context": {
+            'controlNumber': '39301853',
+            'requestedControlNumber': '39301853',
+            'institutionCode': '158223',
+            'institutionSymbol': 'STF',
+            'success': False,
+            'message': 'Holding Updated Failed',
+            'action': 'Set Holdings',
+        },
+    },
+    {
+        "uuid": '7063655a-6196-416f-94e7-8d540e014805',
+        "reason": 'Failed to update holdings',
+        "context": {
+            'controlNumber': '48780294',
+            'requestedControlNumber': '48780294',
+            'institutionCode': '158223',
+            'institutionSymbol': 'RCJ',
+            'success': False,
+            'message': 'Holding Updated Failed',
+            'action': 'Set Holdings',
+        },
+    },
+]
+
+
+def test_filter_failures_task_no_failures(caplog):
+    deleted_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [], 'STF': []}
+
+    match_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [], 'STF': []}
+
+    new_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [], 'STF': []}
+
+    update_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [], 'STF': []}
+
+    filtered_errors = oclc_reports.filter_failures_task.function(
+        delete=deleted_failures,
+        match=match_failures,
+        new=new_failures,
+        update=update_failures,
+    )
+
+    assert filtered_errors["STF"] == {}
+    assert filtered_errors["CASUM"] == {}
+
+    assert (
+        "Match failures: S7Z - 0, HIN - 0, CASUM - 0, RCJ - 0, STF - 0" in caplog.text
+    )
+    assert (
+        "Update failures: S7Z - 0, HIN - 0, CASUM - 0, RCJ - 0, STF - 0" in caplog.text
+    )
+
+
+def test_filter_failures_task(caplog):
+    deleted_failures = {
+        'S7Z': [
+            ERRORS[0],
+        ],
+        'HIN': [],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [ERRORS[4]],
+    }
+
+    match_failures = {
+        'S7Z': [],
+        'HIN': [ERRORS[2]],
+        'CASUM': [],
+        'RCJ': [],
+        'STF': [ERRORS[5]],
+    }
+
+    new_failures = {
+        'S7Z': [ERRORS[1]],
+        'HIN': [],
+        'CASUM': [ERRORS[3]],
+        'RCJ': [],
+        'STF': [ERRORS[5]],
+    }
+
+    update_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [ERRORS[6]], 'STF': []}
+
+    filtered_errors = oclc_reports.filter_failures_task.function(
+        delete=deleted_failures,
+        match=match_failures,
+        new=new_failures,
+        update=update_failures,
+    )
+
+    assert (
+        filtered_errors['CASUM']["WorldcatRequest Error"][0]['context']
+        == ERRORS[3]["context"]
+    )
+    assert filtered_errors['S7Z']["WorldcatRequest Error"][0] == {
+        'uuid': '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
+        'context': "b'400 Client Error'",
+    }
+    assert len(filtered_errors['STF']['Failed to update holdings after match']) == 2
+
+
 def test_multiple_oclc_numbers_task(tmp_path, mocker, mock_task_instance, mock_dag_run):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",

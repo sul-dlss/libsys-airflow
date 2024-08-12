@@ -5,7 +5,7 @@ from pathlib import Path
 
 from airflow.decorators import task
 from airflow.models import Variable
-from jinja2 import Template
+from jinja2 import DictLoader, Environment
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +32,43 @@ multiple_oclc_numbers_template = """
 """
 
 
+jinja_env = Environment(
+    loader=DictLoader(
+        {
+            "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
+        }
+    )
+)
+
+
+def _filter_failures(failures: dict, errors: dict):
+    for library, instances in failures.items():
+        if library not in errors:
+            errors[library] = {}
+        if len(instances) < 1:
+            continue
+        for instance in instances:
+            if instance['reason'].startswith("Match failed"):
+                continue
+            if instance['reason'] in errors[library]:
+                errors[library][instance['reason']].append(
+                    {"uuid": instance['uuid'], "context": instance['context']}
+                )
+            else:
+                errors[library][instance['reason']] = [
+                    {"uuid": instance['uuid'], "context": instance['context']}
+                ]
+
+
+def _folio_url(folio_base_url: str, instance_uuid: dict):
+    return f"{folio_base_url}/inventory/view/{instance_uuid}"
+
+
 def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
-    airflow_dir: str = kwargs.get('airflow', '/opt/airflow')
-    airflow = Path(airflow_dir)
-    dag_run: dict = kwargs['dag_run']
     multiple_codes: list = kwargs['all_multiple_codes']
-    folio_base_url: str = kwargs['folio_url']
     date: datetime = kwargs.get('date', datetime.utcnow())
 
-    def _folio_url(instance_uuid: dict):
-        return f"{folio_base_url}/inventory/view/{instance_uuid}"
-
     reports: dict = {}
-    report_template = Template(multiple_oclc_numbers_template)
 
     library_instances: dict = {}
 
@@ -62,33 +86,51 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
                 instance_uuid: {"oclc_numbers": oclc_codes}
             }
 
-    for library, instances in library_instances.items():
-        for uuid, info in instances.items():
-            info['folio_url'] = _folio_url(uuid)
-            info['uuid'] = uuid
-        reports[library] = report_template.render(
-            dag_run=dag_run,
-            date=date.strftime("%d %B %Y"),
-            library=library,
-            instances=instances,
-        )
+    kwargs['library_instances'] = library_instances
+    kwargs['report_template'] = "multiple-oclc-numbers.html"
 
-    reports_path = airflow / "data-export-files/oclc/reports"
+    reports = _reports_by_library(**kwargs)
 
     return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
         name="multiple_oclc_numbers",
         reports=reports,
-        reports_path=reports_path,
         date=date,
     )
+
+
+def _reports_by_library(**kwargs) -> dict:
+    library_instances: dict = kwargs['library_instances']
+    folio_base_url: str = kwargs['folio_url']
+    report_template_name: str = kwargs['report_template']
+    date: datetime = kwargs['date']
+
+    reports: dict = dict()
+
+    report_template = jinja_env.get_template(report_template_name)
+
+    for library, instances in library_instances.items():
+        if len(instances) < 1:
+            continue
+        for uuid, info in instances.items():
+            info['folio_url'] = _folio_url(folio_base_url, uuid)
+            info['uuid'] = uuid
+        kwargs["library"] = library
+        kwargs["instances"] = instances
+        kwargs["date"] = date.strftime("%d %B %Y")
+        reports[library] = report_template.render(**kwargs)
+
+    return reports
 
 
 def _save_reports(**kwargs) -> dict:
     name: str = kwargs['name']
     libraries_reports: dict = kwargs['reports']
-    reports_directory: Path = kwargs['reports_path']
+    airflow_dir: str = kwargs['airflow']
     time_stamp: datetime = kwargs['date']
 
+    airflow = Path(airflow_dir)
+    reports_directory = airflow / "data-export-files/oclc/reports"
     output: dict = {}
 
     for library, report in libraries_reports.items():
@@ -100,6 +142,34 @@ def _save_reports(**kwargs) -> dict:
         output[library] = str(report_path)
 
     return output
+
+
+@task
+def filter_failures_task(**kwargs) -> dict:
+    def _log_expansion_(fail_dict: dict):
+        log = ""
+        for lib, errors in fail_dict.items():
+            log += f"{lib} - {len(errors)}, "
+        return log
+
+    deleted_failures: dict = kwargs["delete"]
+    match_failures: dict = kwargs["match"]
+    new_failures: dict = kwargs["new"]
+    update_failures: dict = kwargs["update"]
+
+    filtered_errors: dict = dict()
+
+    logger.info(f"Update failures: {_log_expansion_(update_failures)}")
+    _filter_failures(update_failures, filtered_errors)
+    logger.info(f"Deleted failures {_log_expansion_(deleted_failures)}")
+    _filter_failures(deleted_failures, filtered_errors)
+    logger.info(f"Match failures: {_log_expansion_(match_failures)}")
+    _filter_failures(match_failures, filtered_errors)
+    logger.info(f"New failures {_log_expansion_(new_failures)}")
+    _filter_failures(new_failures, filtered_errors)
+
+    logger.info(filtered_errors)
+    return filtered_errors
 
 
 @task
