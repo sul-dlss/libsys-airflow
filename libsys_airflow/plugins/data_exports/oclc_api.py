@@ -296,22 +296,16 @@ class OCLCAPIWrapper(object):
 
             oclc_id = get_record_id(record)
 
-            if len(oclc_id) != 1:
+            error_payload = self.__test_oclc_numbers__(oclc_id, instance_uuid)
+
+            if error_payload:
+                output['failures'].append(error_payload)
                 failures.add(file_name)
-                output['failures'].append(instance_uuid)
-                match len(oclc_id):
-
-                    case 0:
-                        logger.error(f"{instance_uuid} missing OCLC number")
-
-                    case _:
-                        logger.error(f"Multiple OCLC ids for {instance_uuid}")
-
                 return
 
             response = session.holdings_unset(oclcNumber=oclc_id[0])
             if response:
-                  response = response.json()
+                response = response.json()
 
             if response and response['success']:
                 logger.info(f"Matched {instance_uuid} result {response.json()}")
@@ -376,7 +370,7 @@ class OCLCAPIWrapper(object):
                 update_holding_result = session.holdings_set(oclcNumber=control_number)
 
                 if update_holding_result is not None:
-                      update_holding_result = update_holding_result.json()
+                    update_holding_result = update_holding_result.json()
 
                 if update_holding_result and update_holding_result['success']:
                     logger.info(
@@ -554,12 +548,10 @@ class OCLCAPIWrapper(object):
                 )
                 failures.add(file_name)
                 return
-            
+
             control_number = set_payload['controlNumber']
 
-            modified_marc_record = self.__update_oclc_number__(
-                control_number, record
-            )
+            modified_marc_record = self.__update_oclc_number__(control_number, record)
             if self.__put_folio_record__(instance_uuid, modified_marc_record):
                 output['success'].append(instance_uuid)
                 successes.add(file_name)

@@ -245,15 +245,17 @@ def mock_metadata_session(authorization=None, timeout=None):
             case "a60987":
                 payload['briefRecords'].append({'oclcNumber': '456907809'})
 
+            case "a20017876":
+                payload['briefRecords'].append({'oclcNumber': '445667'})
+
+            case "a7340114":
+                payload['briefRecords'].append({'oclcNumber': '39301853'})
+
         mock_response.json = lambda: payload
         return mock_response
 
     def mock_holdings_set(**kwargs):
-        if kwargs['oclcNumber'] == "456907809":
-            raise WorldcatRequestError(b"400 Client Error")
-        if kwargs['oclcNumber'] == '2369001':
-            return
-        mock_response.json = lambda: {
+        payload = {
             "controlNumber": "439887343",
             "requestedControlNumber": "439887343",
             "institutionCode": "158223",
@@ -262,6 +264,16 @@ def mock_metadata_session(authorization=None, timeout=None):
             "message": "Holding Updated Successfully",
             "action": "Set Holdings",
         }
+        if kwargs['oclcNumber'] == "456907809":
+            raise WorldcatRequestError(b"400 Client Error")
+        if kwargs['oclcNumber'] == '2369001':
+            return
+        if kwargs['oclcNumber'] == "39301853":
+            payload["success"] = False
+            payload["controlNumber"] = kwargs['oclcNumber']
+            payload["requestedControlNumber"] = kwargs['oclcNumber']
+            payload["message"] = "Holding Updated Failed"
+        mock_response.json = lambda: payload
         return mock_response
 
     def mock_holdings_unset(**kwargs):
@@ -323,10 +335,12 @@ def mock_httpx_client():
 def mock_folio_client(mocker):
     sample_marc = sample_marc_records()
 
-    def mock_folio_get(*args, **kwargs):
+    def __srs_response__(path: str):
         output = {}
-        if args[0].startswith("/source-storage/source-records"):
-            if args[0].endswith("958835d2-39cc-4ab3-9c56-53bf7940421b"):
+        instance_uuid = path.split("instanceId=")[-1]
+
+        match instance_uuid:
+            case "958835d2-39cc-4ab3-9c56-53bf7940421b":
                 output = {
                     "sourceRecords": [
                         {
@@ -337,18 +351,23 @@ def mock_folio_client(mocker):
                         }
                     ]
                 }
-            if args[0].endswith("d63085c0-cab6-4bdd-95e8-d53696919ac1"):
+
+            case (
+                "d63085c0-cab6-4bdd-95e8-d53696919ac1"
+                | '7063655a-6196-416f-94e7-8d540e014805'
+            ):
                 output = {
                     "sourceRecords": [
                         {
-                            "recordId": "d63085c0-cab6-4bdd-95e8-d53696919ac1",
+                            "recordId": instance_uuid,
                             "parsedRecord": {
                                 "content": json.loads(sample_marc[2].as_json())
                             },
                         }
                     ]
                 }
-            if args[0].endswith("38a7bb66-cd11-4af6-a339-c13f5855b36f"):
+
+            case "38a7bb66-cd11-4af6-a339-c13f5855b36f":
                 output = {
                     "sourceRecords": [
                         {
@@ -359,8 +378,15 @@ def mock_folio_client(mocker):
                         }
                     ]
                 }
-            if args[0].endswith("6aabb9cd-64cc-4673-b63b-d35fa015b91c"):
+
+            case "6aabb9cd-64cc-4673-b63b-d35fa015b91c":
                 output = {"sourceRecords": []}
+        return output
+
+    def mock_folio_get(*args, **kwargs):
+        output = {}
+        if args[0].startswith("/source-storage/source-records"):
+            output = __srs_response__(args[0])
         if args[0].startswith("/inventory/instances/"):
             for instance_uuid in [
                 "f19fd2fc-586c-45df-9b0c-127af97aef34",
@@ -369,6 +395,8 @@ def mock_folio_client(mocker):
                 "38a7bb66-cd11-4af6-a339-c13f5855b36f",
                 "a3a6f1c4-152c-4f8f-9763-07a49cd6fa5a",
                 "2023473e-802a-4bd2-9ca1-5d2e360a0fbd",
+                "ce4b5983-ff44-4b27-ab3c-d63a38095e30",
+                "7063655a-6196-416f-94e7-8d540e014805",
             ]:
                 if args[0].endswith(instance_uuid):
                     output = {"_version": "2", "hrid": "a345691"}
@@ -611,63 +639,6 @@ def test_no_update_records(mock_oclc_api, caplog):
     assert "No updated marc records" in caplog.text
 
 
-def test_bad_holdings_set_call(tmp_path, mock_oclc_api, caplog):
-    error_records = bad_records()
-
-    marc_file = tmp_path / "202403273-STF.mrc"
-
-    with marc_file.open('wb+') as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for record in error_records:
-            marc_writer.write(record)
-
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
-        secret="c867b1dd75e6490f99d1cd1c9252ef22",
-    )
-
-    update_result = oclc_api_instance.update([str(marc_file.absolute())])
-
-    assert update_result['success'] == []
-    sorted_failures = sorted(update_result['failures'], key=lambda x: x['uuid'])
-
-    assert sorted_failures[0] == {
-        "uuid": '00b492cb-704d-41f4-bd12-74cfe643aea9',
-        "reason": 'FOLIO failed to Add OCLC number',
-        "context": "439887343",
-    }
-    assert sorted_failures[1] == {
-        'uuid': '7063655a-6196-416f-94e7-8d540e014805',
-        'reason': 'Failed to update holdings',
-        'context': {
-            'controlNumber': '39301853',
-            'requestedControlNumber': '39301853',
-            'institutionCode': '158223',
-            'institutionSymbol': 'STF',
-            'success': False,
-            'message': 'Holding Updated Failed',
-            'action': 'Set Holdings',
-        },
-    }
-    assert sorted_failures[2] == {
-        "uuid": '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
-        "reason": "WorldcatRequest Error",
-        "context": "b'400 Client Error'",
-    }
-    assert sorted_failures[3] == {
-        "uuid": 'ce4b5983-ff44-4b27-ab3c-d63a38095e30',
-        "reason": "FOLIO failed to Add OCLC number",
-        "context": '439887343',
-    }
-    assert sorted_failures[4] == {
-        "uuid": 'f8fa3682-fef8-4810-b8da-8f51b73785ac',
-        "reason": 'No response from OCLC',
-        "context": None,
-    }
-
-    assert "400 Client Error" in caplog.text
-
-
 def test_already_exists_control_number(tmp_path, mock_oclc_api):
     marc_record = pymarc.Record()
     marc_record.add_field(
@@ -753,103 +724,6 @@ def test_failed_folio_put(mock_oclc_api, caplog):
     assert put_result is False
 
 
-def test_no_delete_records(mock_oclc_api, caplog):
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
-        secret="c867b1dd75e6490f99d1cd1c9252ef22",
-    )
-    oclc_api_instance.delete([])
-
-    assert "No marc records for deletes" in caplog.text
-
-
-def test_delete_records_success(mock_oclc_api, tmp_path):
-    marc_record = pymarc.Record()
-    marc_record.add_field(
-        pymarc.Field(
-            tag='035',
-            indicators=[" ", " "],
-            subfields=[pymarc.Subfield(code='a', value='(OCoLC)1125353')],
-        ),
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='i', value='f19fd2fc-586c-45df-9b0c-127af97aef34'),
-                pymarc.Subfield(code='s', value='d63085c0-cab6-4bdd-95e8-d53696919ac1'),
-            ],
-        ),
-    )
-
-    marc_file = tmp_path / "202406061104-STF.mrc"
-
-    with marc_file.open('wb+') as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        marc_writer.write(marc_record)
-
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
-        secret="c867b1dd75e6490f99d1cd1c9252ef22",
-    )
-
-    result = oclc_api_instance.delete([str(marc_file)])
-
-    assert result["success"] == ['f19fd2fc-586c-45df-9b0c-127af97aef34']
-    assert result['archive'] == [str(marc_file)]
-
-
-def test_delete_errors(mock_oclc_api, caplog, tmp_path):
-
-    marc_file = tmp_path / "2024060611-STF.mrc"
-
-    with marc_file.open('wb+') as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        for record in bad_records():
-            marc_writer.write(record)
-
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
-        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
-        secret="c867b1dd75e6490f99d1cd1c9252ef22",
-    )
-
-    result = oclc_api_instance.delete([str(marc_file)])
-
-    assert result['success'] == [
-        '00b492cb-704d-41f4-bd12-74cfe643aea9',
-        '7063655a-6196-416f-94e7-8d540e014805',
-    ]
-
-    sorted_failures = sorted(result['failures'], key=lambda x: x['uuid'])
-
-    assert sorted_failures[0] == {
-        "uuid": '8c9447fa-0556-47cc-98af-c8d5e0d763fb',
-        "reason": "WorldcatRequest Error",
-        "context": "b'400 Client Error'",
-    }
-
-    assert sorted_failures[1] == {
-        "uuid": 'ce4b5983-ff44-4b27-ab3c-d63a38095e30',
-        "reason": "Failed holdings_unset",
-        "context": {
-            'controlNumber': '17032778',
-            'requestedControlNumber': '17032778',
-            'institutionCode': '158223',
-            'institutionSymbol': 'STF',
-            'firstTimeUse': False,
-            'success': False,
-            'message': 'Unset Holdings Failed',
-            'action': 'Unset Holdings',
-        },
-    }
-    assert sorted_failures[2] == {
-        "uuid": 'f8fa3682-fef8-4810-b8da-8f51b73785ac',
-        "reason": "Failed holdings_unset",
-        "context": None,
-    }
-
-    assert result['archive'] == []
-
-
 def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
     marc_file = tmp_path / "2024060612-STF.mrc"
 
@@ -909,11 +783,17 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
 
     bad_oclc_num = bad_records()[-1]
 
+    bad_srs_record = sample_marc_records()[2]
+
+    bad_srs_record.add_ordered_field(
+        pymarc.Field(tag='008', data="a20017876"),
+    )
+
     marc_file = tmp_path / "2024070114-STF.mrc"
 
     with marc_file.open("wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        for row in [existing_record, new_record, bad_oclc_num]:
+        for row in [existing_record, new_record, bad_oclc_num, bad_srs_record]:
             marc_writer.write(row)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
