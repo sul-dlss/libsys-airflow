@@ -3,6 +3,7 @@ import logging
 import pathlib
 
 import pymarc
+import xml.etree.ElementTree as etree
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
@@ -79,19 +80,19 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
         logger.warning(e)
 
 
-def remove_fields_from_marc_files(marc_file_list: dict):
+def clean_and_serialize_marc_files(marc_file_list: dict):
     for file in marc_file_list['new']:
-        remove_marc_fields(file, False)
+        marc_clean_serialize(file, False)
     logger.info(f"Removed MARC fields from these New files {marc_file_list['new']}")
 
     for file in marc_file_list['updates']:
-        remove_marc_fields(file, False)
+        marc_clean_serialize(file, False)
     logger.info(
         f"Remove MARC fields from these Updated files {marc_file_list['updates']}"
     )
 
 
-def remove_marc_fields(marc_file: str, full_dump: bool):
+def marc_clean_serialize(marc_file: str, full_dump: bool):
     """
     Removes MARC fields from export MARC21 file
     """
@@ -101,10 +102,7 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
         logger.info(f"Removing MARC fields using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
-        if marc_path.suffix.endswith("xml"):
-            marc_records = pymarc.parse_xml_to_array(fo)
-        else:
-            marc_records = [record for record in pymarc.MARCReader(fo)]
+        marc_records = [record for record in pymarc.MARCReader(fo)]
 
     logger.info(f"Removing MARC fields for {len(marc_records):,} records")
 
@@ -117,16 +115,42 @@ def remove_marc_fields(marc_file: str, full_dump: bool):
             logger.warning(e)
             continue
 
+    """
+    Writes the records back to the filesystem
+    """
     try:
         with marc_path.open("wb") as fo:
-            if marc_path.suffix.endswith("xml"):
-                marc_writer = pymarc.XMLWriter(fo)
-            else:
-                marc_writer = pymarc.MARCWriter(fo)  # type: ignore
+            marc_writer = pymarc.MARCWriter(fo)  # type: ignore
             for record in marc_records:
                 marc_writer.write(record)
             marc_writer.close()
 
+    except pymarc.exceptions.WriteNeedsRecord as e:
+        logger.warning(e)
+
+    logger.info(f"Serializing {len(marc_records)} MARC records as xml")
+    try:
+        xml_path = marc_path.with_suffix(".xml")
+        with xml_path.open("wb") as fo:
+            xml_writer = pymarc.XMLWriter(fo)
+            for record in marc_records:
+                try:
+                    xml_element = pymarc.record_to_xml_node(record, namespace=True)
+                    etree.fromstring(etree.tostring(xml_element))
+                    xml_writer.write(record)
+
+                except AttributeError as e:
+                    logger.error(
+                        f"Failed to serialize MARC Record {xml_path}: {e}"
+                    )
+                    continue
+                except etree.ParseError as e:
+                    logger.error(
+                        f"Failed to serialize MARC Record {record['001'].value()}: {e} as xml"
+                    )
+                    continue
+
+            xml_writer.close()
     except pymarc.exceptions.WriteNeedsRecord as e:
         logger.warning(e)
 

@@ -19,7 +19,7 @@ from libsys_airflow.plugins.data_exports.full_dump_marc import (
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from libsys_airflow.plugins.data_exports.marc.transforms import (
-    remove_marc_fields,
+    marc_clean_serialize,
     zip_marc_file,
 )
 from sqlalchemy import exc
@@ -135,9 +135,9 @@ with DAG(
             connection_pool.putconn(_connection, close=True)
 
         @task
-        def transform_marc_records_remove_fields(marc_files: list):
+        def transform_marc_records_clean_serialize(marc_files: list):
             for marc_file in marc_files:
-                remove_marc_fields(marc_file, full_dump=True)
+                marc_clean_serialize(marc_file, full_dump=True)
 
         @task
         def compress_marc_files(marc_files: list):
@@ -148,7 +148,7 @@ with DAG(
 
         (
             transform_marc_records_add_holdings(marc_files)
-            >> transform_marc_records_remove_fields(marc_files)
+            >> transform_marc_records_clean_serialize(marc_files)
             >> compress_marc_files(marc_files)
         )
 

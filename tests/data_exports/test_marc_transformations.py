@@ -1,12 +1,13 @@
 import pydantic
 import pymarc
 import pytest
+import pathlib
 
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     leader_for_deletes,
-    remove_marc_fields,
+    marc_clean_serialize,
     zip_marc_file,
 )
 
@@ -294,52 +295,6 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
     assert len(mod_marc_records) == 0
 
 
-def test_add_holdings_items_single_999_XML(mocker, tmp_path, mock_folio_client):
-    mocker.patch(
-        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
-        return_value=mock_folio_client,
-    )
-    record = pymarc.Record()
-    record.leader = pymarc.Leader("00475cas a2200169 i 4500")
-    record.add_field(
-        pymarc.Field(
-            tag='999',
-            indicators=['f', 'f'],
-            subfields=[
-                pymarc.Subfield(code='i', value='not a uuid!'),
-                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c'),
-            ],
-        )
-    )
-
-    marc_dir = tmp_path / "pod" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "20240228.mrc"
-
-    with marc_file.open('wb+') as fo:
-        marc_writer = pymarc.MARCWriter(fo)
-        marc_writer.write(record)
-
-    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
-    transformer.add_holdings_items(str(marc_file), full_dump=False)
-
-    xml_file = marc_file.with_suffix(".xml")
-    with xml_file.open('rb') as fo:
-        mod_marc_records = pymarc.parse_xml_to_array(fo)
-
-    field_999s = mod_marc_records[0].get_fields('999')
-
-    assert len(field_999s) == 2
-    assert field_999s[1].get_subfields('a')[0] == 'PQ8098.3.E4 A7 1989'
-    assert field_999s[1].get_subfields('e')[0] == 'GRE-FOLIO-FLAT'
-    assert field_999s[1].get_subfields('h')[0] == 'Monograph'
-    assert field_999s[1].get_subfields('i')[0] == '36105029044444'
-    assert field_999s[1].get_subfields('j')[0] == '1'
-    assert field_999s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
-    assert field_999s[1].get_subfields('t')[0] == 'book'
-    assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
-
-
 def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
 
     mocker.patch(
@@ -467,7 +422,7 @@ def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('a')[0] == "QA 124378"
 
 
-def test_remove_marc_fields(tmp_path):
+def test_marc_clean_serialize(tmp_path):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -500,7 +455,7 @@ def test_remove_marc_fields(tmp_path):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    remove_marc_fields(str(marc_file.absolute()), full_dump=False)
+    marc_clean_serialize(str(marc_file.absolute()), full_dump=False)
 
     with marc_file.open('rb') as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -513,39 +468,10 @@ def test_remove_marc_fields(tmp_path):
     assert "598" not in current_fields
     assert "699" not in current_fields
 
+    xml_dir = tmp_path / "vendor" / "updates"
+    xml_file = xml_dir / "20240228.xml"
 
-def test_remove_marc_fields_xml(tmp_path):
-    record = pymarc.Record()
-    record.add_field(
-        pymarc.Field(
-            tag='245',
-            indicators=[' ', ' '],
-            subfields=[pymarc.Subfield(code='a', value='A Short Title')],
-        ),
-        pymarc.Field(
-            tag="598",
-            indicators=[' ', '1'],
-            subfields=[pymarc.Subfield(code='a', value='a30')],
-        ),
-    )
-
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_xml_file = marc_dir / "20240726.xml"
-
-    with marc_xml_file.open('wb+') as fo:
-        xml_writer = pymarc.XMLWriter(fo)
-        xml_writer.write(record)
-        xml_writer.close()
-
-    remove_marc_fields(str(marc_xml_file.absolute()), full_dump=False)
-
-    with marc_xml_file.open('rb') as fo:
-        marc_records = pymarc.parse_xml_to_array(fo)
-
-    current_fields = [field.tag for field in marc_records[0].fields]
-
-    assert "598" not in current_fields
+    assert pathlib.Path(xml_file).stat().st_size > 0
 
 
 def test_change_leader(tmp_path):

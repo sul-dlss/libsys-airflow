@@ -112,16 +112,7 @@ class Transformer(object):
             f"Writing {len(marc_records):,} modified MARC records to {marc_path}"
         )
 
-        self.write_serialized_marc(marc_path, marc_records)
-
-    def write_serialized_marc(self, marc_path: pathlib.Path, marc_records: list):
-        vendor_path = marc_path.parent.parent
-        if vendor_path.name == "pod" or vendor_path.name == "full-dump":
-            marc_path = marc_path.with_suffix(".xml")
-            marc_writer = pymarc.XMLWriter(marc_path.open("wb"))
-        else:
-            marc_writer = pymarc.MARCWriter(marc_path.open("wb"))  # type: ignore
-
+        marc_writer = pymarc.MARCWriter(marc_path.open("wb"))  # type: ignore
         for record in marc_records:
             marc_writer.write(record)
 
