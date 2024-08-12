@@ -15,7 +15,7 @@ holdings_set_template = """
   <a href="{{ dag_run.url }}">DAG Run</a>
 </p>
 <h2>FOLIO Instances that failed trying to set Holdings {% if match %}after successful Match{% endif %}</h2>
-<table>
+<table class="table table-striped">
   <thead>
     <tr>
       <th>Instance</th>
@@ -47,7 +47,7 @@ holdings_unset_template = """
   <a href="{{ dag_run.url }}">DAG Run</a>
 </p>
 <h2>FOLIO Instances that failed trying to unset Holdings</h2>
-<table>
+<table class="table table-striped">
   <thead>
     <tr>
       <th>Instance</th>
@@ -93,6 +93,21 @@ multiple_oclc_numbers_template = """
   </ol>
 """
 
+oclc_payload_template = """<ul>
+        <li><strong>Control Number:</strong> {{ instance.oclc_error.controlNumber }}</li>
+        <li><strong>Requested Control Number:</strong> {{ instance.oclc_error.requestedControlNumber }}</li>
+        <li><strong>Institution:</strong>
+           <ul>
+             <li><em>Code:</em> {{ instance.oclc_error.institutionCode }}</li>
+             <li><em>Symbol:</em> {{ instance.oclc_error.institutionSymbol }}</li>
+           </ul>
+        </li>
+        <li><strong>First Time Use:</strong> {{ instance.oclc_error.firstTimeUse }}</li>
+        <li><strong>Success:</strong> {{ instance.oclc_error.success }}</li>
+        <li><strong>Message:</strong> {{ instance.oclc_error.message }}</li>
+        <li><strong>Action:</strong> {{ instance.oclc_error.action }}</li>
+     </ul>
+"""
 
 jinja_env = Environment(
     loader=DictLoader(
@@ -100,6 +115,7 @@ jinja_env = Environment(
             "holdings-set.html": holdings_set_template,
             "holdings-unset.html": holdings_unset_template,
             "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
+            "oclc-payload-template.html": oclc_payload_template,
         }
     )
 )
