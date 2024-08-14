@@ -454,40 +454,60 @@ class OCLCAPIWrapper(object):
             export_record.remove_fields(*oclc_excluded)
 
             marc21 = export_record.as_marc21()
-            new_record = session.bib_create(
-                record=marc21,
-                recordFormat="application/marc",
+
+            # We want to capture errors from the OCLC response instead of
+            # trying to parse the WorldcatRequestError
+            bib_create_result = self.httpx_client.post(
+                session._url_manage_bibs_create(),
+                headers={
+                    "Accept": "application/marc",
+                    "content-type": "application/marc",
+                    "Authorization": f"Bearer {session.authorization.token_str}",
+                },
+                data=marc21,
             )
+
             logger.info(
-                f"New record result {new_record.status_code} {new_record.content}"
+                f"New record result {bib_create_result.status_code} {bib_create_result.content}"
             )
-            control_number = self.__extract_control_number_035__(new_record.content)
+            match bib_create_result.status_code:
 
-            successful_add = False
-            if control_number:
-                successful_add = __add_update_control_number__(
-                    session=session,
-                    instance_uuid=instance_uuid,
-                    control_number=control_number,
-                    output=output,
-                    record=record,
-                    successes=successes,
-                    failures=failures,
-                    file_name=file_name,
-                )
+                case 201:
+                    control_number = self.__extract_control_number_035__(
+                        bib_create_result.content
+                    )
+                    if control_number is None:
+                        output['failures'].append(
+                            {
+                                "uuid": instance_uuid,
+                                "reason": "Failed to extract OCLC number",
+                                "context": None,
+                            }
+                        )
+                        failures.add(file_name)
+                        return
 
-            else:
-                output['failures'].append(
-                    {
-                        "uuid": instance_uuid,
-                        "reason": "Failed to extract OCLC number",
-                        "context": None,
-                    }
-                )
-                failures.add(file_name)
-                return
+                case _:
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "Failed to add new MARC record",
+                            "context": bib_create_result.json(),
+                        }
+                    )
+                    failures.add(file_name)
+                    return
 
-            if successful_add:
+            if __add_update_control_number__(
+                session=session,
+                instance_uuid=instance_uuid,
+                control_number=control_number,
+                output=output,
+                record=record,
+                successes=successes,
+                failures=failures,
+                file_name=file_name,
+            ):
                 if instance_uuid not in output['success']:
                     output['success'].append(instance_uuid)
                 successes.add(file_name)
