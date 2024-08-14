@@ -204,6 +204,7 @@ def mock_metadata_session(authorization=None, timeout=None):
         pass
 
     def mock_bib_create(**kwargs):
+
         record = pymarc.Record(data=kwargs['record'])
         if "008" in record and record["008"].value() == "00a":
             raise WorldcatRequestError(b"400 Client Error")
@@ -297,6 +298,10 @@ def mock_metadata_session(authorization=None, timeout=None):
     # Supports mocking context manager
     mock_session.__enter__ = mock__enter__
     mock_session.__exit__ = mock__exit__
+    mock_session._url_manage_bibs_create = (
+        lambda: 'https://metadata.api.oclc.org/worldcat'
+    )
+    mock_session.authorization.token_str = "ab3565ackelas"
     mock_session.bib_create = mock_bib_create
     mock_session.bib_match = mock_bib_match
     mock_session.holdings_set = mock_holdings_set
@@ -326,6 +331,38 @@ def mock_httpx_client():
                     )
                 elif request.url.path.startswith('/change-manager/parsedRecords'):
                     response = httpx.Response(status_code=202)
+
+            case 'POST':
+                record = pymarc.Record(data=request.content)
+                if "008" in record and record["008"].value() == "00a":
+                    response = httpx.Response(
+                        status_code=400,
+                    )
+
+                elif "024" in record and record["024"]["a"] == "gtfo-78901":
+                    record.add_field(
+                        pymarc.Field(
+                            tag='035',
+                            indicators=['', ''],
+                            subfields=[pymarc.Subfield(code='b', value='39710')],
+                        )
+                    )
+                    response = httpx.Response(
+                        status_code=201, content=record.as_marc21()
+                    )
+                else:
+                    record.add_field(
+                        pymarc.Field(
+                            tag='035',
+                            indicators=['', ''],
+                            subfields=[
+                                pymarc.Subfield(code='a', value='(OCoLC)345678')
+                            ],
+                        )
+                    )
+                    response = httpx.Response(
+                        status_code=201, content=record.as_marc21()
+                    )
 
         return response
 
