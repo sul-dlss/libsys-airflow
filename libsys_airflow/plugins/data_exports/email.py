@@ -43,7 +43,8 @@ def generate_holdings_errors_emails(error_reports: dict):
     law_email = Variable.get("OCLC_EMAIL_LAW")
     sul_email = Variable.get("OCLC_EMAIL_SUL")
 
-    airflow_url = conf.get('webserver')  # type: ignore
+    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
 
