@@ -23,13 +23,13 @@ holdings_set_template = """
     </tr>
   </thead>
   <tbody>
-{% for instance in instances.values() %}
+{% for row in failures %}
   <tr>
     <td>
-      <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>
+      <a href="{{ folio_url }}/inventory/view/{{ row.uuid }}">{{ row.uuid }}</a>
     </td>
     <td>
-    {% if instance.oclc_error %}
+    {% if row.context %}
     {% include 'oclc-payload-template.html' %}
     {% else %}
      No response from OCLC set API call
@@ -55,13 +55,13 @@ holdings_unset_template = """
     </tr>
   </thead>
   <tbody>
-  {% for instance in instances.values() %}
+  {% for row in failures %}
   <tr>
     <td>
-      <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>
+      <a href="{{ folio_url }}/inventory/view/{{ row.uuid }}">{{ row.uuid }}</a>
     </td>
     <td>
-    {% if instance.oclc_error %}
+    {% if row.context %}
     {% include 'oclc-payload-template.html' %}
     {% else %}
      No response from OCLC set API call
@@ -69,6 +69,8 @@ holdings_unset_template = """
     </td>
   </tr>
 {% endfor %}
+  </tbody>
+</table>
 """
 
 multiple_oclc_numbers_template = """
@@ -80,7 +82,7 @@ multiple_oclc_numbers_template = """
 
  <h2>FOLIO Instances with Multiple OCLC Numbers</h2>
  <ol>
-{% for instance in instances.values() %}
+{% for instance in failures.values() %}
  <li>
    <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>:
    <ul>
@@ -94,18 +96,18 @@ multiple_oclc_numbers_template = """
 """
 
 oclc_payload_template = """<ul>
-        <li><strong>Control Number:</strong> {{ instance.oclc_error.controlNumber }}</li>
-        <li><strong>Requested Control Number:</strong> {{ instance.oclc_error.requestedControlNumber }}</li>
+        <li><strong>Control Number:</strong> {{ row.context.controlNumber }}</li>
+        <li><strong>Requested Control Number:</strong> {{ row.context.requestedControlNumber }}</li>
         <li><strong>Institution:</strong>
            <ul>
-             <li><em>Code:</em> {{ instance.oclc_error.institutionCode }}</li>
-             <li><em>Symbol:</em> {{ instance.oclc_error.institutionSymbol }}</li>
+             <li><em>Code:</em> {{ row.context.institutionCode }}</li>
+             <li><em>Symbol:</em> {{ row.context.institutionSymbol }}</li>
            </ul>
         </li>
-        <li><strong>First Time Use:</strong> {{ instance.oclc_error.firstTimeUse }}</li>
-        <li><strong>Success:</strong> {{ instance.oclc_error.success }}</li>
-        <li><strong>Message:</strong> {{ instance.oclc_error.message }}</li>
-        <li><strong>Action:</strong> {{ instance.oclc_error.action }}</li>
+        <li><strong>First Time Use:</strong> {{ row.context.firstTimeUse }}</li>
+        <li><strong>Success:</strong> {{ row.context.success }}</li>
+        <li><strong>Message:</strong> {{ row.context.message }}</li>
+        <li><strong>Action:</strong> {{ row.context.action }}</li>
      </ul>
 """
 
@@ -140,28 +142,18 @@ def _filter_failures(failures: dict, errors: dict):
                 ]
 
 
-def _folio_url(folio_base_url: str, instance_uuid: dict):
-    return f"{folio_base_url}/inventory/view/{instance_uuid}"
-
-
 def _generate_holdings_set_report(**kwargs) -> dict:
     date: datetime = kwargs.get('date', datetime.utcnow())
-    failures: dict = kwargs.pop('failures')
 
     match = kwargs.get("match", False)
 
     if date not in kwargs:
         kwargs["date"] = date
 
-    error_key = "Failed to update holdings"
     report_name = "set_holdings"
     if match:
         report_name = "set_holdings_match"
-        error_key = "Failed to update holdings after match"
 
-    library_instances = _library_instances(failures, error_key)
-
-    kwargs['library_instances'] = library_instances
     kwargs['report_template'] = "holdings-set.html"
 
     reports = _reports_by_library(**kwargs)
@@ -176,14 +168,10 @@ def _generate_holdings_set_report(**kwargs) -> dict:
 
 def _generate_holdings_unset_report(**kwargs) -> dict:
     date: datetime = kwargs.get('date', datetime.utcnow())
-    failures: dict = kwargs.pop('failures')
 
     if date not in kwargs:
         kwargs["date"] = date
 
-    library_instances = _library_instances(failures, 'Failed holdings_unset')
-
-    kwargs['library_instances'] = library_instances
     kwargs['report_template'] = "holdings-unset.html"
 
     reports = _reports_by_library(**kwargs)
@@ -216,7 +204,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
                 instance_uuid: {"oclc_numbers": oclc_codes}
             }
 
-    kwargs['library_instances'] = library_instances
+    kwargs['failures'] = library_instances
     kwargs['report_template'] = "multiple-oclc-numbers.html"
 
     reports = _reports_by_library(**kwargs)
@@ -229,25 +217,8 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     )
 
 
-def _library_instances(failures, error_key) -> dict:
-    library_instances: dict = dict()
-
-    for library_code, errors in failures.items():
-        update_holdings_errors = errors.get(error_key, [])
-        if library_code not in library_instances:
-            library_instances[library_code] = {}
-        for row in update_holdings_errors:
-            library_instances[library_code][row['uuid']] = {
-                "uuid": row['uuid'],
-                "oclc_error": row['context'],
-            }
-
-    return library_instances
-
-
 def _reports_by_library(**kwargs) -> dict:
-    library_instances: dict = kwargs['library_instances']
-    folio_base_url: str = kwargs['folio_url']
+    failures: dict = kwargs["failures"]
     report_template_name: str = kwargs['report_template']
     date: datetime = kwargs['date']
 
@@ -255,14 +226,11 @@ def _reports_by_library(**kwargs) -> dict:
 
     report_template = jinja_env.get_template(report_template_name)
 
-    for library, instances in library_instances.items():
-        if len(instances) < 1:
+    for library, rows in failures.items():
+        if len(rows) < 1:
             continue
-        for uuid, info in instances.items():
-            info['folio_url'] = _folio_url(folio_base_url, uuid)
-            info['uuid'] = uuid
         kwargs["library"] = library
-        kwargs["instances"] = instances
+        kwargs["failures"] = rows
         kwargs["date"] = date.strftime("%d %B %Y")
         reports[library] = report_template.render(**kwargs)
 

@@ -239,12 +239,14 @@ def test_holdings_set_errors_task(tmp_path, mocker, mock_dag_run):
     )
 
     failures = {
-        "RCJ": {
-            "Failed to update holdings": [
-                {"uuid": ERRORS[6]["uuid"], "context": ERRORS[6]["context"]}
-            ]
-        },
-        "STF": {},
+        "RCJ": [
+            {
+                "reason": "Failed to update holdings",
+                "uuid": ERRORS[6]["uuid"],
+                "context": ERRORS[6]["context"],
+            }
+        ],
+        "STF": [],
     }
 
     reports = holdings_set_errors_task.function(
