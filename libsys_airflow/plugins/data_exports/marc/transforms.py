@@ -140,9 +140,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool):
                     xml_writer.write(record)
 
                 except AttributeError as e:
-                    logger.error(
-                        f"Failed to serialize MARC Record {xml_path}: {e}"
-                    )
+                    logger.error(f"Failed to serialize MARC Record {xml_path}: {e}")
                     continue
                 except etree.ParseError as e:
                     logger.error(
