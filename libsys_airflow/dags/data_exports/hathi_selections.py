@@ -16,7 +16,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
-    remove_fields_from_marc_files,
+    clean_and_serialize_marc_files,
 )
 
 default_args = {
@@ -96,8 +96,8 @@ with DAG(
     )
 
     transform_marc_fields = PythonOperator(
-        task_id="transform_folio_remove_marc_fields",
-        python_callable=remove_fields_from_marc_files,
+        task_id="transform_folio_marc_clean_serialize",
+        python_callable=clean_and_serialize_marc_files,
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
         },
