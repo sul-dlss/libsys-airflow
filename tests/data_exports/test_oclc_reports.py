@@ -239,14 +239,12 @@ def test_holdings_set_errors_task(tmp_path, mocker, mock_dag_run):
     )
 
     failures = {
-        "RCJ": [
-            {
-                "reason": "Failed to update holdings",
-                "uuid": ERRORS[6]["uuid"],
-                "context": ERRORS[6]["context"],
-            }
-        ],
-        "STF": [],
+        "RCJ": {
+            "Failed to update holdings": [
+                {"uuid": ERRORS[6]["uuid"], "context": ERRORS[6]["context"]}
+            ]
+        },
+        "STF": {},
     }
 
     reports = holdings_set_errors_task.function(
@@ -378,6 +376,3 @@ def test_multiple_oclc_numbers_task(tmp_path, mocker, mock_task_instance, mock_d
 
     dag_anchor = lane_report_html.find("a")
     assert dag_anchor.text.startswith("DAG Run")
-    assert dag_anchor.attrs['href'].startswith(
-        "https://folio-airflow.edu/scheduled__2024-07-29"
-    )

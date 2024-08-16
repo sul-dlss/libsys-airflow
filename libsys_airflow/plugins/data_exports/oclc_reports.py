@@ -1,8 +1,11 @@
 import logging
+import urllib
 
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
+from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 from jinja2 import DictLoader, Environment
@@ -12,7 +15,7 @@ logger = logging.getLogger(__name__)
 holdings_set_template = """
 <h1>OCLC Holdings {% if match %}Matched {% endif %}Set Errors on {{ date }} for {{ library }}</h1>
 <p>
-  <a href="{{ dag_run.url }}">DAG Run</a>
+  <a href="{{ dag_run_url }}">DAG Run</a>
 </p>
 <h2>FOLIO Instances that failed trying to set Holdings {% if match %}after successful Match{% endif %}</h2>
 <table class="table table-striped">
@@ -44,7 +47,7 @@ holdings_set_template = """
 holdings_unset_template = """
 <h1>OCLC Holdings Unset Errors on {{ date }} for {{ library }}</h1>
 <p>
-  <a href="{{ dag_run.url }}">DAG Run</a>
+  <a href="{{ dag_run_url }}">DAG Run</a>
 </p>
 <h2>FOLIO Instances that failed trying to unset Holdings</h2>
 <table class="table table-striped">
@@ -77,7 +80,7 @@ multiple_oclc_numbers_template = """
  <h1>Multiple OCLC Numbers on {{ date }} for {{ library }}</h1>
 
  <p>
-  <a href="{{ dag_run.url }}">DAG Run</a>
+  <a href="{{ dag_run_url }}">DAG Run</a>
  </p>
 
  <h2>FOLIO Instances with Multiple OCLC Numbers</h2>
@@ -118,7 +121,7 @@ new_oclc_invalid_records = """
  {% endmacro %}
  <h1>Invalid MARC Records New to OCLC on {{ date }} for {{ library }}</h1>
  <p>
-  <a href="{{ dag_run.url }}">DAG Run</a>
+  <a href="{{ dag_run_url }}">DAG Run</a>
  </p>
  <table class="table table-striped">
   <thead>
@@ -185,6 +188,14 @@ jinja_env = Environment(
 )
 
 
+def _dag_run_url(dag_run) -> str:
+    airflow_url = conf.get('webserver', 'base_url')
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
+    return f"{airflow_url}dags/send_oclc_records/grid?{params}"
+
+
 def _filter_failures(failures: dict, errors: dict):
     for library, instances in failures.items():
         if library not in errors:
@@ -212,9 +223,11 @@ def _generate_holdings_set_report(**kwargs) -> dict:
     if date not in kwargs:
         kwargs["date"] = date
 
-    report_name = "set_holdings"
+    report_dir = "set_holdings"
+    kwargs["report_key"] = "Failed to update holdings"
     if match:
-        report_name = "set_holdings_match"
+        report_dir = "set_holdings_match"
+        kwargs["report_key"] = "Failed to update holdings after match"
 
     kwargs['report_template'] = "holdings-set.html"
 
@@ -222,7 +235,7 @@ def _generate_holdings_set_report(**kwargs) -> dict:
 
     return _save_reports(
         airflow=kwargs.get('airflow', '/opt/airflow'),
-        name=report_name,
+        name=report_dir,
         reports=reports,
         date=date,
     )
@@ -235,6 +248,7 @@ def _generate_holdings_unset_report(**kwargs) -> dict:
         kwargs["date"] = date
 
     kwargs['report_template'] = "holdings-unset.html"
+    kwargs["report_key"] = "Failed holdings_unset"
 
     reports = _reports_by_library(**kwargs)
 
@@ -286,6 +300,7 @@ def _generate_new_oclc_invalid_records_report(**kwargs) -> dict:
         kwargs["date"] = date
 
     kwargs['report_template'] = "new-oclc-marc-errors.html"
+    kwargs["report_key"] = "Failed to add new MARC record"
 
     reports = _reports_by_library(**kwargs)
 
@@ -300,6 +315,7 @@ def _generate_new_oclc_invalid_records_report(**kwargs) -> dict:
 def _reports_by_library(**kwargs) -> dict:
     failures: dict = kwargs["failures"]
     report_template_name: str = kwargs['report_template']
+    report_key: Union[str, None] = kwargs.get("report_key")
     date: datetime = kwargs['date']
 
     reports: dict = dict()
@@ -309,9 +325,18 @@ def _reports_by_library(**kwargs) -> dict:
     for library, rows in failures.items():
         if len(rows) < 1:
             continue
+        filtered_failures = []
+        for key, errors in rows.items():
+            if len(errors) < 1:
+                continue
+            if report_key and key == report_key:
+                filtered_failures = errors
+        if len(filtered_failures) < 1:
+            filtered_failures = rows
         kwargs["library"] = library
-        kwargs["failures"] = rows
+        kwargs["failures"] = filtered_failures
         kwargs["date"] = date.strftime("%d %B %Y")
+        kwargs["dag_run_url"] = _dag_run_url(kwargs["dag_run"])
         reports[library] = report_template.render(**kwargs)
 
     return reports
