@@ -86,6 +86,24 @@
       </table>
     </div>
     <div>
+      <h4>Set Holdings (After matching) Errors</h4>
+      <table>
+        <tr>
+        {% for column in library.get('set_holdings_match', {}).get('reports', [])|slice(3)  %}
+          <td>
+          <ul>
+          {% for report in column %}
+            <li>
+              <a href="{{ url_for('DataExportOCLCReportsView.oclc_report', library_code=code, report_type='set_holdings_match', report_name=report.name) }}">{{ report.name }}</a>
+            </li>
+          {% endfor %}
+          </ul>
+          </td>
+        {% endfor %}
+        </tr>
+      </table>
+    </div>
+    <div>
       <h4>Unset Holdings Errors</h4>
       <table>
         <tr>
