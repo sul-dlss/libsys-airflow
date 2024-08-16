@@ -95,6 +95,67 @@ multiple_oclc_numbers_template = """
   </ol>
 """
 
+new_oclc_invalid_records = """
+ {% macro field_table(errors) -%}
+  <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Tag</th>
+            <th>Error Level</th>
+            <th>Detail</th>
+           </tr>
+         </thead>
+         <tbody>
+         {% for error in errors %}
+           <tr>
+             <td>{{ error.tag }}</td>
+             <td>{{ error.errorLevel }}</td>
+             <td>{{ error.message }}</td>
+           </tr>
+         {% endfor %}
+         </tbody>
+    </table>
+ {% endmacro %}
+ <h1>Invalid MARC Records New to OCLC on {{ date }} for {{ library }}</h1>
+ <p>
+  <a href="{{ dag_run.url }}">DAG Run</a>
+ </p>
+ <table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>Reason</th>
+      <th>OCLC Response</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in failures %}
+  <tr>
+    <td>
+      <a href="{{ folio_url }}/inventory/view/{{ row.uuid }}">{{ row.uuid }}</a>
+    </td>
+    <td>
+      {{ row.reason }} Error Count {{ row.context.errorCount }}
+    </td>
+    <td>
+      <h4>Errors</h4>
+      <ol>
+      {% for error in row.context.errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+      </ol>
+      <h4>Fixed Field Errors</h4>
+       {{ field_table(row.context.fixedFieldErrors) }}
+       <h4>Variable Field Errors</h4>
+       {{ field_table(row.context.variableFieldErrors) }}
+    </td>
+   </tr>
+  {% endfor %}
+  </tbody>
+</table>
+"""
+
+
 oclc_payload_template = """<ul>
         <li><strong>Control Number:</strong> {{ row.context.controlNumber }}</li>
         <li><strong>Requested Control Number:</strong> {{ row.context.requestedControlNumber }}</li>
@@ -117,6 +178,7 @@ jinja_env = Environment(
             "holdings-set.html": holdings_set_template,
             "holdings-unset.html": holdings_unset_template,
             "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
+            "new-oclc-marc-errors.html": new_oclc_invalid_records,
             "oclc-payload-template.html": oclc_payload_template,
         }
     )
@@ -212,6 +274,24 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     return _save_reports(
         airflow=kwargs.get('airflow', '/opt/airflow'),
         name="multiple_oclc_numbers",
+        reports=reports,
+        date=date,
+    )
+
+
+def _generate_new_oclc_invalid_records_report(**kwargs) -> dict:
+    date: datetime = kwargs.get('date', datetime.utcnow())
+
+    if date not in kwargs:
+        kwargs["date"] = date
+
+    kwargs['report_template'] = "new-oclc-marc-errors.html"
+
+    reports = _reports_by_library(**kwargs)
+
+    return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
+        name="new_marc_errors",
         reports=reports,
         date=date,
     )
@@ -315,3 +395,10 @@ def multiple_oclc_numbers_task(**kwargs):
     kwargs['folio_url'] = Variable.get("FOLIO_URL")
 
     return _generate_multiple_oclc_numbers_report(**kwargs)
+
+
+@task
+def new_oclc_marc_errors_task(**kwargs):
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+
+    return _generate_new_oclc_invalid_records_report(**kwargs)

@@ -20,6 +20,7 @@ from libsys_airflow.plugins.data_exports.oclc_reports import (
     filter_failures_task,
     holdings_set_errors_task,
     holdings_unset_errors_task,
+    new_oclc_marc_errors_task,
 )
 
 from libsys_airflow.plugins.data_exports.email import generate_holdings_errors_emails
@@ -102,6 +103,8 @@ def send_oclc_records():
         )
 
         holdings_unset_reports = holdings_unset_errors_task(failures=filtered_errors)
+
+        new_oclc_marc_errors_reports = new_oclc_marc_errors_task(failures=filtered_errors)
 
         end_emails = EmptyOperator(task_id="end-reports-emails")
 

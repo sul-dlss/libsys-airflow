@@ -336,7 +336,7 @@ def mock_httpx_client():
                 record = pymarc.Record(data=request.content)
                 if "008" in record and record["008"].value() == "00a":
                     response = httpx.Response(
-                        status_code=400,
+                        status_code=400, content=b'400 Client Error'
                     )
 
                 elif "024" in record and record["024"]["a"] == "gtfo-78901":
@@ -595,8 +595,8 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
     assert new_response["failures"] == [
         {
             "uuid": 'e15e3707-f012-482f-a13b-34556b6d0946',
-            "reason": "WorldcatRequest Error",
-            "context": "b'400 Client Error'",
+            "reason": "Failed to add new MARC record",
+            "context": "400 Client Error",
         }
     ]
 

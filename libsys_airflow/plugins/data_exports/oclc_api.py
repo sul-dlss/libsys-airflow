@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import pathlib
 import re
@@ -488,11 +489,16 @@ class OCLCAPIWrapper(object):
                         return
 
                 case _:
+                    try:
+                        context = bib_create_result.json()
+                    except json.decoder.JSONDecodeError:
+                        context = bib_create_result.text
+
                     output['failures'].append(
                         {
                             "uuid": instance_uuid,
                             "reason": "Failed to add new MARC record",
-                            "context": bib_create_result.json(),
+                            "context": context,
                         }
                     )
                     failures.add(file_name)
