@@ -14,7 +14,9 @@ LOOKUP_LIBRARY_CODE = {
 LOOKUP_REPORT_NAME = {
     "match": "Match BIB Record Errors",
     "multiple_oclc_numbers": "Multiple OCLC Numbers",
+    "new_marc_errors": "New OCLC MARC Record Errors",
     "set_holdings": "Set OCLC Holdings Errors",
+    "set_holdings_match": "Set OCLC Holdings Match Errors",
     "unset_holdings": "Unset (delete) OCLC Holdings Errors",
 }
 
