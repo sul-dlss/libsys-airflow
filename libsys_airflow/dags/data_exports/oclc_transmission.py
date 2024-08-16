@@ -23,7 +23,10 @@ from libsys_airflow.plugins.data_exports.oclc_reports import (
     new_oclc_marc_errors_task,
 )
 
-from libsys_airflow.plugins.data_exports.email import generate_holdings_errors_emails
+from libsys_airflow.plugins.data_exports.email import (
+    generate_holdings_errors_emails,
+    generate_oclc_new_marc_errors_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +97,10 @@ def send_oclc_records():
     def holdings_errors_email_task(reports: dict):
         generate_holdings_errors_emails(reports)
 
+    @task
+    def marc_errors_email_task(reports: dict):
+        generate_oclc_new_marc_errors_email(reports)
+
     @task_group(group_id="reports-email")
     def reports_email():
         holdings_set_reports = holdings_set_errors_task(failures=filtered_errors)
@@ -104,7 +111,9 @@ def send_oclc_records():
 
         holdings_unset_reports = holdings_unset_errors_task(failures=filtered_errors)
 
-        new_oclc_marc_errors_reports = new_oclc_marc_errors_task(failures=filtered_errors)
+        new_oclc_marc_errors_reports = new_oclc_marc_errors_task(
+            failures=filtered_errors
+        )
 
         end_emails = EmptyOperator(task_id="end-reports-emails")
 
@@ -112,6 +121,7 @@ def send_oclc_records():
             holdings_errors_email_task(holdings_set_reports),
             holdings_errors_email_task(holdings_set_match_reports),
             holdings_errors_email_task(holdings_unset_reports),
+            marc_errors_email_task(new_oclc_marc_errors_reports),
         ] >> end_emails
 
     archive_files = consolidate_oclc_archive_files(

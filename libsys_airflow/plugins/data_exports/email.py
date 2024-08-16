@@ -32,21 +32,62 @@ def _oclc_identifiers(multiple_codes: list, folio_url: str):
     return template.render(folio_url=folio_url, multiple_codes=multiple_codes)
 
 
+def _match_oclc_library(**kwargs):
+    library: str = kwargs["library"]
+    to_emails: list = kwargs["to_emails"]
+    subject_line: str = kwargs["subject_line"]
+    cohort_emails: dict = kwargs["cohort_emails"]
+
+    match library:
+        case "CASUM":
+            to_emails.insert(0, cohort_emails.get("lane"))
+            subject_line += " Lane"
+
+        case "HIN":
+            to_emails.insert(0, cohort_emails.get("hoover"))
+            subject_line += " Hoover"
+
+        case "RCJ":
+            to_emails.insert(0, cohort_emails.get("law"))
+            subject_line += " Law"
+
+        case "S7Z":
+            to_emails.insert(0, cohort_emails.get("business"))
+            subject_line += " Business"
+
+        case "STF":
+            to_emails.insert(0, cohort_emails.get("sul"))
+            subject_line += " SUL"
+
+    return to_emails, subject_line
+
+
+def _oclc_report_html(report: str, library: str):
+
+    report_path = pathlib.Path(report)
+    report_type = report_path.parent.name
+    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+
+    report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
+
+    return f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
+
+
 def generate_holdings_errors_emails(error_reports: dict):
     """
     Generates emails for holdings set errors for cohort libraries
     """
     devs_email = Variable.get("EMAIL_DEVS")
-    bus_email = Variable.get("OCLC_EMAIL_BUS")
-    hoover_email = Variable.get("OCLC_EMAIL_HOOVER")
-    lane_email = Variable.get("OCLC_EMAIL_LANE")
-    law_email = Variable.get("OCLC_EMAIL_LAW")
-    sul_email = Variable.get("OCLC_EMAIL_SUL")
-
-    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
-
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
+    cohort_emails = {
+        "business": Variable.get("OCLC_EMAIL_BUS"),
+        "hoover": Variable.get("OCLC_EMAIL_HOOVER"),
+        "lane": Variable.get("OCLC_EMAIL_LANE"),
+        "law": Variable.get("OCLC_EMAIL_LAW"),
+        "sul_email": Variable.get("OCLC_EMAIL_SUL"),
+    }
 
     for library, report in error_reports.items():
         to_emails = [
@@ -54,6 +95,7 @@ def generate_holdings_errors_emails(error_reports: dict):
         ]
         report_path = pathlib.Path(report)
         report_type = report_path.parent.name
+
         match report_type:
 
             case "set_holdings_match":
@@ -65,35 +107,60 @@ def generate_holdings_errors_emails(error_reports: dict):
             case _:
                 subject_line = "OCLC: Set holdings error for"
 
-        match library:
-            case "CASUM":
-                to_emails.insert(0, lane_email)
-                subject_line += " Lane"
-
-            case "HIN":
-                to_emails.insert(0, hoover_email)
-                subject_line += " Hoover"
-
-            case "RCJ":
-                to_emails.insert(0, law_email)
-                subject_line += " Law"
-
-            case "S7Z":
-                to_emails.insert(0, bus_email)
-                subject_line += " Business"
-
-            case "STF":
-                to_emails.insert(0, sul_email)
-                subject_line += " SUL"
+        to_emails, subject_line = _match_oclc_library(
+            library=library,
+            to_emails=to_emails,
+            cohort_emails=cohort_emails,
+            subject_line=subject_line,
+        )
 
         if not is_production():
             to_emails.pop(0)  # Should only send report to libsys devs
 
-        report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
+        html_content = _oclc_report_html(report, library)
 
-        html_content = (
-            f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
+        send_email(to=to_emails, subject=subject_line, html_content=html_content)
+
+
+def generate_oclc_new_marc_errors_email(error_reports: dict):
+    """
+    Generates emails for each library for OCLC MARC errors for new-to-OCLC
+    records
+    """
+    devs_email = Variable.get("EMAIL_DEVS")
+
+    cohort_emails = {
+        "business": Variable.get("OCLC_EMAIL_BUS"),
+        "hoover": Variable.get("OCLC_EMAIL_HOOVER"),
+        "lane": Variable.get("OCLC_EMAIL_LANE"),
+        "law": Variable.get("OCLC_EMAIL_LAW"),
+        "sul_email": Variable.get("OCLC_EMAIL_SUL"),
+    }
+
+    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+
+    subject_line = "OCLC: MARC Errors for New Record"
+
+    for library, report in error_reports.items():
+        to_emails = [
+            devs_email,
+        ]
+
+        _match_oclc_library(
+            library=library,
+            to_emails=to_emails,
+            cohort_emails=cohort_emails,
+            subject_line=subject_line,
         )
+
+        if not is_production():
+            to_emails.pop(0)  # Should only send report to libsys devs
+
+        html_content = _oclc_report_html(report, library)
+
         send_email(to=to_emails, subject=subject_line, html_content=html_content)
 
 
