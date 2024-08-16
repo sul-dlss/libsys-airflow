@@ -513,7 +513,7 @@ def test_filter_new_marc_records_task(mocker, tmp_path):
     }
 
     filter_new_marc_records_task.function(
-        new_records=new_records, new_instance_uuids=new_uuids
+        new_records=new_records, failed_matches=new_uuids
     )
 
     with marc_file.open("rb") as fo:
@@ -543,7 +543,7 @@ def test_filter_new_marc_records_task_no_records(mocker, tmp_path):
     }
 
     filtered_new_records = filter_new_marc_records_task.function(
-        new_records=new_records, new_instance_uuids=new_uuids
+        new_records=new_records, failed_matches=new_uuids
     )
 
     assert filtered_new_records['STF'] == []

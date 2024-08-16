@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task, task_group
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
@@ -18,7 +18,11 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 
 from libsys_airflow.plugins.data_exports.oclc_reports import (
     filter_failures_task,
+    holdings_set_errors_task,
+    holdings_unset_errors_task,
 )
+
+from libsys_airflow.plugins.data_exports.email import generate_holdings_errors_emails
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +75,7 @@ def send_oclc_records():
 
     filtered_new_records = filter_new_marc_records_task(
         new_records=gather_files["new"],
-        new_instance_uuids=matched_records["failures"],
+        failed_matches=matched_records["failures"],
     )
 
     new_records = new_to_oclc_task(
@@ -80,10 +84,32 @@ def send_oclc_records():
 
     filtered_errors = filter_failures_task(
         update=set_holdings_for_records['failures'],
-        deleted=deleted_records['failures'],
+        delete=deleted_records['failures'],
         match=matched_records['failures'],
         new=new_records['failures'],
     )
+
+    @task
+    def holdings_errors_email_task(reports: dict):
+        generate_holdings_errors_emails(reports)
+
+    @task_group(group_id="reports-email")
+    def reports_email():
+        holdings_set_reports = holdings_set_errors_task(failures=filtered_errors)
+
+        holdings_set_match_reports = holdings_set_errors_task(
+            failures=filtered_errors, match=True
+        )
+
+        holdings_unset_reports = holdings_unset_errors_task(failures=filtered_errors)
+
+        end_emails = EmptyOperator(task_id="end-reports-emails")
+
+        [
+            holdings_errors_email_task(holdings_set_reports),
+            holdings_errors_email_task(holdings_set_match_reports),
+            holdings_errors_email_task(holdings_unset_reports),
+        ] >> end_emails
 
     archive_files = consolidate_oclc_archive_files(
         deleted_records["archive"],
@@ -96,7 +122,7 @@ def send_oclc_records():
 
     start >> gather_files >> filtered_errors
 
-    [archive_data] >> end
+    [reports_email(), archive_data] >> end
 
 
 send_oclc_records()

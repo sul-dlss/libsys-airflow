@@ -201,14 +201,14 @@ def __filter_save_marc__(file_str: str, info: list):
 
 
 @task(multiple_outputs=True)
-def filter_new_marc_records_task(new_records: dict, new_instance_uuids: dict) -> dict:
+def filter_new_marc_records_task(new_records: dict, failed_matches: dict) -> dict:
     filtered_new_records: dict = {}
-    for library, uuids in new_instance_uuids.items():
+    for library, info in failed_matches.items():
         filtered_new_records[library] = []
-        if len(uuids) > 0:
+        if len(info) > 0:
             new_files = new_records[library]
             for row in new_files:
-                __filter_save_marc__(row, uuids)
+                __filter_save_marc__(row, info)
             filtered_new_records[library] = new_files
 
     return filtered_new_records

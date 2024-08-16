@@ -1,10 +1,17 @@
+import copy
 import datetime
 import pathlib
 
 import pytest
 
 from bs4 import BeautifulSoup
-from libsys_airflow.plugins.data_exports import oclc_reports
+
+from libsys_airflow.plugins.data_exports.oclc_reports import (
+    filter_failures_task,
+    holdings_set_errors_task,
+    holdings_unset_errors_task,
+    multiple_oclc_numbers_task,
+)
 
 
 @pytest.fixture
@@ -142,6 +149,7 @@ ERRORS = [
             'requestedControlNumber': '48780294',
             'institutionCode': '158223',
             'institutionSymbol': 'RCJ',
+            'firstTimeUse': False,
             'success': False,
             'message': 'Holding Updated Failed',
             'action': 'Set Holdings',
@@ -159,7 +167,7 @@ def test_filter_failures_task_no_failures(caplog):
 
     update_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [], 'STF': []}
 
-    filtered_errors = oclc_reports.filter_failures_task.function(
+    filtered_errors = filter_failures_task.function(
         delete=deleted_failures,
         match=match_failures,
         new=new_failures,
@@ -206,7 +214,7 @@ def test_filter_failures_task(caplog):
 
     update_failures = {'S7Z': [], 'HIN': [], 'CASUM': [], 'RCJ': [ERRORS[6]], 'STF': []}
 
-    filtered_errors = oclc_reports.filter_failures_task.function(
+    filtered_errors = filter_failures_task.function(
         delete=deleted_failures,
         match=match_failures,
         new=new_failures,
@@ -224,13 +232,128 @@ def test_filter_failures_task(caplog):
     assert len(filtered_errors['STF']['Failed to update holdings after match']) == 2
 
 
+def test_holdings_set_errors_task(tmp_path, mocker, mock_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
+        return_value="https://folio-stanford.edu",
+    )
+
+    failures = {
+        "RCJ": [
+            {
+                "reason": "Failed to update holdings",
+                "uuid": ERRORS[6]["uuid"],
+                "context": ERRORS[6]["context"],
+            }
+        ],
+        "STF": [],
+    }
+
+    reports = holdings_set_errors_task.function(
+        airflow=tmp_path,
+        date=datetime.datetime(2024, 8, 9, 12, 15, 13, 445),
+        failures=failures,
+        dag_run=mock_dag_run,
+    )
+
+    law_report = pathlib.Path(reports['RCJ'])
+    law_report_html = BeautifulSoup(law_report.read_text(), 'html.parser')
+
+    h1 = law_report_html.find('h1')
+    assert h1.text.startswith("OCLC Holdings Set Errors on 09 August 2024 for RCJ")
+
+    list_items_oclc_error = law_report_html.select('tbody > tr > td > ul > li')
+    assert list_items_oclc_error[0].text == "Control Number: 48780294"
+    assert list_items_oclc_error[4].text == "Success: False"
+    assert list_items_oclc_error[5].text == 'Message: Holding Updated Failed'
+
+
+def test_holdings_set_errors_match_task(tmp_path, mocker, mock_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
+        return_value="https://folio-stanford.edu",
+    )
+
+    hin_error = copy.deepcopy(ERRORS[5])
+    hin_error['institutionCode'] = "567101"
+    hin_error["institutionSymbol"] = "HIN"
+
+    failures = {
+        "STF": {
+            "Failed to update holdings after match": [
+                {"uuid": ERRORS[5]["uuid"], "context": ERRORS[5]["context"]}
+            ]
+        },
+        "HIN": {
+            "Failed to update holdings after match": [
+                {"uuid": "cd010e25-a846-44b3-bf1b-28c2a128da15", "context": hin_error}
+            ]
+        },
+    }
+
+    reports = holdings_set_errors_task.function(
+        airflow=tmp_path,
+        date=datetime.datetime(2024, 8, 9, 12, 15, 13, 445),
+        failures=failures,
+        match=True,
+        dag_run=mock_dag_run,
+    )
+
+    sul_report = pathlib.Path(reports['STF'])
+    sul_report_html = BeautifulSoup(sul_report.read_text(), 'html.parser')
+
+    h1 = sul_report_html.find("h1")
+    assert h1.text.startswith(
+        "OCLC Holdings Matched Set Errors on 09 August 2024 for STF"
+    )
+
+    dag_a = sul_report_html.select("p > a")
+    assert dag_a[0].text == "DAG Run"
+
+    hoover_report = pathlib.Path(reports['HIN'])
+    hoover_report_html = BeautifulSoup(hoover_report.read_text(), 'html.parser')
+
+    h2 = hoover_report_html.find("h2")
+    assert h2.text.startswith(
+        "FOLIO Instances that failed trying to set Holdings after successful Match"
+    )
+
+
+def test_holdings_unset_errors_task(tmp_path, mocker, mock_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
+        return_value="https://folio-stanford.edu",
+    )
+
+    failures = {
+        "STF": {
+            "Failed holdings_unset": [
+                {"uuid": ERRORS[4]["uuid"], "context": ERRORS[4]["context"]}
+            ]
+        }
+    }
+
+    reports = holdings_unset_errors_task.function(
+        airflow=tmp_path,
+        date=datetime.datetime(2024, 8, 9, 12, 15, 13, 445),
+        failures=failures,
+        dag_run=mock_dag_run,
+    )
+
+    sul_report = pathlib.Path(reports['STF'])
+    sul_report_html = BeautifulSoup(sul_report.read_text(), 'html.parser')
+
+    h1 = sul_report_html.find("h1")
+    assert h1.text == "OCLC Holdings Unset Errors on 09 August 2024 for STF"
+
+
 def test_multiple_oclc_numbers_task(tmp_path, mocker, mock_task_instance, mock_dag_run):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
         return_value="https://folio-stanford.edu",
     )
 
-    reports = oclc_reports.multiple_oclc_numbers_task.function(
+    reports = multiple_oclc_numbers_task.function(
         airflow=tmp_path,
         date=datetime.datetime(2024, 7, 29, 14, 19, 34, 245),
         ti=mock_task_instance,

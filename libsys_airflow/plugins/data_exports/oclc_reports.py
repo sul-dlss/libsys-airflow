@@ -9,6 +9,70 @@ from jinja2 import DictLoader, Environment
 
 logger = logging.getLogger(__name__)
 
+holdings_set_template = """
+<h1>OCLC Holdings {% if match %}Matched {% endif %}Set Errors on {{ date }} for {{ library }}</h1>
+<p>
+  <a href="{{ dag_run.url }}">DAG Run</a>
+</p>
+<h2>FOLIO Instances that failed trying to set Holdings {% if match %}after successful Match{% endif %}</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>OCLC Response</th>
+    </tr>
+  </thead>
+  <tbody>
+{% for row in failures %}
+  <tr>
+    <td>
+      <a href="{{ folio_url }}/inventory/view/{{ row.uuid }}">{{ row.uuid }}</a>
+    </td>
+    <td>
+    {% if row.context %}
+    {% include 'oclc-payload-template.html' %}
+    {% else %}
+     No response from OCLC set API call
+     {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+  </tbody>
+</table>
+"""
+
+holdings_unset_template = """
+<h1>OCLC Holdings Unset Errors on {{ date }} for {{ library }}</h1>
+<p>
+  <a href="{{ dag_run.url }}">DAG Run</a>
+</p>
+<h2>FOLIO Instances that failed trying to unset Holdings</h2>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>OCLC Response</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in failures %}
+  <tr>
+    <td>
+      <a href="{{ folio_url }}/inventory/view/{{ row.uuid }}">{{ row.uuid }}</a>
+    </td>
+    <td>
+    {% if row.context %}
+    {% include 'oclc-payload-template.html' %}
+    {% else %}
+     No response from OCLC set API call
+     {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+  </tbody>
+</table>
+"""
+
 multiple_oclc_numbers_template = """
  <h1>Multiple OCLC Numbers on {{ date }} for {{ library }}</h1>
 
@@ -18,7 +82,7 @@ multiple_oclc_numbers_template = """
 
  <h2>FOLIO Instances with Multiple OCLC Numbers</h2>
  <ol>
-{% for instance in instances.values() %}
+{% for instance in failures.values() %}
  <li>
    <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>:
    <ul>
@@ -31,11 +95,29 @@ multiple_oclc_numbers_template = """
   </ol>
 """
 
+oclc_payload_template = """<ul>
+        <li><strong>Control Number:</strong> {{ row.context.controlNumber }}</li>
+        <li><strong>Requested Control Number:</strong> {{ row.context.requestedControlNumber }}</li>
+        <li><strong>Institution:</strong>
+           <ul>
+             <li><em>Code:</em> {{ row.context.institutionCode }}</li>
+             <li><em>Symbol:</em> {{ row.context.institutionSymbol }}</li>
+           </ul>
+        </li>
+        <li><strong>First Time Use:</strong> {{ row.context.firstTimeUse }}</li>
+        <li><strong>Success:</strong> {{ row.context.success }}</li>
+        <li><strong>Message:</strong> {{ row.context.message }}</li>
+        <li><strong>Action:</strong> {{ row.context.action }}</li>
+     </ul>
+"""
 
 jinja_env = Environment(
     loader=DictLoader(
         {
+            "holdings-set.html": holdings_set_template,
+            "holdings-unset.html": holdings_unset_template,
             "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
+            "oclc-payload-template.html": oclc_payload_template,
         }
     )
 )
@@ -60,15 +142,51 @@ def _filter_failures(failures: dict, errors: dict):
                 ]
 
 
-def _folio_url(folio_base_url: str, instance_uuid: dict):
-    return f"{folio_base_url}/inventory/view/{instance_uuid}"
+def _generate_holdings_set_report(**kwargs) -> dict:
+    date: datetime = kwargs.get('date', datetime.utcnow())
+
+    match = kwargs.get("match", False)
+
+    if date not in kwargs:
+        kwargs["date"] = date
+
+    report_name = "set_holdings"
+    if match:
+        report_name = "set_holdings_match"
+
+    kwargs['report_template'] = "holdings-set.html"
+
+    reports = _reports_by_library(**kwargs)
+
+    return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
+        name=report_name,
+        reports=reports,
+        date=date,
+    )
+
+
+def _generate_holdings_unset_report(**kwargs) -> dict:
+    date: datetime = kwargs.get('date', datetime.utcnow())
+
+    if date not in kwargs:
+        kwargs["date"] = date
+
+    kwargs['report_template'] = "holdings-unset.html"
+
+    reports = _reports_by_library(**kwargs)
+
+    return _save_reports(
+        airflow=kwargs.get('airflow', '/opt/airflow'),
+        name="unset_holdings",
+        reports=reports,
+        date=date,
+    )
 
 
 def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     multiple_codes: list = kwargs['all_multiple_codes']
     date: datetime = kwargs.get('date', datetime.utcnow())
-
-    reports: dict = {}
 
     library_instances: dict = {}
 
@@ -86,7 +204,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
                 instance_uuid: {"oclc_numbers": oclc_codes}
             }
 
-    kwargs['library_instances'] = library_instances
+    kwargs['failures'] = library_instances
     kwargs['report_template'] = "multiple-oclc-numbers.html"
 
     reports = _reports_by_library(**kwargs)
@@ -100,8 +218,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
 
 
 def _reports_by_library(**kwargs) -> dict:
-    library_instances: dict = kwargs['library_instances']
-    folio_base_url: str = kwargs['folio_url']
+    failures: dict = kwargs["failures"]
     report_template_name: str = kwargs['report_template']
     date: datetime = kwargs['date']
 
@@ -109,14 +226,11 @@ def _reports_by_library(**kwargs) -> dict:
 
     report_template = jinja_env.get_template(report_template_name)
 
-    for library, instances in library_instances.items():
-        if len(instances) < 1:
+    for library, rows in failures.items():
+        if len(rows) < 1:
             continue
-        for uuid, info in instances.items():
-            info['folio_url'] = _folio_url(folio_base_url, uuid)
-            info['uuid'] = uuid
         kwargs["library"] = library
-        kwargs["instances"] = instances
+        kwargs["failures"] = rows
         kwargs["date"] = date.strftime("%d %B %Y")
         reports[library] = report_template.render(**kwargs)
 
@@ -170,6 +284,20 @@ def filter_failures_task(**kwargs) -> dict:
 
     logger.info(filtered_errors)
     return filtered_errors
+
+
+@task
+def holdings_set_errors_task(**kwargs):
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+
+    return _generate_holdings_set_report(**kwargs)
+
+
+@task
+def holdings_unset_errors_task(**kwargs):
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+
+    return _generate_holdings_unset_report(**kwargs)
 
 
 @task
