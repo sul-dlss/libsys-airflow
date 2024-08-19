@@ -3,7 +3,6 @@ import urllib
 
 from datetime import datetime
 from pathlib import Path
-from typing import Union
 
 from airflow.configuration import conf
 from airflow.decorators import task
@@ -85,9 +84,9 @@ multiple_oclc_numbers_template = """
 
  <h2>FOLIO Instances with Multiple OCLC Numbers</h2>
  <ol>
-{% for instance in failures.values() %}
+{% for uuid, instance in failures.items() %}
  <li>
-   <a href="{{ instance.folio_url }}">{{ instance.uuid }}</a>:
+   <a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a>:
    <ul>
    {% for num in instance.oclc_numbers %}
     <li>{{ num }}</li>
@@ -280,10 +279,18 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
                 instance_uuid: {"oclc_numbers": oclc_codes}
             }
 
-    kwargs['failures'] = library_instances
-    kwargs['report_template'] = "multiple-oclc-numbers.html"
+    template = jinja_env.get_template("multiple-oclc-numbers.html")
 
-    reports = _reports_by_library(**kwargs)
+    reports: dict = {}
+
+    kwargs["date"] = date.strftime("%d %B %Y")
+    kwargs["dag_run_url"] = _dag_run_url(kwargs["dag_run"])
+
+    for library, errors in library_instances.items():
+        kwargs["failures"] = errors
+        kwargs["library"] = library
+
+        reports[library] = template.render(**kwargs)
 
     return _save_reports(
         airflow=kwargs.get('airflow', '/opt/airflow'),
@@ -315,7 +322,7 @@ def _generate_new_oclc_invalid_records_report(**kwargs) -> dict:
 def _reports_by_library(**kwargs) -> dict:
     failures: dict = kwargs["failures"]
     report_template_name: str = kwargs['report_template']
-    report_key: Union[str, None] = kwargs.get("report_key")
+    report_key: str = kwargs["report_key"]
     date: datetime = kwargs['date']
 
     reports: dict = dict()
@@ -329,10 +336,10 @@ def _reports_by_library(**kwargs) -> dict:
         for key, errors in rows.items():
             if len(errors) < 1:
                 continue
-            if report_key and key == report_key:
+            if key == report_key:
                 filtered_failures = errors
         if len(filtered_failures) < 1:
-            filtered_failures = rows
+            continue
         kwargs["library"] = library
         kwargs["failures"] = filtered_failures
         kwargs["date"] = date.strftime("%d %B %Y")
