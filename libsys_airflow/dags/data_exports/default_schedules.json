@@ -1,6 +1,7 @@
 {
   "schedule_gobi_days": 7,
-  "schedule_gobi_hours": 13,
+  "schedule_gobi_hours": 3,
+  "transmit_gobi_hours": 7,
   "schedule_google_days": 1,
   "schedule_google_hours": 13,
   "schedule_hathi_days": 1,
@@ -10,7 +11,8 @@
   "schedule_oclc_days": 7,
   "schedule_oclc_hours": 13,
   "schedule_pod_days": 1,
-  "schedule_pod_hours": 13,
+  "schedule_pod_hours": 2,
+  "transmit_pod_hours": 6,
   "schedule_sharevde_days": 1,
   "schedule_sharevde_hours": 13
 }
