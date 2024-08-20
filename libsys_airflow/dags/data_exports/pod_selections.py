@@ -35,7 +35,7 @@ with DAG(
     default_args=default_args,
     schedule=timedelta(
         days=int(Variable.get("schedule_pod_days", 1)),
-        hours=int(Variable.get("schedule_pod_hours", 7)),
+        hours=int(Variable.get("schedule_pod_hours", 2)),
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

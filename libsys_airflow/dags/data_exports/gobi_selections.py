@@ -32,7 +32,7 @@ with DAG(
     default_args=default_args,
     schedule=timedelta(
         days=int(Variable.get("schedule_gobi_days", 7)),
-        hours=int(Variable.get("schedule_gobi_hours", 7)),
+        hours=int(Variable.get("schedule_gobi_hours", 3)),
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
