@@ -432,6 +432,9 @@ class OCLCAPIWrapper(object):
                         output['success'].append(instance_uuid)
                         successful_add = True
                     else:
+                        logger.error(
+                            f"OCLC holdings_set call failed for {instance_uuid} OCLC {payload}"
+                        )
                         output['failures'].append(
                             {
                                 "uuid": instance_uuid,
@@ -440,6 +443,18 @@ class OCLCAPIWrapper(object):
                             }
                         )
                         failures.add(file_name)
+                else:
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "No response from OCLC",
+                            "context": None,
+                        }
+                    )
+                    failures.add(file_name)
+                    logger.error(
+                        f"No response from OCLC holdings_set for {instance_uuid}"
+                    )
             return successful_add
 
         def __new_oclc__(**kwargs):
@@ -561,9 +576,13 @@ class OCLCAPIWrapper(object):
                     }
                 )
                 failures.add(file_name)
+                logger.error(f"No response from OCLC holdings_set for {instance_uuid}")
                 return
 
             set_payload = response.json()
+            logger.info(
+                f"OCLC result from holdings_set for {instance_uuid}:\n{set_payload}"
+            )
             if not set_payload['success']:
                 output["failures"].append(
                     {
