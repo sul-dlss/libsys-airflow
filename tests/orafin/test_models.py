@@ -108,6 +108,7 @@ def mock_invoice():
         id="fd6e5f34-101e-4dd2-8542-0fdaf7713a2b",
         accountingCode="668330FEEDER",
         acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+        fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo="10592",
         invoiceDate=datetime.datetime(2023, 7, 12),
         lines=[
@@ -224,6 +225,7 @@ def test_expense_codes(mock_folio_client):
     invoice = Invoice(
         id="abcdefa",
         invoiceDate=datetime.datetime(2023, 6, 28),
+        fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo="12356",
         accountingCode="4567",
         acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
@@ -370,6 +372,7 @@ def test_invoice_header_reconcile_amount():
         id='b88cc4cf-ba1e-4355-9f28-94ef624e7d14',
         acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
         invoiceDate=datetime.datetime(2023, 9, 22),
+        fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo='12265',
         subTotal=53790.0,
         vendorInvoiceNo='7786',
@@ -905,6 +908,7 @@ yen_invoice = Invoice(
     acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     currency='JPY',
     exchangeRate=0.006678211586901763,
+    fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
     invoiceDate=datetime.datetime(2023, 10, 2),
     subTotal=11200.0,
     total=12085.0,

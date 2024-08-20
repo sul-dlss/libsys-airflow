@@ -332,6 +332,7 @@ def test_generate_excluded_email(mocker):
             {"invoice": invoice_dict, "reason": "Zero subtotal"},
             {"invoice": invoice_dict, "reason": "Future invoice date"},
             {"invoice": invoice_dict, "reason": "Amount split"},
+            {"invoice": invoice_dict, "reason": "Fiscal year not current"},
         ],
         "https://folio.stanford.edu",
     )
@@ -363,6 +364,7 @@ def test_generate_excluded_email(mocker):
     assert "Vendor Invoice Number: 242428ZP1" in list_items[2].text
 
     assert found_h2s[2].text == "Future invoice date"
+    assert found_h2s[3].text == "Fiscal year not current"
 
 
 def test_generate_invoice_error_email(mocker):

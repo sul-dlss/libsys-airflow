@@ -213,6 +213,7 @@ class Invoice:
 
     lines: list[InvoiceLine]
     vendor: Vendor
+    fiscalYearId: Union[str, None] = None
     currency: Union[str, None] = None
     exchangeRate: Union[float, None] = None
     paymentDue: Union[datetime, None] = None

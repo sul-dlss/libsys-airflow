@@ -10,6 +10,7 @@ from airflow.providers.sftp.hooks.sftp import SFTPHook
 
 
 from libsys_airflow.plugins.folio.folio_client import FolioClient
+from libsys_airflow.plugins.folio.finances import current_fiscal_years, active_ledgers
 from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,11 @@ def get_invoice(
     # Converts to Invoice Object
     invoice = converter.structure(invoice, Invoice)
     # Check for invoice-level exclusions
+    if invoice.fiscalYearId not in current_fiscal_years(
+        active_ledgers(folio_client), folio_client
+    ):
+        exclude_invoice = True
+        exclusion_reason = "Fiscal year not current"
     if invoice.invoiceDate > datetime.now(timezone.utc):
         exclude_invoice = True
         exclusion_reason = "Future invoice date"
