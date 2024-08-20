@@ -30,8 +30,8 @@ default_args = {
 @dag(
     default_args=default_args,
     schedule=timedelta(
-        days=int(Variable.get("schedule_google_days", 1)),
-        hours=int(Variable.get("schedule_google_hours", 13)),
+        days=int(Variable.get("transmit_google_days", 1)),
+        hours=int(Variable.get("transmit_google_hours", 13)),
     ),
     start_date=datetime(2024, 1, 1),
     catchup=False,
