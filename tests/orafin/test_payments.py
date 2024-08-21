@@ -20,6 +20,20 @@ invoice_dict = {
     "accountingCode": "804584FEEDER",
     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "fiscalYearId": "e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
+    "folioInvoiceNo": "10596",
+    "vendorInvoiceNo": "242428ZP1",
+    "subTotal": 135.19,
+    "total": 147.53,
+    "vendorId": "d7b8ee4b-93c5-4395-90fa-dcc04d26477b",
+}
+
+prev_fy_invoice_dict = {
+    "id": "previousfy",
+    "accountingCode": "804584FEEDER",
+    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+    "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "fiscalYearId": "200bfabe-07c7-4deb-b54e-99d64a3435cb",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
     "subTotal": 135.19,
@@ -34,6 +48,7 @@ future_invoice_dict = {
     "invoiceDate": (datetime.utcnow() + timedelta(days=2)).strftime(
         "%Y-%m-%dT%H:%M:%S.000+00:00"
     ),
+    "fiscalYearId": "e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
     "subTotal": 135.19,
@@ -46,6 +61,7 @@ no_feeder_invoice_dict = {
     "accountingCode": "804584",
     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "fiscalYearId": "e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1",
     "subTotal": 135.19,
@@ -58,6 +74,7 @@ too_long_invoice_dict = {
     "accountingCode": "804584FEEDER",
     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
     "invoiceDate": "2023-06-27T00:00:00.000+00:00",
+    "fiscalYearId": "e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
     "folioInvoiceNo": "10596",
     "vendorInvoiceNo": "242428ZP1abcdefghijklmnopqrstuvwxyz0123456789",
     "subTotal": 135.19,
@@ -143,6 +160,14 @@ material_types = [
     {"id": "615b8413-82d5-4203-aa6e-e37984cb5ac3", "name": "electronic resource"},
 ]
 
+ledgers = [
+    {"id": "a0d6c701-c316-48d4-bac9-76a34103a3c9"},
+    {"id": "a53d9911-7294-4b0c-9a77-88cda7eeb010"},
+    {"id": "7fd88aae-6f3b-4cf0-9e98-47989aea23ee"},
+]
+
+fiscal_years = [{"id": "e9c45170-2eb3-4207-a1c8-39a51e8b9dd0", "code": "SUL2025"}]
+
 vendor = {
     "code": "HEIN-SUL",
     "erpCode": "012957FEEDER",
@@ -156,6 +181,8 @@ def mock_folio_client():
         # Invoice
         if args[0].startswith("/invoice/invoices/a6452c96"):
             return invoice_dict
+        elif args[0].startswith("/invoice/invoices/previousfy"):
+            return prev_fy_invoice_dict
         elif args[0].startswith("/invoice/invoices/futureinvoice"):
             return future_invoice_dict
         elif args[0].startswith("/invoice/invoices/nofeeder"):
@@ -195,6 +222,17 @@ def mock_folio_client():
 
         if args[0].endswith("material-types"):
             return {"mtypes": material_types}
+
+        # Ledger
+        if args[0].endswith("ledgers"):
+            return {"ledgers": ledgers}
+
+        # Fiscal Year
+        if args[0].endswith("current-fiscal-year"):
+            return {"code": "SUL2025"}
+        if args[0].endswith("fiscal-years"):
+            if kwargs['params']['query'].startswith("code==SUL2025"):
+                return {"fiscalYears": fiscal_years}
         return {}
 
     mock_client = MagicMock()
@@ -256,6 +294,15 @@ def test_exclude_zero_subtotal(mock_folio_client):
     )
     assert exclude is True
     assert exclusion_reason == "Zero subtotal"
+
+
+def test_exclude_prev_fy(mock_folio_client):
+    converter = models_converter()
+    invoice, exclude, exclusion_reason = get_invoice(
+        "previousfy", mock_folio_client, converter
+    )
+    assert exclude is True
+    assert exclusion_reason == "Fiscal year not current"
 
 
 def test_exclude_future_invoice(mock_folio_client):
