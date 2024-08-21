@@ -101,7 +101,7 @@ def generate_holdings_errors_emails(error_reports: dict):
             case "set_holdings_match":
                 subject_line = "OCLC: Set holdings match error for"
 
-            case "holdings_unset":
+            case "unset_holdings":
                 subject_line = "OCLC: Unset holdings error for"
 
             case _:
