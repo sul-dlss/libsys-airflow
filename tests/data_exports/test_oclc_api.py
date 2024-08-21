@@ -147,6 +147,24 @@ def bad_records():
         ),
     )
     sample.append(bad_oclc_num)
+    worldcat_error_record = pymarc.Record()
+    worldcat_error_record.add_field(
+        pymarc.Field(tag='008', data='00a'),
+        pymarc.Field(
+            tag='500',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='Of noteworthy import')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='e15e3707-f012-482f-a13b-34556b6d0946'),
+                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
+            ],
+        ),
+    )
+    sample.append(worldcat_error_record)
     return sample
 
 
@@ -267,7 +285,7 @@ def mock_metadata_session(authorization=None, timeout=None):
         }
         if kwargs['oclcNumber'] == "456907809":
             raise WorldcatRequestError(b"400 Client Error")
-        if kwargs['oclcNumber'] == '2369001':
+        if kwargs['oclcNumber'] in ['2369001', '889765']:
             return
         if kwargs['oclcNumber'] == "39301853":
             payload["success"] = False
@@ -434,6 +452,8 @@ def mock_folio_client(mocker):
                 "2023473e-802a-4bd2-9ca1-5d2e360a0fbd",
                 "ce4b5983-ff44-4b27-ab3c-d63a38095e30",
                 "7063655a-6196-416f-94e7-8d540e014805",
+                "f8fa3682-fef8-4810-b8da-8f51b73785ac",
+                "8c9447fa-0556-47cc-98af-c8d5e0d763fb",
             ]:
                 if args[0].endswith(instance_uuid):
                     output = {"_version": "2", "hrid": "a345691"}
@@ -560,20 +580,21 @@ def test_oclc_api_missing_instance_uuid(mock_oclc_api, caplog):
 
 
 def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
+    error_records = bad_records()
+
     record = pymarc.Record()
     record.add_field(
-        pymarc.Field(tag='008', data='00a'),
         pymarc.Field(
-            tag='500',
+            tag='035',
             indicators=['', ''],
-            subfields=[pymarc.Subfield(code='a', value='Of noteworthy import')],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)889765')],
         ),
         pymarc.Field(
             tag='999',
             indicators=['f', 'f'],
             subfields=[
-                pymarc.Subfield(code='i', value='e15e3707-f012-482f-a13b-34556b6d0946'),
-                pymarc.Subfield(code='s', value='08ca5a68-241a-4a5f-89b9-5af5603981ad'),
+                pymarc.Subfield(code='i', value='958835d2-39cc-4ab3-9c56-53bf7940421b'),
+                pymarc.Subfield(code='s', value='8cd20c2e-a2e6-47c8-8f33-dca928c6b4c0'),
             ],
         ),
     )
@@ -582,7 +603,8 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        marc_writer.write(record)
+        for record in [error_records[1], error_records[4], error_records[5], record]:
+            marc_writer.write(record)
 
     oclc_api_instance = oclc_api.OCLCAPIWrapper(
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
@@ -591,14 +613,43 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
     new_response = oclc_api_instance.new([str(marc_file.absolute())])
 
+    sorted_errors = sorted(new_response["failures"], key=lambda x: x['uuid'])
+
     assert new_response["success"] == []
-    assert new_response["failures"] == [
-        {
-            "uuid": 'e15e3707-f012-482f-a13b-34556b6d0946',
-            "reason": "Failed to add new MARC record",
-            "context": "400 Client Error",
-        }
-    ]
+
+    assert sorted_errors[0] == {
+        'uuid': '00b492cb-704d-41f4-bd12-74cfe643aea9',
+        'reason': 'FOLIO failed to Add OCLC number',
+        'context': '7789932',
+    }
+
+    assert sorted_errors[1] == {
+        'uuid': '7063655a-6196-416f-94e7-8d540e014805',
+        'reason': 'Failed to update holdings for new record',
+        'context': {
+            'controlNumber': '39301853',
+            'requestedControlNumber': '39301853',
+            'institutionCode': '158223',
+            'institutionSymbol': 'STF',
+            'success': False,
+            'message': 'Holding Updated Failed',
+            'action': 'Set Holdings',
+        },
+    }
+
+    assert sorted_errors[3] == {
+        'uuid': '958835d2-39cc-4ab3-9c56-53bf7940421b',
+        'reason': 'No response from OCLC',
+        'context': None,
+    }
+
+    assert sorted_errors[4]['uuid'] == "958835d2-39cc-4ab3-9c56-53bf7940421b"
+
+    assert sorted_errors[5] == {
+        "uuid": 'e15e3707-f012-482f-a13b-34556b6d0946',
+        "reason": "Failed to add new MARC record",
+        "context": "400 Client Error",
+    }
 
 
 def test_new_no_control_number(mock_oclc_api, tmp_path):
@@ -716,12 +767,34 @@ def test_missing_srs_record_id(mock_oclc_api, caplog):
     )
 
 
-def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
+def test_oclc_update_errors(mock_oclc_api, caplog, tmp_path):
+
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='035',
+            indicators=['', ''],
+            subfields=[pymarc.Subfield(code='a', value='(OCoLC)889765')],
+        ),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='a3a6f1c4-152c-4f8f-9763-07a49cd6fa5a'),
+                pymarc.Subfield(code='s', value='8cd20c2e-a2e6-47c8-8f33-dca928c6b4c0'),
+            ],
+        ),
+    )
+
+    error_records = bad_records()
 
     marc_file = tmp_path / "2024042413-STF.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+        for record in error_records[3:5]:
+            marc_writer.write(record)
         for record in missing_or_multiple_oclc_records():
             marc_writer.write(record)
 
@@ -734,13 +807,35 @@ def test_missing_or_multiple_oclc_numbers(mock_oclc_api, caplog, tmp_path):
 
     sorted_errors = sorted(update_results["failures"], key=lambda x: x['uuid'])
 
-    assert sorted_errors[0] == {
+    assert sorted_errors[0]['context'] == {
+        'controlNumber': '39301853',
+        'requestedControlNumber': '39301853',
+        'institutionCode': '158223',
+        'institutionSymbol': 'STF',
+        'success': False,
+        'message': 'Holding Updated Failed',
+        'action': 'Set Holdings',
+    }
+
+    assert sorted_errors[1] == {
         "uuid": "958835d2-39cc-4ab3-9c56-53bf7940421b",
         "reason": "Missing OCLC number",
         "context": None,
     }
 
-    assert sorted_errors[1] == {
+    assert sorted_errors[2] == {
+        'uuid': 'a3a6f1c4-152c-4f8f-9763-07a49cd6fa5a',
+        'reason': 'No response from OCLC',
+        'context': None,
+    }
+
+    assert sorted_errors[3] == {
+        'uuid': 'ce4b5983-ff44-4b27-ab3c-d63a38095e30',
+        'reason': 'FOLIO failed to Add OCLC number',
+        'context': '439887343',
+    }
+
+    assert sorted_errors[4] == {
         "uuid": "f19fd2fc-586c-45df-9b0c-127af97aef34",
         "reason": "Multiple OCLC ids",
         "context": ['2369001', '456789'],
@@ -791,6 +886,31 @@ def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
     }
 
 
+def test_delete_result_success_and_errors(mock_oclc_api, tmp_path, caplog):
+    error_records = bad_records()
+    good_record = sample_marc_records()[2]
+
+    marc_file = tmp_path / "2024070114-STF.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in [error_records[0], error_records[2], good_record]:
+            marc_writer.write(record)
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    results = oclc_api_instance.delete([str(marc_file.absolute())])
+
+    failures = sorted(results['failures'], key=lambda x: x['uuid'])
+
+    assert failures[0]['context'] == "b'400 Client Error'"
+    assert failures[1]['reason'] == 'Failed holdings_unset'
+    assert results['success'] == ['f19fd2fc-586c-45df-9b0c-127af97aef34']
+
+
 def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
     existing_record = pymarc.Record()
 
@@ -818,7 +938,7 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
         ),
     )
 
-    bad_oclc_num = bad_records()[-1]
+    bad_oclc_num = bad_records()[-2]
 
     bad_srs_record = sample_marc_records()[2]
 
@@ -905,3 +1025,21 @@ def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
 
     assert result['success'] == {'STF': []}
     assert result['failures'] == {'STF': []}
+
+
+def test_worldcat_error(mocker, mock_oclc_api, tmp_path):
+
+    marc_file = tmp_path / "20240821-STF.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(bad_records()[0])
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    result = oclc_api_instance.update([str(marc_file.absolute())])
+
+    assert result["failures"][0]["reason"] == "WorldcatRequest Error"

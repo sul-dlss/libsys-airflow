@@ -309,7 +309,7 @@ class OCLCAPIWrapper(object):
                 response = response.json()
 
             if response and response['success']:
-                logger.info(f"Matched {instance_uuid} result {response.json()}")
+                logger.info(f"Matched {instance_uuid} result {response}")
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
@@ -529,8 +529,7 @@ class OCLCAPIWrapper(object):
                 failures=failures,
                 file_name=file_name,
             ):
-                if instance_uuid not in output['success']:
-                    output['success'].append(instance_uuid)
+                output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
                 output['failures'].append(
@@ -546,6 +545,8 @@ class OCLCAPIWrapper(object):
             function=__new_oclc__,
             no_recs_message="No new marc records",
         )
+        # De-dup any success uuids
+        output['success'] = list(set(output['success']))
         return output
 
     def update(self, marc_files: List[str]):
