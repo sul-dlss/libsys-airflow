@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import re
 
 import httpx
 import pymarc
@@ -7,6 +8,8 @@ import pymarc
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 
 logger = logging.getLogger(__name__)
+
+OCLC_NUMBER = re.compile(r'0*(\w*)')
 
 
 def archive_instanceid_csv(instance_id_csvs: list):
@@ -43,6 +46,9 @@ def get_record_id(record: pymarc.Record) -> list:
                     oclc_number = raw_oclc_number[2:]
                 else:
                     oclc_number = raw_oclc_number
+                result = OCLC_NUMBER.search(oclc_number)
+                if result:
+                    oclc_number = result.groups()[0]
                 oclc_ids.add(oclc_number)
     return list(oclc_ids)
 
