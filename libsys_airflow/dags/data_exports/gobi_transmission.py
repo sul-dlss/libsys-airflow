@@ -44,7 +44,7 @@ def send_gobi_records():
 
     gather_files = gather_files_task(vendor="gobi")
 
-    transmit_data = transmit_data_ftp_task("ftp-ftp.ybp.com-stanford", gather_files)
+    transmit_data = transmit_data_ftp_task("gobi", gather_files)
 
     archive_data = archive_transmitted_data_task(transmit_data['success'])
 
