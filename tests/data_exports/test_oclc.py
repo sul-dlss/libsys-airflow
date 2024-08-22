@@ -501,6 +501,11 @@ def test_get_record_id(mocker, mock_folio_client):
             indicators=[" ", " "],
             subfields=[pymarc.Subfield(code='a', value="(OCoLC)ocm1427207959")],
         ),
+        pymarc.Field(
+            tag='035',
+            indicators=[" ", " "],
+            subfields=[pymarc.Subfield(code='a', value="(OCoLC)ocm0001427207959")],
+        ),
     )
 
     oclc_ids = get_record_id(record_dup_and_prefixes)
