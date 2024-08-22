@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 import pathlib
 import re
@@ -308,7 +309,7 @@ class OCLCAPIWrapper(object):
                 response = response.json()
 
             if response and response['success']:
-                logger.info(f"Matched {instance_uuid} result {response.json()}")
+                logger.info(f"Matched {instance_uuid} result {response}")
                 output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
@@ -431,6 +432,9 @@ class OCLCAPIWrapper(object):
                         output['success'].append(instance_uuid)
                         successful_add = True
                     else:
+                        logger.error(
+                            f"OCLC holdings_set call failed for {instance_uuid} OCLC {payload}"
+                        )
                         output['failures'].append(
                             {
                                 "uuid": instance_uuid,
@@ -439,6 +443,18 @@ class OCLCAPIWrapper(object):
                             }
                         )
                         failures.add(file_name)
+                else:
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "No response from OCLC",
+                            "context": None,
+                        }
+                    )
+                    failures.add(file_name)
+                    logger.error(
+                        f"No response from OCLC holdings_set for {instance_uuid}"
+                    )
             return successful_add
 
         def __new_oclc__(**kwargs):
@@ -454,42 +470,66 @@ class OCLCAPIWrapper(object):
             export_record.remove_fields(*oclc_excluded)
 
             marc21 = export_record.as_marc21()
-            new_record = session.bib_create(
-                record=marc21,
-                recordFormat="application/marc",
+
+            # We want to capture errors from the OCLC response instead of
+            # trying to parse the WorldcatRequestError
+            bib_create_result = self.httpx_client.post(
+                session._url_manage_bibs_create(),
+                headers={
+                    "Accept": "application/marc",
+                    "content-type": "application/marc",
+                    "Authorization": f"Bearer {session.authorization.token_str}",
+                },
+                data=marc21,
             )
+
             logger.info(
-                f"New record result {new_record.status_code} {new_record.content}"
+                f"New record result {bib_create_result.status_code} {bib_create_result.content}"
             )
-            control_number = self.__extract_control_number_035__(new_record.content)
+            match bib_create_result.status_code:
 
-            successful_add = False
-            if control_number:
-                successful_add = __add_update_control_number__(
-                    session=session,
-                    instance_uuid=instance_uuid,
-                    control_number=control_number,
-                    output=output,
-                    record=record,
-                    successes=successes,
-                    failures=failures,
-                    file_name=file_name,
-                )
+                case 201:
+                    control_number = self.__extract_control_number_035__(
+                        bib_create_result.content
+                    )
+                    if control_number is None:
+                        output['failures'].append(
+                            {
+                                "uuid": instance_uuid,
+                                "reason": "Failed to extract OCLC number",
+                                "context": None,
+                            }
+                        )
+                        failures.add(file_name)
+                        return
 
-            else:
-                output['failures'].append(
-                    {
-                        "uuid": instance_uuid,
-                        "reason": "Failed to extract OCLC number",
-                        "context": None,
-                    }
-                )
-                failures.add(file_name)
-                return
+                case _:
+                    try:
+                        context = bib_create_result.json()
+                    except json.decoder.JSONDecodeError:
+                        context = bib_create_result.text
 
-            if successful_add:
-                if instance_uuid not in output['success']:
-                    output['success'].append(instance_uuid)
+                    output['failures'].append(
+                        {
+                            "uuid": instance_uuid,
+                            "reason": "Failed to add new MARC record",
+                            "context": context,
+                        }
+                    )
+                    failures.add(file_name)
+                    return
+
+            if __add_update_control_number__(
+                session=session,
+                instance_uuid=instance_uuid,
+                control_number=control_number,
+                output=output,
+                record=record,
+                successes=successes,
+                failures=failures,
+                file_name=file_name,
+            ):
+                output['success'].append(instance_uuid)
                 successes.add(file_name)
             else:
                 output['failures'].append(
@@ -505,6 +545,8 @@ class OCLCAPIWrapper(object):
             function=__new_oclc__,
             no_recs_message="No new marc records",
         )
+        # De-dup any success uuids
+        output['success'] = list(set(output['success']))
         return output
 
     def update(self, marc_files: List[str]):
@@ -535,9 +577,13 @@ class OCLCAPIWrapper(object):
                     }
                 )
                 failures.add(file_name)
+                logger.error(f"No response from OCLC holdings_set for {instance_uuid}")
                 return
 
             set_payload = response.json()
+            logger.info(
+                f"OCLC result from holdings_set for {instance_uuid}:\n{set_payload}"
+            )
             if not set_payload['success']:
                 output["failures"].append(
                     {

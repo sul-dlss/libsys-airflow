@@ -11,6 +11,7 @@ from libsys_airflow.plugins.data_exports.oclc_reports import (
     holdings_set_errors_task,
     holdings_unset_errors_task,
     multiple_oclc_numbers_task,
+    new_oclc_marc_errors_task,
 )
 
 
@@ -68,7 +69,7 @@ ERRORS = [
     },
     {
         'uuid': '16da5eed-69e7-46da-9d6d-6077543e3e01',
-        "reason": "WorldcatRequest Error",
+        "reason": "Failed to add new MARC record",
         "context": {
             'errorCount': 21,
             'errors': [
@@ -222,7 +223,7 @@ def test_filter_failures_task(caplog):
     )
 
     assert (
-        filtered_errors['CASUM']["WorldcatRequest Error"][0]['context']
+        filtered_errors['CASUM']["Failed to add new MARC record"][0]['context']
         == ERRORS[3]["context"]
     )
     assert filtered_errors['S7Z']["WorldcatRequest Error"][0] == {
@@ -239,14 +240,12 @@ def test_holdings_set_errors_task(tmp_path, mocker, mock_dag_run):
     )
 
     failures = {
-        "RCJ": [
-            {
-                "reason": "Failed to update holdings",
-                "uuid": ERRORS[6]["uuid"],
-                "context": ERRORS[6]["context"],
-            }
-        ],
-        "STF": [],
+        "RCJ": {
+            "Failed to update holdings": [
+                {"uuid": ERRORS[6]["uuid"], "context": ERRORS[6]["context"]}
+            ]
+        },
+        "STF": {},
     }
 
     reports = holdings_set_errors_task.function(
@@ -378,6 +377,37 @@ def test_multiple_oclc_numbers_task(tmp_path, mocker, mock_task_instance, mock_d
 
     dag_anchor = lane_report_html.find("a")
     assert dag_anchor.text.startswith("DAG Run")
-    assert dag_anchor.attrs['href'].startswith(
-        "https://folio-airflow.edu/scheduled__2024-07-29"
+
+
+def test_new_oclc_marc_errors_task(tmp_path, mocker, mock_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.oclc_reports.Variable.get",
+        return_value="https://folio-stanford.edu",
     )
+
+    failures = {
+        "STF": {
+            "Failed holdings_unset": [
+                {"uuid": ERRORS[4]["uuid"], "context": ERRORS[4]["context"]}
+            ]
+        },
+        "CASUM": {
+            "Failed to add new MARC record": [
+                {"uuid": ERRORS[3]["uuid"], "context": ERRORS[3]["context"]}
+            ]
+        },
+        "HIN": {"Failed to add new MARC record": []},
+    }
+
+    reports = new_oclc_marc_errors_task.function(
+        airflow=tmp_path,
+        date=datetime.datetime(2024, 8, 19, 12, 28, 34),
+        failures=failures,
+        dag_run=mock_dag_run,
+    )
+
+    lane_report = pathlib.Path(reports['CASUM'])
+    lane_report_html = BeautifulSoup(lane_report.read_text(), 'html.parser')
+
+    h1 = lane_report_html.find("h1")
+    assert h1.text == "Invalid MARC Records New to OCLC on 19 August 2024 for CASUM"
