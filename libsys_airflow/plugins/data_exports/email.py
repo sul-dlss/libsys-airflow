@@ -32,6 +32,16 @@ def _oclc_identifiers(multiple_codes: list, folio_url: str):
     return template.render(folio_url=folio_url, multiple_codes=multiple_codes)
 
 
+def _cohort_emails():
+    return {
+        "business": Variable.get("OCLC_EMAIL_BUS"),
+        "hoover": Variable.get("OCLC_EMAIL_HOOVER"),
+        "lane": Variable.get("OCLC_EMAIL_LANE"),
+        "law": Variable.get("OCLC_EMAIL_LAW"),
+        "sul": Variable.get("OCLC_EMAIL_SUL"),
+    }
+
+
 def _match_oclc_library(**kwargs):
     library: str = kwargs["library"]
     to_emails: list = kwargs["to_emails"]
@@ -81,13 +91,7 @@ def generate_holdings_errors_emails(error_reports: dict):
     Generates emails for holdings set errors for cohort libraries
     """
     devs_email = Variable.get("EMAIL_DEVS")
-    cohort_emails = {
-        "business": Variable.get("OCLC_EMAIL_BUS"),
-        "hoover": Variable.get("OCLC_EMAIL_HOOVER"),
-        "lane": Variable.get("OCLC_EMAIL_LANE"),
-        "law": Variable.get("OCLC_EMAIL_LAW"),
-        "sul_email": Variable.get("OCLC_EMAIL_SUL"),
-    }
+    cohort_emails = _cohort_emails()
 
     for library, report in error_reports.items():
         to_emails = [
@@ -129,13 +133,7 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
     """
     devs_email = Variable.get("EMAIL_DEVS")
 
-    cohort_emails = {
-        "business": Variable.get("OCLC_EMAIL_BUS"),
-        "hoover": Variable.get("OCLC_EMAIL_HOOVER"),
-        "lane": Variable.get("OCLC_EMAIL_LANE"),
-        "law": Variable.get("OCLC_EMAIL_LAW"),
-        "sul_email": Variable.get("OCLC_EMAIL_SUL"),
-    }
+    cohort_emails = _cohort_emails()
 
     airflow_url = conf.get('webserver', 'base_url')  # type: ignore
 
@@ -177,11 +175,7 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
     )
     folio_url = Variable.get("FOLIO_URL")
     devs_email = Variable.get("EMAIL_DEVS")
-    bus_email = Variable.get("OCLC_EMAIL_BUS")
-    hoover_email = Variable.get("OCLC_EMAIL_HOOVER")
-    lane_email = Variable.get("OCLC_EMAIL_LANE")
-    law_email = Variable.get("OCLC_EMAIL_LAW")
-    sul_email = Variable.get("OCLC_EMAIL_SUL")
+    cohort_emails = _cohort_emails()
 
     html_content = _oclc_identifiers(multiple_codes, folio_url)
 
@@ -189,11 +183,11 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
         send_email(
             to=[
                 devs_email,
-                bus_email,
-                hoover_email,
-                lane_email,
-                law_email,
-                sul_email,
+                cohort_emails["business"],
+                cohort_emails["hoover"],
+                cohort_emails["lane"],
+                cohort_emails["law"],
+                cohort_emails["sul"],
             ],
             subject="Review Instances with Multiple OCLC Indentifiers",
             html_content=html_content,
