@@ -1,5 +1,5 @@
 create materialized view data_export_marc as
-select I.id, I.jsonb->'hrid', M.content
+select I.id, I.jsonb->'hrid' as hrid, M.content
 from sul_mod_inventory_storage.instance I
 inner join(
   select distinct on (external_id) external_id, id, generation
