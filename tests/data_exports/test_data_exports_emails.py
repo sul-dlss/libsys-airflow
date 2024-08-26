@@ -14,9 +14,6 @@ def mock_folio_variables(monkeypatch):
     def mock_get(key):
         value = None
         match key:
-            case "AIRFLOW__WEBSERVER__BASE_URL":
-                value = "example.com"
-
             case "FOLIO_URL":
                 value = "folio-test"
 
@@ -53,6 +50,9 @@ def mock_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "manual_2022-03-05"
     dag_run.id = "send_vendor_records"
+    dag_run.url = (
+        "https://example.com/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
+    )
 
     return dag_run
 
@@ -182,7 +182,7 @@ def test_failed_transmission_email(mocker, mock_dag_run, mock_folio_variables, c
 
     assert (
         html_body.find("a").attrs["href"]
-        == "https://example.com/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
+        == "http://localhost:8080/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
     )
 
     list_items = html_body.findAll("li")
@@ -233,5 +233,5 @@ def test_failed_full_dump_transmission_email(
 
     assert (
         html_body.find("a").attrs["href"]
-        == "https://example.com/dags/send_all_records/grid?dag_run_id=manual_2022-03-05"
+        == "http://localhost:8080/dags/send_all_records/grid?dag_run_id=manual_2022-03-05"
     )
