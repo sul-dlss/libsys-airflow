@@ -15,7 +15,7 @@ def fetch_full_dump_marc(**kwargs) -> str:
     batch_size = kwargs.get("batch_size", 1000)
     connection = kwargs.get("connection")
     cursor = connection.cursor()  # type: ignore
-    sql = "SELECT id, hrid, content FROM public.data_export_marc LIMIT (%s) OFFSET (%s) ORDER_BY hrid"
+    sql = "SELECT id, hrid, content FROM public.data_export_marc ORDER BY hrid LIMIT (%s) OFFSET (%s)"
     params = (batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
