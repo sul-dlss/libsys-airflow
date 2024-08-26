@@ -211,10 +211,22 @@ field_035 = pymarc.Field(
 
 field_008 = pymarc.Field(tag='008', data='920218s1990    ja a          000 0 jpn  ')
 
+field_265 = pymarc.Field(
+    tag='265',
+    indicators=[' ', ' '],  # type: ignore
+    subfields=[pymarc.Subfield(code='a', value='Obsolete field')],
+)
+
 field_590 = pymarc.Field(
     tag="590",
     indicators=[' ', ' '],  # type: ignore
     subfields=[pymarc.Subfield(code='a', value='MARCit brief record')],
+)
+
+field_904 = pymarc.Field(
+    tag='903',
+    indicators=['1', '0'],  # type: ignore
+    subfields=[pymarc.Subfield(code='a', value="A locally defined field")],
 )
 
 field_915 = pymarc.Field(
@@ -253,7 +265,7 @@ def test_exclude_marc_by_vendor_oclc(mocker):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     exporter = Exporter()
     marc_record = pymarc.Record()
-    marc_record.add_field(field_590, field_915)
+    marc_record.add_field(field_265, field_590, field_915)
 
     assert exporter.exclude_marc_by_vendor(marc_record, 'oclc')
 
@@ -262,7 +274,7 @@ def test_exclude_marc_by_vendor_pod(mocker):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     exporter = Exporter()
     marc_record = pymarc.Record()
-    marc_record.add_field(field_590, field_915)
+    marc_record.add_field(field_590, field_904, field_915)
 
     assert exporter.exclude_marc_by_vendor(marc_record, 'pod')
 
