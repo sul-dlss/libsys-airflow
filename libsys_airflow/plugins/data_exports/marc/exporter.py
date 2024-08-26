@@ -120,7 +120,7 @@ class Exporter(object):
         for row in instance_ids:
             marc_json_handler = marcJson()
             try:
-                marc_json_handler.elements(row[1])
+                marc_json_handler.elements(row[2])
                 marc21 = marc_json_handler.records[0]
             except Exception as e:
                 logger.warning(e)
