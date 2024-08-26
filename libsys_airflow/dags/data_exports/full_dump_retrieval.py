@@ -13,7 +13,6 @@ from airflow.decorators import task, task_group
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
     fetch_number_of_records,
     fetch_full_dump_marc,
-    refresh_view,
     reset_s3,
 )
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
@@ -59,10 +58,6 @@ with DAG(
 ) as dag:
 
     start = EmptyOperator(task_id='start')
-
-    @task
-    def refresh_materialized_view():
-        refresh_view()
 
     @task
     def reset_s3_bucket():
@@ -166,8 +161,6 @@ with DAG(
         number_in_batch=batch_size,
     )
 
-    update_view = refresh_materialized_view()
-
     delete_s3_files = reset_s3_bucket()
 
     start_stop = calculate_start_stop.partial(div=record_div).expand(job=number_of_jobs)
@@ -182,5 +175,5 @@ with DAG(
         task_id="finish_marc",
     )
 
-    start >> update_view >> delete_s3_files >> total_records
+    start >> delete_s3_files >> total_records
     finish_transforms >> finish_processing_marc

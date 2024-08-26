@@ -46,28 +46,6 @@ def fetch_number_of_records(**kwargs) -> int:
     return int(count)
 
 
-def refresh_view(**kwargs) -> None:
-    context = get_current_context()
-    params = context.get("params", {})  # type: ignore
-    refresh = params.get("refresh_view", True)
-
-    if refresh:
-        query = "refresh materialized view data_export_marc"
-
-        result = SQLExecuteQueryOperator(
-            task_id="postgres_full_count_query",
-            conn_id="postgres_folio",
-            database=kwargs.get("database", "okapi"),
-            sql=query,
-        ).execute(context)
-
-        logger.info(result)
-    else:
-        logger.info("Skipping refresh of materialized view")
-
-    return None
-
-
 def reset_s3(**kwargs) -> None:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
