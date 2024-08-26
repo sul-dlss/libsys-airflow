@@ -1,5 +1,5 @@
 create materialized view data_export_marc as
-select I.id, M.content
+select I.id, I.jsonb->'hrid' as hrid, M.content
 from sul_mod_inventory_storage.instance I
 inner join(
   select distinct on (external_id) external_id, id, generation
@@ -17,4 +17,5 @@ and (I.jsonb->>'statusId')::uuid in (
   and I.jsonb->>'source' = 'MARC'
 join sul_mod_source_record_storage.marc_records_lb M
   on M.id = R.id
+order by I.jsonb->'hrid'
 ;
