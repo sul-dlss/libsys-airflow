@@ -43,6 +43,14 @@ def _cohort_emails():
     }
 
 
+def _dag_run_url(dag_run) -> str:
+    airflow_url = conf.get('webserver', 'base_url')
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
+    return f"{airflow_url}dags/{dag_run.id}/grid?{params}"
+
+
 def _match_oclc_library(**kwargs):
     library: str = kwargs["library"]
     to_emails: list = kwargs["to_emails"]
@@ -244,11 +252,7 @@ def failed_transmission_email(files: list, **kwargs):
     dag_run = kwargs["dag_run"]
     dag_id = dag_run.id
     dag_run_id = dag_run.run_id
-    airflow_url = conf.get('webserver', 'base_url')
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-    dag_run_url_params = urllib.parse.urlencode({"dag_run_id": dag_run_id})
-    dag_run_url = f"{airflow_url}dags/{dag_id}/grid?{dag_run_url_params}"
+    dag_run_url = _dag_run_url(dag_run)
     params = kwargs.get("params", {})
     full_dump_vendor = params.get("vendor", {})
     if len(files) == 0:
