@@ -1,7 +1,7 @@
 {
   "schedule_gobi_days": 7,
-  "schedule_gobi_hours": 3,
-  "transmit_gobi_hours": 7,
+  "schedule_gobi_hours": 6,
+  "transmit_gobi_hours": 8,
   "schedule_google_days": 1,
   "schedule_google_hours": 13,
   "schedule_hathi_days": 1,
