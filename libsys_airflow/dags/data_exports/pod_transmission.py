@@ -31,7 +31,7 @@ default_args = {
     default_args=default_args,
     schedule=timedelta(
         days=int(Variable.get("transmit_pod_days", 1)),
-        hours=int(Variable.get("transmit_pod_hours", 6)),
+        hours=int(Variable.get("transmit_pod_hours", 8)),
     ),
     start_date=datetime(2024, 1, 1),
     catchup=False,

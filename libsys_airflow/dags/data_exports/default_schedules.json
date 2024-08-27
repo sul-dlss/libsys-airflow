@@ -11,8 +11,8 @@
   "schedule_oclc_days": 7,
   "schedule_oclc_hours": 13,
   "schedule_pod_days": 1,
-  "schedule_pod_hours": 2,
-  "transmit_pod_hours": 6,
+  "schedule_pod_hours": 6,
+  "transmit_pod_hours": 8,
   "schedule_sharevde_days": 1,
   "schedule_sharevde_hours": 13
 }
