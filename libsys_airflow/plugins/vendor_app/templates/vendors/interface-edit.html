@@ -200,16 +200,17 @@
  function newRemoveFieldRule(marcField='') {
    const template = document.getElementById("remove-fields-template");
    const clone = template.content.cloneNode(true);
-   const now = new Date().getTime();
+   const counter =  document.querySelectorAll('div.remove-field').length + 1;
 
-   updateTemplate(clone, "remove-rule", now)
-   updateTemplateRemoveBtn(clone, "remove-rule-remove", "remove-rule", now)
-   updateInputTemplate(clone, "remove-field", now, marcField)
-   updateLabelTemplate(clone, "remove-field", now)
+   updateTemplate(clone, "remove-rule", counter)
+   updateTemplateRemoveBtn(clone, "remove-rule-remove", "remove-rule", counter)
+   updateInputTemplate(clone, "remove-field", counter, marcField)
+   updateLabelTemplate(clone, "remove-field", counter)
 
    const removeFields = document.getElementById("remove-fields");
    removeFields.appendChild(clone);
  }
+
 
  /**
   * Creates a Move Field Rule element and adds it to the form.
@@ -217,22 +218,22 @@
  function newMoveFieldRule(fromTag='', fromIndicator1='', fromIndicator2='', toTag='', toIndicator1='', toIndicator2='') {
    const template = document.getElementById("move-fields-template");
    const clone = template.content.cloneNode(true);
-   const now = new Date().getTime();
+   const counter =  document.querySelectorAll('div.move-field').length + 1;
 
-   updateTemplate(clone, "move-rule", now)
-   updateTemplateRemoveBtn(clone, "move-rule-remove", "move-rule", now)
-   updateInputTemplate(clone, "move-field-from", now, fromTag)
-   updateLabelTemplate(clone, "move-field-from", now)
-   updateInputTemplate(clone, "move-indicator1-from", now, fromIndicator1)
-   updateLabelTemplate(clone, "move-indicator1-from", now)
-   updateInputTemplate(clone, "move-indicator2-from", now, fromIndicator2)
-   updateLabelTemplate(clone, "move-indicator2-from", now)
-   updateInputTemplate(clone, "move-field-to", now, toTag)
-   updateLabelTemplate(clone, "move-field-to", now)
-   updateInputTemplate(clone, "move-indicator1-to", now, toIndicator1)
-   updateLabelTemplate(clone, "move-indicator1-to", now)
-   updateInputTemplate(clone, "move-indicator2-to", now, toIndicator2)
-   updateLabelTemplate(clone, "move-indicator2-to", now)
+   updateTemplate(clone, "move-rule", counter)
+   updateTemplateRemoveBtn(clone, "move-rule-remove", "move-rule", counter)
+   updateInputTemplate(clone, "move-field-from", counter, fromTag)
+   updateLabelTemplate(clone, "move-field-from", counter)
+   updateInputTemplate(clone, "move-indicator1-from", counter, fromIndicator1)
+   updateLabelTemplate(clone, "move-indicator1-from", counter)
+   updateInputTemplate(clone, "move-indicator2-from", counter, fromIndicator2)
+   updateLabelTemplate(clone, "move-indicator2-from", counter)
+   updateInputTemplate(clone, "move-field-to", counter, toTag)
+   updateLabelTemplate(clone, "move-field-to", counter)
+   updateInputTemplate(clone, "move-indicator1-to", counter, toIndicator1)
+   updateLabelTemplate(clone, "move-indicator1-to", counter)
+   updateInputTemplate(clone, "move-indicator2-to", counter, toIndicator2)
+   updateLabelTemplate(clone, "move-indicator2-to", counter)
 
    const moveFields = document.getElementById("move-fields");
    moveFields.append(clone);
