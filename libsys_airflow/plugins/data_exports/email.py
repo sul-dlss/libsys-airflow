@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import urllib
 
 from jinja2 import Template
 
@@ -84,6 +85,14 @@ def _oclc_report_html(report: str, library: str):
     report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
 
     return f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
+
+
+def dag_run_url(dag_run) -> str:
+    airflow_url = conf.get('webserver', 'base_url')
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
+    return f"{airflow_url}dags/{dag_run.id}/grid?{params}"
 
 
 def generate_holdings_errors_emails(error_reports: dict):
@@ -204,7 +213,7 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
 
 
 def _failed_transmission_email_body(
-    files: list, vendor: str, base_url: str, dag_id: str, dag_run_id: str
+    files: list, vendor: str, dag_id: str, dag_run_id: str, dag_run_url: str
 ):
     template = Template(
         """
@@ -213,7 +222,7 @@ def _failed_transmission_email_body(
         {% else %}
         <h2>Failed to Transmit Files for {{ dag_id }}</h2>
         {% endif %}
-        <p><a href="https://{{ base_url }}/dags/{{ dag_id }}/grid?dag_run_id={{ dag_run_id }}">{{ dag_run_id }}</a>
+        <p><a href="{{ dag_run_url }}">{{ dag_run_id }}</a>
         <p>These files failed to transmit</p>
         <ol>
         {% for row in files %}
@@ -228,9 +237,9 @@ def _failed_transmission_email_body(
     return template.render(
         files=files,
         vendor=vendor,
-        base_url=base_url,
         dag_id=dag_id,
         dag_run_id=dag_run_id,
+        dag_run_url=dag_run_url,
     )
 
 
@@ -240,9 +249,10 @@ def failed_transmission_email(files: list, **kwargs):
     Generates an email listing files that failed to transmit
     Sends to libsys devs to troubleshoot
     """
-    dag = kwargs["dag_run"]
-    dag_id = dag.id
-    dag_run_id = dag.run_id
+    dag_run = kwargs["dag_run"]
+    dag_id = dag_run.id
+    dag_run_id = dag_run.run_id
+    run_url = dag_run_url(dag_run)
     params = kwargs.get("params", {})
     full_dump_vendor = params.get("vendor", {})
     if len(files) == 0:
@@ -250,10 +260,13 @@ def failed_transmission_email(files: list, **kwargs):
         return
     logger.info("Generating email of failed to transmit files")
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    base_url = Variable.get("AIRFLOW__WEBSERVER__BASE_URL")
 
     html_content = _failed_transmission_email_body(
-        files, full_dump_vendor, base_url, dag_id, dag_run_id
+        files,
+        full_dump_vendor,
+        dag_id,
+        dag_run_id,
+        run_url,
     )
 
     send_email(

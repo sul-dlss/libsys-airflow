@@ -1,13 +1,13 @@
 import logging
-import urllib
 
 from datetime import datetime
 from pathlib import Path
 
-from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 from jinja2 import DictLoader, Environment
+
+from libsys_airflow.plugins.data_exports.email import dag_run_url
 
 logger = logging.getLogger(__name__)
 
@@ -187,14 +187,6 @@ jinja_env = Environment(
 )
 
 
-def _dag_run_url(dag_run) -> str:
-    airflow_url = conf.get('webserver', 'base_url')
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
-    return f"{airflow_url}dags/send_oclc_records/grid?{params}"
-
-
 def _filter_failures(failures: dict, errors: dict):
     for library, instances in failures.items():
         if library not in errors:
@@ -284,7 +276,7 @@ def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
     reports: dict = {}
 
     kwargs["date"] = date.strftime("%d %B %Y")
-    kwargs["dag_run_url"] = _dag_run_url(kwargs["dag_run"])
+    kwargs["dag_run_url"] = dag_run_url(kwargs["dag_run"])
 
     for library, errors in library_instances.items():
         kwargs["failures"] = errors
@@ -343,7 +335,7 @@ def _reports_by_library(**kwargs) -> dict:
         kwargs["library"] = library
         kwargs["failures"] = filtered_failures
         kwargs["date"] = date.strftime("%d %B %Y")
-        kwargs["dag_run_url"] = _dag_run_url(kwargs["dag_run"])
+        kwargs["dag_run_url"] = dag_run_url(kwargs["dag_run"])
         reports[library] = report_template.render(**kwargs)
 
     return reports
