@@ -50,9 +50,6 @@ def mock_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "manual_2022-03-05"
     dag_run.id = "send_vendor_records"
-    dag_run.url = (
-        "https://example.com/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
-    )
 
     return dag_run
 
