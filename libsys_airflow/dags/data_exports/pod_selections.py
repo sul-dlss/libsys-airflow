@@ -1,3 +1,5 @@
+import pathlib
+
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -18,6 +20,7 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
     change_leader_for_deletes,
     clean_and_serialize_marc_files,
+    zip_marc_file,
 )
 
 default_args = {
@@ -28,6 +31,13 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
+
+
+def compress_marc_files(marc_files: list):
+    for marc_file in marc_files:
+        stem = pathlib.Path(marc_file).suffix
+        xml = marc_file.replace(stem, '.xml')
+        zip_marc_file(xml)
 
 
 with DAG(
@@ -112,6 +122,12 @@ with DAG(
         },
     )
 
+    transform_compress_marc_files = PythonOperator(
+        task_id="transform_folio_marc_compress_files",
+        python_callable=compress_marc_files,
+        op_kwargs={"marc_files": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"},
+    )
+
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
@@ -122,4 +138,5 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records
 
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
-transform_marc_fields >> transform_leader_fields >> finish_processing_marc
+transform_marc_fields >> transform_leader_fields >> transform_compress_marc_files
+transform_compress_marc_files >> finish_processing_marc
