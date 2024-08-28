@@ -39,7 +39,7 @@ with DAG(
     tags=["data export", "gobi"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(days=7).strftime('%Y-%m-%d'))}",
+            f"{(datetime.now() - timedelta(7)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
