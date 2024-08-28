@@ -1,5 +1,6 @@
 import logging
-import requests
+
+import httpx
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -8,7 +9,7 @@ from airflow.sensors.base import PokeReturnValue
 
 from sqlalchemy.orm import Session
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile
 
 
@@ -53,10 +54,10 @@ def file_loaded_sensor(
             return PokeReturnValue(is_done=False)
 
     try:
-        job_execution = folio_client.get(
+        job_execution = folio_client.folio_get(
             f"/change-manager/jobExecutions/{job_execution_id}"
         )
-    except requests.exceptions.HTTPError as error:
+    except httpx.HTTPError as error:
         if error.response.status_code == 404:  # type: ignore
             logger.info(
                 f"Processing job for file ('{vendor_interface_uuid} - {filename}') has not started yet."

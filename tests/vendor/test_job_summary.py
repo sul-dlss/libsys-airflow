@@ -23,7 +23,7 @@ def folio_client():
         },
     }
     mock_client = Mock()
-    mock_client.get.return_value = job_summary_resp
+    mock_client.folio_get.return_value = job_summary_resp
     return mock_client
 
 

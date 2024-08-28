@@ -7,7 +7,8 @@ from airflow.models import Variable
 from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
+
 from libsys_airflow.plugins.vendor.models import FileStatus
 from libsys_airflow.plugins.vendor.marc import is_marc
 from libsys_airflow.plugins.vendor.models import VendorFile, VendorInterface
@@ -132,7 +133,7 @@ def _folio_client():
 
 def _upload_definition(folio_client, filenames):
     payload = {"fileDefinitions": list({"name": filename} for filename in filenames)}
-    resp_json = folio_client.post("/data-import/uploadDefinitions", payload)
+    resp_json = folio_client.folio_post("/data-import/uploadDefinitions", payload)
     upload_definition_id = resp_json["fileDefinitions"][0]["uploadDefinitionId"]
     logger.info(f"upload_definition_id: {upload_definition_id}")
     job_execution_id = resp_json["fileDefinitions"][0]["jobExecutionId"]
@@ -146,10 +147,19 @@ def _upload_definition(folio_client, filenames):
 
 
 def _upload_file(folio_client, filepath, upload_definition_id, file_definition_id):
-    return folio_client.post_file(
-        f"/data-import/uploadDefinitions/{upload_definition_id}/files/{file_definition_id}",
-        filepath,
-    )
+    url = f"{folio_client.okapi_url}/data-import/uploadDefinitions/{upload_definition_id}/files/{file_definition_id}"
+    headers = folio_client.okapi_headers()
+    headers["content-type"] = "application/octet-stream"
+
+    with open(filepath, 'rb') as fo:
+        payload = fo.read()
+
+    with folio_client.get_folio_http_client() as httpx_client:
+
+        result = httpx_client.post(url, headers=headers, data=payload)
+
+    result.raise_for_status()
+    return result.json()
 
 
 def _process_files(
@@ -163,7 +173,7 @@ def _process_files(
         "uploadDefinition": upload_definition,
         "jobProfileInfo": {"id": job_profile_uuid, "dataType": data_type},
     }
-    folio_client.post(
+    folio_client.folio_post(
         f"/data-import/uploadDefinitions/{upload_definition_id}/processFiles", payload
     )
 

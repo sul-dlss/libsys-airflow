@@ -1,7 +1,7 @@
 from airflow.decorators import task
 from airflow.models import Variable
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 
 
 def _folio_client():
@@ -23,7 +23,9 @@ def job_summary(
     client=None,
 ) -> dict:
     folio_client = client or _folio_client()
-    summary = folio_client.get(f"/metadata-provider/jobSummary/{job_execution_id}")
+    summary = folio_client.folio_get(
+        f"/metadata-provider/jobSummary/{job_execution_id}"
+    )
     return {
         "srs_stats": summary.get("sourceRecordSummary", {}),
         "instance_stats": summary.get("instanceSummary", {}),
