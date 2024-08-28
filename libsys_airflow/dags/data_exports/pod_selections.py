@@ -43,22 +43,19 @@ def compress_marc_files(marc_files: list):
 with DAG(
     "select_pod_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_pod_days", 1)),
-        hours=int(Variable.get("schedule_pod_hours", 6)),
-    ),
+    schedule=Variable.get("select_pod", "0 13 * * *"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "pod"],
     params={
         "from_date": Param(
-            f"{datetime.now().strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now() + timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now()).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",

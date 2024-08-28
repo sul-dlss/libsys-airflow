@@ -32,10 +32,7 @@ default_args = {
 with DAG(
     "select_sharevde_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_sharevde_days", 1)),
-        hours=int(Variable.get("schedule_sharevde_hours", 13)),
-    ),
+    schedule=Variable.get("select_sharevde", "0 13 * * *"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "sharevde"],

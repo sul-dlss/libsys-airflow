@@ -30,22 +30,19 @@ default_args = {
 with DAG(
     "select_gobi_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_gobi_days", 7)),
-        hours=int(Variable.get("schedule_gobi_hours", 6)),
-    ),
+    schedule=Variable.get("select_gobi", "03 6 * * WED"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "gobi"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(7)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now() + timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now()).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",

@@ -29,10 +29,7 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("transmit_pod_days", 1)),
-        hours=int(Variable.get("transmit_pod_hours", 8)),
-    ),
+    schedule=Variable.get("transmit_pod", "0 13 * * *"),
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["data export", "pod"],

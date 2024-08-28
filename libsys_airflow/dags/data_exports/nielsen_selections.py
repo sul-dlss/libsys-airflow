@@ -32,10 +32,7 @@ default_args = {
 with DAG(
     "select_nielsen_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_nielsen_days", 1)),
-        hours=int(Variable.get("schedule_nielsen_hours", 7)),
-    ),
+    schedule=Variable.get("select_nielsen", "0 9 * * *"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "nielsen"],

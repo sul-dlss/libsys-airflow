@@ -32,10 +32,7 @@ default_args = {
 with DAG(
     "select_google_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_google_days", 1)),
-        hours=int(Variable.get("schedule_goggle_hours", 7)),
-    ),
+    schedule=Variable.get("select_google", "0 7 * * *"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "google"],

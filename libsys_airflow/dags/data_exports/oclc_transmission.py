@@ -50,10 +50,7 @@ connections = [
 
 @dag(
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("transmit_oclc_days", 7)),
-        hours=int(Variable.get("transmit_oclc_hours", 13)),
-    ),
+    schedule=Variable.get("transmit_oclc", "30 10 * * FRI"),
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["data export", "oclc"],
