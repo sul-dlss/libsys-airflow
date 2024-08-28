@@ -30,7 +30,7 @@ default_args = {
 with DAG(
     "select_gobi_records",
     default_args=default_args,
-    schedule=Variable.get("select_gobi", "03 6 * * WED"),
+    schedule=Variable.get("select_gobi", "03 6 * * TUE"),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "gobi"],

@@ -29,7 +29,7 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=Variable.get("transmit_gobi", "30 8 * * WED"),
+    schedule=Variable.get("transmit_gobi", "30 8 * * TUE"),
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["data export", "gobi"],

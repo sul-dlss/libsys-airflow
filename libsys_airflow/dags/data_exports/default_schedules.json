@@ -1,6 +1,6 @@
 {
-  "select_gobi": "30 6 * * WED",
-  "transmit_gobi": "30 8 * * WED",
+  "select_gobi": "30 6 * * TUE",
+  "transmit_gobi": "30 8 * * TUE",
   "select_google": "0 7 * * *",
   "transmit_google": "0 9 * * *",
   "select_hathi": "0 8 * * *",
