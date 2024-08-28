@@ -51,13 +51,13 @@ with DAG(
     tags=["data export", "oclc"],
     params={
         "from_date": Param(
-            f"{datetime.now().strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now() + timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now()).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
