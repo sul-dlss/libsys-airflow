@@ -9,7 +9,7 @@ class MockFOLIOClient(pydantic.BaseModel):
     okapi_headers: dict = {}
     locations: list = []
 
-    def get(self, path):
+    def folio_get(self, path):
         if path.endswith("/credentials"):
             return credentials_response
         else:
