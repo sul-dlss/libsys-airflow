@@ -32,14 +32,14 @@ with DAG(
     default_args=default_args,
     schedule=timedelta(
         days=int(Variable.get("schedule_gobi_days", 7)),
-        hours=int(Variable.get("schedule_gobi_hours", 3)),
+        hours=int(Variable.get("schedule_gobi_hours", 6)),
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "gobi"],
     params={
         "from_date": Param(
-            f"{datetime.now().strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(7)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
