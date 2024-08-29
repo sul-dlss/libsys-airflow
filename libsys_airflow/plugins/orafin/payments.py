@@ -8,8 +8,8 @@ from cattrs import Converter
 from airflow.operators.bash import BashOperator
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 
+from folioclient import FolioClient
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
 from libsys_airflow.plugins.folio.finances import current_fiscal_years, active_ledgers
 from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
 
@@ -26,7 +26,7 @@ def _get_fund(fund_distributions: list, folio_client: FolioClient):
     """
     for distribution in fund_distributions:
         fund_id = distribution['fundId']
-        fund_result = folio_client.get(f"/finance/funds/{fund_id}")
+        fund_result = folio_client.folio_get(f"/finance/funds/{fund_id}")
         distribution["fund"] = {
             "id": fund_id,
             "externalAccountNo": fund_result["fund"].get("externalAccountNo"),
@@ -34,9 +34,9 @@ def _get_fund(fund_distributions: list, folio_client: FolioClient):
 
 
 def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
-    invoice_lines_result = folio_client.get(
+    invoice_lines_result = folio_client.folio_get(
         "/invoice/invoice-lines",
-        params={
+        query_params={
             "query": f"invoiceId=={invoice_id} sortBy metadata.createdDate invoiceLineNumber",
             "limit": 250,
         },
@@ -48,8 +48,8 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
         if "poLineId" in row:
             po_line_id = row['poLineId']
             po_line = {"id": po_line_id}
-            po_result = folio_client.get(
-                f"/orders/order-lines/{po_line_id}", params={"limit": 250}
+            po_result = folio_client.folio_get(
+                f"/orders/order-lines/{po_line_id}", query_params={"limit": 250}
             )
             po_line["acquisitionMethod"] = po_result["acquisitionMethod"]
             po_line["orderFormat"] = po_result.get("orderFormat")
@@ -76,6 +76,7 @@ def _get_invoice_lines(invoice_id: str, folio_client: FolioClient) -> tuple:
 
 def generate_file(feeder_file: dict, folio_client: FolioClient) -> FeederFile:
     converter = models_converter()
+
     feeder_file_instance = converter.structure(feeder_file, FeederFile)
 
     feeder_file_instance.add_expense_lines(folio_client)
@@ -90,13 +91,13 @@ def get_invoice(
     Retrieves Invoice, Invoice Lines, and Vendor
     """
     # Retrieves Invoice Details
-    invoice = folio_client.get(f"/invoice/invoices/{invoice_id}")
+    invoice = folio_client.folio_get(f"/invoice/invoices/{invoice_id}")
     # Retrieves Invoices Lines and Purchase Order
     invoice["lines"], exclude_invoice, exclusion_reason = _get_invoice_lines(
         invoice_id, folio_client
     )
     # Call to Okapi organization endpoint to see VAT is applicable
-    invoice["vendor"] = folio_client.get(
+    invoice["vendor"] = folio_client.folio_get(
         f"/organizations/organizations/{invoice['vendorId']}"
     )
     # Converts to Invoice Object

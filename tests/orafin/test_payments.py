@@ -193,9 +193,9 @@ def mock_folio_client():
             return invoice_dict
         # Invoice Lines
         if args[0].endswith("invoice-lines"):
-            if kwargs['params']['query'].startswith("invoiceId==e5662732"):
+            if kwargs['query_params']['query'].startswith("invoiceId==e5662732"):
                 payload = {"invoiceLines": amount_invoice_lines}
-            elif kwargs['params']['query'].startswith("invoiceId==zerosubtotal"):
+            elif kwargs['query_params']['query'].startswith("invoiceId==zerosubtotal"):
                 payload = {"invoiceLines": zero_subtotal_invoice_lines}
             else:
                 payload = {"invoiceLines": invoice_lines}
@@ -218,10 +218,10 @@ def mock_folio_client():
             return vendor
 
         if args[0].endswith("acquisition-methods"):
-            return {"acquisitionMethods": acquisition_methods}
+            return acquisition_methods
 
         if args[0].endswith("material-types"):
-            return {"mtypes": material_types}
+            return material_types
 
         # Ledger
         if args[0].endswith("ledgers"):
@@ -231,12 +231,12 @@ def mock_folio_client():
         if args[0].endswith("current-fiscal-year"):
             return {"code": "SUL2025"}
         if args[0].endswith("fiscal-years"):
-            if kwargs['params']['query'].startswith("code==SUL2025"):
+            if kwargs['query_params']['query'].startswith("code==SUL2025"):
                 return {"fiscalYears": fiscal_years}
         return {}
 
     mock_client = MagicMock()
-    mock_client.get = mock_get
+    mock_client.folio_get = mock_get
     return mock_client
 
 

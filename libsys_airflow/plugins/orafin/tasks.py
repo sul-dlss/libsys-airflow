@@ -6,7 +6,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 
 from libsys_airflow.plugins.orafin.emails import (
     generate_ap_error_report_email,

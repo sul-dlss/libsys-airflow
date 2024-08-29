@@ -155,7 +155,6 @@ def _upload_file(folio_client, filepath, upload_definition_id, file_definition_i
         payload = fo.read()
 
     with folio_client.get_folio_http_client() as httpx_client:
-
         result = httpx_client.post(url, headers=headers, data=payload)
 
     result.raise_for_status()

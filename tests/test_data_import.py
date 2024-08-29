@@ -143,8 +143,11 @@ def folio_client():
     }
 
     mock_client = MagicMock()
-    mock_client.post.side_effect = [upload_definition_resp, None]
-    mock_client.post_file.return_value = upload_file_resp
+    mock_client.okapi_url = "https://okapi.stanford.edu"
+    mock_client.httpx_client = MagicMock()
+    mock_client.httpx_client.post.return_value = upload_file_resp
+    mock_client.folio_post.side_effect = [upload_definition_resp, None]
+    mock_client.get_folio_http_client = lambda: mock_client.httpx_client
     return mock_client
 
 
@@ -183,7 +186,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             # 'upload_definition_id': '38f47152-c3c2-471c-b7e0-c9d024e47357',
         }
 
-    folio_client.post.assert_any_call(
+    folio_client.folio_post.assert_any_call(
         "/data-import/uploadDefinitions",
         {
             "fileDefinitions": [
@@ -192,11 +195,12 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             ]
         },
     )
-    folio_client.post_file.assert_any_call(
+
+    folio_client.httpx_client.assert_any_call(
         "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/files/8b5cc830-0c3d-496a-8472-3b98aa40d109",
         os.path.join(download_path, "0720230118_1.mrc"),
     )
-    folio_client.post_file.assert_called_with(
+    folio_client.httpx_client.assert_called_with(
         "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/files/9b5cc830-0c3d-496a-8472-3b98aa40d108",
         os.path.join(download_path, "0720230118_2.mrc"),
     )
@@ -242,7 +246,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
         },
     }
 
-    folio_client.post.assert_called_with(
+    folio_client.folio_post.assert_called_with(
         "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/processFiles",
         process_files_payload,
     )

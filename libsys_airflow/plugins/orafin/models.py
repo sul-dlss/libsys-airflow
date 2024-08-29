@@ -6,7 +6,7 @@ import pandas as pd
 from attrs import define
 from typing import List, Union
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 from libsys_airflow.plugins.folio.helpers.constants import expense_codes
 
 
@@ -407,15 +407,20 @@ class FeederFile:
 
         expense_codes_df = pd.DataFrame(expense_codes, dtype=object)
 
-        acquisition_methods = folio_client.get(
-            "/orders/acquisition-methods", params={"limit": 250}
+        acquisition_methods = folio_client.folio_get(
+            "/orders/acquisition-methods",
+            key='acquisitionMethods',
+            query_params={"limit": 250},
         )
-        for row in acquisition_methods['acquisitionMethods']:
+
+        for row in acquisition_methods:
             acq_methods_lookup[row['value']] = row['id']
 
-        material_types = folio_client.get("/material-types", params={"limit": 250})
+        material_types = folio_client.folio_get(
+            "/material-types", key="mtypes", query_params={"limit": 250}
+        )
 
-        for row in material_types['mtypes']:
+        for row in material_types:
             mtypes_lookup[row['name']] = row['id']
 
         expense_codes_df["acquisition method uuid"] = expense_codes_df[
