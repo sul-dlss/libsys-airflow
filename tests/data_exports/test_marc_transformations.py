@@ -503,7 +503,7 @@ def test_change_leader(tmp_path):
 
 
 def test_zip_marc_file(tmp_path):
-    marc_dir = tmp_path / "pod" / "updates"
+    marc_dir = tmp_path / "pod" / "marc-files" / "updates"
     marc_dir.mkdir(parents=True, exist_ok=True)
 
     marc_file = marc_dir / "20240509.xml"
@@ -532,7 +532,7 @@ def test_zip_marc_file(tmp_path):
 
 
 def test_zip_marc_files_not_pod(tmp_path):
-    marc_dir = tmp_path / "vendor" / "updates"
+    marc_dir = tmp_path / "vendor" / "marc-files" / "updates"
     marc_dir.mkdir(parents=True, exist_ok=True)
 
     marc_file = marc_dir / "20240509.xml"

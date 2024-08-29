@@ -165,3 +165,13 @@ def test_vendor_show_view(test_airflow_client, mock_db, mocker):  # noqa: F811
 
         assert 'Acme FTP' in rows[0].text
         assert 'Acme API' in rows[1].text
+
+
+def test_missing_vendor(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        response = test_airflow_client.get('/vendor_management/vendors/987')
+        assert response.status_code == 404
