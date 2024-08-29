@@ -3,6 +3,7 @@ import pathlib
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from airflow.decorators import task
 
@@ -22,7 +23,9 @@ with DAG(
     "data_export_purge_archived_files",
     default_args=default_args,
     start_date=datetime(2024, 5, 30),
-    schedule=timedelta(days=1, hours=9),
+    schedule=CronDataIntervalTimetable(
+        cron="30 5 * * *", timezone="America/Los_Angeles"
+    ),
     catchup=False,
     tags=["data export"],
 ) as dag:

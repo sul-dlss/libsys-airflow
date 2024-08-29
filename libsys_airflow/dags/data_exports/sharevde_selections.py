@@ -6,6 +6,7 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
@@ -32,22 +33,22 @@ default_args = {
 with DAG(
     "select_sharevde_records",
     default_args=default_args,
-    schedule=timedelta(
-        days=int(Variable.get("schedule_sharevde_days", 1)),
-        hours=int(Variable.get("schedule_sharevde_hours", 13)),
+    schedule=CronDataIntervalTimetable(
+        cron=Variable.get("select_sharevde", "0 20 * * *"),
+        timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "sharevde"],
     params={
         "from_date": Param(
-            f"{datetime.now().strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now() + timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now()).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
