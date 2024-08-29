@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from airflow.decorators import dag
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
@@ -29,7 +30,10 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=Variable.get("transmit_hathi", "0 10 * * *"),
+    schedule=CronDataIntervalTimetable(
+     cron=Variable.get("transmit_hathi", "0 3 * * *"),
+     timezone="America/Los_Angeles"
+    ),
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["data export", "hathi"],

@@ -6,6 +6,7 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
@@ -30,7 +31,10 @@ default_args = {
 with DAG(
     "select_gobi_records",
     default_args=default_args,
-    schedule=Variable.get("select_gobi", "03 6 * * TUE"),
+    schedule=CronDataIntervalTimetable(
+     cron=Variable.get("select_gobi", "30 22 * * TUE"),
+     timezone="America/Los_Angeles"
+    ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "gobi"],

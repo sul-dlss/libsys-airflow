@@ -8,6 +8,7 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
@@ -43,7 +44,10 @@ def compress_marc_files(marc_files: list):
 with DAG(
     "select_pod_records",
     default_args=default_args,
-    schedule=Variable.get("select_pod", "0 13 * * *"),
+    schedule=CronDataIntervalTimetable(
+     cron=Variable.get("select_pod", "0 22 * * *"),
+     timezone="America/Los_Angeles"
+    ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "pod"],

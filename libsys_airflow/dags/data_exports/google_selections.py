@@ -6,6 +6,7 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
@@ -32,7 +33,10 @@ default_args = {
 with DAG(
     "select_google_records",
     default_args=default_args,
-    schedule=Variable.get("select_google", "0 7 * * *"),
+    schedule=CronDataIntervalTimetable(
+     cron=Variable.get("select_google", "0 0 * * *"),
+     timezone="America/Los_Angeles"
+    ),
     start_date=datetime(2024, 2, 26),
     catchup=False,
     tags=["data export", "google"],
