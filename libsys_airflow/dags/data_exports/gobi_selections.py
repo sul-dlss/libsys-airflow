@@ -32,8 +32,8 @@ with DAG(
     "select_gobi_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("select_gobi", "30 22 * * TUE"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("select_gobi", "30 22 * * TUE"),
+        timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

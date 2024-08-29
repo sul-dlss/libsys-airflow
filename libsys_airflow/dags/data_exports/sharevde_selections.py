@@ -34,8 +34,8 @@ with DAG(
     "select_sharevde_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("select_sharevde", "0 20 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("select_sharevde", "0 20 * * *"),
+        timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

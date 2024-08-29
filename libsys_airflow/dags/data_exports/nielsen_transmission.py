@@ -31,8 +31,8 @@ default_args = {
 @dag(
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("transmit_nielsen", "0 4 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("transmit_nielsen", "0 4 * * *"),
+        timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 1, 1),
     catchup=False,

@@ -34,8 +34,7 @@ with DAG(
     "select_nielsen_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("select_nielsen", "0 2 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("select_nielsen", "0 2 * * *"), timezone="America/Los_Angeles"
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

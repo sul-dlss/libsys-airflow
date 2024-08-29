@@ -31,8 +31,7 @@ default_args = {
 @dag(
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("transmit_hathi", "0 3 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("transmit_hathi", "0 3 * * *"), timezone="America/Los_Angeles"
     ),
     start_date=datetime(2024, 1, 1),
     catchup=False,

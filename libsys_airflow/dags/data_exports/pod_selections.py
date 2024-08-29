@@ -45,8 +45,7 @@ with DAG(
     "select_pod_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("select_pod", "0 22 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("select_pod", "0 22 * * *"), timezone="America/Los_Angeles"
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

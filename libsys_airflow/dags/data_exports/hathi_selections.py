@@ -34,8 +34,7 @@ with DAG(
     "select_hathi_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-     cron=Variable.get("select_hathi", "0 1 * * *"),
-     timezone="America/Los_Angeles"
+        cron=Variable.get("select_hathi", "0 1 * * *"), timezone="America/Los_Angeles"
     ),
     start_date=datetime(2024, 2, 26),
     catchup=False,

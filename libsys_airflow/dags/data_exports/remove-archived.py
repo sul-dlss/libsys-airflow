@@ -24,7 +24,7 @@ with DAG(
     default_args=default_args,
     start_date=datetime(2024, 5, 30),
     schedule=CronDataIntervalTimetable(
-     cron="30 5 * * *", timezone="America/Los_Angeles"
+        cron="30 5 * * *", timezone="America/Los_Angeles"
     ),
     catchup=False,
     tags=["data export"],
