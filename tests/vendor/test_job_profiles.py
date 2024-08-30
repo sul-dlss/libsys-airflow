@@ -1,13 +1,13 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.vendor.job_profiles import job_profiles
 
 
 @pytest.fixture
 def folio_client():
-    job_profiles_resp = {
-        'jobProfiles': [
+    def mock_get(*args, **kwargs):
+        return [
             {
                 'id': '6409dcff-71fa-433a-bc6a-e70ad38a9604',
                 'name': 'Some job profile',
@@ -51,11 +51,10 @@ def folio_client():
                     'updatedByUserId': '00000000-0000-0000-0000-000000000000',
                 },
             },
-        ],
-        'totalRecords': 2,
-    }
-    mock_client = Mock()
-    mock_client.get.return_value = job_profiles_resp
+        ]
+
+    mock_client = MagicMock()
+    mock_client.folio_get = mock_get
     return mock_client
 
 
