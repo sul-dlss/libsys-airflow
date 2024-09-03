@@ -167,7 +167,7 @@ def zip_marc_file(marc_file: str, full_dump: bool = False):
         marc_path = pathlib.Path(marc_file)  # type: ignore
 
     # For now only compress POD files
-    vendor = marc_path.parent.parent.name
+    vendor = marc_path.parent.parent.parent.name
     compress_for = ['pod', 'full-dump']
     if not any(str in vendor for str in compress_for):
         return
