@@ -6,7 +6,7 @@ from datetime import datetime
 from airflow.api.common.trigger_dag import trigger_dag
 from airflow.models import Variable
 from flask_appbuilder import expose, BaseView
-from flask import request, redirect, url_for, flash, send_from_directory
+from flask import abort, request, redirect, url_for, flash, send_from_directory
 
 from libsys_airflow.plugins.vendor.job_profiles import (
     job_profiles,
@@ -84,6 +84,8 @@ class VendorManagementView(BaseView):
     @expose("/vendors/<int:vendor_id>")
     def vendor(self, vendor_id):
         vendor = Session().query(Vendor).get(vendor_id)
+        if vendor is None:
+            abort(404)
         return self.render_template("vendors/vendor.html", vendor=vendor)
 
     @expose("/vendors/<int:vendor_id>/interfaces", methods=["POST"])
@@ -112,6 +114,8 @@ class VendorManagementView(BaseView):
     @expose("/interfaces/<int:interface_id>")
     def interface(self, interface_id):
         interface = Session().query(VendorInterface).get(interface_id)
+        if interface is None:
+            abort(404)
         return self.render_template("vendors/interface.html", interface=interface)
 
     @expose("/interfaces/<int:interface_id>/edit", methods=['GET', 'POST'])
@@ -319,6 +323,8 @@ class VendorManagementView(BaseView):
                 file.loaded_history = file.loaded_history + [now.isoformat()]
 
             session.commit()
+        elif file is None:
+            abort(404)
         return self.render_template(
             "vendors/file.html", file=file, FileStatus=FileStatus
         )
