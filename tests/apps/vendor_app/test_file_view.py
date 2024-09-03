@@ -85,6 +85,16 @@ def test_file_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert expected_processing_time.time() == then.time()
 
 
+def test_missing_file(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        response = test_airflow_client.get('/vendor_management/files/1990')
+        assert response.status_code == 404
+
+
 def test_expected_processing_time(test_airflow_client, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
