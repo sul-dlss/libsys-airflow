@@ -34,7 +34,10 @@ default_args = {
 }
 
 
-def compress_marc_files(marc_files: list):
+def compress_marc_files(marc_file_list: dict):
+    marc_files = (
+        marc_file_list['new'] + marc_file_list['updates'] + marc_file_list['deletes']
+    )
     for marc_file in marc_files:
         stem = pathlib.Path(marc_file).suffix
         xml = marc_file.replace(stem, '.xml')
@@ -125,7 +128,9 @@ with DAG(
     transform_compress_marc_files = PythonOperator(
         task_id="transform_folio_marc_compress_files",
         python_callable=compress_marc_files,
-        op_kwargs={"marc_files": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"},
+        op_kwargs={
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+        },
     )
 
     finish_processing_marc = EmptyOperator(
