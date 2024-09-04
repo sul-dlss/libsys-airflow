@@ -196,6 +196,17 @@ def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert len(loaded.find_all('tr')) == 2
 
 
+def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        response = test_airflow_client.get('/vendor_management/interfaces/3007')
+        assert response.status_code == 404
+
+
 def test_interface_edit_view(
     test_airflow_client, mock_db, mocker, job_profiles  # noqa: F811
 ):
