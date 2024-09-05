@@ -1,5 +1,5 @@
-import pytest  # noqa
 import pathlib
+import pytest  # noqa
 
 import httpx
 import pymarc
@@ -36,10 +36,12 @@ def mock_vendor_marc_files(tmp_path, request):
     marc_file_dir.mkdir(parents=True)
     setup_files = {
         "filenames": [
-            "2024020314.gz",
+            "2024020314.xml.gz",
             "2024020314.xml",
             "2024030214.xml",
             "2024030214.txt",
+            "2024030214.mrc",
+            "2024020314.mrc",
         ]
     }
     files = []
@@ -332,8 +334,10 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="gobi")
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
-    related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
-    related_marc_file = related_marc_file + ".xml"
+    related_marc_file = (
+        pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
+    )
+    related_marc_file = related_marc_file + ".mrc"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
@@ -352,8 +356,10 @@ def test_archive_pod_files(tmp_path, mock_vendor_marc_files):
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="pod")
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
-    related_marc_file = pathlib.Path(transmitted_files["file_list"][0]).stem
-    related_marc_file = related_marc_file + ".xml"
+    related_marc_file = (
+        pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
+    )
+    related_marc_file = related_marc_file + ".mrc"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
