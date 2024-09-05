@@ -334,10 +334,10 @@ def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="gobi")
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
-    related_marc_file = (
+    base_file_name = (
         pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
     )
-    related_marc_file = related_marc_file + ".mrc"
+    related_marc_file = base_file_name + ".mrc"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
@@ -356,10 +356,10 @@ def test_archive_pod_files(tmp_path, mock_vendor_marc_files):
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="pod")
     assert len(transmitted_files["file_list"]) == 1
     archive_transmitted_data_task.function(transmitted_files["file_list"])
-    related_marc_file = (
+    base_file_name = (
         pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
     )
-    related_marc_file = related_marc_file + ".mrc"
+    related_marc_file = base_file_name + ".mrc"
     assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
     assert (archive_dir / pathlib.Path(related_marc_file)).exists()
     assert (archive_dir / instance_id_file1.name).exists()
