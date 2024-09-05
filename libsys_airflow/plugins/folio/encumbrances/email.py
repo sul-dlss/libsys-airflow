@@ -7,9 +7,15 @@ def email_log(**kwargs):
     library = kwargs.get("library")
     log_file = kwargs.get("log_file")
     devs_email = Variable.get("EMAIL_DEVS")
+    sul_email = Variable.get("EMAIL_ENC_SUL")
+    law_email = Variable.get("EMAIL_ENC_LAW")
+    lane_email = Variable.get("EMAIL_ENC_LANE")
 
     to_addresses = [
         devs_email,
+        sul_email,
+        law_email,
+        lane_email,
     ]
 
     with open(log_file, 'r') as fo:
