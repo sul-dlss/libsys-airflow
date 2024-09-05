@@ -1,5 +1,5 @@
-import pathlib
 import pytest  # noqa
+import pathlib
 
 import httpx
 import pymarc
