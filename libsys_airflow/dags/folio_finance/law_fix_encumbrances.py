@@ -28,7 +28,7 @@ with DAG(
     "fix_encumbrances_law",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron="00 4 * * MON",
+        cron=Variable.get("fix_encumbrances_law", "00 4 * * MON"),
         timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 8, 29),
