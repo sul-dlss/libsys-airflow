@@ -39,16 +39,16 @@ def mock_vendor_marc_files(tmp_path, request):
             "2024020314.xml.gz",
             "2024020314.xml",
             "2024030214.xml",
-            "2024030214.txt",
             "2024030214.mrc",
             "2024020314.mrc",
+            "2024030214.txt",
         ]
     }
     files = []
     for i, x in enumerate(setup_files['filenames']):
         file = pathlib.Path(f"{marc_file_dir}/{x}")
         file.touch()
-        if i in [0, 2, 3]:
+        if i in [0, 2, 5]:
             file.write_text("hello world")
         files.append(str(file))
     return {"file_list": files, "s3": False}
