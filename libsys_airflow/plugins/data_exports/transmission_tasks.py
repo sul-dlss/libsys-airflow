@@ -284,24 +284,19 @@ def archive_transmitted_data_task(files):
         archive_path.mkdir(exist_ok=True)
         archive_path = archive_path / original_transmitted_file_path.name
 
-        # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
-        instance_path = (
-            original_transmitted_file_path.parent.parent.parent
-            / f"instanceids/{kind}/{original_transmitted_file_path.stem}.csv"
-        )
-        instance_archive_path = archive_dir / kind / instance_path.name
-
-        marc_path = (
-            original_transmitted_file_path.parent
-            / f"{original_transmitted_file_path.stem}.xml"
-        )
-        marc_archive_path = archive_dir / kind / marc_path.name
-
         # move transmitted files (for GOBI this will be *.txt files; for POD this will be *.gz files)
         logger.info(
             f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
         )
         original_transmitted_file_path.replace(archive_path)
+
+        # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
+        # with_suffix('') will remove multiple extentions, e.g. .xml.gz
+        instance_path = (
+            original_transmitted_file_path.parent.parent.parent
+            / f"instanceids/{kind}/{original_transmitted_file_path.with_suffix('').stem}.csv"
+        )
+        instance_archive_path = archive_dir / kind / instance_path.name
 
         # move instance id files with same stem as transmitted filename
         if instance_path.exists():
@@ -309,6 +304,12 @@ def archive_transmitted_data_task(files):
                 f"Moving related instanceid file {instance_path} to {instance_archive_path}"
             )
             instance_path.replace(instance_archive_path)
+
+        marc_path = (
+            original_transmitted_file_path.parent
+            / f"{original_transmitted_file_path.with_suffix('').stem}.mrc"
+        )
+        marc_archive_path = archive_dir / kind / marc_path.name
 
         # move marc files with same stem as transmitted filename (when transmitted file is not *.xml)
         if marc_path.exists():
