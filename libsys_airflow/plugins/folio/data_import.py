@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import pathlib
@@ -148,7 +149,7 @@ def _upload_definition(folio_client, filenames):
 
 def _upload_file(folio_client, filepath, upload_definition_id, file_definition_id):
     url = f"{folio_client.okapi_url}/data-import/uploadDefinitions/{upload_definition_id}/files/{file_definition_id}"
-    headers = folio_client.okapi_headers()
+    headers = copy.deepcopy(folio_client.okapi_headers)
     headers["content-type"] = "application/octet-stream"
 
     with open(filepath, 'rb') as fo:
