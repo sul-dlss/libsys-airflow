@@ -4,19 +4,24 @@ from jinja2 import Template
 
 
 def email_log(**kwargs):
-    library = kwargs.get("library")
+    library = kwargs.get("library", "")
     log_file = kwargs.get("log_file")
-    devs_email = Variable.get("EMAIL_DEVS")
-    sul_email = Variable.get("EMAIL_ENC_SUL")
-    law_email = Variable.get("EMAIL_ENC_LAW")
-    lane_email = Variable.get("EMAIL_ENC_LANE")
+    devs_email = Variable.get("EMAIL_DEVS", "sul-unicorn-devs@lists.stanford.edu")
+    sul_email = Variable.get("EMAIL_ENC_SUL", "")
+    law_email = Variable.get("EMAIL_ENC_LAW", "")
+    lane_email = Variable.get("EMAIL_ENC_LANE", "")
 
     to_addresses = [
         devs_email,
-        sul_email,
-        law_email,
-        lane_email,
     ]
+
+    match library:
+        case "sul":
+            to_addresses.append(sul_email)
+        case "law":
+            to_addresses.append(law_email)
+        case "lane":
+            to_addresses.append(lane_email)
 
     with open(log_file, 'r') as fo:
         send_email(
