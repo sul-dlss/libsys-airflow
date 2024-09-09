@@ -54,4 +54,4 @@ def test_fix_encumbrances_log_file_params(
         library="foo",
     )
 
-    assert log_path.endswith(f"foo-scheduled__2024-07-29T19:00:00:00:00.log")
+    assert log_path.endswith("foo-scheduled__2024-07-29T19:00:00:00:00.log")
