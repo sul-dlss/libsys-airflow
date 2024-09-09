@@ -51,6 +51,7 @@ def test_fix_encumbrances_log_file_params(
         "password",
         airflow=tmp_path,
         task_instance=mock_task_instance,
+        library="foo",
     )
 
-    assert log_path.endswith("sul-scheduled__2024-07-29T19:00:00:00:00.log")
+    assert log_path.endswith("foo-scheduled__2024-07-29T19:00:00:00:00.log")

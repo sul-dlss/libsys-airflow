@@ -14,7 +14,8 @@ def fix_encumbrances_run(*args, **kwargs):
     airflow = kwargs.get("airflow", "/opt/airflow/")
     task_instance = kwargs["task_instance"]
     run_id = task_instance.run_id
-    log_path = pathlib.Path(airflow) / f"fix_encumbrances/sul-{run_id}.log"
+    library = kwargs.get("library", "")
+    log_path = pathlib.Path(airflow) / f"fix_encumbrances/{library}-{run_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     with log_path.open("w+", 1) as log:
