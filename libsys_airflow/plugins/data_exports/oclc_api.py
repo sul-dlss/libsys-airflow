@@ -488,7 +488,7 @@ class OCLCAPIWrapper(object):
             )
             match bib_create_result.status_code:
 
-                case 201:
+                case 200:
                     control_number = self.__extract_control_number_035__(
                         bib_create_result.content
                     )

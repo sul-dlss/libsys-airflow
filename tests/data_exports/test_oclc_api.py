@@ -366,7 +366,7 @@ def mock_httpx_client():
                         )
                     )
                     response = httpx.Response(
-                        status_code=201, content=record.as_marc21()
+                        status_code=200, content=record.as_marc21()
                     )
                 else:
                     record.add_field(
@@ -379,7 +379,7 @@ def mock_httpx_client():
                         )
                     )
                     response = httpx.Response(
-                        status_code=201, content=record.as_marc21()
+                        status_code=200, content=record.as_marc21()
                     )
 
         return response
