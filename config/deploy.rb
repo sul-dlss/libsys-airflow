@@ -65,6 +65,8 @@ namespace :db do
         GRANT ALL PRIVILEGES ON DATABASE airflow TO $DATABASE_USERNAME;
         SELECT 'CREATE DATABASE vendor_loads' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vendor_loads')\\gexec
         GRANT ALL PRIVILEGES ON DATABASE vendor_loads TO $DATABASE_USERNAME;
+        SELECT 'CREATE DATABASE digital_bookplates' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'digital_bookplates')\\gexec
+        GRANT ALL PRIVILEGES ON DATABASE digital_bookplates TO $DATABASE_USERNAME;
 SQL
      PSQL_ARGS
     end
@@ -75,21 +77,21 @@ namespace :alembic do
   desc 'Run Alembic database migrations'
   task :migrate do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic upgrade head"
+      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name vma upgrade head && poetry run alembic --name digital_bookplates upgrade head"
     end
   end
 
   desc 'Show current Alembic database migration'
   task :current do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic current"
+      execute "cd #{release_path} && source #{fetch(:venv)} && echo 'VMA' && poetry run alembic --name vma current && echo 'Digital Bookplates' && poetry run alembic --name digital_bookplates current"
     end
   end
 
   desc 'Show Alembic database migration history'
   task :history do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic history --verbose"
+      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name vma history --verbose && poetry run alembic --name digital_bookplates history --verbose"
     end
   end
 end
