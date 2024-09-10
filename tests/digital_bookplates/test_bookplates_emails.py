@@ -35,8 +35,23 @@ def mock_folio_variables(monkeypatch):
 @pytest.fixture
 def mock_bookplate_metadata():
     return {
-        "new": ["Fund name\tab123cd4567\timage_ab123cd4567.jp2\tTitle"],
-        "updated": ["Fund name\tab123cd4567\timage_ab123cd4567.jp2\tChanged Title"],
+        "new": [
+            {
+                "fund_name": "ABBOTT",
+                "druid": "ab123cd4567",
+                "filename": "image_ab123cd4567.jp2",
+                "title": "Title",
+            }
+        ],
+        "updated": [
+            {
+                "fund_name": "ABBOTT",
+                "druid": "ab123cd4567",
+                "filename": "image_ab123cd4567.jp2",
+                "title": "Changed Title",
+                "reason": "title changed",
+            }
+        ],
     }
 
 
@@ -69,15 +84,16 @@ def test_bookplates_metadata_email(
     assert headers[0].text == "New digital bookplates metadata"
     assert headers[1].text == "Updated digital bookplates metadata"
 
-    list_items = html_body.find_all("li")
-    assert (
-        list_items[0].text.strip()
-        == "Fund name\tab123cd4567\timage_ab123cd4567.jp2\tTitle"
-    )
-    assert (
-        list_items[1].text.strip()
-        == "Fund name\tab123cd4567\timage_ab123cd4567.jp2\tChanged Title"
-    )
+    tables = html_body.find_all("table")
+    new_trs = tables[0].find_all("tr")
+    assert len(new_trs) == 2
+    assert new_trs[0].find_all('th')[3].text.startswith("Title")
+    assert new_trs[1].find_all('td')[0].text.startswith("ABBOTT")
+
+    updated_trs = tables[1].find_all("tr")
+    assert len(updated_trs) == 2
+    assert updated_trs[0].find_all('th')[4].text.startswith("Reason")
+    assert updated_trs[1].find_all('td')[4].text.startswith("title change")
 
 
 def test_no_new_bookplates_metadata_email(
@@ -106,11 +122,12 @@ def test_no_new_bookplates_metadata_email(
     assert headers[0].text == "New digital bookplates metadata"
     assert headers[1].text == "Updated digital bookplates metadata"
 
-    list_items = html_body.find_all("li")
-    assert (
-        list_items[0].text.strip()
-        == "Fund name\tab123cd4567\timage_ab123cd4567.jp2\tChanged Title"
-    )
+    tables = html_body.find_all("table")
+    assert len(tables) == 1
+    updated_trs = tables[0].find_all("tr")
+    assert len(updated_trs) == 2
+    assert updated_trs[0].find_all('th')[3].text.startswith("Title")
+    assert updated_trs[1].find_all('td')[3].text.startswith("Changed Title")
 
 
 def test_no_updated_bookplates_metadata_email(
@@ -139,8 +156,5 @@ def test_no_updated_bookplates_metadata_email(
         html_body.find("p").text == "No updated digital bookplates metadata this run."
     )
 
-    list_items = html_body.find_all("li")
-    assert (
-        list_items[0].text.strip()
-        == "Fund name\tab123cd4567\timage_ab123cd4567.jp2\tTitle"
-    )
+    tables = html_body.find_all("table")
+    assert len(tables) == 1

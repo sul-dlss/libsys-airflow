@@ -16,25 +16,45 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
         """
         <h2>New digital bookplates metadata</h2>
         {% if new|length > 0 %}
-        <ul>
+        <table>
+          <tr>
+            <th>Fund Name</th>
+            <th>Druid</th>
+            <th>Filename</th>
+            <th>Title</th>
+          </tr>
         {% for row in new %}
-        <li>
-          {{ row }}
-        </li>
+          <tr>
+            <td>{{row["fund_name"]}}</td>
+            <td>{{row["druid"]}}</td>
+            <td>{{row["filename"]}}</td>
+            <td>{{row["title"]}}</td>
+          </tr>
         {% endfor %}
-        </ul>
+        </table>
         {% else %}
         <p>No new digital bookplates this run.</p>
         {% endif %}
         <h2>Updated digital bookplates metadata</h2>
         {% if updated|length > 0 %}
-        <ul>
+        <table>
+          <tr>
+            <th>Fund Name</th>
+            <th>Druid</th>
+            <th>Filename</th>
+            <th>Title</th>
+            <th>Reason</th>
+          </tr>
         {% for row in updated %}
-        <li>
-          {{ row }}
-        </li>
+          <tr>
+            <td>{{row["fund_name"]}}</td>
+            <td>{{row["druid"]}}</td>
+            <td>{{row["filename"]}}</td>
+            <td>{{row["title"]}}</td>
+            <td>{{row["reason"]}}</td>
+          </tr>
         {% endfor %}
-        </ul>
+        </table>
         {% else %}
         <p>No updated digital bookplates metadata this run.</p>
         {% endif %}
