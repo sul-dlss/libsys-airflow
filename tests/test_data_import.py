@@ -1,10 +1,13 @@
-import pytest  # noqa
-from datetime import datetime
-from unittest.mock import MagicMock
-from pytest_mock_resources import create_sqlite_fixture, Rows
-
 import os
 import shutil
+
+from datetime import datetime
+from unittest.mock import MagicMock
+
+import httpx
+import pytest  # noqa
+from pytest_mock_resources import create_sqlite_fixture, Rows
+
 
 from libsys_airflow.plugins.folio.data_import import (
     data_import,
@@ -75,38 +78,7 @@ def pg_hook(mocker, engine) -> PostgresHook:
     return mock_hook
 
 
-@pytest.fixture
-def folio_client():
-    upload_definition_resp = {
-        "id": "38f47152-c3c2-471c-b7e0-c9d024e47357",
-        "metaJobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
-        "status": "NEW",
-        "createDate": "2023-05-04T18:14:20.541+00:00",
-        "fileDefinitions": [
-            {
-                "id": "8b5cc830-0c3d-496a-8472-3b98aa40d109",
-                "name": "0720230118_1.mrc",
-                "status": "NEW",
-                "jobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
-                "uploadDefinitionId": "38f47152-c3c2-471c-b7e0-c9d024e47357",
-                "createDate": "2023-05-04T18:14:20.541+00:00",
-            },
-            {
-                "id": "9b5cc830-0c3d-496a-8472-3b98aa40d108",
-                "name": "0720230118_2.mrc",
-                "status": "NEW",
-                "jobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
-                "uploadDefinitionId": "38f47152-c3c2-471c-b7e0-c9d024e47357",
-                "createDate": "2023-05-04T18:14:20.541+00:00",
-            },
-        ],
-        "metadata": {
-            "createdDate": "2023-05-04T18:14:20.187+00:00",
-            "createdByUserId": "3e2ed889-52f2-45ce-8a30-8767266f07d2",
-            "updatedDate": "2023-05-04T18:14:20.187+00:00",
-            "updatedByUserId": "3e2ed889-52f2-45ce-8a30-8767266f07d2",
-        },
-    }
+def httpx_client():
     upload_file_resp = {
         "id": "38f47152-c3c2-471c-b7e0-c9d024e47357",
         "metaJobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
@@ -142,9 +114,50 @@ def folio_client():
         },
     }
 
+    def mock_post(request):
+        return httpx.Response(status_code=201, json=upload_file_resp)
+
+    return httpx.Client(transport=httpx.MockTransport(mock_post))
+
+
+@pytest.fixture
+def folio_client():
+    upload_definition_resp = {
+        "id": "38f47152-c3c2-471c-b7e0-c9d024e47357",
+        "metaJobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
+        "status": "NEW",
+        "createDate": "2023-05-04T18:14:20.541+00:00",
+        "fileDefinitions": [
+            {
+                "id": "8b5cc830-0c3d-496a-8472-3b98aa40d109",
+                "name": "0720230118_1.mrc",
+                "status": "NEW",
+                "jobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
+                "uploadDefinitionId": "38f47152-c3c2-471c-b7e0-c9d024e47357",
+                "createDate": "2023-05-04T18:14:20.541+00:00",
+            },
+            {
+                "id": "9b5cc830-0c3d-496a-8472-3b98aa40d108",
+                "name": "0720230118_2.mrc",
+                "status": "NEW",
+                "jobExecutionId": "4a20579d-0a8f-4fed-8cf9-7c6d9f1fb2ae",
+                "uploadDefinitionId": "38f47152-c3c2-471c-b7e0-c9d024e47357",
+                "createDate": "2023-05-04T18:14:20.541+00:00",
+            },
+        ],
+        "metadata": {
+            "createdDate": "2023-05-04T18:14:20.187+00:00",
+            "createdByUserId": "3e2ed889-52f2-45ce-8a30-8767266f07d2",
+            "updatedDate": "2023-05-04T18:14:20.187+00:00",
+            "updatedByUserId": "3e2ed889-52f2-45ce-8a30-8767266f07d2",
+        },
+    }
+
     mock_client = MagicMock()
-    mock_client.post.side_effect = [upload_definition_resp, None]
-    mock_client.post_file.return_value = upload_file_resp
+    mock_client.okapi_url = "https://okapi.stanford.edu"
+    mock_client.httpx_client = httpx_client
+    mock_client.folio_post.side_effect = [upload_definition_resp, None]
+    mock_client.get_folio_http_client = lambda: mock_client.httpx_client()
     return mock_client
 
 
@@ -183,7 +196,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
             # 'upload_definition_id': '38f47152-c3c2-471c-b7e0-c9d024e47357',
         }
 
-    folio_client.post.assert_any_call(
+    folio_client.folio_post.assert_any_call(
         "/data-import/uploadDefinitions",
         {
             "fileDefinitions": [
@@ -191,14 +204,6 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
                 {"name": "0720230118_2.mrc"},
             ]
         },
-    )
-    folio_client.post_file.assert_any_call(
-        "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/files/8b5cc830-0c3d-496a-8472-3b98aa40d109",
-        os.path.join(download_path, "0720230118_1.mrc"),
-    )
-    folio_client.post_file.assert_called_with(
-        "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/files/9b5cc830-0c3d-496a-8472-3b98aa40d108",
-        os.path.join(download_path, "0720230118_2.mrc"),
     )
 
     process_files_payload = {
@@ -242,7 +247,7 @@ def test_data_import(download_path, folio_client, pg_hook, mocker):
         },
     }
 
-    folio_client.post.assert_called_with(
+    folio_client.folio_post.assert_called_with(
         "/data-import/uploadDefinitions/38f47152-c3c2-471c-b7e0-c9d024e47357/processFiles",
         process_files_payload,
     )

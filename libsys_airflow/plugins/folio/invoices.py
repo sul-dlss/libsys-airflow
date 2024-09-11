@@ -5,7 +5,7 @@ import httpx
 from airflow.decorators import task
 from airflow.models import Variable
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,12 @@ def _get_ids_from_vouchers(folio_query: str, folio_client: FolioClient) -> list:
     """
     Returns all invoice Ids from vouchers given query parameter
     """
-    vouchers = folio_client.get(
-        "/voucher/vouchers", params={"query": folio_query, "limit": 500}
+    vouchers = folio_client.folio_get(
+        "/voucher/vouchers",
+        key="vouchers",
+        query_params={"query": folio_query, "limit": 500},
     )
-    return [row.get("invoiceId") for row in vouchers["vouchers"]]
+    return [row.get("invoiceId") for row in vouchers]
 
 
 def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) -> dict:
@@ -40,26 +42,23 @@ def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) ->
     success, failures = [], []
     for invoice in invoice_ids:
         logger.info(f"Processing Invoice {invoice['id']}")
-        voucher_result = folio_client.get(
+        voucher_result = folio_client.folio_get(
             f"/voucher-storage/vouchers?query=(invoiceId=={invoice['id']})"
         )
         for voucher in voucher_result.get("vouchers", []):
             voucher_id = voucher["id"]
             voucher["disbursementNumber"] = "Pending"
-            put_result = httpx.put(
-                f"{folio_client.okapi_url}/voucher-storage/vouchers/{voucher_id}",
-                headers=folio_client.okapi_headers,
-                json=voucher,
-            )
-            if put_result.status_code == 204:
+            try:
+                folio_client.folio_put(
+                    f"/voucher-storage/vouchers/{voucher_id}",
+                    payload=voucher,
+                )
                 logger.info(
                     f"Successfully set disbursementNumber for voucher {voucher_id}"
                 )
                 success.append(voucher_id)
-            else:
-                logger.error(
-                    f"Failed to update {voucher_id} HTTP Error {put_result.status_code} {put_result.text}"
-                )
+            except httpx.HTTPError as e:
+                logger.error(f"Failed to update {voucher_id} HTTP Error {e}")
                 failures.append(voucher_id)
     return {"success": success, "failures": failures}
 

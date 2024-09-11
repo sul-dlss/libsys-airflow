@@ -7,7 +7,7 @@ from libsys_airflow.plugins.folio.invoices import (
     _get_ids_from_vouchers,
 )
 
-vouchers = {"vouchers": [{"invoiceId": 'a6452c96-53ef-4e51-bd7b-aa67ac971133'}]}
+vouchers = [{"invoiceId": 'a6452c96-53ef-4e51-bd7b-aa67ac971133'}]
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def mock_folio_client():
         return vouchers
 
     mock_client = MagicMock()
-    mock_client.get = mock_get
+    mock_client.folio_get = mock_get
     return mock_client
 
 

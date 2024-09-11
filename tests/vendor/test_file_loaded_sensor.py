@@ -119,7 +119,7 @@ def folio_client(request):
         "userId": "c9db5d7a-e1d4-11e8-9f32-f2801f1b9fd1",
     }
     mock_client = Mock()
-    mock_client.get.return_value = job_execution_resp
+    mock_client.folio_get.return_value = job_execution_resp
     return mock_client
 
 

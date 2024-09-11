@@ -1,7 +1,7 @@
 from operator import itemgetter
 
 from airflow.models import Variable
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 
 
 def job_profiles(folio_client=None) -> list:
@@ -16,12 +16,13 @@ def job_profiles(folio_client=None) -> list:
             Variable.get("FOLIO_PASSWORD"),
         )
 
-    job_profiles_resp = folio_client.get(
-        "/data-import-profiles/jobProfiles", params={"limit": 250}
+    job_profiles_resp = folio_client.folio_get(
+        "/data-import-profiles/jobProfiles",
+        key="jobProfiles",
+        query_params={"limit": 250},
     )
     job_profiles = [
-        {"id": profile["id"], "name": profile["name"]}
-        for profile in job_profiles_resp["jobProfiles"]
+        {"id": profile["id"], "name": profile["name"]} for profile in job_profiles_resp
     ]
 
     return sorted(job_profiles, key=itemgetter("name"))

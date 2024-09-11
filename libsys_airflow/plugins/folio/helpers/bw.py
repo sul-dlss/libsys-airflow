@@ -90,7 +90,7 @@ def add_admin_notes(note: str, task_instance, folio_client):
         task_ids="new_bw_record", key="success", default=[]
     ):
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
-        holdings_record = folio_client.get(holdings_endpoint)
+        holdings_record = folio_client.folio_get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
         folio_client.put(holdings_endpoint, holdings_record)
 
@@ -151,24 +151,28 @@ def create_bw_record(**kwargs) -> dict:
     holdings_hrid = kwargs["holdings_hrid"]
     barcode = kwargs["barcode"]
 
-    item_result = folio_client.get(
-        "/inventory/items", params={"query": f"""(barcode=="{barcode}")"""}
+    item_result = folio_client.folio_get(
+        "/inventory/items",
+        key="items",
+        query_params={"query": f"""(barcode=="{barcode}")"""},
     )
 
-    if len(item_result['items']) < 1:
+    if len(item_result) < 1:
         logger.info(f"No items found for barcode {barcode}")
         return {}
 
-    holdings_result = folio_client.get(
-        "/holdings-storage/holdings", params={"query": f"""(hrid=="{holdings_hrid}")"""}
+    holdings_result = folio_client.folio_get(
+        "/holdings-storage/holdings",
+        key="holdingsRecords",
+        query_params={"query": f"""(hrid=="{holdings_hrid}")"""},
     )
 
-    if len(holdings_result["holdingsRecords"]) < 1:
+    if len(holdings_result) < 1:
         logger.info(f"No Holdings found for HRID {holdings_hrid}")
         return {}
 
-    item_id = item_result["items"][0]["id"]
-    holdings_id = holdings_result["holdingsRecords"][0]["id"]
+    item_id = item_result[0]["id"]
+    holdings_id = holdings_result[0]["id"]
 
     return {"holdingsRecordId": holdings_id, "itemId": item_id}
 
@@ -178,7 +182,7 @@ def post_bw_record(**kwargs):
     record = kwargs["bw_parts"]
     task_instance = kwargs["task_instance"]
     try:
-        post_result = folio_client.post(
+        post_result = folio_client.folio_post(
             "/inventory-storage/bound-with-parts",
             payload=record,
         )

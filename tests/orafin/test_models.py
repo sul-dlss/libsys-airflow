@@ -92,13 +92,13 @@ def mock_folio_client():
     def mock_get(*args, **kwargs):
         output = {}
         if args[0].endswith("acquisition-methods"):
-            output = {"acquisitionMethods": acquisition_methods}
+            output = acquisition_methods
         if args[0].endswith("material-types"):
-            output = {"mtypes": mtypes}
+            output = mtypes
         return output
 
     mock_client = MagicMock()
-    mock_client.get = mock_get
+    mock_client.folio_get = mock_get
     return mock_client
 
 

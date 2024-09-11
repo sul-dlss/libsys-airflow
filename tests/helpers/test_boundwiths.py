@@ -97,18 +97,16 @@ def mock_task_instance(mocker):
 def mock_folio_client(mocker):
     def mock_get(*args, **kwargs):
         if args[0] == "/inventory/items":
-            query = kwargs.get("params").get("query")
+            query = kwargs.get("query_params").get("query")
             if "23456" in query:
-                return {"items": []}
+                return []
             if "00032200" in query:
-                return {"items": [{"id": "cc8dc750-3ca9-4cbc-a94a-709cd78d3d49"}]}
+                return [{"id": "cc8dc750-3ca9-4cbc-a94a-709cd78d3d49"}]
         if args[0] == "/holdings-storage/holdings":
-            query = kwargs.get("params").get("query")
-            output = {"holdingsRecords": []}
+            query = kwargs.get("query_params").get("query")
+            output = []
             if "ah1598042_1" in query:
-                output["holdingsRecords"].append(
-                    {"id": "d32d28d3-e14c-4b69-8993-ce8640a91dc1"}
-                )
+                output.append({"id": "d32d28d3-e14c-4b69-8993-ce8640a91dc1"})
             return output
         return {"administrativeNotes": []}
 
@@ -124,9 +122,9 @@ def mock_folio_client(mocker):
         return {"id": "71bd1912-d0e0-4de5-831a-1615affe3e81"}
 
     mock_client = mocker.MagicMock()
-    mock_client.get = mock_get
-    mock_client.put = mock_put
-    mock_client.post = mock_post
+    mock_client.folio_get = mock_get
+    mock_client.folio_put = mock_put
+    mock_client.folio_post = mock_post
     return mock_client
 
 

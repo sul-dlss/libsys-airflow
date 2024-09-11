@@ -2,7 +2,7 @@ import logging
 
 from airflow.models import Variable
 
-from libsys_airflow.plugins.folio.folio_client import FolioClient
+from folioclient import FolioClient
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,10 @@ def interface_info(interface_id: str, folio_client=None) -> dict:
             Variable.get("FOLIO_PASSWORD"),
         )
 
-    interface_resp = folio_client.get(
+    interface_resp = folio_client.folio_get(
         f"/organizations-storage/interfaces/{interface_id}"
     )
-    credential_resp = folio_client.get(
+    credential_resp = folio_client.folio_get(
         f"/organizations-storage/interfaces/{interface_id}/credentials"
     )
     return {
