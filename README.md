@@ -181,6 +181,13 @@ database being used by Okapi.
 
 ## Development
 
+### Support for Multiple Databases with Alembic
+We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
+these [directions](https://alembic.sqlalchemy.org/en/latest/cookbook.html#run-multiple-alembic-environments-from-one-ini-file).
+
+To run any `alembic` commands you need add the `--name` parameter followed by `vma` for the Vendor Management database
+and `digital_bookplates` for the Digital Bookplates database.
+
 ### Vendor load plugin
 
 Using and developing the vendor load plug in requires its own database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
@@ -217,9 +224,9 @@ module and then run the following steps:
 2. Run `dotenv run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
 3. After the migration script is created, run `dotenv run alembic upgrade head` to apply your latest changes to the database.
 
-If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
+If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic --name vma upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
 
-To fix multiple heads: `poetry run alembic merge heads -m "merge <revision 1> and <revision 2>"`
+To fix multiple heads: `poetry run alembic --name vma merge heads -m "merge <revision 1> and <revision 2>"`
 
 #### Seeding Vendors
 

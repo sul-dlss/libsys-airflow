@@ -116,7 +116,7 @@ services:
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
-      POSTGRES_MULTIPLE_DATABASES: airflow,vendor_loads
+      POSTGRES_MULTIPLE_DATABASES: airflow,vendor_loads,digital_bookplates
     ports:
       - 5432:5432
     volumes:
