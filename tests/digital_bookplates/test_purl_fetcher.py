@@ -46,5 +46,5 @@ def test_purl_fetch_list(mock_api, mocker, mock_purl_fetcher_api_response):
     test_druids = fetch_druids.function()
 
     assert len(test_druids) == 2
-    assert test_druids[0] == "https://purl.stanford.edu/bm244yj4074.xml"
-    assert test_druids[1] == "https://purl.stanford.edu/bt942vy4674.xml"
+    assert test_druids[0] == "https://purl.stanford.edu/bm244yj4074.json"
+    assert test_druids[1] == "https://purl.stanford.edu/bt942vy4674.json"

@@ -11,7 +11,7 @@ def fetch_druids() -> list:
     druids = []
     for druid in child_druids:
         druid_id = druid.split(":")[-1]
-        druids.append(f"https://purl.stanford.edu/{druid_id}.xml")
+        druids.append(f"https://purl.stanford.edu/{druid_id}.json")
 
     return druids
 
