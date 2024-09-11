@@ -91,7 +91,6 @@ cap alembic:migrate  # Run Alembic database migrations
 #### Setup the list of databases for the capistrano database setup and migration tasks
 
 In `config/deploy.rb` at the top, add new databases to the list of alembic_dbs:
-
 ```
 set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', 'another_new_db']
 ```
@@ -117,50 +116,12 @@ set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', 'another_new_db'
 
 This will stop and remove the docker images for the previous release and start up a new one.
 
-## Running Airflow in Kubernetes Cluster
-```
-helm -n {namespace} upgrade --install -f helm-airflow.yaml airflow apache-airflow/airflow
-```
-Then wait for all of the pods to become ready.
-
-For logging into the webserver locally:
-Find out the webserver pod id:
-```
-kubectl -n {namespace} get pods | grep airflow-webserver
-```
-
-Then use that to do a port-forward:
-```
-kubectl -n {namespace} port-forward airflow-webserver-<instance-id> 8080:8080
-```
-
 ## FOLIO Plugin
 
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
 by running `cap {env} airflow:webserver` or ssh into the server and run `docker compose restart airflow-webserver`
 to see changes in the running Airflow environment.
-
-## Running the DAGs to load Folio Inventory
-
-### Optionally turn off archiving for bulk loading
-```
-Issue a [puppet PR](https://github.com/sul-dlss/puppet) to set `archive_command` to `/bin/true`
-and to turn off load balancing, set pgpool's `load_balance_mode` to `off`
-```
-BELOW IS DEPRECATED
-```
-echo $OKAPI_PASSWORD
-ssh folio@$PG_DB_HOST
-psql -h localhost -U okapi
-alter system set archive_mode=off;
-ksu
-systemctl restart postgresql
-```
-
-The `optimistic_locking_management` DAG requires a Postgres Airflow
-[connection](https://airflow.apache.org/docs/apache-airflow/stable/concepts/connections.html) with the host, login, and password fields matching the
-database being used by Okapi.
 
 ## Development
 
