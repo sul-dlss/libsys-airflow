@@ -185,8 +185,8 @@ database being used by Okapi.
 We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
 these [directions](https://alembic.sqlalchemy.org/en/latest/cookbook.html#run-multiple-alembic-environments-from-one-ini-file).
 
-To run any `alembic` commands you need add the `--name` parameter followed by `vma` for the Vendor Management and 
-`digital_bookplates` for the Digital Bookplates.
+To run any `alembic` commands you need add the `--name` parameter followed by `vma` for the Vendor Management database
+and `digital_bookplates` for the Digital Bookplates database.
 
 ### Vendor load plugin
 
