@@ -21,6 +21,6 @@ class DigitalBookplate(Model):  # type: ignore
     created = Column(DateTime, nullable=False)
     updated = Column(DateTime, nullable=False)
     druid = Column(String, unique=True, nullable=False)
-    name = Column(String, unique=True, nullable=True)
+    fund_name = Column(String, unique=True, nullable=True)
     image_filename = Column(String, nullable=False)
     title = Column(String, nullable=False)

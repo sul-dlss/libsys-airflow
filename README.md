@@ -221,7 +221,7 @@ To generate a migration script, first make the changes in the `models.py`
 module and then run the following steps:
 
 1. Set your shell to use the local poetry virtual environment: `poetry shell`
-2. Run `dotenv run alembic revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
+2. Run `dotenv run alembic --name vma revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
 3. After the migration script is created, run `dotenv run alembic upgrade head` to apply your latest changes to the database.
 
 If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic --name vma upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
