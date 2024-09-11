@@ -80,6 +80,7 @@ cap airflow:stop_release   # stop old release and remove all old running docker 
 cap airflow:webserver      # restart webserver
 ```
 
+#### Setup the list of databases for the database setup and migration tasks run via a capistrano deploy
 List all the Alembic database migration tasks (see `Database migrations` below for more) using `cap -AT alembic`:
 
 ```
@@ -88,12 +89,16 @@ cap alembic:history  # Show Alembic database migration history
 cap alembic:migrate  # Run Alembic database migrations
 ```
 
-#### Setup the list of databases for the capistrano database setup and migration tasks
+In `config/deploy.rb` at the top, add new default database set to the list of alembic_dbs:
+```
+set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', '...']
+```
 
-In `config/deploy.rb` at the top, add new databases to the list of alembic_dbs:
+Or alternately, run any alembic task with the ALEMBIC_DBS environment variable set, e.g.
 ```
-set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', 'another_new_db']
+ALEMBIC_DBS='new_database, new_database2' cap dev alembic:migrate
 ```
+
 
 ### Do the first time you bring up Libsys-Airflow:
 
