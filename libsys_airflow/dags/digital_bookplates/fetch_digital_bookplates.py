@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag
+from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.purl_fetcher import fetch_druids
 
@@ -17,7 +19,10 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=None,
+    schedule=CronDataIntervalTimetable(
+        cron=Variable.get("digital_bookplates_run", "00 7 * * WED"),
+        timezone="America/Los_Angeles",
+    ),
     start_date=datetime(2024, 9, 9),
     catchup=False,
     tags=["digital bookplates"],
