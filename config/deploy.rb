@@ -7,6 +7,10 @@ set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
 set :alembic_dbs, ['vma', 'digital_bookplates']
 
+def alembic_dbs
+  ENV['ALEMBIC_DBS']&.gsub(/\s/, '')&.split(',') || fetch(:alembic_dbs)
+end
+
 # Default branch is :main
 ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
 
@@ -59,7 +63,7 @@ end
 namespace :db do
 desc 'Create needed databases'
   task :create do
-    ['airflow'].concat(fetch(:alembic_dbs)).each do |database|
+    ['airflow'].concat(alembic_dbs).each do |database|
       on roles(:app) do
         execute :psql, <<~PSQL_ARGS
           -v ON_ERROR_STOP=1 postgresql://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOSTNAME <<-SQL
@@ -75,16 +79,17 @@ end
 namespace :alembic do
   desc 'Run Alembic database migrations'
   task :migrate do
-    fetch(:alembic_dbs).each do |database|
+    alembic_dbs.each do |database|
       on roles(:app) do
-        execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} upgrade head"
+        puts database
+        # execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} upgrade head"
       end
     end
   end
 
   desc 'Show current Alembic database migration'
   task :current do
-    fetch(:alembic_dbs).each do |database|
+    alembic_dbs.each do |database|
       on roles(:app) do
         execute "cd #{release_path} && source #{fetch(:venv)} && echo #{database.upcase} && poetry run alembic --name #{database} current"
       end
@@ -93,7 +98,7 @@ namespace :alembic do
 
   desc 'Show Alembic database migration history'
   task :history do
-    fetch(:alembic_dbs).each do |database|
+    alembic_dbs.each do |database|
       on roles(:app) do
         execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} history --verbose"
       end
