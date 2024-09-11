@@ -5,6 +5,7 @@ set :repo_url, 'https://github.com/sul-dlss/libsys-airflow.git'
 set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
+set :alembic_dbs, ['vma', 'digital_bookplates']
 
 # Default branch is :main
 ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
@@ -56,19 +57,17 @@ namespace :deploy do
 end
 
 namespace :db do
-  desc 'Create needed databases'
+desc 'Create needed databases'
   task :create do
-    on roles(:app) do
-      execute :psql, <<~PSQL_ARGS
-        -v ON_ERROR_STOP=1 postgresql://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOSTNAME <<-SQL
-        SELECT 'CREATE DATABASE airflow' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'airflow')\\gexec
-        GRANT ALL PRIVILEGES ON DATABASE airflow TO $DATABASE_USERNAME;
-        SELECT 'CREATE DATABASE vendor_loads' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vendor_loads')\\gexec
-        GRANT ALL PRIVILEGES ON DATABASE vendor_loads TO $DATABASE_USERNAME;
-        SELECT 'CREATE DATABASE digital_bookplates' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'digital_bookplates')\\gexec
-        GRANT ALL PRIVILEGES ON DATABASE digital_bookplates TO $DATABASE_USERNAME;
-SQL
-     PSQL_ARGS
+    ['airflow'].concat(fetch(:alembic_dbs)).each do |database|
+      on roles(:app) do
+        execute :psql, <<~PSQL_ARGS
+          -v ON_ERROR_STOP=1 postgresql://$DATABASE_USERNAME:$DATABASE_PASSWORD@$DATABASE_HOSTNAME <<-SQL
+          SELECT 'CREATE DATABASE #{database}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '#{database}')\\gexec
+          GRANT ALL PRIVILEGES ON DATABASE #{database} TO $DATABASE_USERNAME;
+  SQL
+      PSQL_ARGS
+      end
     end
   end
 end
@@ -76,22 +75,28 @@ end
 namespace :alembic do
   desc 'Run Alembic database migrations'
   task :migrate do
-    on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name vma upgrade head && poetry run alembic --name digital_bookplates upgrade head"
+    fetch(:alembic_dbs).each do |database|
+      on roles(:app) do
+        execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} upgrade head"
+      end
     end
   end
 
   desc 'Show current Alembic database migration'
   task :current do
-    on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && echo 'VMA' && poetry run alembic --name vma current && echo 'Digital Bookplates' && poetry run alembic --name digital_bookplates current"
+    fetch(:alembic_dbs).each do |database|
+      on roles(:app) do
+        execute "cd #{release_path} && source #{fetch(:venv)} && echo #{database.upcase} && poetry run alembic --name #{database} current"
+      end
     end
   end
 
   desc 'Show Alembic database migration history'
   task :history do
-    on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name vma history --verbose && poetry run alembic --name digital_bookplates history --verbose"
+    fetch(:alembic_dbs).each do |database|
+      on roles(:app) do
+        execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} history --verbose"
+      end
     end
   end
 end
