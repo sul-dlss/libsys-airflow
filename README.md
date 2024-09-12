@@ -24,29 +24,14 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 > docker daemon, we recommend at least 5GB.
 
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
-2. Set-up the [migration](https://github.com/sul-dlss/folio_migration) submodule with these commands:
-   ```
-   $ git submodule init
-   $ git submodule update
-   $ chmod +x migration/create_folder_structure.sh
-   $ ./migration/create_folder_structure.sh
-   ```
-3. Start up docker locally.
-4. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
-5. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
+1. Start up docker locally.
+1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
+1. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
 
-- `AIRFLOW_VAR_AEON_URL`
-- `AIRFLOW_VAR_AEON_KEY`
-- `AIRFLOW_VAR_AEON_SOURCE_QUEUE_ID`
-- `AIRFLOW_VAR_AEON_FINAL_QUEUE`
-- `AIRFLOW_VAR_LOBBY_URL`
-- `AIRFLOW_VAR_LOBBY_KEY`
 - `AIRFLOW_VAR_OKAPI_URL`
 - `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
-- `AIRFLOW_VAR_MIGRATION_USER`
-- `AIRFLOW_VAR_MIGRATION_PASSWORD`
 
   These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
 
@@ -70,12 +55,6 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 9. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
 10. Access Airflow locally at http://localhost:8080. The default username and password are both `airflow`.
 11. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
-
-### For FOLIO migration loads
-
-Make sure the environmental variables `AIRFLOW_VAR_MIGRATION_USER`
-and `AIRFLOW_VAR_MIGRATION_PASSWORD` are set in Vault to a
-user with appropriate rights (typically we've used an administrative user)
 
 ## Deploying
 
@@ -101,6 +80,7 @@ cap airflow:stop_release   # stop old release and remove all old running docker 
 cap airflow:webserver      # restart webserver
 ```
 
+#### Setup the list of databases for the database setup and migration tasks run via a capistrano deploy
 List all the Alembic database migration tasks (see `Database migrations` below for more) using `cap -AT alembic`:
 
 ```
@@ -108,6 +88,17 @@ cap alembic:current  # Show current Alembic database migration
 cap alembic:history  # Show Alembic database migration history
 cap alembic:migrate  # Run Alembic database migrations
 ```
+
+In `config/deploy.rb` at the top, add new default database set to the list of alembic_dbs:
+```
+set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', '...']
+```
+
+Or alternately, run any alembic task with the ALEMBIC_DBS environment variable set, e.g.
+```
+ALEMBIC_DBS='new_database, new_database2' cap dev alembic:migrate
+```
+
 
 ### Do the first time you bring up Libsys-Airflow:
 
@@ -130,54 +121,12 @@ cap alembic:migrate  # Run Alembic database migrations
 
 This will stop and remove the docker images for the previous release and start up a new one.
 
-## Running Airflow in Kubernetes Cluster
-```
-helm -n {namespace} upgrade --install -f helm-airflow.yaml airflow apache-airflow/airflow
-```
-Then wait for all of the pods to become ready.
-
-For logging into the webserver locally:
-Find out the webserver pod id:
-```
-kubectl -n {namespace} get pods | grep airflow-webserver
-```
-
-Then use that to do a port-forward:
-```
-kubectl -n {namespace} port-forward airflow-webserver-<instance-id> 8080:8080
-```
-
-### For Aeon and Lobbytrack API calls
-
-1. In the Airflow UI under Admin > Variables, import the `aeon-variables.json` and the `lobbytrack-variables.json` files from [shared_configs](https://github.com/sul-dlss/shared_configs).
-
 ## FOLIO Plugin
 
 All FOLIO related code should be in the `folio` plugin. When developing
 code in the plugin, you'll need to restart the `airflow-webserver` container
 by running `cap {env} airflow:webserver` or ssh into the server and run `docker compose restart airflow-webserver`
 to see changes in the running Airflow environment.
-
-## Running the DAGs to load Folio Inventory
-
-### Optionally turn off archiving for bulk loading
-```
-Issue a [puppet PR](https://github.com/sul-dlss/puppet) to set `archive_command` to `/bin/true`
-and to turn off load balancing, set pgpool's `load_balance_mode` to `off`
-```
-BELOW IS DEPRECATED
-```
-echo $OKAPI_PASSWORD
-ssh folio@$PG_DB_HOST
-psql -h localhost -U okapi
-alter system set archive_mode=off;
-ksu
-systemctl restart postgresql
-```
-
-The `optimistic_locking_management` DAG requires a Postgres Airflow
-[connection](https://airflow.apache.org/docs/apache-airflow/stable/concepts/connections.html) with the host, login, and password fields matching the
-database being used by Okapi.
 
 ## Development
 
