@@ -15,7 +15,7 @@ rows = Rows(
         created=datetime.datetime(2024, 9, 9, 12, 15, 0, 733715),
         updated=datetime.datetime(2024, 9, 9, 12, 15, 0, 733715),
         druid="kp761xz4568",
-        name="ASHENR",
+        fund_name="ASHENR",
         image_filename="dp698zx8237_00_0001.jp2",
         title="Ruth Geraldine Ashen Memorial Book Fund",
     ),
@@ -25,7 +25,7 @@ rows = Rows(
         updated=datetime.datetime(2024, 9, 10, 17, 16, 15, 986798),
         druid="gc698jf6425",
         image_filename="gc698jf6425_00_0001.jp2",
-        name="RHOADES",
+        fund_name="RHOADES",
         title="John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
     ),
     DigitalBookplate(
@@ -33,7 +33,7 @@ rows = Rows(
         created=datetime.datetime(2024, 9, 11, 17, 16, 15, 986798),
         updated=datetime.datetime(2024, 9, 11, 17, 16, 15, 986798),
         druid="ab123xy4567",
-        name=None,
+        fund_name=None,
         image_filename="ab123xy4567_00_0001.jp2",
         title="Alfred E. Newman Magazine Fund for Humor Studies",
     ),
@@ -55,9 +55,9 @@ def test_digital_bookplates_retrival(pg_hook):
     with Session(pg_hook()) as session:
         book_plates = session.query(DigitalBookplate).all()
 
-        assert book_plates[0].name == "ASHENR"
+        assert book_plates[0].fund_name == "ASHENR"
         assert book_plates[1].druid == "gc698jf6425"
-        assert book_plates[2].name is None
+        assert book_plates[2].fund_name is None
         assert book_plates[2].title.startswith(
             "Alfred E. Newman Magazine Fund for Humor Studies"
         )
