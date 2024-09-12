@@ -81,8 +81,7 @@ namespace :alembic do
   task :migrate do
     alembic_dbs.each do |database|
       on roles(:app) do
-        puts database
-        # execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} upgrade head"
+        execute "cd #{release_path} && source #{fetch(:venv)} && poetry run alembic --name #{database} upgrade head"
       end
     end
   end
