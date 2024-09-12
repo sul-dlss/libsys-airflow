@@ -58,7 +58,8 @@ def _child_druid(x):
 
 
 def _get_druid_json(druid_url: str) -> dict:
-    druid_result = httpx.get(druid_url, timeout=30)
+    client = httpx.Client()
+    druid_result = client.get(druid_url, timeout=30)
     druid_result.raise_for_status()
     return druid_result.json()
 
