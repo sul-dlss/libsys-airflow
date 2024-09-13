@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task_group
 from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
+    add_update_model,
     extract_bookplate_metadata,
     fetch_druids,
 )
@@ -18,6 +19,12 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
+
+
+@task_group(group_id="retrieve-process-db")
+def extract_db_process_group(druid_url: str):
+    metadata = extract_bookplate_metadata(druid_url)
+    add_update_model(metadata)
 
 
 @dag(
@@ -38,13 +45,11 @@ def fetch_digital_bookplates():
 
     fetch_bookplate_purls = fetch_druids()
 
-    bookplate_metadata = extract_bookplate_metadata.expand(
-        druid_url=fetch_bookplate_purls
-    )
+    db_results = extract_db_process_group.expand(druid_url=fetch_bookplate_purls)
 
-    start >> fetch_bookplate_purls
+    start >> fetch_bookplate_purls >> db_results
 
-    bookplate_metadata >> end
+    db_results >> end
 
 
 fetch_digital_bookplates()
