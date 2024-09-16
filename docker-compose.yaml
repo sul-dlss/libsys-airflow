@@ -60,7 +60,7 @@ x-airflow-common:
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE: 'true'
     AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
@@ -70,6 +70,7 @@ x-airflow-common:
     AIRFLOW_VAR_FOLIO_PASSWORD: ${AIRFLOW_VAR_FOLIO_PASSWORD}
     AIRFLOW_VAR_OKAPI_URL: ${AIRFLOW_VAR_OKAPI_URL}
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://airflow:airflow@postgres/vendor_loads
+    AIRFLOW_CONN_DIGITAL_BOOKPLATES: postgresql+psycopg2://airflow:airflow@postgres/digital_bookplates
     AIRFLOW_VAR_VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     AWS_DEFAULT_REGION: us-west-2
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
