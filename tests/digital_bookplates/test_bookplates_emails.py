@@ -5,6 +5,7 @@ from airflow.models import Variable
 
 from libsys_airflow.plugins.digital_bookplates.email import (
     bookplates_metadata_email,
+    deleted_from_argo_email,
 )
 
 
@@ -158,3 +159,51 @@ def test_no_updated_bookplates_metadata_email(
 
     tables = html_body.find_all("table")
     assert len(tables) == 1
+
+
+def test_deleted_from_argo_email(mocker, mock_folio_variables):
+
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    deleted_from_argo_email.function(deleted_druids=["ab123xy4567"])
+
+    assert mock_send_email.called
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+
+    assert html_body.find("h2").text.startswith(
+        "Deleted from Argo -- Digital Bookplates Druids"
+    )
+    assert html_body.find("li").text == "ab123xy4567"
+
+
+def test_deleted_from_argo_email_no_druids(mocker, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    deleted_from_argo_email.function(deleted_druids=[])
+
+    assert mock_send_email.called is False
+    assert "No Deleted Druids from Argo" in caplog.text
+
+
+def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.is_production",
+        return_value=True,
+    )
+
+    deleted_from_argo_email.function(deleted_druids=["ab123xy4567"])
+
+    assert mock_send_email.call_args[1]["subject"].startswith(
+        "Deleted Druids from Argo for Digital bookplates"
+    )
