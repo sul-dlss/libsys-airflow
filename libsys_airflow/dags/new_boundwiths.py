@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 def _folio_client():
     return FolioClient(
-        Variable.get("okapi_url"),
+        Variable.get("OKAPI_URL"),
         "sul",
-        Variable.get("migration_user"),
-        Variable.get("migration_password"),
+        Variable.get("FOLIO_USER"),
+        Variable.get("FOLIO_PASSWORD"),
     )
 
 

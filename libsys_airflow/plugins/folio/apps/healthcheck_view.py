@@ -70,8 +70,8 @@ class Healthcheck(AppBuilderBaseView):
             migration_client = FolioClient(
                 Variable.get("OKAPI_URL"),
                 "sul",
-                Variable.get("migration_user"),
-                Variable.get("migration_password"),
+                Variable.get("FOLIO_USER"),
+                Variable.get("FOLIO_PASSWORD"),
             )
             return migration_client is not None
         except Exception:
