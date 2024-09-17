@@ -105,7 +105,8 @@ ALEMBIC_DBS='new_database, new_database2' cap dev alembic:migrate
 1. Log into the server, and run:
    1. `ksu`
    1. `apt install python3.11-venv libpq-dev`
-   1. `python3.11-m venv virtual-env`
+   1. `cd /home/libsys`
+   1. `python3.11 -m venv virtual-env`
    1. `touch /home/libsys/libsys-airflow/shared/config/.env`
    1. `vim /home/libsys/libsys-airflow/shared/config/.env` and add the following content:
       ```
