@@ -81,15 +81,12 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 
 
 def clean_and_serialize_marc_files(marc_file_list: dict):
-    for file in marc_file_list['new']:
-        marc_clean_serialize(file, False)
-    logger.info(f"Removed MARC fields from these New files {marc_file_list['new']}")
-
-    for file in marc_file_list['updates']:
-        marc_clean_serialize(file, False)
-    logger.info(
-        f"Remove MARC fields from these Updated files {marc_file_list['updates']}"
-    )
+    for kind in ['new', 'updates', 'deletes']:
+        for file in marc_file_list[kind]:
+            marc_clean_serialize(file, False)
+        logger.info(
+            f"Removed MARC fields and serialized records for '{kind}' files: {marc_file_list[kind]}"
+        )
 
 
 def marc_clean_serialize(marc_file: str, full_dump: bool):
