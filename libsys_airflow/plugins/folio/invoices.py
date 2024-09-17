@@ -81,3 +81,29 @@ def invoices_awaiting_payment_task() -> list:
 def invoices_pending_payment_task(invoice_ids: list):
     folio_client = _folio_client()
     return _update_vouchers_to_pending(invoice_ids, folio_client)
+
+
+@task
+def invoices_paid_within_date_range(**kwargs) -> list:
+    """
+    Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
+    Use from_date and to_date DAG params
+    """
+    return []
+
+
+@task
+def paid_invoice_lines_task(invoices: list, funds: dict) -> dict:
+    """
+    Given a list of invoice UUIDs and fund UUIDs, retrieves all the paid invoice lines
+    on those invoices with fund distributions matching fund UUID.
+    """
+    return {}
+
+
+@task
+def paid_po_lines_from_invoice_lines(invoice_lines: list) -> list:
+    """
+    Gets the poLineId from each paid invoice line
+    """
+    return []
