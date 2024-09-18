@@ -51,6 +51,7 @@ def check_deleted_from_argo(druid_purls: list):
         [druid_url.split("/")[-1].split(".json")[0] for druid_url in druid_purls]
     )
     pg_hook = PostgresHook("digital_bookplates")
+    deleted_info = []
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         current_bookplates = (
             session.query(DigitalBookplate.druid)
@@ -68,10 +69,17 @@ def check_deleted_from_argo(druid_purls: list):
             )
             digital_bookplate.deleted_from_argo = True
             digital_bookplate.updated = datetime.datetime.utcnow()
+            deleted_info.append(
+                {
+                    "druid": druid,
+                    "fund_name": digital_bookplate.fund_name,
+                    "title": digital_bookplate.title,
+                }
+            )
             session.commit()
             logger.info(f"{druid} was deleted from Argo")
 
-    return list(deleted_druids)
+    return deleted_info
 
 
 @task

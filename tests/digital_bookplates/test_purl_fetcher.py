@@ -148,9 +148,11 @@ def test_check_deleted_from_argo(pg_hook):
 
     druid_list = ["kp761xz4568", "gc698jf6425"]
 
-    deleted_from_argo_druids = check_deleted_from_argo.function(druid_list)
+    deleted_from_argo = check_deleted_from_argo.function(druid_list)
 
-    assert deleted_from_argo_druids[0].startswith("ab123xy4567")
+    assert deleted_from_argo[0]['druid'].startswith("ab123xy4567")
+    assert deleted_from_argo[0]['fund_name'] is None
+    assert deleted_from_argo[0]['title'].startswith("Alfred E. Newman Magazine Fund")
 
 
 def test_expected_druid(mocker):

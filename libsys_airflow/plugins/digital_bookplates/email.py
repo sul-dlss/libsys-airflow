@@ -11,17 +11,17 @@ from libsys_airflow.plugins.shared.utils import is_production
 logger = logging.getLogger(__name__)
 
 
-def _deleted_from_argo_email_body(druids: list) -> str:
+def _deleted_from_argo_email_body(deleted_druids: list) -> str:
     return Template(
         """
       <h2>Deleted from Argo -- Digital Bookplates Druids</h2>
       <ul>
-      {% for druid in druids %}
-        <li>{{ druid }}</li>
+      {% for row in druids %}
+        <li>Title: {{ row.title }}, Fund name: {{ row.fund_name }}, Druid: {{ row.druid }}</li>
       {% endfor %}
       </ul>
       """
-    ).render(druids=druids)
+    ).render(druids=deleted_druids)
 
 
 def _new_updated_bookplates_email_body(new: list, updated: list):

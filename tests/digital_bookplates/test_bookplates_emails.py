@@ -167,7 +167,10 @@ def test_deleted_from_argo_email(mocker, mock_folio_variables):
         "libsys_airflow.plugins.digital_bookplates.email.send_email"
     )
 
-    deleted_from_argo_email.function(deleted_druids=["ab123xy4567"])
+    deleted_druids_info = [
+        {"title": "The Happy Fund", "druid": "ab123xy4567", "fund_name": "HAPY"}
+    ]
+    deleted_from_argo_email.function(deleted_druids=deleted_druids_info)
 
     assert mock_send_email.called
 
@@ -178,7 +181,10 @@ def test_deleted_from_argo_email(mocker, mock_folio_variables):
     assert html_body.find("h2").text.startswith(
         "Deleted from Argo -- Digital Bookplates Druids"
     )
-    assert html_body.find("li").text == "ab123xy4567"
+    assert (
+        html_body.find("li").text
+        == "Title: The Happy Fund, Fund name: HAPY, Druid: ab123xy4567"
+    )
 
 
 def test_deleted_from_argo_email_no_druids(mocker, caplog):
