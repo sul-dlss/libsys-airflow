@@ -11,6 +11,19 @@ from libsys_airflow.plugins.shared.utils import is_production
 logger = logging.getLogger(__name__)
 
 
+def _deleted_from_argo_email_body(druids: list) -> str:
+    return Template(
+        """
+      <h2>Deleted from Argo -- Digital Bookplates Druids</h2>
+      <ul>
+      {% for druid in druids %}
+        <li>{{ druid }}</li>
+      {% endfor %}
+      </ul>
+      """
+    ).render(druids=druids)
+
+
 def _new_updated_bookplates_email_body(new: list, updated: list):
     template = Template(
         """
@@ -110,5 +123,42 @@ def bookplates_metadata_email(**kwargs):
                 devs_to_email_addr,
             ],
             subject=f"{folio_url} - Digital bookplates new and updated metadata",
+            html_content=html_content,
+        )
+
+
+@task
+def deleted_from_argo_email(**kwargs):
+    """
+    Sends email of druids deleted from Argo but are still in the Digital
+    Bookplates database.
+    """
+    deleted_druids = kwargs["deleted_druids"]
+    if len(deleted_druids) < 1:
+        logger.info("No Deleted Druids from Argo")
+        return
+
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
+    folio_url = Variable.get("FOLIO_URL")
+
+    html_content = _deleted_from_argo_email_body(deleted_druids)
+
+    if is_production():
+        send_email(
+            to=[
+                bookplates_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Deleted Druids from Argo for Digital bookplates",
+            html_content=html_content,
+        )
+    else:
+        folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
+        send_email(
+            to=[
+                devs_to_email_addr,
+            ],
+            subject=f"{folio_url} - Deleted Druids from Argo for Digital bookplate",
             html_content=html_content,
         )

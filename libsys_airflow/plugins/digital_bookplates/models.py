@@ -1,6 +1,7 @@
 import logging
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Integer,
@@ -24,3 +25,4 @@ class DigitalBookplate(Model):  # type: ignore
     fund_name = Column(String, unique=True, nullable=True)
     image_filename = Column(String, nullable=False)
     title = Column(String, nullable=False)
+    deleted_from_argo = Column(Boolean, nullable=False, default=False)

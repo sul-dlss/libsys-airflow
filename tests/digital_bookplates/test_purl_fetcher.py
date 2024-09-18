@@ -10,6 +10,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     add_update_model,
+    check_deleted_from_argo,
     extract_bookplate_metadata,
     fetch_druids,
 )
@@ -141,6 +142,15 @@ def test_purl_fetch_list(mock_api, mocker, mock_purl_fetcher_api_response):
     assert len(test_druids) == 2
     assert test_druids[0] == "https://purl.stanford.edu/bm244yj4074.json"
     assert test_druids[1] == "https://purl.stanford.edu/bt942vy4674.json"
+
+
+def test_check_deleted_from_argo(pg_hook):
+
+    druid_list = ["kp761xz4568", "gc698jf6425"]
+
+    deleted_from_argo_druids = check_deleted_from_argo.function(druid_list)
+
+    assert deleted_from_argo_druids[0].startswith("ab123xy4567")
 
 
 def test_expected_druid(mocker):

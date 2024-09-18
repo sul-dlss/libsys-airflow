@@ -1,4 +1,5 @@
 import datetime
+import logging
 
 import httpx
 
@@ -15,6 +16,8 @@ FUND_NAME_EXPR = parse(
 )
 IMAGE_FILE_NAME_EXPR = parse("structural.contains[0].structural.contains[0].filename")
 TITLE_EXPR = parse("$.label")
+
+logger = logging.getLogger(__name__)
 
 
 @task
@@ -40,6 +43,35 @@ def add_update_model(metadata) -> dict:
                 metadata["db_id"] = bookplate.id
                 report["updated"] = metadata
     return report
+
+
+@task
+def check_deleted_from_argo(druid_purls: list):
+    argo_druids = set(
+        [druid_url.split("/")[-1].split(".json")[0] for druid_url in druid_purls]
+    )
+    pg_hook = PostgresHook("digital_bookplates")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        current_bookplates = (
+            session.query(DigitalBookplate.druid)
+            .where(DigitalBookplate.deleted_from_argo == False)  # noqa
+            .all()
+        )
+        current_druids = set([r[0] for r in current_bookplates])
+        deleted_druids = current_druids.difference(argo_druids)
+        logger.info(f"Total deleted druids {len(deleted_druids)} from Argo")
+        for druid in list(deleted_druids):
+            digital_bookplate = (
+                session.query(DigitalBookplate)
+                .where(DigitalBookplate.druid == druid)
+                .first()
+            )
+            digital_bookplate.deleted_from_argo = True
+            digital_bookplate.updated = datetime.datetime.utcnow()
+            session.commit()
+            logger.info(f"{druid} was deleted from Argo")
+
+    return list(deleted_druids)
 
 
 @task
