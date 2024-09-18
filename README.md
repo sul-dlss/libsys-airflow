@@ -138,6 +138,18 @@ these [directions](https://alembic.sqlalchemy.org/en/latest/cookbook.html#run-mu
 To run any `alembic` commands you need add the `--name` parameter followed by `vma` for the Vendor Management database
 and `digital_bookplates` for the Digital Bookplates database.
 
+### Local Database Creation and Migrations
+How to get the digital_bookplates database running locally starting with fresh postgres volume:
+
+1. Bring up airflow: `docker compose up`
+1. In a different terminal window, set these variables:
+```
+export DATABASE_USERNAME="airflow"
+export DATABASE_PASSWORD="airflow"
+export DATABASE_HOSTNAME="localhost"
+```
+1.  Run (e.g. using the database name you want to migrate) `poetry run alembic --name digital_bookplates upgrade head`
+
 ### Vendor load plugin
 
 Using and developing the vendor load plug in requires its own database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
@@ -264,10 +276,6 @@ Type declarations are only used in testing and type checking, and do not affect 
 If you run into something where the type checker complains and you're sure that the usage is ok, you can comment the line with `# type: ignore` to quiet the type checker for that line.  As with linting, use your best judgement as to whether an exception is preferable to mollifying the checker.
 
 The type checker is not currently wired up in CI as a required check, but you may still find it useful for catching lurking consistency issues.
-
-## Symphony Mount
-
-MARC data to be converted will be mounted on the sul-libsys-airflow server under `/sirsi_prod` which is a mount of `/s/SUL/Dataload/Folio` on the Symphony server.
 
 ## Connections
 
