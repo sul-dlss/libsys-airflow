@@ -41,7 +41,7 @@ def bookplate_fund_ids(**kwargs) -> dict:
 
     fund_names = [n[0] for n in fund_tuples]
     fund_druids = [n[1] for n in fund_tuples]
-    
+
     funds: dict = {}
     for fund in folio_funds['funds']:
         if fund['name'] in fund_names:
