@@ -35,6 +35,16 @@ def _get_ids_from_vouchers(folio_query: str, folio_client: FolioClient) -> list:
     return [row.get("invoiceId") for row in vouchers]
 
 
+def _get_all_ids_from_invoices(folio_query: str, folio_client: FolioClient) -> list:
+    """
+    Returns all invoice Ids from invoices given query parameter in `limit`-size chunks
+    """
+    invoices = folio_client.folio_get_all(
+        "/invoice/invoices", key="invoices", query=folio_query, limit=500
+    )
+    return [row.get("id") for row in invoices]
+
+
 def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) -> dict:
     """
     Iterates through list of invoice ids and updates disbursementNumber to Pending
@@ -87,9 +97,21 @@ def invoices_pending_payment_task(invoice_ids: list):
 def invoices_paid_within_date_range(**kwargs) -> list:
     """
     Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
-    Use from_date and to_date DAG params
+    paymentDate range based on airflow DAG run data intervals end and start dates
+    Query paymentDate greater than logical_date when run_id starts with "manual_"
     """
-    return []
+    folio_client = _folio_client()
+    dag_run = kwargs["dag_run"]
+    dag_run_id = dag_run.run_id
+    from_date = dag_run.data_interval_start
+    to_date = dag_run.data_interval_end
+    query = f"""?query=((paymentDate>={from_date} and paymentDate<={to_date}) and status=="Paid")"""
+    if dag_run_id.startswith("manual_"):
+        from_date = dag_run.logical_date
+        query = f"""?query=((paymentDate>={from_date}) and status=="Paid")"""
+
+    invoice_ids = _get_all_ids_from_invoices(query, folio_client)
+    return invoice_ids
 
 
 @task

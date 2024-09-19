@@ -4,20 +4,61 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.folio.invoices import (
     invoices_awaiting_payment_task,
+    invoices_paid_within_date_range,
     _get_ids_from_vouchers,
+    _get_all_ids_from_invoices,
 )
 
 vouchers = [{"invoiceId": 'a6452c96-53ef-4e51-bd7b-aa67ac971133'}]
+invoices = [
+    {"id": "649c0a8e-6741-49a1-a8a9-de1b8c01358f"},
+    {"id": "4d9f89f6-c2b0-49f8-bdff-fc425b980057"},
+]
+invoices_date_range = [{"id": "34cabbbd-d419-4853-ad3a-d0eafd4310c6"}]
 
 
 @pytest.fixture
 def mock_folio_client():
     def mock_get(*args, **kwargs):
-        return vouchers
+        # Vouchers
+        if args[0].startswith("/voucher/vouchers"):
+            return vouchers
+
+    def mock_get_all(*args, **kwargs):
+        # Invoice
+        if args[0].startswith("/invoice/invoices"):
+            if kwargs['query'].startswith(
+                "?query=((paymentDate>=2023-08-28T00:00:00+00:00)"
+            ):
+                return invoices
+            else:
+                return invoices_date_range
 
     mock_client = MagicMock()
     mock_client.folio_get = mock_get
+    mock_client.folio_get_all = mock_get_all
     return mock_client
+
+
+@pytest.fixture
+def mock_scheduled_dag_run(mocker):
+    dag_run = mocker.stub(name="dag_run")
+    dag_run.run_id = "scheduled__2024-09-19"
+    dag_run.data_interval_end = "2024-09-18T09:00:00+00:00"
+    dag_run.data_interval_start = "2024-09-11T09:00:00+00:00"
+
+    return dag_run
+
+
+@pytest.fixture
+def mock_manual_dag_run(mocker):
+    dag_run = mocker.stub(name="dag_run")
+    dag_run.run_id = "manual__2024-09-19"
+    dag_run.data_interval_end = ("2023-08-23T09:00:00+00:00",)
+    dag_run.data_interval_start = ("2023-08-16T09:00:00+00:00",)
+    dag_run.logical_date = "2023-08-28T00:00:00+00:00"
+
+    return dag_run
 
 
 def test_get_vouchers(mock_folio_client):
@@ -33,3 +74,34 @@ def test_invoices_awaiting_payment_task(mocker, mock_folio_client):
 
     invoice_ids = invoices_awaiting_payment_task.function()
     assert invoice_ids[0] == 'a6452c96-53ef-4e51-bd7b-aa67ac971133'
+
+
+def test_get_invoices(mock_folio_client):
+    invoice_ids = _get_all_ids_from_invoices(
+        "?query=((paymentDate>=2023-08-28T00:00:00+00:00) and status==\"Paid\")",
+        mock_folio_client,
+    )
+    assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
+
+
+def test_invoices_paid_since_beginning(mocker, mock_folio_client, mock_manual_dag_run):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.invoices._folio_client",
+        return_value=mock_folio_client,
+    )
+    invoice_ids = invoices_paid_within_date_range.function(dag_run=mock_manual_dag_run)
+    assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
+
+
+def test_invoices_paid_within_date_range(
+    mocker, mock_folio_client, mock_scheduled_dag_run
+):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.invoices._folio_client",
+        return_value=mock_folio_client,
+    )
+    invoice_ids = invoices_paid_within_date_range.function(
+        dag_run=mock_scheduled_dag_run
+    )
+    assert len(invoice_ids) == 1
+    assert invoice_ids[0] == "34cabbbd-d419-4853-ad3a-d0eafd4310c6"
