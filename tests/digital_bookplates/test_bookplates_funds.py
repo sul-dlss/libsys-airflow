@@ -84,7 +84,7 @@ def test_bookplate_fund_ids(mocker, pg_hook, mock_folio_client):
         return_value=mock_folio_client,
     )
 
-    assert bookplate_fund_ids.function() == [
-        'b8932bcd-7498-4f7e-a598-de9010561e42',
-        '06220dd4-7d6e-4e5b-986d-5fca21d856ca',
-    ]
+    assert bookplate_fund_ids.function() == {
+        "kp761xz4568": "b8932bcd-7498-4f7e-a598-de9010561e42",
+        "gc698jf6425": "06220dd4-7d6e-4e5b-986d-5fca21d856ca",
+    }
