@@ -162,3 +162,12 @@ def deleted_from_argo_email(**kwargs):
             subject=f"{folio_url} - Deleted Druids from Argo for Digital bookplate",
             html_content=html_content,
         )
+
+
+@task
+def missing_fields_email(**kwargs):
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
+    folio_url = Variable.get("FOLIO_URL")
+
+    failures = kwargs["failures"]
