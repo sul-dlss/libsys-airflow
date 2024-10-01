@@ -60,7 +60,7 @@ def fetch_digital_bookplates():
 
     filtered_data = filter_updates_errors(db_results)
 
-    missing_fields_email(failures=filtered_data['failures'])
+    missing_fields_email(failures=filtered_data['failures']) >> end
 
     start >> fetch_bookplate_purls >> db_results
 
