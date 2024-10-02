@@ -94,6 +94,7 @@ def fetch_druids() -> list:
 
     return druids
 
+
 @task(max_active_tis_per_dag=10)
 def extract_bookplate_metadata(druid_url: str) -> dict:
 

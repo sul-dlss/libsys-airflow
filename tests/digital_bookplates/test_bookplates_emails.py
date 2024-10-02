@@ -6,7 +6,26 @@ from airflow.models import Variable
 from libsys_airflow.plugins.digital_bookplates.email import (
     bookplates_metadata_email,
     deleted_from_argo_email,
+    missing_fields_email,
 )
+
+
+failures = [
+    {
+        'druid': 'cv850pd2472',
+        'image_filename': None,
+        'failure': 'Missing image file',
+        'fund_name': 'ROSENBERG',
+        'title': 'Marie Louise Rosenberg Fund for Humanities',
+    },
+    {
+        'druid': 'fr739cb8411',
+        'image_filename': 'fr739cb8411_00_0001.jp2',
+        'failure': 'Missing title',
+        'fund_name': None,
+        'title': None,
+    },
+]
 
 
 @pytest.fixture
@@ -212,4 +231,44 @@ def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
 
     assert mock_send_email.call_args[1]["subject"].startswith(
         "Deleted Druids from Argo for Digital bookplates"
+    )
+
+
+def test_missing_fields_email(mocker, mock_folio_variables, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    missing_fields_email.function(failures=failures)
+
+    assert mock_send_email.called
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+
+    assert html_body.find("h2").text.startswith(
+        "Missing Fields from Argo Digital Bookplates Druids"
+    )
+
+    list_items = html_body.find_all("li")
+
+    assert list_items[0].text.startswith("Failure: Missing image file")
+    assert "Druid: fr739cb8411" in list_items[1].text
+
+
+def test_missing_fields_email_prod(mocker, mock_folio_variables, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.is_production",
+        return_value=True,
+    )
+
+    missing_fields_email.function(failures=failures)
+
+    assert mock_send_email.call_args[1]["subject"].startswith(
+        "Missing Fields for Digital Bookplates"
     )
