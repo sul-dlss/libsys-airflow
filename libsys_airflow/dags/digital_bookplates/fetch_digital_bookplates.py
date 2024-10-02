@@ -69,7 +69,7 @@ def fetch_digital_bookplates():
         >> deleted_druids
         >> deleted_from_argo_email(deleted_druids=deleted_druids)
         >> bookplates_metadata_email(
-            new=db_results["new"], updated=db_results["updated"]
+            new=filtered_data["new"], updated=filtered_data["updated"]
         )
         >> end
     )

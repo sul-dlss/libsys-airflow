@@ -100,6 +100,7 @@ def bookplates_metadata_email(**kwargs):
     """
     new_bookplates = kwargs.get("new", [])
     updated_bookplates = kwargs.get("updated", [])
+
     if len(new_bookplates) == 0:
         logger.info("No new bookplate metadata to send in email")
     else:
@@ -184,6 +185,10 @@ def missing_fields_email(**kwargs):
     folio_url = Variable.get("FOLIO_URL")
 
     failures = kwargs["failures"]
+
+    if len(failures) < 1:
+        logger.info("No missing fields")
+        return True
 
     html_content = _missing_fields_body(failures)
 

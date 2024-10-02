@@ -234,7 +234,7 @@ def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
     )
 
 
-def test_missing_fields_email(mocker, mock_folio_variables, caplog):
+def test_missing_fields_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.email.send_email"
     )
@@ -257,7 +257,14 @@ def test_missing_fields_email(mocker, mock_folio_variables, caplog):
     assert "Druid: fr739cb8411" in list_items[1].text
 
 
-def test_missing_fields_email_prod(mocker, mock_folio_variables, caplog):
+def test_missing_fields_email_no_failures(mock_folio_variables, caplog):
+
+    missing_fields_email.function(failures=[])
+
+    assert "No missing fields" in caplog.text
+
+
+def test_missing_fields_email_prod(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.email.send_email"
     )
