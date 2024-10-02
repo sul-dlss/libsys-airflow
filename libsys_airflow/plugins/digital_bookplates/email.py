@@ -101,6 +101,12 @@ def bookplates_metadata_email(**kwargs):
     new_bookplates = kwargs.get("new", [])
     updated_bookplates = kwargs.get("updated", [])
 
+    if new_bookplates is None:
+        new_bookplates = []
+
+    if updated_bookplates is None:
+        updated_bookplates = []
+
     if len(new_bookplates) == 0:
         logger.info("No new bookplate metadata to send in email")
     else:

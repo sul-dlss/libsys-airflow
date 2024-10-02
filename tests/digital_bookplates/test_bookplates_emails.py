@@ -116,6 +116,20 @@ def test_bookplates_metadata_email(
     assert updated_trs[1].find_all('td')[4].text.startswith("title change")
 
 
+def test_bookplates_metadata_email_none(mocker, mock_folio_variables, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    bookplates_metadata_email.function(new=None, updated=None)
+
+    assert mock_send_email.called
+
+    assert "No new bookplate metadata to send in email" in caplog.text
+
+    assert "No updated bookplate metadata to send in email" in caplog.text
+
+
 def test_no_new_bookplates_metadata_email(
     mocker, mock_bookplate_metadata, mock_folio_variables, caplog
 ):
