@@ -5,7 +5,10 @@ from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
-from libsys_airflow.plugins.digital_bookplates.email import deleted_from_argo_email
+from libsys_airflow.plugins.digital_bookplates.email import (
+    deleted_from_argo_email,
+    bookplates_metadata_email,
+)
 
 from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     add_update_model,
@@ -59,6 +62,9 @@ def fetch_digital_bookplates():
         db_results
         >> deleted_druids
         >> deleted_from_argo_email(deleted_druids=deleted_druids)
+        >> bookplates_metadata_email(
+            new=db_results["new"], updated=db_results["updated"]
+        )
         >> end
     )
 
