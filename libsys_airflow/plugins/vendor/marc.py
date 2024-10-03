@@ -133,7 +133,7 @@ def process_marc(
                     _add_fields(record, add_fields)
                 records.append(record)
 
-    new_marc_path = marc_path.with_stem(f"{marc_path.stem}-processed")
+    new_marc_path = marc_path.with_stem(f"{marc_path.stem}_processed")
     _write_records(records, new_marc_path)
 
     logger.info(f"Finished processing from {marc_path}")
