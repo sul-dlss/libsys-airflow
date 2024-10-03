@@ -125,14 +125,14 @@ def invoices_paid_within_date_range(**kwargs) -> list:
 
 
 @task
-def invoice_lines_from_invoices_task(invoices: list) -> list:
+def invoice_lines_from_invoices(invoices: list) -> list:
     """
     Given a list of invoice UUIDs, returns a list of invoice lines dictionaries
     """
     folio_client = _folio_client()
     all_invoice_lines = []
     for id in invoices:
-        print(f"Getting invoice lines for {id}")
+        logger.info(f"Getting invoice lines for {id}")
         query = f"""?query=(invoiceId=={id})"""
         invoice_lines = _get_all_invoice_lines(query, folio_client)
         for row in invoice_lines:
