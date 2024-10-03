@@ -52,6 +52,27 @@ def bookplate_fund_ids(**kwargs) -> dict:
 
 
 @task
+def bookplate_fund_po_lines(invoice_lines: list, funds: dict) -> dict:
+    """
+    Checks if fund Id from invoice lines data struct contains bookplate fund
+    [
+      {
+        "fadacf66-8813-4759-b4d3-7d506db38f48": {
+          "fund_ids": [
+            "0e8804ca-0190-4a98-a88d-83ae77a0f8e3"
+          ],
+          "poline_id": "b5ba6538-7e04-4be3-8a0e-c68306c355a2"
+        }
+      }
+    ]
+    Returns po lines and fund ids that are bookplate funds
+    """
+    funds_invoice_lines: dict = {}
+
+    return funds_invoice_lines
+
+
+@task
 def launch_add_979_fields_task(**kwargs):
     """
     Trigger add a tag dag with instance UUIDs and fund 979 data

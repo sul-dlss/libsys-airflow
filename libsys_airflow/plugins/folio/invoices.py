@@ -45,6 +45,16 @@ def _get_all_ids_from_invoices(folio_query: str, folio_client: FolioClient) -> l
     return [row.get("id") for row in invoices]
 
 
+def _get_all_invoice_lines(folio_query: str, folio_client: FolioClient) -> list:
+    """
+    Returns all invoice line given a query parameter in `limit`-size chunks
+    """
+    invoice_lines = folio_client.folio_get_all(
+        "/invoice/invoice-lines", key="invoiceLines", query=folio_query, limit=500
+    )
+    return [row for row in invoice_lines]
+
+
 def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) -> dict:
     """
     Iterates through list of invoice ids and updates disbursementNumber to Pending
@@ -115,17 +125,59 @@ def invoices_paid_within_date_range(**kwargs) -> list:
 
 
 @task
-def paid_invoice_lines_task(invoices: list, funds: dict) -> dict:
+def invoice_lines_from_invoices_task(invoices: list) -> list:
     """
-    Given a list of invoice UUIDs and fund UUIDs, retrieves all the paid invoice lines
-    on those invoices with fund distributions matching fund UUID.
+    Given a list of invoice UUIDs, returns a list of invoice lines dictionaries
     """
-    return {}
+    folio_client = _folio_client()
+    all_invoice_lines = []
+    for id in invoices:
+        print(f"Getting invoice lines for {id}")
+        query = f"""?query=(invoiceId=={id})"""
+        invoice_lines = _get_all_invoice_lines(query, folio_client)
+        for row in invoice_lines:
+            all_invoice_lines.append(row)
+
+    return all_invoice_lines
 
 
 @task
-def paid_po_lines_from_invoice_lines(invoice_lines: list) -> list:
+def invoice_lines_funds_polines(invoice_lines: list) -> list:
     """
-    Gets the poLineId from each paid invoice line
+    Given a list of invoice line dictionaries,
+    Returns a list of invoice line data structures that contains the
+    invoice line ID, the fund ids and po line ids for each, e.g.:
+    [
+      {
+        "fadacf66-8813-4759-b4d3-7d506db38f48": {
+          "fund_ids": [
+            "0e8804ca-0190-4a98-a88d-83ae77a0f8e3"
+          ],
+          "poline_id": "b5ba6538-7e04-4be3-8a0e-c68306c355a2"
+        }
+      },
+      {
+        "a16030c1-66ca-44c1-b0a3-572cde626685": {
+          "fund_ids": [
+            "47e1fc24-300d-4817-a866-5c0a2f490522"
+          ],
+          "poline_id": "5513c3d7-7c6b-45ea-a875-09798b368873"
+        }
+      }
+    ]
     """
-    return []
+    invoice_lines_funds_polines = []
+    for row in invoice_lines:
+        fund_poline = {"fund_ids": None, "poline_id": None}
+        fund_ids = []
+        fund_ids = [x["fundId"] for x in row.get("fundDistributions")]
+        fund_poline["fund_ids"] = fund_ids
+        poline_id = row.get("poLineId")
+        if poline_id is not None:
+            fund_poline["poline_id"] = poline_id
+
+        lines_funds_polines = {}
+        lines_funds_polines[row["id"]] = fund_poline
+        invoice_lines_funds_polines.append(lines_funds_polines)
+
+    return invoice_lines_funds_polines
