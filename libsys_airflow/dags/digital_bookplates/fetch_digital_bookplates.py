@@ -30,6 +30,18 @@ default_args = {
 }
 
 
+@task_group(group_id="emails")
+def email_group(**kwargs):
+    deleted_druids = kwargs["deleted"]
+    failures = kwargs["failures"]
+    new_bookplates = kwargs["new"]
+    updated_bookplates = kwargs["updates"]
+
+    bookplates_metadata_email(new=new_bookplates, updated=updated_bookplates)
+    deleted_from_argo_email(deleted_druids=deleted_druids)
+    missing_fields_email(failures=failures)
+
+
 @task_group(group_id="retrieve-process-db")
 def extract_db_process_group(druid_url: str):
     metadata = extract_bookplate_metadata(druid_url)
@@ -60,19 +72,17 @@ def fetch_digital_bookplates():
 
     filtered_data = filter_updates_errors(db_results)
 
-    missing_fields_email(failures=filtered_data['failures']) >> end
-
-    start >> fetch_bookplate_purls >> db_results
-
     (
-        db_results
-        >> deleted_druids
-        >> deleted_from_argo_email(deleted_druids=deleted_druids)
-        >> bookplates_metadata_email(
-            new=filtered_data["new"], updated=filtered_data["updated"]
+        email_group(
+            deleted=deleted_druids,
+            failures=filtered_data["failures"],
+            new=filtered_data["new"],
+            updates=filtered_data["updates"],
         )
         >> end
     )
+
+    start >> fetch_bookplate_purls >> db_results
 
 
 fetch_digital_bookplates()
