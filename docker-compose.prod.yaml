@@ -85,7 +85,7 @@ x-airflow-common:
     AIRFLOW_VAR_OCLC_EMAIL_LAW: ${AIRFLOW_VAR_OCLC_EMAIL_LAW:-law_cataloging@lists.stanford.edu}
     AIRFLOW_VAR_OCLC_EMAIL_SUL: ${AIRFLOW_VAR_OCLC_EMAIL_SUL:-datacontrol@stanford.edu}
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/vendor_loads
-    AIRFLOW_CONN_DIGITIAL_BOOKPLATES: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/digitial_bookplates
+    AIRFLOW_CONN_DIGITAL_BOOKPLATES: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/digital_bookplates
     AIRFLOW__SMTP__SMTP_HOST: host.docker.internal
     AIRFLOW__SMTP__SMTP_STARTTLS: 'false'
     AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM:-folio-load-reports@lists.stanford.edu}

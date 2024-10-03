@@ -8,6 +8,7 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 from libsys_airflow.plugins.digital_bookplates.email import (
     deleted_from_argo_email,
     bookplates_metadata_email,
+    missing_fields_email,
 )
 
 from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
@@ -15,6 +16,7 @@ from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     check_deleted_from_argo,
     extract_bookplate_metadata,
     fetch_druids,
+    filter_updates_errors,
 )
 
 
@@ -31,7 +33,7 @@ default_args = {
 @task_group(group_id="retrieve-process-db")
 def extract_db_process_group(druid_url: str):
     metadata = extract_bookplate_metadata(druid_url)
-    add_update_model(metadata)
+    return add_update_model(metadata)
 
 
 @dag(
@@ -56,6 +58,10 @@ def fetch_digital_bookplates():
 
     deleted_druids = check_deleted_from_argo(fetch_bookplate_purls)
 
+    filtered_data = filter_updates_errors(db_results)
+
+    missing_fields_email(failures=filtered_data['failures']) >> end
+
     start >> fetch_bookplate_purls >> db_results
 
     (
@@ -63,7 +69,7 @@ def fetch_digital_bookplates():
         >> deleted_druids
         >> deleted_from_argo_email(deleted_druids=deleted_druids)
         >> bookplates_metadata_email(
-            new=db_results["new"], updated=db_results["updated"]
+            new=filtered_data["new"], updated=filtered_data["updated"]
         )
         >> end
     )

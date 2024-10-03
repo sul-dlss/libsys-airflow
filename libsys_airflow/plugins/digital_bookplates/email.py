@@ -24,6 +24,19 @@ def _deleted_from_argo_email_body(deleted_druids: list) -> str:
     ).render(druids=deleted_druids)
 
 
+def _missing_fields_body(failures: list) -> str:
+    return Template(
+        """
+      <h2>Missing Fields from Argo Digital Bookplates Druids</h2>
+      <ul>
+      {% for failure in failures %}
+      <li>Failure: {{ failure.failure }},{% if failure.title %} Title: {{ failure.title }},{% endif %}{% if failure.fund_name %} Fund name: {{ failure.fund }},{% endif %} Druid: {{ failure.druid }}</li>
+      {% endfor %}
+      </ul>
+      """
+    ).render(failures=failures)
+
+
 def _new_updated_bookplates_email_body(new: list, updated: list):
     template = Template(
         """
@@ -87,6 +100,13 @@ def bookplates_metadata_email(**kwargs):
     """
     new_bookplates = kwargs.get("new", [])
     updated_bookplates = kwargs.get("updated", [])
+
+    if new_bookplates is None:
+        new_bookplates = []
+
+    if updated_bookplates is None:
+        updated_bookplates = []
+
     if len(new_bookplates) == 0:
         logger.info("No new bookplate metadata to send in email")
     else:
@@ -162,3 +182,37 @@ def deleted_from_argo_email(**kwargs):
             subject=f"{folio_url} - Deleted Druids from Argo for Digital bookplate",
             html_content=html_content,
         )
+
+
+@task
+def missing_fields_email(**kwargs):
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
+    folio_url = Variable.get("FOLIO_URL")
+
+    failures = kwargs["failures"]
+
+    if len(failures) < 1:
+        logger.info("No missing fields")
+        return True
+
+    html_content = _missing_fields_body(failures)
+
+    if is_production():
+        send_email(
+            to=[
+                bookplates_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Missing Fields for Digital Bookplates",
+            html_content=html_content,
+        )
+    else:
+        folio_env = folio_url.replace("https://", "").replace(".stanford.edu", "")
+        send_email(
+            to=[devs_to_email_addr],
+            subject=f"{folio_env} - Missing Fields for Digital Bookplates",
+            html_content=html_content,
+        )
+
+    return True

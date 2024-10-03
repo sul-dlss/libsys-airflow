@@ -112,6 +112,8 @@ def extract_bookplate_metadata(druid_url: str) -> dict:
         title = TITLE_EXPR.find(druid_json)
         if len(title) > 0:
             metadata['title'] = title[0].value
+        else:
+            metadata["failure"] = "Missing title"
         image_file = IMAGE_FILE_NAME_EXPR.find(druid_json)
         if len(image_file) > 0:
             metadata['image_filename'] = image_file[0].value
@@ -120,9 +122,27 @@ def extract_bookplate_metadata(druid_url: str) -> dict:
         fund_name = FUND_NAME_EXPR.find(druid_json)
         if len(fund_name) > 0:
             metadata["fund_name"] = fund_name[0].value
+
     except httpx.HTTPStatusError as e:
         metadata["failure"] = str(e)
     return metadata
+
+
+@task
+def filter_updates_errors(db_results: list) -> dict:
+    logger.info(db_results)
+    failures, updates, new = [], [], []
+    for row in db_results:
+        if "failure" in row:
+            failures.append(row["failure"])
+        if "new" in row:
+            new.append(row["new"])
+        if "updates" in row:
+            updates.append(row["updates"])
+    logger.info(
+        f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updates):,}"
+    )
+    return {"failures": failures, "new": new, "updates": updates}
 
 
 def _add_bookplate(metadata: dict, session: Session) -> dict:
