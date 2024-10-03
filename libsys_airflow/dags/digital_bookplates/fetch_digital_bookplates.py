@@ -17,6 +17,7 @@ from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     extract_bookplate_metadata,
     fetch_druids,
     filter_updates_errors,
+    trigger_instances_dag,
 )
 
 
@@ -81,6 +82,8 @@ def fetch_digital_bookplates():
         )
         >> end
     )
+
+    trigger_instances_dag(new=filtered_data["new"]) >> end
 
     start >> fetch_bookplate_purls >> db_results
 
