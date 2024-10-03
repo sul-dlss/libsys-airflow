@@ -142,10 +142,11 @@ def invoice_lines_from_invoices(invoices: list) -> list:
 
 
 @task
-def invoice_lines_funds_polines(invoice_lines: list) -> list:
+def filter_invoice_lines(invoice_lines: list) -> list:
     """
     Given a list of invoice line dictionaries,
-    Returns a list of invoice line data structures that contains the
+    Filters invoice lines to only those with fund IDs and po line IDs
+    Returns a data structures that contains the
     invoice line ID, the fund ids and po line ids for each, e.g.:
     [
       {
@@ -168,13 +169,17 @@ def invoice_lines_funds_polines(invoice_lines: list) -> list:
     """
     invoice_lines_funds_polines = []
     for row in invoice_lines:
-        fund_poline = {"fund_ids": None, "poline_id": None}
+        fund_poline = {}
         fund_ids = []
-        fund_ids = [x["fundId"] for x in row.get("fundDistributions")]
-        fund_poline["fund_ids"] = fund_ids
+        fund_distribution = row.get("fundDistributions")
         poline_id = row.get("poLineId")
-        if poline_id is not None:
+        if fund_distribution and poline_id is not None:
+            for x in fund_distribution:
+                fund_ids.append(x["fundId"])
+            fund_poline["fund_ids"] = fund_ids
             fund_poline["poline_id"] = poline_id
+        else:
+            next  # next invoice line
 
         lines_funds_polines = {}
         lines_funds_polines[row["id"]] = fund_poline

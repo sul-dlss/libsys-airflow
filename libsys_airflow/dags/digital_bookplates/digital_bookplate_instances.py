@@ -12,7 +12,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
 from libsys_airflow.plugins.folio.invoices import (
     invoices_paid_within_date_range,
     invoice_lines_from_invoices,
-    invoice_lines_funds_polines,
+    filter_invoice_lines,
 )
 
 from libsys_airflow.plugins.folio.orders import (
@@ -47,13 +47,9 @@ def digital_bookplate_instances():
 
     retrieve_paid_invoice_lines = invoice_lines_from_invoices(retrieve_paid_invoices)
 
-    retrieve_invoice_line_datastruct = invoice_lines_funds_polines(
-        retrieve_paid_invoice_lines
-    )
+    filter_invoice_lines = filter_invoice_lines(retrieve_paid_invoice_lines)
 
-    retrieve_bookplate_fund_po_lines = bookplate_fund_po_lines(
-        retrieve_invoice_line_datastruct
-    )
+    retrieve_bookplate_fund_po_lines = bookplate_fund_po_lines(filter_invoice_lines)
 
     retrieve_instances = instances_from_po_lines(retrieve_bookplate_fund_po_lines)
 
