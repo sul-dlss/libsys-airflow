@@ -52,9 +52,11 @@ def bookplate_fund_ids(**kwargs) -> dict:
 
 
 @task
-def bookplate_fund_po_lines(invoice_lines: list, funds: dict) -> dict:
+def bookplate_fund_po_lines(invoice_lines: list) -> dict:
     """
     Checks if fund Id from invoice lines data struct contains bookplate fund
+    This task needs to lookup in the digital bookplates table the fund_id
+    and remove from the list objects that are not in the bookplates table
     [
       {
         "fadacf66-8813-4759-b4d3-7d506db38f48": {

@@ -5,7 +5,6 @@ from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
-    bookplate_fund_ids,
     bookplate_fund_po_lines,
     launch_add_979_fields_task,
 )
@@ -46,8 +45,6 @@ def digital_bookplate_instances():
 
     retrieve_paid_invoices = invoices_paid_within_date_range()
 
-    retrieve_bookplate_fund_ids = bookplate_fund_ids()
-
     retrieve_paid_invoice_lines = invoice_lines_from_invoices_task(
         retrieve_paid_invoices
     )
@@ -57,11 +54,11 @@ def digital_bookplate_instances():
     )
 
     retrieve_bookplate_fund_po_lines = bookplate_fund_po_lines(
-        retrieve_invoice_line_datastruct, retrieve_bookplate_fund_ids
+        retrieve_invoice_line_datastruct
     )
 
     retrieve_instances = instances_from_po_lines(
-        retrieve_bookplate_fund_po_lines, retrieve_bookplate_fund_ids
+        retrieve_bookplate_fund_po_lines
     )
 
     launch_add_tag_dag = launch_add_979_fields_task(instances=retrieve_instances)
