@@ -142,7 +142,7 @@ def invoice_lines_from_invoices(invoices: list) -> list:
 
 
 @task
-def filter_invoice_lines(invoice_lines: list) -> list:
+def filter_invoice_lines(invoice_lines: list, funds: list) -> list:
     """
     Given a list of invoice line dictionaries,
     Filters invoice lines to only those with fund IDs and po line IDs

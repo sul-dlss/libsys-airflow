@@ -148,10 +148,13 @@ def filter_updates_errors(db_results: list) -> dict:
 
 @task
 def trigger_instances_dag(**kwargs) -> bool:
-    
+    new_funds = kwargs.get("new", [])
+    if len(new_funds) < 1:
+        logger.info("No new funds to trigger digital_bookplate_instances DAG")
+        return True
     TriggerDagRunOperator.partial(
         task_id="new-instance-dag", trigger_dag_id="digital_bookplate_instances"
-    ).expand(**{"logical_date": "2023-08-28T00:00:00+00:00"})
+    ).expand(**{"logical_date": "2023-08-28T00:00:00+00:00", "funds": new_funds})
     return True
 
 

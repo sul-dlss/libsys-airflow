@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import get_current_context
 from airflow.timetables.interval import CronDataIntervalTimetable
+
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_fund_po_lines,
@@ -43,11 +45,19 @@ def digital_bookplate_instances():
 
     end = EmptyOperator(task_id="end")
 
+    @task
+    def get_funds() -> list:
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        return params.get("funds", [])
+
+    funds = get_funds()
+
     retrieve_paid_invoices = invoices_paid_within_date_range()
 
     retrieve_paid_invoice_lines = invoice_lines_from_invoices(retrieve_paid_invoices)
 
-    filter_paid_invoice_lines = filter_invoice_lines(retrieve_paid_invoice_lines)
+    filter_paid_invoice_lines = filter_invoice_lines(retrieve_paid_invoice_lines, funds)
 
     retrieve_bookplate_fund_po_lines = bookplate_fund_po_lines(
         filter_paid_invoice_lines
@@ -57,7 +67,7 @@ def digital_bookplate_instances():
 
     launch_add_tag_dag = launch_add_979_fields_task(instances=retrieve_instances)
 
-    start >> retrieve_paid_invoices
+    start >> [funds, retrieve_paid_invoices]
     launch_add_tag_dag >> end
 
 
