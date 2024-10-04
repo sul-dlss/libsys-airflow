@@ -13,6 +13,8 @@ from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     check_deleted_from_argo,
     extract_bookplate_metadata,
     fetch_druids,
+    filter_updates_errors,
+    trigger_instances_dag,
 )
 
 rows = Rows(
@@ -186,6 +188,14 @@ def test_failed_bookplate(pg_hook):
     assert result["failure"]["druid"] == "ef919yq2614"
 
 
+def test_filter_updates_errors():
+    db_results = [{"failure": {}}, {"new": {}}, {"update": {}}]
+
+    result = filter_updates_errors.function(db_results)
+
+    assert result['failures'] == [{}]
+
+
 def test_missing_image_file(mocker):
 
     mocker.patch(
@@ -246,6 +256,12 @@ def test_new_bookplate(pg_hook):
     result = add_update_model.function(new_metadata)
 
     assert result["new"]["db_id"] == 4
+
+
+def test_trigger_instances_dag_no_new(caplog):
+    trigger_instances_dag.function(new=[])
+
+    assert "No new funds to trigger digital_bookplate_instances DAG" in caplog.text
 
 
 def test_update_bookplate(pg_hook):
