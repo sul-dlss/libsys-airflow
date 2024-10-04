@@ -4,6 +4,7 @@ import logging
 import httpx
 
 from airflow.decorators import task
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from jsonpath_ng.ext import parse
@@ -143,6 +144,18 @@ def filter_updates_errors(db_results: list) -> dict:
         f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updates):,}"
     )
     return {"failures": failures, "new": new, "updates": updates}
+
+
+@task
+def trigger_instances_dag(**kwargs) -> bool:
+    new_funds = kwargs.get("new", [])
+    if len(new_funds) < 1:
+        logger.info("No new funds to trigger digital_bookplate_instances DAG")
+        return True
+    TriggerDagRunOperator.partial(
+        task_id="new-instance-dag", trigger_dag_id="digital_bookplate_instances"
+    ).expand(**{"logical_date": "2023-08-28T00:00:00+00:00", "funds": new_funds})
+    return True
 
 
 def _add_bookplate(metadata: dict, session: Session) -> dict:

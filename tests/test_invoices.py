@@ -162,8 +162,8 @@ def test_invoice_lines_from_invoices(mocker, mock_folio_client, caplog):
     assert len(invoice_lines) == 2
 
 
-def test_filter_invoice_liness(mock_invoice_lines):
-    invoice_lines_data_struct = filter_invoice_lines.function(mock_invoice_lines)
+def test_filter_invoice_lines(mock_invoice_lines):
+    invoice_lines_data_struct = filter_invoice_lines.function(mock_invoice_lines, [])
     assert len(invoice_lines_data_struct) == 2
     for v in invoice_lines_data_struct[0].values():
         assert v["fund_ids"] == ["3eb86c5f-c77b-4cc9-8f29-7de7ce313411"]
