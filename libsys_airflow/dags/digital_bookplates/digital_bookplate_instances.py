@@ -2,17 +2,17 @@ from datetime import datetime, timedelta
 
 from airflow.decorators import dag
 from airflow.operators.empty import EmptyOperator
-from airflow.models.param import Param
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
-    bookplate_fund_ids,
+    bookplate_fund_po_lines,
     launch_add_979_fields_task,
 )
 
 from libsys_airflow.plugins.folio.invoices import (
     invoices_paid_within_date_range,
-    paid_invoice_lines_task,
-    paid_po_lines_from_invoice_lines,
+    invoice_lines_from_invoices,
+    filter_invoice_lines,
 )
 
 from libsys_airflow.plugins.folio.orders import (
@@ -31,24 +31,12 @@ default_args = {
 
 @dag(
     default_args=default_args,
-    schedule=None,
-    start_date=datetime(2024, 9, 9),
+    schedule=CronDataIntervalTimetable(
+        cron="0 2 * * WED", timezone="America/Los_Angeles"
+    ),
+    start_date=datetime(2023, 8, 28),
     catchup=False,
     tags=["digital bookplates"],
-    params={
-        "from_date": Param(
-            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
-            format="date",
-            type="string",
-            description="The earliest date to select paid invoices from FOLIO.",
-        ),
-        "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
-            format="date",
-            type="string",
-            description="The latest date to select paid invoices from FOLIO.",
-        ),
-    },
 )
 def digital_bookplate_instances():
     start = EmptyOperator(task_id="start")
@@ -57,19 +45,15 @@ def digital_bookplate_instances():
 
     retrieve_paid_invoices = invoices_paid_within_date_range()
 
-    retrieve_bookplate_fund_ids = bookplate_fund_ids()
+    retrieve_paid_invoice_lines = invoice_lines_from_invoices(retrieve_paid_invoices)
 
-    retrieve_paid_invoice_lines = paid_invoice_lines_task(
-        retrieve_paid_invoices, retrieve_bookplate_fund_ids
+    filter_paid_invoice_lines = filter_invoice_lines(retrieve_paid_invoice_lines)
+
+    retrieve_bookplate_fund_po_lines = bookplate_fund_po_lines(
+        filter_paid_invoice_lines
     )
 
-    retrieve_paid_po_lines = paid_po_lines_from_invoice_lines(
-        retrieve_paid_invoice_lines
-    )
-
-    retrieve_instances = instances_from_po_lines(
-        retrieve_paid_po_lines, retrieve_bookplate_fund_ids
-    )
+    retrieve_instances = instances_from_po_lines(retrieve_bookplate_fund_po_lines)
 
     launch_add_tag_dag = launch_add_979_fields_task(instances=retrieve_instances)
 
