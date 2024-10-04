@@ -52,7 +52,7 @@ def bookplate_fund_ids(**kwargs) -> dict:
 
 
 @task
-def bookplate_fund_po_lines(invoice_lines: list) -> dict:
+def bookplate_fund_po_lines(invoice_lines: list) -> list:
     """
     Checks if fund Id from invoice lines data struct contains bookplate fund
     This task needs to lookup in the digital bookplates table the fund_id
@@ -69,7 +69,7 @@ def bookplate_fund_po_lines(invoice_lines: list) -> dict:
     ]
     Returns po lines and fund ids that are bookplate funds
     """
-    funds_invoice_lines: dict = {}
+    funds_invoice_lines: list = []
 
     return funds_invoice_lines
 
