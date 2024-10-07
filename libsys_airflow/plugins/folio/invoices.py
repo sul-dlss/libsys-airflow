@@ -35,6 +35,26 @@ def _get_ids_from_vouchers(folio_query: str, folio_client: FolioClient) -> list:
     return [row.get("invoiceId") for row in vouchers]
 
 
+def _get_all_ids_from_invoices(folio_query: str, folio_client: FolioClient) -> list:
+    """
+    Returns all invoice Ids from invoices given query parameter in `limit`-size chunks
+    """
+    invoices = folio_client.folio_get_all(
+        "/invoice/invoices", key="invoices", query=folio_query, limit=500
+    )
+    return [row.get("id") for row in invoices]
+
+
+def _get_all_invoice_lines(folio_query: str, folio_client: FolioClient) -> list:
+    """
+    Returns all invoice line given a query parameter in `limit`-size chunks
+    """
+    invoice_lines = folio_client.folio_get_all(
+        "/invoice/invoice-lines", key="invoiceLines", query=folio_query, limit=500
+    )
+    return [row for row in invoice_lines]
+
+
 def _update_vouchers_to_pending(invoice_ids: list, folio_client: FolioClient) -> dict:
     """
     Iterates through list of invoice ids and updates disbursementNumber to Pending
@@ -87,23 +107,82 @@ def invoices_pending_payment_task(invoice_ids: list):
 def invoices_paid_within_date_range(**kwargs) -> list:
     """
     Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
-    Use from_date and to_date DAG params
+    paymentDate range based on airflow DAG run data intervals end and start dates
+    Query paymentDate greater than logical_date when run_id starts with "manual_"
     """
-    return []
+    folio_client = _folio_client()
+    dag_run = kwargs["dag_run"]
+    dag_run_id = dag_run.run_id
+    from_date = dag_run.data_interval_start
+    to_date = dag_run.data_interval_end
+    query = f"""?query=((paymentDate>={from_date} and paymentDate<={to_date}) and status=="Paid")"""
+    if dag_run_id.startswith("manual_"):
+        from_date = dag_run.logical_date
+        query = f"""?query=((paymentDate>={from_date}) and status=="Paid")"""
+
+    invoice_ids = _get_all_ids_from_invoices(query, folio_client)
+    return invoice_ids
 
 
 @task
-def paid_invoice_lines_task(invoices: list, funds: dict) -> dict:
+def invoice_lines_from_invoices(invoices: list) -> list:
     """
-    Given a list of invoice UUIDs and fund UUIDs, retrieves all the paid invoice lines
-    on those invoices with fund distributions matching fund UUID.
+    Given a list of invoice UUIDs, returns a list of invoice lines dictionaries
     """
-    return {}
+    folio_client = _folio_client()
+    all_invoice_lines = []
+    for id in invoices:
+        logger.info(f"Getting invoice lines for {id}")
+        query = f"""?query=(invoiceId=={id})"""
+        invoice_lines = _get_all_invoice_lines(query, folio_client)
+        for row in invoice_lines:
+            all_invoice_lines.append(row)
+
+    return all_invoice_lines
 
 
 @task
-def paid_po_lines_from_invoice_lines(invoice_lines: list) -> list:
+def filter_invoice_lines(invoice_lines: list, funds: list) -> list:
     """
-    Gets the poLineId from each paid invoice line
+    Given a list of invoice line dictionaries,
+    Filters invoice lines to only those with fund IDs and po line IDs
+    Returns a data structures that contains the
+    invoice line ID, the fund ids and po line ids for each, e.g.:
+    [
+      {
+        "fadacf66-8813-4759-b4d3-7d506db38f48": {
+          "fund_ids": [
+            "0e8804ca-0190-4a98-a88d-83ae77a0f8e3"
+          ],
+          "poline_id": "b5ba6538-7e04-4be3-8a0e-c68306c355a2"
+        }
+      },
+      {
+        "a16030c1-66ca-44c1-b0a3-572cde626685": {
+          "fund_ids": [
+            "47e1fc24-300d-4817-a866-5c0a2f490522"
+          ],
+          "poline_id": "5513c3d7-7c6b-45ea-a875-09798b368873"
+        }
+      }
+    ]
     """
-    return []
+    invoice_lines_funds_polines = []
+    for row in invoice_lines:
+        fund_poline = {}
+        fund_ids = []
+        fund_distribution = row.get("fundDistributions")
+        poline_id = row.get("poLineId")
+        if fund_distribution and poline_id is not None:
+            for x in fund_distribution:
+                fund_ids.append(x["fundId"])
+            fund_poline["fund_ids"] = fund_ids
+            fund_poline["poline_id"] = poline_id
+        else:
+            next  # next invoice line
+
+        lines_funds_polines = {}
+        lines_funds_polines[row["id"]] = fund_poline
+        invoice_lines_funds_polines.append(lines_funds_polines)
+
+    return invoice_lines_funds_polines
