@@ -24,13 +24,7 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
     pg_hook = PostgresHook("digital_bookplates")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         for f in (
-            session.query(
-                DigitalBookplate.fund_uuid,
-                DigitalBookplate.fund_name,
-                DigitalBookplate.druid,
-                DigitalBookplate.image_filename,
-                DigitalBookplate.title,
-            )
+            session.query(DigitalBookplate)
             .where(DigitalBookplate.fund_uuid.is_not(None))
             .all()
         ):
