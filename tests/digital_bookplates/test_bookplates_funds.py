@@ -1,8 +1,6 @@
 import datetime
 import pytest  # noqa
 
-from unittest.mock import MagicMock
-
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
