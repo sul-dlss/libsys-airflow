@@ -6,7 +6,6 @@ from libsys_airflow.plugins.folio.invoices import (
     invoices_awaiting_payment_task,
     invoices_paid_within_date_range,
     invoice_lines_from_invoices,
-    filter_invoice_lines,
     _get_ids_from_vouchers,
     _get_all_ids_from_invoices,
 )
@@ -160,15 +159,3 @@ def test_invoice_lines_from_invoices(mocker, mock_folio_client, caplog):
         "Getting invoice lines for 29f339e3-dfdc-43e4-9442-eb817fdfb069" in caplog.text
     )
     assert len(invoice_lines) == 2
-
-
-def test_filter_invoice_lines(mock_invoice_lines):
-    invoice_lines_data_struct = filter_invoice_lines.function(mock_invoice_lines, [])
-    assert len(invoice_lines_data_struct) == 2
-    for v in invoice_lines_data_struct[0].values():
-        assert v["fund_ids"] == ["3eb86c5f-c77b-4cc9-8f29-7de7ce313411"]
-        assert v["poline_id"] == "be0af62c-665e-4178-ae13-e3250d89bcc6"
-
-    for k, v in invoice_lines_data_struct[1].items():
-        assert k == "5c6cffcf-1951-47c9-817f-145cbe931dea"
-        assert bool(v) is False
