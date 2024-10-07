@@ -4,12 +4,14 @@ import logging
 import httpx
 
 from airflow.decorators import task
+from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from jsonpath_ng.ext import parse
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
+from folioclient import FolioClient
 
 FUND_NAME_EXPR = parse(
     "$.description.identifier[?(@.displayLabel == 'Symphony Fund Name')].value"
@@ -18,6 +20,15 @@ IMAGE_FILE_NAME_EXPR = parse("structural.contains[0].structural.contains[0].file
 TITLE_EXPR = parse("$.label")
 
 logger = logging.getLogger(__name__)
+
+
+def _folio_client():
+    return FolioClient(
+        Variable.get("OKAPI_URL"),
+        "sul",
+        Variable.get("FOLIO_USER"),
+        Variable.get("FOLIO_PASSWORD"),
+    )
 
 
 @task
@@ -153,6 +164,7 @@ def _add_bookplate(metadata: dict, session: Session) -> dict:
         title=metadata['title'],
         image_filename=metadata['image_filename'],
         fund_name=metadata['fund_name'],
+        fund_uuid=_fetch_folio_fund_id(metadata['fund_name']),
     )
     session.add(new_bookplate)
     session.commit()
@@ -190,6 +202,20 @@ def _update_bookplate(metadata, bookplate, session):
             reason.append(f"{key} changed")
     if len(reason) > 0:
         metadata["reason"] = ", ".join(reason)
+        bookplate.fund_id = _fetch_folio_fund_id(metadata['fund_name'])
         bookplate.updated = datetime.datetime.utcnow()
         session.commit()
     return metadata
+
+
+def _fetch_folio_fund_id(fund_name) -> str:
+    folio_client = _folio_client()
+    folio_funds = folio_client.folio_get(
+        "/finance/funds", query_params={"name": fund_name}
+    )
+    try:
+        fund_id = folio_funds["funds"]["id"]
+    except TypeError as e:
+        fund_id = None
+
+    return fund_id
