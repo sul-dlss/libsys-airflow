@@ -53,7 +53,7 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
           <tr>
             <td>{{row["fund_name"]}}</td>
             <td>{{row["druid"]}}</td>
-            <td>{{row["filename"]}}</td>
+            <td>{{row["image_filename"]}}</td>
             <td>{{row["title"]}}</td>
           </tr>
         {% endfor %}
@@ -75,7 +75,7 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
           <tr>
             <td>{{row["fund_name"]}}</td>
             <td>{{row["druid"]}}</td>
-            <td>{{row["filename"]}}</td>
+            <td>{{row["image_filename"]}}</td>
             <td>{{row["title"]}}</td>
             <td>{{row["reason"]}}</td>
           </tr>
