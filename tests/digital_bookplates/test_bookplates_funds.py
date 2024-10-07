@@ -47,23 +47,6 @@ rows = Rows(
 
 engine = create_sqlite_fixture(rows)
 
-funds = {
-    "funds": [
-        {
-            "id": "b8932bcd-7498-4f7e-a598-de9010561e42",
-            "name": "ASHENR",
-        },
-        {
-            "id": "06220dd4-7d6e-4e5b-986d-5fca21d856ca",
-            "name": "RHOADES",
-        },
-        {
-            "id": "a038f042-ee9e-44ef-bf0d-b7eacd5225bc",
-            "name": "NONE",
-        },
-    ]
-}
-
 
 @pytest.fixture
 def mock_invoice_lines():
@@ -179,16 +162,6 @@ def mock_bookplate_funds_polines():
             "poline_id": "5513c3d7-7c6b-45ea-a875-09798b368873",
         },
     ]
-
-
-@pytest.fixture
-def mock_folio_client():
-    def mock_get(*args, **kwargs):
-        return funds
-
-    mock_client = MagicMock()
-    mock_client.folio_get = mock_get
-    return mock_client
 
 
 @pytest.fixture
