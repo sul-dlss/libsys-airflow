@@ -4,6 +4,7 @@ import httpx
 import pytest
 import requests_mock
 
+from unittest.mock import MagicMock
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
@@ -24,6 +25,7 @@ rows = Rows(
         updated=datetime.datetime(2024, 9, 11, 13, 15, 0, 733715),
         druid="kp761xz4568",
         fund_name="ASHENR",
+        fund_uuid="f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4",
         image_filename="dp698zx8237_00_0001.jp2",
         title="Ruth Geraldine Ashen Memorial Book Fund",
     ),
@@ -34,6 +36,7 @@ rows = Rows(
         druid="gc698jf6425",
         image_filename="gc698jf6425_00_0001.jp2",
         fund_name="RHOADES",
+        fund_uuid="3402d045-2788-46fe-8c49-d89860c1f701",
         title="John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
     ),
     DigitalBookplate(
@@ -42,6 +45,7 @@ rows = Rows(
         updated=datetime.datetime(2024, 9, 13, 17, 16, 15, 986798),
         druid="ab123xy4567",
         fund_name=None,
+        fund_uuid=None,
         image_filename="ab123xy4567_00_0001.jp2",
         title="Alfred E. Newman Magazine Fund for Humor Studies",
     ),
@@ -104,6 +108,16 @@ def mock_purl_fetcher_api_response():
             'latest_change': '2024-05-09T00:50:45Z',
         },
     ]
+
+
+@pytest.fixture
+def mock_folio_client():
+    def mock_get(*args, **kwargs):
+        return {"funds": []}
+
+    mock_client = MagicMock()
+    mock_client.folio_get = mock_get
+    return mock_client
 
 
 @pytest.fixture
@@ -179,6 +193,7 @@ def test_failed_bookplate(pg_hook):
         "druid": "ef919yq2614",
         "failure": "Missing image file",
         "fund_name": "KELP",
+        "fund_uuid": None,
         "title": "The Kelp Foundation Fund",
         "image_filename": None,
     }
@@ -244,7 +259,12 @@ def test_nochange_bookplate(pg_hook):
     assert result == {}
 
 
-def test_new_bookplate(pg_hook):
+def test_new_bookplate(pg_hook, mocker, mock_folio_client):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.purl_fetcher._folio_client",
+        return_value=mock_folio_client,
+    )
+
     new_metadata = {
         "druid": "ef919yq2614",
         "failure": None,
@@ -264,7 +284,12 @@ def test_trigger_instances_dag_no_new(caplog):
     assert "No new funds to trigger digital_bookplate_instances DAG" in caplog.text
 
 
-def test_update_bookplate(pg_hook):
+def test_update_bookplate(pg_hook, mocker, mock_folio_client):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.purl_fetcher._folio_client",
+        return_value=mock_folio_client,
+    )
+
     updated_metadata = {
         "druid": "ab123xy4567",
         "failure": None,

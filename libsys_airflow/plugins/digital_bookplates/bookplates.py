@@ -39,38 +39,6 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
 
 
 @task
-def bookplate_fund_ids(**kwargs) -> dict:
-    """
-    Looks up in bookplates table for fund_name
-    Queries folio for fund_name
-    Returns dict of fund UUIDs
-    """
-    folio_client = _folio_client()
-    folio_funds = folio_client.folio_get(
-        "/finance-storage/funds", query_params={"limit": 2999}
-    )
-
-    pg_hook = PostgresHook("digital_bookplates")
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        fund_tuples = (
-            session.query(DigitalBookplate.fund_name, DigitalBookplate.druid).where(
-                DigitalBookplate.fund_name.is_not(None)
-            )
-        ).all()
-
-    fund_names = [n[0] for n in fund_tuples]
-    fund_druids = [n[1] for n in fund_tuples]
-
-    funds: dict = {}
-    for fund in folio_funds['funds']:
-        if fund['name'] in fund_names:
-            idx = fund_names.index(fund['name'])
-            funds[fund_druids[idx]] = fund['id']
-
-    return funds
-
-
-@task
 def bookplate_fund_po_lines(invoice_lines: list) -> list:
     """
     Checks if fund Id from invoice lines data struct contains bookplate fund

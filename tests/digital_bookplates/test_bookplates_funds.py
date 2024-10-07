@@ -7,10 +7,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
-from libsys_airflow.plugins.digital_bookplates.bookplates import (
-    bookplate_fund_ids,
-    bookplate_fund_po_lines,
-)
+from libsys_airflow.plugins.digital_bookplates.bookplates import bookplate_fund_po_lines
 
 rows = Rows(
     DigitalBookplate(
@@ -104,18 +101,6 @@ def pg_hook(mocker, engine) -> PostgresHook:
     )
     mock_hook.return_value = engine
     return mock_hook
-
-
-def test_bookplate_fund_ids(mocker, pg_hook, mock_folio_client):
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
-        return_value=mock_folio_client,
-    )
-
-    assert bookplate_fund_ids.function() == {
-        "kp761xz4568": "b8932bcd-7498-4f7e-a598-de9010561e42",
-        "gc698jf6425": "06220dd4-7d6e-4e5b-986d-5fca21d856ca",
-    }
 
 
 def test_bookplate_fund_po_lines(pg_hook, mock_invoice_lines_filter):
