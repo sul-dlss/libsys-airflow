@@ -228,7 +228,7 @@ def _fetch_folio_fund_id(fund_name) -> str:
     )
     try:
         fund_id = folio_funds["funds"]["id"]
-    except TypeError as e:
+    except TypeError:
         fund_id = None
 
     return fund_id
