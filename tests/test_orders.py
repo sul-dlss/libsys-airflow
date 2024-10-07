@@ -11,7 +11,7 @@ mock_order_lines = {
     "84701022-43af-401e-bcea-fb5fbd8f49f3": {
         "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93"
     },
-    "9f7031df-d30b-40c2-955a-7d522c303a43": {"instanceId": None},
+    "9f7031df-d30b-40c2-955a-7d522c303a43": {},
 }
 
 
