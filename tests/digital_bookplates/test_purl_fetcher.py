@@ -278,7 +278,6 @@ def test_new_bookplate(pg_hook, mocker, mock_folio_client):
     assert result["new"]["db_id"] == 4
 
 
-
 def test_trigger_instances_dag_no_new(caplog):
     trigger_instances_dag.function(new=[])
 
