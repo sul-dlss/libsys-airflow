@@ -38,23 +38,28 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
     return funds
 
 
-@task
-def bookplate_fund_po_lines(invoice_lines: list) -> list:
+def _new_bookplates(funds: list) -> dict:
     """
-    Checks if fund Id from invoice lines data struct contains bookplate fund
-    This task needs to get digital bookplates data from the table and
-    return a list of bookplates metadata and poline ids
-    Input data struct:
-    [
-      {
-        "fadacf66-8813-4759-b4d3-7d506db38f48": {
-          "fund_ids": [
-            "0e8804ca-0190-4a98-a88d-83ae77a0f8e3"
-          ],
-          "poline_id": "b5ba6538-7e04-4be3-8a0e-c68306c355a2"
+    Transforms new funds list into dictionary with fund_uuid as key
+    """
+    bookplates = {}
+    for row in funds:
+        bookplates[row["fund_uuid"]] = {
+            "fund_name": row["fund_name"],
+            "druid": row["druid"],
+            "image_filename": row["image_filename"],
+            "title": row["title"],
         }
-      }
-    ]
+
+    return bookplates
+
+
+@task
+def bookplate_funds_polines(invoice_lines: list, funds: list) -> list:
+    """
+    Checks if fund Id from invoice lines contains bookplate fund
+    This task gets digital bookplates data from the table or uses
+    a list of new funds and returns a list of bookplates metadata and poline ids
     Returns:
     [
       {
@@ -68,26 +73,21 @@ def bookplate_fund_po_lines(invoice_lines: list) -> list:
     ]
     """
     bookplates_polines: list = []
-    bookplates = _get_bookplate_metadata_with_fund_uuids()
-    # create new list of funds and poline objects (removes invoice lines and empty values)
-    funds_polines = []
+    if len(funds) > 0:
+        bookplates = _new_bookplates(funds)
+    else:
+        bookplates = _get_bookplate_metadata_with_fund_uuids()
+
     for row in invoice_lines:
-        for k, v in row.items():
-            if row[k]:
-                funds_polines.append(v)
-
-    # check for fund id in bookplates dict and add poline id to new dict
-    for row in funds_polines:
-        funds = row.get("fund_ids")
-        poline_id = row.get("poline_id")
-        bp_poline_dict = {}
-        for f in funds:
-            md = bookplates.get(f)
-            if f and md is not None:
-                bp_poline_dict.update({"bookplate_metadata": md})
-                bp_poline_dict.update({"poline_id": poline_id})
-
-        bookplates_polines.append(bp_poline_dict)
+        fund_distribution = row.get("fundDistributions")
+        poline_id = row.get("poLineId")
+        if fund_distribution and poline_id:
+            for fund in fund_distribution:
+                bookplate = bookplates.get(fund["fundId"])
+                if bookplate:
+                    bookplates_polines.append(
+                        {"bookplate_metadata": bookplate, "poline_id": poline_id}
+                    )
 
     return bookplates_polines
 
