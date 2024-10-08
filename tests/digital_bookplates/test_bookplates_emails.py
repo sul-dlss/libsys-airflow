@@ -12,18 +12,18 @@ from libsys_airflow.plugins.digital_bookplates.email import (
 
 failures = [
     {
-        'druid': 'cv850pd2472',
-        'image_filename': None,
-        'failure': 'Missing image file',
-        'fund_name': 'ROSENBERG',
-        'title': 'Marie Louise Rosenberg Fund for Humanities',
+        "druid": "cv850pd2472",
+        "image_filename": None,
+        "failure": "Missing image file",
+        "fund_name": "ROSENBERG",
+        "title": "Marie Louise Rosenberg Fund for Humanities",
     },
     {
-        'druid': 'fr739cb8411',
-        'image_filename': 'fr739cb8411_00_0001.jp2',
-        'failure': 'Missing title',
-        'fund_name': None,
-        'title': None,
+        "druid": "fr739cb8411",
+        "image_filename": "fr739cb8411_00_0001.jp2",
+        "failure": "Missing title",
+        "fund_name": None,
+        "title": None,
     },
 ]
 
@@ -59,7 +59,7 @@ def mock_bookplate_metadata():
             {
                 "fund_name": "ABBOTT",
                 "druid": "ab123cd4567",
-                "filename": "image_ab123cd4567.jp2",
+                "image_filename": "image_ab123cd4567.jp2",
                 "title": "Title",
             }
         ],
@@ -67,11 +67,12 @@ def mock_bookplate_metadata():
             {
                 "fund_name": "ABBOTT",
                 "druid": "ab123cd4567",
-                "filename": "image_ab123cd4567.jp2",
+                "image_filename": "image_ab123cd4567.jp2",
                 "title": "Changed Title",
                 "reason": "title changed",
             }
         ],
+        "failures": [],
     }
 
 
@@ -107,13 +108,15 @@ def test_bookplates_metadata_email(
     tables = html_body.find_all("table")
     new_trs = tables[0].find_all("tr")
     assert len(new_trs) == 2
-    assert new_trs[0].find_all('th')[3].text.startswith("Title")
-    assert new_trs[1].find_all('td')[0].text.startswith("ABBOTT")
+    assert new_trs[0].find_all("th")[3].text.startswith("Title")
+    assert new_trs[1].find_all("td")[0].text.startswith("ABBOTT")
+    assert new_trs[0].find_all("th")[2].text.startswith("Filename")
+    assert new_trs[1].find_all("td")[2].text.startswith("image_ab123cd4567.jp2")
 
     updated_trs = tables[1].find_all("tr")
     assert len(updated_trs) == 2
-    assert updated_trs[0].find_all('th')[4].text.startswith("Reason")
-    assert updated_trs[1].find_all('td')[4].text.startswith("title change")
+    assert updated_trs[0].find_all("th")[4].text.startswith("Reason")
+    assert updated_trs[1].find_all("td")[4].text.startswith("title change")
 
 
 def test_bookplates_metadata_email_none(mocker, mock_folio_variables, caplog):
@@ -160,8 +163,9 @@ def test_no_new_bookplates_metadata_email(
     assert len(tables) == 1
     updated_trs = tables[0].find_all("tr")
     assert len(updated_trs) == 2
-    assert updated_trs[0].find_all('th')[3].text.startswith("Title")
-    assert updated_trs[1].find_all('td')[3].text.startswith("Changed Title")
+    assert updated_trs[0].find_all("th")[3].text.startswith("Title")
+    assert updated_trs[1].find_all("td")[3].text.startswith("Changed Title")
+    assert updated_trs[1].find_all("td")[2].text.startswith("image_ab123cd4567.jp2")
 
 
 def test_no_updated_bookplates_metadata_email(
