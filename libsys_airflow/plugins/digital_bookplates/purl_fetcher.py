@@ -47,7 +47,9 @@ def add_update_model(metadata) -> dict:
             .first()
         )
         if bookplate is None:
-            metadata["db_id"] = _add_bookplate(metadata, session)
+            (db_id, fund_uuid) = _add_bookplate(metadata, session)
+            metadata["db_id"] = db_id
+            metadata["fund_uuid"] = fund_uuid
             report["new"] = metadata
         else:
             metadata = _update_bookplate(metadata, bookplate, session)
@@ -169,7 +171,7 @@ def trigger_instances_dag(**kwargs) -> bool:
     return True
 
 
-def _add_bookplate(metadata: dict, session: Session) -> dict:
+def _add_bookplate(metadata: dict, session: Session) -> tuple:
     new_bookplate = DigitalBookplate(
         created=datetime.datetime.utcnow(),
         updated=datetime.datetime.utcnow(),
@@ -181,7 +183,7 @@ def _add_bookplate(metadata: dict, session: Session) -> dict:
     )
     session.add(new_bookplate)
     session.commit()
-    return new_bookplate.id
+    return (new_bookplate.id, new_bookplate.fund_uuid)
 
 
 def _child_druid(x):
@@ -215,7 +217,9 @@ def _update_bookplate(metadata, bookplate, session):
             reason.append(f"{key} changed")
     if len(reason) > 0:
         metadata["reason"] = ", ".join(reason)
-        bookplate.fund_id = _fetch_folio_fund_id(metadata['fund_name'])
+        fund_id = _fetch_folio_fund_id(metadata['fund_name'])
+        bookplate.fund_uuid = fund_id
+        metadata["fund_uuid"] = fund_id
         bookplate.updated = datetime.datetime.utcnow()
         session.commit()
     return metadata

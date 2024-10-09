@@ -25,7 +25,7 @@ rows = Rows(
         updated=datetime.datetime(2024, 9, 11, 13, 15, 0, 733715),
         druid="kp761xz4568",
         fund_name="ASHENR",
-        fund_uuid="f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4",
+        fund_uuid="b8932bcd-7498-4f7e-a598-de9010561e42",
         image_filename="dp698zx8237_00_0001.jp2",
         title="Ruth Geraldine Ashen Memorial Book Fund",
     ),
@@ -113,7 +113,17 @@ def mock_purl_fetcher_api_response():
 @pytest.fixture
 def mock_folio_client():
     def mock_get(*args, **kwargs):
-        return {"funds": []}
+        # Funds
+        if args[0].startswith("/finance/funds"):
+            if kwargs["query_params"]["name"] == "KELP":
+                return {
+                    "funds": {
+                        "id": "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4",
+                        "name": "KELP",
+                    }
+                }
+            else:
+                return {"funds": {"id": "abc123"}}
 
     mock_client = MagicMock()
     mock_client.folio_get = mock_get
@@ -276,6 +286,7 @@ def test_new_bookplate(pg_hook, mocker, mock_folio_client):
     result = add_update_model.function(new_metadata)
 
     assert result["new"]["db_id"] == 4
+    assert result["new"]["fund_uuid"] == "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"
 
 
 def test_trigger_instances_dag_no_new(caplog):
@@ -302,3 +313,4 @@ def test_update_bookplate(pg_hook, mocker, mock_folio_client):
 
     assert result["updated"]["reason"].startswith("fund_name changed, title changed")
     assert result["updated"]["db_id"] == 3
+    assert result["updated"]["fund_uuid"] == "abc123"
