@@ -1,12 +1,9 @@
 import logging
 
 from airflow.decorators import task
-from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
-from libsys_airflow.plugins.shared.folio_client import folio_client
-# from libsys_airflow.plugins.shared.utils import FolioAddMarcTags
 
 logger = logging.getLogger(__name__)
 
