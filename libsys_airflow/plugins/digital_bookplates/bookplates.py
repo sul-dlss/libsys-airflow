@@ -5,18 +5,10 @@ from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
-from folioclient import FolioClient
+from libsys_airflow.plugins.shared.folio_client import folio_client
+# from libsys_airflow.plugins.shared.utils import FolioAddMarcTags
 
 logger = logging.getLogger(__name__)
-
-
-def _folio_client():
-    return FolioClient(
-        Variable.get("OKAPI_URL"),
-        "sul",
-        Variable.get("FOLIO_USER"),
-        Variable.get("FOLIO_PASSWORD"),
-    )
 
 
 def _get_bookplate_metadata_with_fund_uuids() -> dict:
@@ -95,5 +87,30 @@ def bookplate_fund_po_lines(invoice_lines: list) -> list:
 @task
 def launch_add_979_fields_task(**kwargs):
     """
-    Trigger add a tag dag with instance UUIDs and fund 979 data
+    Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict:
+    {
+        "242c6000-8485-5fcd-9b5e-adb60788ca59": [
+            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+        ],
+        "bd65eb13-739b-4aa8-baaa-9c1ea48f4c33": [
+            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+        ]
+    }
     """
+
+
+@task
+def construct_979_marc_tags(druid_instances: dict) -> dict:
+    """
+    get the bookplate data from the bookplates table and contruct a 979 tag with the
+    fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
+    {
+        '979': {'ind1': ' ', 'ind2': ' ', 'subfields': [
+                {'f': 'ABBOTT'}, {'b': 'druid:ws066yy0421'}, {'c': 'ws066yy0421_00_0001.jp2'}, {'d': 'The The Donald P. Abbott Fund for Marine Invertebrates'}
+            ]
+        }
+    }
+    """
+    return {}
