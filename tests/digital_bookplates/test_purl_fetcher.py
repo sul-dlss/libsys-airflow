@@ -115,15 +115,15 @@ def mock_folio_client():
     def mock_get(*args, **kwargs):
         # Funds
         if args[0].startswith("/finance/funds"):
-            if kwargs["query_params"]["name"] == "KELP":
-                return {
-                    "funds": {
+            if kwargs["query_params"]["query"] == "name==KELP":
+                return [
+                    {
                         "id": "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4",
                         "name": "KELP",
                     }
-                }
+                ]
             else:
-                return {"funds": {"id": "abc123"}}
+                return [{"id": "abc123"}]
 
     mock_client = MagicMock()
     mock_client.folio_get = mock_get

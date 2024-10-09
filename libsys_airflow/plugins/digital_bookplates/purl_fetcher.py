@@ -228,10 +228,10 @@ def _update_bookplate(metadata, bookplate, session):
 def _fetch_folio_fund_id(fund_name) -> str:
     folio_client = _folio_client()
     folio_funds = folio_client.folio_get(
-        "/finance/funds", query_params={"name": fund_name}
+        "/finance/funds", key="funds", query_params={"query": f"""name=={fund_name}"""}
     )
     try:
-        fund_id = folio_funds["funds"]["id"]
+        fund_id = folio_funds[0].get("id")
     except TypeError:
         fund_id = None
 
