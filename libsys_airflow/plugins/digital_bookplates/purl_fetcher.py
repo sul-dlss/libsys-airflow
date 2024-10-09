@@ -47,12 +47,14 @@ def add_update_model(metadata) -> dict:
             .first()
         )
         if bookplate is None:
+            logger.info("Bookplate is new")
             (db_id, fund_uuid) = _add_bookplate(metadata, session)
             metadata["db_id"] = db_id
             metadata["fund_uuid"] = fund_uuid
             report["new"] = metadata
         else:
             metadata = _update_bookplate(metadata, bookplate, session)
+            logger.info("Bookplate was updated")
             if "reason" in metadata:
                 metadata["db_id"] = bookplate.id
                 report["updated"] = metadata
