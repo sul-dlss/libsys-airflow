@@ -150,6 +150,19 @@ export DATABASE_HOSTNAME="localhost"
 ```
 1.  Run (e.g. using the database name you want to migrate) `poetry run alembic --name digital_bookplates upgrade head`
 
+#### Clearing Digital Bookplates Data
+
+Assuming that you have populated the digital_bookplates database's digital_bookplates table with data, you can clear it out with:
+```
+poetry run bin/truncate_digital_bookplates
+```
+
+In a deployed environment, this can be run as:
+```
+docker exec -it 20230516183735-airflow-webserver-1 bin/truncate_digital_bookplates
+```
+where `20230516183735-airflow-webserver-1` is the container id.
+
 ### Vendor load plugin
 
 Using and developing the vendor load plug in requires its own database. Ensure that the `vendor_loads` database exists in your local postgres and is owned by the airflow user.
