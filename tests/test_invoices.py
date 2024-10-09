@@ -122,17 +122,23 @@ def test_get_invoices(mock_folio_client):
     assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
 
 
-def test_invoices_paid_since_beginning(mocker, mock_folio_client, mock_manual_dag_run):
+def test_invoices_paid_since_beginning(
+    mocker, mock_folio_client, mock_manual_dag_run, caplog
+):
     mocker.patch(
         "libsys_airflow.plugins.folio.invoices._folio_client",
         return_value=mock_folio_client,
     )
     invoice_ids = invoices_paid_within_date_range.function(dag_run=mock_manual_dag_run)
     assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
+    assert (
+        f"Querying paid invoices with paymentDate >= {mock_manual_dag_run.data_interval_start}"
+        in caplog.text
+    )
 
 
 def test_invoices_paid_within_date_range(
-    mocker, mock_folio_client, mock_scheduled_dag_run
+    mocker, mock_folio_client, mock_scheduled_dag_run, caplog
 ):
     mocker.patch(
         "libsys_airflow.plugins.folio.invoices._folio_client",
@@ -143,6 +149,10 @@ def test_invoices_paid_within_date_range(
     )
     assert len(invoice_ids) == 1
     assert invoice_ids[0] == "34cabbbd-d419-4853-ad3a-d0eafd4310c6"
+    assert (
+        f"Querying paid invoices with paymentDate range >= {mock_scheduled_dag_run.data_interval_start} and <= {mock_scheduled_dag_run.data_interval_end}"
+        in caplog.text
+    )
 
 
 def test_invoice_lines_from_invoices(mocker, mock_folio_client, caplog):

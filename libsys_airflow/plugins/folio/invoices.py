@@ -117,8 +117,14 @@ def invoices_paid_within_date_range(**kwargs) -> list:
     to_date = dag_run.data_interval_end
     query = f"""?query=((paymentDate>={from_date} and paymentDate<={to_date}) and status=="Paid")"""
     if dag_run_id.startswith("manual_"):
+        logger.info(f"Querying paid invoices with paymentDate >= {from_date}")
         from_date = dag_run.logical_date
         query = f"""?query=((paymentDate>={from_date}) and status=="Paid")"""
+
+    else:
+        logger.info(
+            f"Querying paid invoices with paymentDate range >= {from_date} and <= {to_date}"
+        )
 
     invoice_ids = _get_all_ids_from_invoices(query, folio_client)
     return invoice_ids
