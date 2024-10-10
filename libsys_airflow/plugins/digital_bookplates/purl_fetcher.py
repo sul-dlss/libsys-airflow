@@ -47,10 +47,14 @@ def add_update_model(metadata) -> dict:
             .first()
         )
         if bookplate is None:
-            metadata["db_id"] = _add_bookplate(metadata, session)
+            logger.info("Bookplate is new")
+            (db_id, fund_uuid) = _add_bookplate(metadata, session)
+            metadata["db_id"] = db_id
+            metadata["fund_uuid"] = fund_uuid
             report["new"] = metadata
         else:
             metadata = _update_bookplate(metadata, bookplate, session)
+            logger.info("Bookplate was updated")
             if "reason" in metadata:
                 metadata["db_id"] = bookplate.id
                 report["updated"] = metadata
@@ -169,7 +173,7 @@ def trigger_instances_dag(**kwargs) -> bool:
     return True
 
 
-def _add_bookplate(metadata: dict, session: Session) -> dict:
+def _add_bookplate(metadata: dict, session: Session) -> tuple:
     new_bookplate = DigitalBookplate(
         created=datetime.datetime.utcnow(),
         updated=datetime.datetime.utcnow(),
@@ -181,7 +185,7 @@ def _add_bookplate(metadata: dict, session: Session) -> dict:
     )
     session.add(new_bookplate)
     session.commit()
-    return new_bookplate.id
+    return (new_bookplate.id, new_bookplate.fund_uuid)
 
 
 def _child_druid(x):
@@ -215,7 +219,9 @@ def _update_bookplate(metadata, bookplate, session):
             reason.append(f"{key} changed")
     if len(reason) > 0:
         metadata["reason"] = ", ".join(reason)
-        bookplate.fund_id = _fetch_folio_fund_id(metadata['fund_name'])
+        fund_id = _fetch_folio_fund_id(metadata['fund_name'])
+        bookplate.fund_uuid = fund_id
+        metadata["fund_uuid"] = fund_id
         bookplate.updated = datetime.datetime.utcnow()
         session.commit()
     return metadata
@@ -224,10 +230,10 @@ def _update_bookplate(metadata, bookplate, session):
 def _fetch_folio_fund_id(fund_name) -> str:
     folio_client = _folio_client()
     folio_funds = folio_client.folio_get(
-        "/finance/funds", query_params={"name": fund_name}
+        "/finance/funds", key="funds", query_params={"query": f"""name=={fund_name}"""}
     )
     try:
-        fund_id = folio_funds["funds"]["id"]
+        fund_id = folio_funds[0].get("id")
     except TypeError:
         fund_id = None
 
