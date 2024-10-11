@@ -40,6 +40,10 @@ def _trigger_add_979_dags(**kwargs) -> str:
     return run_id
 
 
+def _trigger_poll_add_979_dags(dag_runs: list, email: str):
+    """Placeholder for polling DAGs DAG"""
+
+
 def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame):
     """
     Saves uploaded file to digital-bookplates/{year}/{day} location
@@ -94,6 +98,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
                 raw_upload_instances_file.filename,
                 upload_instances_df,
             )
+            _trigger_poll_add_979_dags(dag_runs, email)
         except pd.errors.EmptyDataError:
             flash("Warning! Empty Instance UUID file.")
             return redirect('/digital_bookplates_batch_upload')
