@@ -167,9 +167,15 @@ def trigger_instances_dag(**kwargs) -> bool:
     if len(new_funds) < 1:
         logger.info("No new funds to trigger digital_bookplate_instances DAG")
         return True
-    TriggerDagRunOperator.partial(
-        task_id="new-instance-dag", trigger_dag_id="digital_bookplate_instances"
-    ).expand(**{"logical_date": "2023-08-28T00:00:00+00:00", "funds": new_funds})
+    logger.error(f"Should trigger {len(new_funds)} DAG runs")
+    for i, fund in enumerate(new_funds):
+        TriggerDagRunOperator(
+            task_id=f"new-instance-dag-{i}",
+            trigger_dag_id="digital_bookplate_instances",
+            conf={"logical_date": "2023-08-28T00:00:00+00:00", "funds": fund},
+        ).execute(
+            kwargs  # type: ignore
+        )
     return True
 
 
