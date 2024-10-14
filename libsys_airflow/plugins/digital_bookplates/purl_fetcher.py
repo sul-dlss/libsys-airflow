@@ -234,7 +234,7 @@ def _fetch_folio_fund_id(fund_name) -> str:
     )
     try:
         fund_id = folio_funds[0].get("id")
-    except TypeError:
+    except (IndexError, TypeError) as e:  # noqa
         fund_id = None
 
     return fund_id

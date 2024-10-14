@@ -16,6 +16,7 @@ from libsys_airflow.plugins.digital_bookplates.purl_fetcher import (
     fetch_druids,
     filter_updates_errors,
     trigger_instances_dag,
+    _fetch_folio_fund_id,
 )
 
 rows = Rows(
@@ -122,6 +123,8 @@ def mock_folio_client():
                         "name": "KELP",
                     }
                 ]
+            elif kwargs["query_params"]["query"] == "name==EMPTY_FUND":
+                return []
             else:
                 return [{"id": "abc123"}]
 
@@ -211,6 +214,17 @@ def test_failed_bookplate(pg_hook):
     result = add_update_model.function(failed_metadata)
 
     assert result["failure"]["druid"] == "ef919yq2614"
+
+
+def test_fetch_folio_fund_id(mocker, mock_folio_client):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.purl_fetcher._folio_client",
+        return_value=mock_folio_client,
+    )
+
+    fund_names = "EMPTY_FUND"
+
+    assert _fetch_folio_fund_id(fund_names) is None
 
 
 def test_filter_updates_errors():
