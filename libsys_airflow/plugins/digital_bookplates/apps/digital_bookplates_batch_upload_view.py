@@ -50,9 +50,14 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     and if file name already exists, increments until unique
     """
     current_time = datetime.datetime.utcnow()
-    report_path = (
-        pathlib.Path(files_base) / f"{current_time.year}/{current_time.day}/{file_name}"
+    report_base = (
+        pathlib.Path(files_base)
+        / f"{current_time.year}/{current_time.month}/{current_time.day}"
     )
+    report_base.mkdir(parents=True, exist_ok=True)
+
+    report_path = report_base / file_name
+
     count: int = 1
     while report_path.exists():
         report_path = report_path.with_name(
@@ -88,7 +93,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
             upload_instances_df = pd.read_csv(raw_upload_instances_file, header=None)
             dag_runs = []
             for row in upload_instances_df.iterrows():
-                instance_uuid = row[1]
+                instance_uuid = row[1][0]
                 dag_run_id = _trigger_add_979_dags(
                     instance_uuid=instance_uuid, fund=fund
                 )
@@ -99,9 +104,12 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
                 upload_instances_df,
             )
             _trigger_poll_add_979_dags(dag_runs, email)
+            flash(
+                f"Triggered the following DAGs {dag_runs} for {raw_upload_instances_file.filename}"
+            )
         except pd.errors.EmptyDataError:
             flash("Warning! Empty Instance UUID file.")
-            return redirect('/digital_bookplates_batch_upload')
+        return redirect('/digital_bookplates_batch_upload')
 
     @expose("/")
     def digital_bookplates_batch_upload_home(self):
