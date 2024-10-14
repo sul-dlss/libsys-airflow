@@ -37,7 +37,7 @@ rows = Rows(
         fund_name=None,
         image_filename="ab123xy4567_00_0001.jp2",
         title="Alfred E. Newman Magazine Fund for Humor Studies",
-        fund_uuid="f2421e3f-0089-497b-a3c6-104256a5c4ff",
+        fund_uuid=None,
     ),
 )
 
