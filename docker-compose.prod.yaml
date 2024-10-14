@@ -108,6 +108,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/libsys_airflow:/opt/airflow/libsys_airflow
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/circ:/opt/airflow/circ
+    - ${AIRFLOW_PROJ_DIR:-.}/digital-bookplates:/opt/airflow/digital-bookplates
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-data:/opt/airflow/vendor-data
     - ${AIRFLOW_PROJ_DIR:-.}/vendor-keys:/opt/airflow/vendor-keys
     - ${AIRFLOW_PROJ_DIR:-.}/data-export-files:/opt/airflow/data-export-files
