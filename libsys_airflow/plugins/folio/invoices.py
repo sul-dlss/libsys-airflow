@@ -40,7 +40,7 @@ def _get_all_ids_from_invoices(folio_query: str, folio_client: FolioClient) -> l
     Returns all invoice Ids from invoices given query parameter in `limit`-size chunks
     """
     invoices = folio_client.folio_get_all(
-        "/invoice/invoices", key="invoices", query=folio_query, limit=500
+        "/invoice-storage/invoices", key="invoices", query=folio_query, limit=500
     )
     return [row.get("id") for row in invoices]
 
@@ -50,7 +50,10 @@ def _get_all_invoice_lines(folio_query: str, folio_client: FolioClient) -> list:
     Returns all invoice line given a query parameter in `limit`-size chunks
     """
     invoice_lines = folio_client.folio_get_all(
-        "/invoice/invoice-lines", key="invoiceLines", query=folio_query, limit=500
+        "/invoice-storage/invoice-lines",
+        key="invoiceLines",
+        query=folio_query,
+        limit=500,
     )
     return [row for row in invoice_lines]
 

@@ -56,7 +56,7 @@ def mock_folio_client(mock_invoice_lines):
 
     def mock_get_all(*args, **kwargs):
         # Invoice
-        if args[0].startswith("/invoice/invoices"):
+        if args[0].startswith("/invoice-storage/invoices"):
             if kwargs["query"].startswith(
                 "?query=((paymentDate>=2023-08-28T00:00:00+00:00)"
             ):
