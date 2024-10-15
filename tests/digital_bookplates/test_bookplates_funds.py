@@ -175,7 +175,9 @@ def test_bookplate_funds_polines(
     pg_hook, mock_invoice_lines, mock_bookplate_funds_polines
 ):
     new_funds = []
-    bookplates_polines = bookplate_funds_polines.function(mock_invoice_lines, new_funds)
+    bookplates_polines = bookplate_funds_polines.function(
+        invoice_lines=mock_invoice_lines, params={"funds": new_funds}
+    )
 
     assert bookplates_polines == mock_bookplate_funds_polines
 
@@ -202,7 +204,7 @@ def test_new_bookplate_funds_polines(
         }
     )
     bookplates_polines = bookplate_funds_polines.function(
-        mock_invoice_lines, mock_new_funds
+        invoice_lines=mock_invoice_lines, params={"funds": mock_new_funds}
     )
     assert len(bookplates_polines) == 1
     assert (

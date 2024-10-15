@@ -38,6 +38,22 @@ def mock_invoice_lines():
             "poLineId": "be0af62c-665e-4178-ae13-e3250d89bcc6",
         },
         {
+            "id": "318e17ff-f36a-407d-aa9b-68bde2cf3dd0",
+            "fundDistributions": [
+                {
+                    "code": "JACKMAND-SUL",
+                    "encumbrance": "ae319e1f-3fb8-449e-9e83-7ffeb4bee3b9",
+                    "fundId": "3f59fef1-c089-4ce5-a8c0-00e480346f67",
+                    "distributionType": "percentage",
+                    "value": 100.0,
+                }
+            ],
+            "invoiceId": "29f339e3-dfdc-43e4-9442-eb817fdfb069",
+            "invoiceLineNumber": "11",
+            "invoiceLineStatus": "Paid",
+            "poLineId": "496b5a5d-40c0-49cd-a874-13d5e6ce23cf",
+        },
+        {
             "id": "5c6cffcf-1951-47c9-817f-145cbe931dea",
             "invoiceId": "2dcebfd3-82b0-429d-afbb-dff743602bea",
             "invoiceLineNumber": "29",
@@ -56,7 +72,7 @@ def mock_folio_client(mock_invoice_lines):
 
     def mock_get_all(*args, **kwargs):
         # Invoice
-        if args[0].startswith("/invoice/invoices"):
+        if args[0].startswith("/invoice-storage/invoices"):
             if kwargs["query"].startswith(
                 "?query=((paymentDate>=2023-08-28T00:00:00+00:00)"
             ):
@@ -66,9 +82,9 @@ def mock_folio_client(mock_invoice_lines):
         # Invoice Lines
         if args[0].endswith("invoice-lines"):
             if kwargs["query"].startswith("?query=(invoiceId==29f339e3"):
-                return [mock_invoice_lines[0]]
+                return [mock_invoice_lines[0], mock_invoice_lines[1]]
             elif kwargs["query"].startswith("?query=(invoiceId==2dcebfd3"):
-                return [mock_invoice_lines[1]]
+                return [mock_invoice_lines[2]]
             else:
                 return mock_invoice_lines
 
@@ -160,11 +176,9 @@ def test_invoice_lines_from_invoices(mocker, mock_folio_client, caplog):
         "libsys_airflow.plugins.folio.invoices._folio_client",
         return_value=mock_folio_client,
     )
-    invoices = [
-        "29f339e3-dfdc-43e4-9442-eb817fdfb069",
-        "2dcebfd3-82b0-429d-afbb-dff743602bea",
-    ]
-    invoice_lines = invoice_lines_from_invoices.function(invoices)
+    invoice_lines = invoice_lines_from_invoices.function(
+        "29f339e3-dfdc-43e4-9442-eb817fdfb069"
+    )
     assert (
         "Getting invoice lines for 29f339e3-dfdc-43e4-9442-eb817fdfb069" in caplog.text
     )

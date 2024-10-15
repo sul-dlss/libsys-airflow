@@ -44,12 +44,12 @@ def _new_bookplates(funds: list) -> dict:
 
 
 @task
-def bookplate_funds_polines(invoice_lines: list, funds: list) -> list:
+def bookplate_funds_polines(**kwargs) -> list:
     """
     Checks if fund Id from invoice lines contains bookplate fund
     This task gets digital bookplates data from the table or uses
-    a list of new funds and returns a list of bookplates metadata and poline ids
-    Returns:
+    a list of new funds from params and returns a list of bookplates
+    metadata and poline ids:
     [
       {
         "bookplate_metadata": { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
@@ -62,6 +62,9 @@ def bookplate_funds_polines(invoice_lines: list, funds: list) -> list:
     ]
     """
     bookplates_polines: list = []
+    invoice_lines = kwargs["invoice_lines"]
+    params = kwargs.get("params", {})
+    funds = params.get("funds", [])
     if len(funds) > 0:
         bookplates = _new_bookplates(funds)
     else:

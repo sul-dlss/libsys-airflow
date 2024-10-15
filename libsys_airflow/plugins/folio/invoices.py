@@ -40,7 +40,7 @@ def _get_all_ids_from_invoices(folio_query: str, folio_client: FolioClient) -> l
     Returns all invoice Ids from invoices given query parameter in `limit`-size chunks
     """
     invoices = folio_client.folio_get_all(
-        "/invoice/invoices", key="invoices", query=folio_query, limit=500
+        "/invoice-storage/invoices", key="invoices", query=folio_query, limit=500
     )
     return [row.get("id") for row in invoices]
 
@@ -50,7 +50,10 @@ def _get_all_invoice_lines(folio_query: str, folio_client: FolioClient) -> list:
     Returns all invoice line given a query parameter in `limit`-size chunks
     """
     invoice_lines = folio_client.folio_get_all(
-        "/invoice/invoice-lines", key="invoiceLines", query=folio_query, limit=500
+        "/invoice-storage/invoice-lines",
+        key="invoiceLines",
+        query=folio_query,
+        limit=500,
     )
     return [row for row in invoice_lines]
 
@@ -130,18 +133,17 @@ def invoices_paid_within_date_range(**kwargs) -> list:
     return invoice_ids
 
 
-@task
-def invoice_lines_from_invoices(invoices: list) -> list:
+@task(max_active_tis_per_dag=10)
+def invoice_lines_from_invoices(invoice_id: str) -> list:
     """
-    Given a list of invoice UUIDs, returns a list of invoice lines dictionaries
+    Given an invoice UUID, returns a list of invoice lines dictionaries
     """
     folio_client = _folio_client()
     all_invoice_lines = []
-    for id in invoices:
-        logger.info(f"Getting invoice lines for {id}")
-        query = f"""?query=(invoiceId=={id})"""
-        invoice_lines = _get_all_invoice_lines(query, folio_client)
-        for row in invoice_lines:
-            all_invoice_lines.append(row)
+    logger.info(f"Getting invoice lines for {invoice_id}")
+    query = f"""?query=(invoiceId=={invoice_id})"""
+    invoice_lines = _get_all_invoice_lines(query, folio_client)
+    for row in invoice_lines:
+        all_invoice_lines.append(row)
 
     return all_invoice_lines
