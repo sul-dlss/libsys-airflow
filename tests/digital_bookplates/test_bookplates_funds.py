@@ -6,6 +6,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
+    add_979_marc_tags,
     bookplate_funds_polines,
     _new_bookplates,
 )
@@ -212,3 +213,55 @@ def test_new_bookplate_funds_polines(
         == mock_new_bookplates["f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"]
     )
     assert bookplates_polines[0]["poline_id"] == "def456"
+
+
+def test_bookplate_fund_po_lines(pg_hook, mock_invoice_lines_filter):
+    bookplates_polines = bookplate_funds_polines.function(mock_invoice_lines_filter)
+    assert bookplates_polines == [
+        {
+            'bookplate_metadata': {
+                'fund_name': 'ASHENR',
+                'druid': 'kp761xz4568',
+                'image_filename': 'dp698zx8237_00_0001.jp2',
+                'title': 'Ruth Geraldine Ashen Memorial Book Fund',
+            },
+            'poline_id': 'b5ba6538-7e04-4be3-8a0e-c68306c355a2',
+        },
+        {
+            'bookplate_metadata': {
+                'fund_name': 'RHOADES',
+                'druid': 'gc698jf6425',
+                'image_filename': 'gc698jf6425_00_0001.jp2',
+                'title': 'John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West',
+            },
+            'poline_id': '5513c3d7-7c6b-45ea-a875-09798b368873',
+        },
+    ]
+
+
+def test_add_979_marc_tags():
+    druid_instances = {
+        "b8932bcd-7498-4f7e-a598-de9010561e42": [
+            {
+                "druid": "kp761xz4568",
+                "fund_name": "ASHENR",
+                "image_filename": "dp698zx8237_00_0001.jp2",
+                "title": "Ruth Geraldine Ashen Memorial Book Fund",
+            },
+        ],
+        "06220dd4-7d6e-4e5b-986d-5fca21d856ca": [
+            {
+                "druid": "gc698jf6425",
+                "fund_name": "RHOADES",
+                "image_filename": "gc698jf6425_00_0001.jp2",
+                "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
+            },
+        ],
+    }
+
+    marc_979_tags = add_979_marc_tags.function(druid_instances)
+    assert len(marc_979_tags["979"]) == 2
+    assert len(marc_979_tags["979"][0]["subfields"]) == 4
+    assert len(marc_979_tags["979"][1]["subfields"]) == 4
+    assert marc_979_tags["979"][0]["subfields"][1]["b"] == "kp761xz4568"
+    assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"

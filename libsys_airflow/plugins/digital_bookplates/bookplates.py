@@ -88,21 +88,17 @@ def bookplate_funds_polines(**kwargs) -> list:
 def launch_add_979_fields_task(**kwargs):
     """
     Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict:
-    {
-        "242c6000-8485-5fcd-9b5e-adb60788ca59": [
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        ],
-        "bd65eb13-739b-4aa8-baaa-9c1ea48f4c33": [
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        ]
-    }
+    "242c6000-8485-5fcd-9b5e-adb60788ca59": [
+        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+    ]
     """
+    params = kwargs.get("params", {})
+    return params.get("druids_for_instance_id", {})
 
 
 @task
-def construct_979_marc_tags(druid_instances: dict) -> dict:
+def add_979_marc_tags(druid_instances: dict) -> dict:
     """
     get the bookplate data from the bookplates table and contruct a 979 tag with the
     fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
@@ -113,4 +109,21 @@ def construct_979_marc_tags(druid_instances: dict) -> dict:
         }
     }
     """
-    return {}
+
+    marc_instances_tags: dict = {'979': []}
+    for _instance_uuid, druids in druid_instances.items():
+        for tag_data in druids:
+            marc_instances_tags['979'].append(
+                {
+                    'ind1': ' ',
+                    'ind2': ' ',
+                    'subfields': [
+                        {'f': tag_data['fund_name']},
+                        {'b': tag_data['druid']},
+                        {'c': tag_data['image_filename']},
+                        {'d': tag_data['title']},
+                    ],
+                }
+            )
+
+    return marc_instances_tags
