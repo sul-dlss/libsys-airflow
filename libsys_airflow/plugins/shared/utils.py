@@ -31,7 +31,7 @@ class FolioAddMarcTags(object):
                 f"Failed to retrieve Active SRS uuid for Instance {instance_id}"
             )
             return False
-        
+
         put_result = self.httpx_client.put(
             f"{self.folio_client.okapi_url}/change-manager/parsedRecords/{srs_uuid}",
             headers=self.folio_client.okapi_headers,
