@@ -28,7 +28,7 @@ def instances_from_po_lines(po_lines_funds: list) -> dict:
     instances: dict = {}
     for row in po_lines_funds:
         poline_id = row['poline_id']
-        order_line = folio_client.folio_get(f"/orders/order-line/{poline_id}")
+        order_line = folio_client.folio_get(f"/orders/order-lines/{poline_id}")
         instance_id = order_line.get("instanceId")
         if instance_id is None:
             logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
