@@ -32,8 +32,8 @@ default_args = {
 @task_group(group_id="process-invoice-lines")
 def process_invoice_lines_group(invoice_id: str):
     paid_invoice_lines = invoice_lines_from_invoices(invoice_id)
-    paid_bookplate_polines = bookplate_funds_polines(paid_invoice_lines)
-    return instances_from_po_lines(paid_bookplate_polines)
+    paid_bookplate_polines = bookplate_funds_polines(invoice_lines=paid_invoice_lines)
+    return instances_from_po_lines(po_lines_funds=paid_bookplate_polines)
 
 
 @dag(

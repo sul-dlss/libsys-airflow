@@ -44,7 +44,7 @@ def _new_bookplates(funds: list) -> dict:
 
 
 @task
-def bookplate_funds_polines(invoice_lines: list, **kwargs) -> list:
+def bookplate_funds_polines(**kwargs) -> list:
     """
     Checks if fund Id from invoice lines contains bookplate fund
     This task gets digital bookplates data from the table or uses
@@ -62,6 +62,7 @@ def bookplate_funds_polines(invoice_lines: list, **kwargs) -> list:
     ]
     """
     bookplates_polines: list = []
+    invoice_lines = kwargs["invoice_lines"]
     params = kwargs.get("params", {})
     funds = params.get("funds", [])
     if len(funds) > 0:

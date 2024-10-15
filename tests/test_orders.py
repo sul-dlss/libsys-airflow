@@ -57,7 +57,7 @@ def test_instances_from_po_lines(mocker, mock_folio_client):
             "poline_id": "84701022-43af-401e-bcea-fb5fbd8f49f3",
         },
     ]
-    instances_dict = instances_from_po_lines.function(incoming_data)
+    instances_dict = instances_from_po_lines.function(po_lines_funds=incoming_data)
     assert instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"][0] == {
         "druid": "gc698jf6425",
         "failure": None,
@@ -88,7 +88,7 @@ def test_instances_from_po_lines_no_instance(mocker, mock_folio_client, caplog):
         }
     ]
 
-    instances_dict = instances_from_po_lines.function(incoming_data)
+    instances_dict = instances_from_po_lines.function(po_lines_funds=incoming_data)
 
     assert len(instances_dict) == 0
     assert (
