@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, task, task_group
+from airflow.decorators import dag, task_group
 from airflow.operators.empty import EmptyOperator
-from airflow.operators.python import get_current_context
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 
