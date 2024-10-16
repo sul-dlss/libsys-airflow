@@ -4,6 +4,7 @@ from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
+from libsys_airflow.plugins.shared import utils
 
 logger = logging.getLogger(__name__)
 
@@ -88,21 +89,33 @@ def bookplate_funds_polines(**kwargs) -> list:
 def launch_add_979_fields_task(**kwargs):
     """
     Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict:
-    {
-        "242c6000-8485-5fcd-9b5e-adb60788ca59": [
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        ],
-        "bd65eb13-739b-4aa8-baaa-9c1ea48f4c33": [
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-            { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        ]
-    }
+    "242c6000-8485-5fcd-9b5e-adb60788ca59": [
+        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
+    ]
     """
+    params = kwargs.get("params", {})
+    return params.get("druids_for_instance_id", {})
 
 
 @task
-def construct_979_marc_tags(druid_instances: dict) -> dict:
+def add_marc_tags_to_record(**kwargs):
+    marc_tags = kwargs["marc_instances_tags"]
+    instance_id = kwargs["instance_uuid"]
+    folio_add_marc_tags = utils.FolioAddMarcTags()
+    return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
+
+
+@task
+def instance_id_for_druids(**kwargs) -> list:
+    druids_instances = kwargs["druid_instances"]
+    if druids_instances is None:
+        return []
+    return list(list(druids_instances.keys())[0])
+
+
+@task
+def add_979_marc_tags(druid_instances: dict) -> dict:
     """
     get the bookplate data from the bookplates table and contruct a 979 tag with the
     fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
@@ -113,4 +126,24 @@ def construct_979_marc_tags(druid_instances: dict) -> dict:
         }
     }
     """
-    return {}
+
+    marc_instances_tags: dict = {'979': []}
+    for _instance_uuid, druids in druid_instances.items():
+        for tag_data in druids:
+            fund_name = tag_data.get('fund_name', None)
+            if fund_name is None:
+                fund_name = tag_data.get('druid', '')
+            marc_instances_tags['979'].append(
+                {
+                    'ind1': ' ',
+                    'ind2': ' ',
+                    'subfields': [
+                        {'f': fund_name},
+                        {'b': tag_data.get('druid', '')},
+                        {'c': tag_data.get('image_filename', '')},
+                        {'d': tag_data.get('title', '')},
+                    ],
+                }
+            )
+
+    return marc_instances_tags
