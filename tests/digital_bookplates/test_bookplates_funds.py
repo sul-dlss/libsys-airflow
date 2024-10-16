@@ -228,7 +228,6 @@ def test_add_979_marc_tags():
         "06220dd4-7d6e-4e5b-986d-5fca21d856ca": [
             {
                 "druid": "gc698jf6425",
-                "fund_name": "RHOADES",
                 "image_filename": "gc698jf6425_00_0001.jp2",
                 "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
             },
@@ -241,3 +240,4 @@ def test_add_979_marc_tags():
     assert len(marc_979_tags["979"][1]["subfields"]) == 4
     assert marc_979_tags["979"][0]["subfields"][1]["b"] == "kp761xz4568"
     assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
+    assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"

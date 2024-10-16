@@ -135,10 +135,10 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
                     'ind1': ' ',
                     'ind2': ' ',
                     'subfields': [
-                        {'f': tag_data['fund_name']},
-                        {'b': tag_data['druid']},
-                        {'c': tag_data['image_filename']},
-                        {'d': tag_data['title']},
+                        {'f': tag_data.get('fund_name', tag_data.get('druid', ''))},
+                        {'b': tag_data.get('druid', '')},
+                        {'c': tag_data.get('image_filename', '')},
+                        {'d': tag_data.get('title', '')},
                     ],
                 }
             )
