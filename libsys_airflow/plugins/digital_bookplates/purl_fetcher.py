@@ -174,7 +174,7 @@ def trigger_instances_dag(**kwargs) -> bool:
             task_id=f"new-instance-dag-{i}",
             trigger_dag_id="digital_bookplate_instances",
             logical_date="2023-08-28T00:00:00+00:00",
-            conf={"funds": fund},
+            conf={"funds": [fund]},
         ).execute(
             kwargs  # type: ignore
         )
