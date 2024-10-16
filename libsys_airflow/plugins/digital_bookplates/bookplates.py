@@ -107,6 +107,14 @@ def add_marc_tags_to_record(**kwargs):
 
 
 @task
+def instance_id_for_druids(**kwargs) -> list:
+    druids_instances = kwargs["druid_instances"]
+    if druids_instances is None:
+        return []
+    return list(list(druids_instances.keys())[0])
+
+
+@task
 def add_979_marc_tags(druid_instances: dict) -> dict:
     """
     get the bookplate data from the bookplates table and contruct a 979 tag with the

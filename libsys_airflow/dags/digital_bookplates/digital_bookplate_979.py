@@ -4,9 +4,10 @@ from airflow.decorators import dag
 from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
-    launch_add_979_fields_task,
     add_979_marc_tags,
     add_marc_tags_to_record,
+    instance_id_for_druids,
+    launch_add_979_fields_task,
 )
 
 default_args = {
@@ -16,10 +17,6 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
-
-
-def instance_id_for_druids(druids_instances) -> str:
-    return list(druids_instances.keys())[0]
 
 
 @dag(
@@ -40,7 +37,7 @@ def digital_bookplate_979():
 
     add_marc_tags = add_marc_tags_to_record(
         marc_instance_tags=marc_tags_for_druid_instances,
-        instance_uuid=instance_id_for_druids(druids_for_instance_id),
+        instance_uuid=instance_id_for_druids(druid_instances=druids_for_instance_id),
     )
 
     (
