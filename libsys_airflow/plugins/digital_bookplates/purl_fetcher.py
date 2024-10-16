@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from typing import Union
 import httpx
 
 from airflow.decorators import task
@@ -172,7 +173,8 @@ def trigger_instances_dag(**kwargs) -> bool:
         TriggerDagRunOperator(
             task_id=f"new-instance-dag-{i}",
             trigger_dag_id="digital_bookplate_instances",
-            conf={"logical_date": "2023-08-28T00:00:00+00:00", "funds": fund},
+            logical_date="2023-08-28T00:00:00+00:00",
+            conf={"funds": [fund]},
         ).execute(
             kwargs  # type: ignore
         )
@@ -233,7 +235,10 @@ def _update_bookplate(metadata, bookplate, session):
     return metadata
 
 
-def _fetch_folio_fund_id(fund_name) -> str:
+def _fetch_folio_fund_id(fund_name) -> Union[str | None]:
+    if fund_name is None:
+        return None
+
     folio_client = _folio_client()
     folio_funds = folio_client.folio_get(
         "/finance/funds", key="funds", query_params={"query": f"""name=={fund_name}"""}

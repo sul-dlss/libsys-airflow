@@ -74,7 +74,7 @@ def mock_folio_client(mock_invoice_lines):
         # Invoice
         if args[0].startswith("/invoice-storage/invoices"):
             if kwargs["query"].startswith(
-                "?query=((paymentDate>=2023-08-28T00:00:00+00:00)"
+                '?query=((paymentDate>="2023-08-28 00:00:33.619135+00:00") and status=="Paid")'
             ):
                 return invoices
             else:
@@ -110,7 +110,7 @@ def mock_manual_dag_run(mocker):
     dag_run.run_id = "manual__2024-09-19"
     dag_run.data_interval_end = ("2023-08-23T09:00:00+00:00",)
     dag_run.data_interval_start = ("2023-08-16T09:00:00+00:00",)
-    dag_run.logical_date = "2023-08-28T00:00:00+00:00"
+    dag_run.logical_date = "2023-08-28 00:00:33.619135+00:00"
 
     return dag_run
 
@@ -130,9 +130,10 @@ def test_invoices_awaiting_payment_task(mocker, mock_folio_client):
     assert invoice_ids[0] == 'a6452c96-53ef-4e51-bd7b-aa67ac971133'
 
 
-def test_get_invoices(mock_folio_client):
+def test_get_invoices(mock_folio_client, mock_manual_dag_run):
+    date = mock_manual_dag_run.logical_date
     invoice_ids = _get_all_ids_from_invoices(
-        "?query=((paymentDate>=2023-08-28T00:00:00+00:00) and status==\"Paid\")",
+        f"""?query=((paymentDate>="{date}") and status=="Paid")""",
         mock_folio_client,
     )
     assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
@@ -148,7 +149,7 @@ def test_invoices_paid_since_beginning(
     invoice_ids = invoices_paid_within_date_range.function(dag_run=mock_manual_dag_run)
     assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
     assert (
-        f"Querying paid invoices with paymentDate >= {mock_manual_dag_run.data_interval_start}"
+        f"Querying paid invoices with paymentDate >= {mock_manual_dag_run.logical_date}"
         in caplog.text
     )
 
