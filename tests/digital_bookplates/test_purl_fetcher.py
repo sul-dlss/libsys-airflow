@@ -123,7 +123,7 @@ def mock_folio_client():
                         "name": "KELP",
                     }
                 ]
-            elif kwargs["query_params"]["query"] == "name==EMPTY_FUND":
+            elif kwargs["query_params"]["query"] == "name==NOTINFOLIOFUND":
                 return []
             else:
                 return [{"id": "abc123"}]
@@ -221,8 +221,21 @@ def test_fetch_folio_fund_id(mocker, mock_folio_client):
         "libsys_airflow.plugins.digital_bookplates.purl_fetcher._folio_client",
         return_value=mock_folio_client,
     )
+    fund_names = "KELP"
+    assert _fetch_folio_fund_id(fund_names) == "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"
 
-    fund_names = "EMPTY_FUND"
+
+def test_fetch_nonexistent_folio_fund(mocker, mock_folio_client):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.purl_fetcher._folio_client",
+        return_value=mock_folio_client,
+    )
+    fund_names = "NOTINFOLIOFUND"
+    assert _fetch_folio_fund_id(fund_names) is None
+
+
+def test_dont_fetch_folio_fund_id():
+    fund_names = None
 
     assert _fetch_folio_fund_id(fund_names) is None
 

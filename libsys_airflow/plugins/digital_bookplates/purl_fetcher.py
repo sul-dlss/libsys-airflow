@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from typing import Union
 import httpx
 
 from airflow.decorators import task
@@ -234,7 +235,10 @@ def _update_bookplate(metadata, bookplate, session):
     return metadata
 
 
-def _fetch_folio_fund_id(fund_name) -> str:
+def _fetch_folio_fund_id(fund_name) -> Union[str | None]:
+    if fund_name is None:
+        return None
+
     folio_client = _folio_client()
     folio_funds = folio_client.folio_get(
         "/finance/funds", key="funds", query_params={"query": f"""name=={fund_name}"""}
