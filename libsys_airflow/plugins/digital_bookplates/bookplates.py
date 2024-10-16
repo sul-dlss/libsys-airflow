@@ -4,6 +4,7 @@ from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
+from libsys_airflow.plugins.shared import utils
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,14 @@ def launch_add_979_fields_task(**kwargs):
     """
     params = kwargs.get("params", {})
     return params.get("druids_for_instance_id", {})
+
+
+@task
+def add_marc_tags_to_record(**kwargs):
+    marc_tags = kwargs["marc_instances_tags"]
+    instance_id = kwargs["instance_uuid"]
+    folio_add_marc_tags = utils.FolioAddMarcTags()
+    return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
 
 
 @task

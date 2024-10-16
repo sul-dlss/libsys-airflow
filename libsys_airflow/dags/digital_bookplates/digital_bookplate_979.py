@@ -6,8 +6,8 @@ from airflow.operators.empty import EmptyOperator
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_add_979_fields_task,
     add_979_marc_tags,
+    add_marc_tags_to_record,
 )
-from libsys_airflow.plugins.shared import utils
 
 default_args = {
     "owner": "libsys",
@@ -16,9 +16,6 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
-
-
-folio_add_marc_tags = utils.FolioAddMarcTags()
 
 
 def instance_id_for_druids(druids_instances) -> str:
@@ -41,8 +38,9 @@ def digital_bookplate_979():
 
     marc_tags_for_druid_instances = add_979_marc_tags(druids_for_instance_id)
 
-    add_marc_tags = folio_add_marc_tags.put_folio_records(
-        marc_tags_for_druid_instances, instance_id_for_druids(druids_for_instance_id)
+    add_marc_tags = add_marc_tags_to_record(
+        marc_instance_tags=marc_tags_for_druid_instances,
+        instance_uuid=instance_id_for_druids(druids_for_instance_id),
     )
 
     (
