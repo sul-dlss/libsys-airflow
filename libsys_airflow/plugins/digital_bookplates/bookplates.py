@@ -130,12 +130,15 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
     marc_instances_tags: dict = {'979': []}
     for _instance_uuid, druids in druid_instances.items():
         for tag_data in druids:
+            fund_name = tag_data.get('fund_name', None)
+            if fund_name is None:
+                fund_name = tag_data.get('druid', '')
             marc_instances_tags['979'].append(
                 {
                     'ind1': ' ',
                     'ind2': ' ',
                     'subfields': [
-                        {'f': tag_data.get('fund_name', tag_data.get('druid', ''))},
+                        {'f': fund_name},
                         {'b': tag_data.get('druid', '')},
                         {'c': tag_data.get('image_filename', '')},
                         {'d': tag_data.get('title', '')},
