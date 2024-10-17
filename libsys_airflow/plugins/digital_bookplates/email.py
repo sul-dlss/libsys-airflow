@@ -2,6 +2,7 @@ import logging
 
 from jinja2 import Template
 
+from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 from airflow.utils.email import send_email
@@ -93,6 +94,30 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
     )
 
 
+def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
+    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+    dag_url = f"{airflow_url}dags/digital_bookplate_979/grid?run_id="
+    return Template(
+        """
+        <h2>Results from adding 979 fields Workflows</h2>
+        <ol>
+        {% for dag_run_id, result in dag_runs.items() %}
+        <li><a href="{{ dag_url }}{{ dag_run_id|urlencode }}">{{ dag_run_id }}</a> {{ result.status }}<br>
+           Instances:
+           <ul>
+           {% for uuid in result.instance_uuids %}
+           <li><a href="{{ folio_url }}/instances/{{ uuid }}">{{ uuid }}</a></li>
+           {% endfor %}
+           </ul>
+        {% endfor %}
+        </ol>
+    """
+    ).render(dag_runs=dag_runs, folio_url=folio_url, dag_url=dag_url)
+
+
 @task
 def bookplates_metadata_email(**kwargs):
     """
@@ -162,7 +187,7 @@ def deleted_from_argo_email(**kwargs):
     bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
     folio_url = Variable.get("FOLIO_URL")
 
-    html_content = _deleted_from_argo_email_body(deleted_druids)
+    html_content = _deleted_from_argo_email_body(deleted_druids, folio_url)
 
     if is_production():
         send_email(
@@ -216,3 +241,33 @@ def missing_fields_email(**kwargs):
         )
 
     return True
+
+
+@task
+def summary_add_979_dag_runs(**kwargs):
+    dag_runs = kwargs["dag_runs"]
+    additional_email = kwargs.get("email")
+
+    folio_url = Variable.get("FOLIO_URL")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
+
+    to_emails = [devs_to_email_addr]
+    if additional_email:
+        to_emails.append(additional_email)
+    html_content = _summary_add_979_email(dag_runs)
+
+    if is_production():
+        to_emails.append(bookplates_email_addr)
+        send_email(
+            to=to_emails,
+            subject="Summary of Adding 979 fields to MARC Workflows",
+            html_content=html_content,
+        )
+    else:
+        folio_env = folio_url.replace("https://", "").replace(".stanford.edu", "")
+        send_email(
+            to=to_emails,
+            subject=f"{folio_env} - Summary of Adding 979 fields to MARC",
+            html_content=html_content,
+        )
