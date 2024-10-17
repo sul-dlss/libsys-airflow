@@ -106,8 +106,8 @@ def invoices_pending_payment_task(invoice_ids: list):
     return _update_vouchers_to_pending(invoice_ids, folio_client)
 
 
-@task
-def invoices_paid_within_date_range(**kwargs) -> list:
+@task(multiple_outputs=True)
+def invoices_paid_within_date_range(**kwargs) -> dict:
     """
     Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
     paymentDate range based on airflow DAG run data intervals end and start dates
@@ -132,7 +132,8 @@ def invoices_paid_within_date_range(**kwargs) -> list:
         )
 
     invoice_ids = _get_all_ids_from_invoices(query, folio_client)
-    return invoice_ids
+
+    return {"invoice_uuids": invoice_ids}
 
 
 @task(max_active_tis_per_dag=10)
