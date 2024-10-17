@@ -196,7 +196,7 @@ def test_no_invoices_paid_within_date_range(
     invoice_ids = invoices_paid_within_date_range.function(
         dag_run=mock_scheduled_dag_run
     )
-    assert len(invoice_ids) == 0
+    assert len(invoice_ids['invoice_uuids']) == 0
     assert (
         f"NO PAID INVOICES between {mock_scheduled_dag_run.data_interval_start} and {mock_scheduled_dag_run.data_interval_end}. Downstream tasks will be skiped."
         in caplog.text
