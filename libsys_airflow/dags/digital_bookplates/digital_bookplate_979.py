@@ -36,18 +36,10 @@ def digital_bookplate_979():
 
     marc_tags_for_druid_instances = add_979_marc_tags(druids_for_instance_id)
 
-<<<<<<< HEAD
     add_marc_tags = add_marc_tags_to_record(
         marc_instance_tags=marc_tags_for_druid_instances,
         instance_uuid=instance_id_for_druids(druid_instances=druids_for_instance_id),
     )
-=======
-    # TODO
-    add_marc_tags = EmptyOperator(task_id='add_marc_tags')
-
-    # TODO
-    email_979_report = EmptyOperator(task_id="email_979_report")
->>>>>>> 64a723f1 (feat: New sensor and DAG for polling 979 DAGs)
 
     (
         start
