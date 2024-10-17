@@ -132,6 +132,8 @@ def invoices_paid_within_date_range(**kwargs) -> list:
         )
 
     invoice_ids = _get_all_ids_from_invoices(query, folio_client)
+    if len(invoice_ids) == 0:
+        logger.info(f"NO PAID INVOICES between {from_date} and {to_date}. Downstream tasks will be skiped.")
     return invoice_ids
 
 

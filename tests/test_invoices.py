@@ -95,6 +95,20 @@ def mock_folio_client(mock_invoice_lines):
 
 
 @pytest.fixture
+def mock_folio_client_no_paid_invoices():
+    def mock_get(*args, **kwargs):
+        return []
+
+    def mock_get_all(*args, **kwargs):
+        return []
+    
+    mock_client = MagicMock()
+    mock_client.folio_get = mock_get
+    mock_client.folio_get_all = mock_get_all
+    return mock_client
+
+
+@pytest.fixture
 def mock_scheduled_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "scheduled__2024-09-19"
@@ -168,6 +182,23 @@ def test_invoices_paid_within_date_range(
     assert invoice_ids[0] == "34cabbbd-d419-4853-ad3a-d0eafd4310c6"
     assert (
         f"Querying paid invoices with paymentDate range >= {mock_scheduled_dag_run.data_interval_start} and <= {mock_scheduled_dag_run.data_interval_end}"
+        in caplog.text
+    )
+
+
+def test_no_invoices_paid_within_date_range(
+    mocker, mock_folio_client_no_paid_invoices, mock_scheduled_dag_run, caplog
+):    
+    mocker.patch(
+        "libsys_airflow.plugins.folio.invoices._folio_client",
+        return_value=mock_folio_client_no_paid_invoices,
+    )
+    invoice_ids = invoices_paid_within_date_range.function(
+        dag_run=mock_scheduled_dag_run
+    )
+    assert len(invoice_ids) == 0
+    assert (
+        f"NO PAID INVOICES between {mock_scheduled_dag_run.data_interval_start} and {mock_scheduled_dag_run.data_interval_end}. Downstream tasks will be skiped."
         in caplog.text
     )
 
