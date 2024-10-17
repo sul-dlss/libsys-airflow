@@ -239,6 +239,6 @@ def test_add_979_marc_tags():
     assert len(marc_979_tags["979"]) == 2
     assert len(marc_979_tags["979"][0]["subfields"]) == 4
     assert len(marc_979_tags["979"][1]["subfields"]) == 4
-    assert marc_979_tags["979"][0]["subfields"][1]["b"] == "kp761xz4568"
+    assert marc_979_tags["979"][0]["subfields"][1]["b"] == "druid:kp761xz4568"
     assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
     assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
