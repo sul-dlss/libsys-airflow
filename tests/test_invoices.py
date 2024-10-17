@@ -101,7 +101,7 @@ def mock_folio_client_no_paid_invoices():
 
     def mock_get_all(*args, **kwargs):
         return []
-    
+
     mock_client = MagicMock()
     mock_client.folio_get = mock_get
     mock_client.folio_get_all = mock_get_all
@@ -188,7 +188,7 @@ def test_invoices_paid_within_date_range(
 
 def test_no_invoices_paid_within_date_range(
     mocker, mock_folio_client_no_paid_invoices, mock_scheduled_dag_run, caplog
-):    
+):
     mocker.patch(
         "libsys_airflow.plugins.folio.invoices._folio_client",
         return_value=mock_folio_client_no_paid_invoices,
