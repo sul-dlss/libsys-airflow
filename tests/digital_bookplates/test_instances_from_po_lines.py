@@ -31,7 +31,7 @@ def mock_folio_client():
 
 def test_instances_from_po_lines(mocker, mock_folio_client):
     mocker.patch(
-        "libsys_airflow.plugins.folio.orders._folio_client",
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
         return_value=mock_folio_client,
     )
 
@@ -72,7 +72,7 @@ def test_instances_from_po_lines(mocker, mock_folio_client):
 
 def test_instances_from_po_lines_no_instance(mocker, mock_folio_client, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.folio.orders._folio_client",
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
         return_value=mock_folio_client,
     )
 
