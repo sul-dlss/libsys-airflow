@@ -111,16 +111,18 @@ def invoices_paid_within_date_range(**kwargs) -> list:
     """
     Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
     paymentDate range based on airflow DAG run data intervals end and start dates
-    Query paymentDate greater than logical_date when run_id starts with "manual_"
+    Query paymentDate greater than params logical_date when run_id starts with "manual_"
     """
     folio_client = _folio_client()
     dag_run = kwargs["dag_run"]
+    params = kwargs.get("params", {})
+    logical_date = params.get("logical_date")
     dag_run_id = dag_run.run_id
     from_date = dag_run.data_interval_start
     to_date = dag_run.data_interval_end
     query = f"""?query=((paymentDate>="{from_date}" and paymentDate<="{to_date}") and status=="Paid")"""
-    if dag_run_id.startswith("manual_"):
-        from_date = dag_run.logical_date
+    if dag_run_id.startswith("manual_") and logical_date is not None:
+        from_date = logical_date
         logger.info(f"Querying paid invoices with paymentDate >= {from_date}")
         query = f"""?query=((paymentDate>="{from_date}") and status=="Paid")"""
 
