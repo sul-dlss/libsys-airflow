@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 class DAG979Sensor(BaseSensorOperator):
 
     def __init__(self, dag_runs: list, **kwargs):
-        self.dag_runs = {}
+        self.dag_runs: dict = {}
         for dag_run_id in dag_runs:
-            self.dag_runs[dag_run_id] = {'state': None, 'instance_uuid': None}
+            self.dag_runs[dag_run_id] = {'state': None, 'instance_uuid': []}
         super().__init__(**kwargs)
 
     def poke(self, context) -> bool:
