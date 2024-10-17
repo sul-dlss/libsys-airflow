@@ -80,7 +80,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
     files_base = "digital-bookplates"
 
     @expose("/create", methods=["POST"])
-    def trigger_add_975_dags(self):
+    def trigger_add_979_dags(self):
         if "upload-instances-file" not in request.files:
             flash("Missing Instance UUIDs file")
             return redirect('/digital_bookplates_batch_upload')
