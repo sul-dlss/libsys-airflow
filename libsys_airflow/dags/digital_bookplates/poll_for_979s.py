@@ -5,6 +5,7 @@ from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_sensor import DAG979Sensor
+from libsys_airflow.plugins.digital_bookplates.email import summary_add_979_dag_runs
 
 default_args = {
     "owner": "libsys",
@@ -50,9 +51,11 @@ def poll_for_digital_bookplate_979s():
 
     poll_result = poll_979_dags(dag_runs=vars["dag_runs"])
 
+    email = summary_add_979_dag_runs(dag_runs=poll_result, email=vars['email'])
+
     start >> vars
 
-    poll_result >> end
+    email >> end
 
 
 poll_for_digital_bookplate_979s()
