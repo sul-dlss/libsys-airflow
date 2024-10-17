@@ -2,7 +2,7 @@ import pytest
 
 from unittest.mock import MagicMock
 
-from libsys_airflow.plugins.folio.orders import instances_from_po_lines
+from libsys_airflow.plugins.digital_bookplates.bookplates import instances_from_po_lines
 
 mock_order_lines = {
     "8c91eb1c-4e32-44e8-bcce-b34850bdf3d5": {
@@ -31,7 +31,7 @@ def mock_folio_client():
 
 def test_instances_from_po_lines(mocker, mock_folio_client):
     mocker.patch(
-        "libsys_airflow.plugins.folio.orders._folio_client",
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
         return_value=mock_folio_client,
     )
 
@@ -72,7 +72,7 @@ def test_instances_from_po_lines(mocker, mock_folio_client):
 
 def test_instances_from_po_lines_no_instance(mocker, mock_folio_client, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.folio.orders._folio_client",
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
         return_value=mock_folio_client,
     )
 

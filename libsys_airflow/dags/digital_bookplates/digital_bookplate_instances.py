@@ -8,6 +8,7 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_funds_polines,
+    instances_from_po_lines,
     launch_add_979_fields_task,
 )
 
@@ -16,9 +17,6 @@ from libsys_airflow.plugins.folio.invoices import (
     invoice_lines_from_invoices,
 )
 
-from libsys_airflow.plugins.folio.orders import (
-    instances_from_po_lines,
-)
 
 default_args = {
     "owner": "libsys",
