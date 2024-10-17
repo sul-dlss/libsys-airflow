@@ -111,7 +111,7 @@ def instance_id_for_druids(**kwargs) -> list:
     druids_instances = kwargs["druid_instances"]
     if druids_instances is None:
         return []
-    return list(list(druids_instances.keys())[0])
+    return list(druids_instances.keys())[0]
 
 
 @task
