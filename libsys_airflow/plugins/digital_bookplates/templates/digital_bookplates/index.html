@@ -17,6 +17,8 @@
 </header>
 
 <main class="container">
+  <form enctype="multipart/form-data" method="post" action="{{ url_for('DigitalBookplatesBatchUploadView.trigger_add_979_dags') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
   <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
   <table class="table table-striped" id="fundsTable">
     <thead>
@@ -58,8 +60,9 @@
         </p>
     </div>
     <div class="form-group">
-        <button class="btn btn-primary" onclick="submitUpload()">Submit</button>
+        <input type="submit" class="btn btn-primary" value="Submit">
     </div>
+  </form>
 </main>
 
 <script type="text/javascript">
@@ -74,21 +77,5 @@
     vendorTableSelect.classList.add("form-control");
     let vendorSearchInput = document.querySelector(".datatable-input");
     vendorSearchInput.classList.add("form-control");
-
-    function submitUpload() {
-      const fundId = document.querySelector('input[name="fundSelect"]:checked').value;
-      const emailValue = document.querySelector("#email").value;
-      const instanceUUIDsFileInput = document.querySelector("#upload-instance-uuids");
-      const file = instanceUUIDsFileInput.files[0];
-
-      // Form Data
-      const formData = new FormData();
-      formData.append('fundId', fundId);
-      formData.append('email', emailValue);
-      formData.append('upload-instances-file', file);
-
-      console.log(formData);
-
-    }
    </script>
 {% endblock %}
