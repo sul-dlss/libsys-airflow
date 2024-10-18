@@ -58,12 +58,17 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
 
     report_path = report_base / file_name
 
-    count: int = 1
     while report_path.exists():
-        report_path = report_path.with_name(
-            f"{report_path.stem}-{count}{report_path.suffix}"
-        )
-        count += 1
+        count = report_path.stem.split("copy-")[-1]
+        try:
+            count = int(count)
+            old_count = f"copy-{count}"
+            count += 1
+            name = report_path.stem.replace(old_count, f"copy-{count}")
+        except ValueError:
+            count: int = 1
+            name = f"{report_path.stem}-copy-{count}"
+        report_path = report_path.with_name(f"{name}{report_path.suffix}")
     upload_df.to_csv(report_path, index=False)
 
 
@@ -81,14 +86,14 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
 
     @expose("/create", methods=["POST"])
     def trigger_add_979_dags(self):
-        if "upload-instances-file" not in request.files:
+        if "upload-instance-uuids" not in request.files:
             flash("Missing Instance UUIDs file")
             return redirect('/digital_bookplates_batch_upload')
 
         email = request.form.get("email")
-        fund_db_id = request.form.get("fundId")
+        fund_db_id = request.form.get("fundSelect")
         fund = _get_fund(fund_db_id)
-        raw_upload_instances_file = request.files["upload-instances-file"]
+        raw_upload_instances_file = request.files["upload-instance-uuids"]
         try:
             upload_instances_df = pd.read_csv(raw_upload_instances_file, header=None)
             dag_runs = []
