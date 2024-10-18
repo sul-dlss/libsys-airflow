@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-# import pytest
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_sensor import DAG979Sensor
 

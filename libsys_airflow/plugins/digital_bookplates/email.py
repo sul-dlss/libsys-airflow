@@ -187,7 +187,7 @@ def deleted_from_argo_email(**kwargs):
     bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
     folio_url = Variable.get("FOLIO_URL")
 
-    html_content = _deleted_from_argo_email_body(deleted_druids, folio_url)
+    html_content = _deleted_from_argo_email_body(deleted_druids)
 
     if is_production():
         send_email(
