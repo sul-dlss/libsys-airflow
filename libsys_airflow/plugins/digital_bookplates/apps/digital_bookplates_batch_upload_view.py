@@ -42,6 +42,18 @@ def _trigger_add_979_dags(**kwargs) -> str:
 
 def _trigger_poll_add_979_dags(dag_runs: list, email: str):
     """Placeholder for polling DAGs DAG"""
+    dagbag = DagBag("/opt/airflow/dags")
+    dag = dagbag.get_dag('poll_for_digital_bookplate_979s')
+    execution_date = timezone.utcnow()
+    run_id = f"manual__{execution_date.isoformat()}"
+    dag.create_dagrun(
+        run_id=run_id,
+        execution_date=execution_date,
+        state=State.RUNNING,
+        conf={"dag_runs": dag_runs, "email": email},
+        external_trigger=True,
+    )
+    logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
 
 
 def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame):
