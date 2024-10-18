@@ -112,16 +112,16 @@ def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
 
     response = test_airflow_client.post(
         '/digital_bookplates_batch_upload/create',
-        content_type='multipart/form-data',
         data={
             "email": "test@stanford.edu",
-            "fundId": 1,
-            "upload-instances-file": (
+            "fundSelect": 1,
+            "upload-instance-uuids": (
                 io.BytesIO(b"4670950c-a01a-428c-ba2f-f0bf539665f7"),
                 "upload-file.csv",
             ),
         },
     )
+
     assert response.status_code == 302
 
     redirect_response = test_airflow_client.get('/digital_bookplates_batch_upload/')
@@ -144,4 +144,8 @@ def test_existing_upload_file(tmp_path):
     instance_uuids_df = pd.DataFrame(["75375cc1-c796-44ea-aa82-af372540cea1"])
     _save_uploaded_file(tmp_path, "new-bookplate-instances.csv", instance_uuids_df)
 
-    assert (upload_path / "new-bookplate-instances-1.csv").exists()
+    assert (upload_path / "new-bookplate-instances-copy-1.csv").exists()
+
+    _save_uploaded_file(tmp_path, "new-bookplate-instances.csv", instance_uuids_df)
+
+    assert (upload_path / "new-bookplate-instances-copy-2.csv").exists()
