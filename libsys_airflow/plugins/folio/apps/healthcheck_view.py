@@ -15,43 +15,37 @@ class Healthcheck(AppBuilderBaseView):
 
     @expose("/")
     def home(self):
-        statuses = self._statuses
+        folio_client = FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
+        statuses = self._statuses(folio_client)
         http_status = 200 if all(statuses.values()) else 500
         return make_response(
             self.render_template("healthcheck/index.html", statuses=statuses),
             http_status,
         )
 
-    @property
-    def _statuses(self):
-        if not self._check_folio_login():
-            return {"Folio login": False}
-
+    def _statuses(self, folio_client):
         return {
-            "Folio login": True,
-            "Migration login": self._check_migration_login(),
-            "Holdings custom mappings": self._check_holdings_custom_mappings(),
-            "Bib custom mappings": self._check_bib_custom_mappings(),
+            "Folio login": self._check_folio_login(folio_client),
+            "Holdings custom mappings": self._check_holdings_custom_mappings(
+                folio_client
+            ),
+            "Bib custom mappings": self._check_bib_custom_mappings(folio_client),
         }
 
-    @property
-    def _folio_client(self):
-        return FolioClient(
-            Variable.get("OKAPI_URL"),
-            "sul",
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
-        )
-
-    def _check_folio_login(self):
+    def _check_folio_login(self, folio_client):
         try:
-            self._folio_client
+            folio_client
             return True
         except Exception:
             return False
 
-    def _check_holdings_custom_mappings(self):
-        mapping_rules = self._folio_client.folio_get("/mapping-rules/marc-holdings")
+    def _check_holdings_custom_mappings(self, folio_client):
+        mapping_rules = folio_client.folio_get("/mapping-rules/marc-holdings")
         entities = mapping_rules['852'][0]['entity']
         matching_entities = [
             entity
@@ -61,18 +55,6 @@ class Healthcheck(AppBuilderBaseView):
         ]
         return len(matching_entities) > 0
 
-    def _check_bib_custom_mappings(self):
-        mapping_rules = self._folio_client.folio_get("/mapping-rules/marc-bib")
+    def _check_bib_custom_mappings(self, folio_client):
+        mapping_rules = folio_client.folio_get("/mapping-rules/marc-bib")
         return '910' in mapping_rules
-
-    def _check_migration_login(self):
-        try:
-            migration_client = FolioClient(
-                Variable.get("OKAPI_URL"),
-                "sul",
-                Variable.get("FOLIO_USER"),
-                Variable.get("FOLIO_PASSWORD"),
-            )
-            return migration_client is not None
-        except Exception:
-            return False
