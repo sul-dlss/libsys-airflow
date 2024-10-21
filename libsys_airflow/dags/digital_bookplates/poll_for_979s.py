@@ -19,7 +19,7 @@ default_args = {
 @task(multiple_outputs=True)
 def retrieve_variables(**kwargs):
     params = kwargs['params']
-    dag_runs = params.get("dag_runs")
+    dag_runs = params.get("dag_runs", [])
     addl_email = params.get("email")
     return {"dag_runs": dag_runs, "email": addl_email}
 
