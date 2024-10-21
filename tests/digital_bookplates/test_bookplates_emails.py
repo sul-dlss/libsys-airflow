@@ -7,6 +7,7 @@ from libsys_airflow.plugins.digital_bookplates.email import (
     bookplates_metadata_email,
     deleted_from_argo_email,
     missing_fields_email,
+    summary_add_979_dag_runs,
 )
 
 
@@ -297,3 +298,61 @@ def test_missing_fields_email_prod(mocker, mock_folio_variables):
     assert mock_send_email.call_args[1]["subject"].startswith(
         "Missing Fields for Digital Bookplates"
     )
+
+
+def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.conf.get",
+        return_value="https://sul-libsys-airflow.stanford.edu",
+    )
+
+    dag_runs = {
+        "manual__2024-10-20T02:00:00+00:00": {
+            "state": "success",
+            "instance_uuids": [
+                "fddf7e4c-161e-4ae8-baad-058288f63e17",
+                "5394da8a-e503-424e-aca7-7ba73ddafc03",
+            ],
+        }
+    }
+    summary_add_979_dag_runs.function(dag_runs=dag_runs, email="dscully@stanford.edu")
+
+    assert mock_send_email.called
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+
+    links = html_body.find_all("a")
+
+    assert len(links) == 3
+
+    assert links[0].attrs['href'].startswith("https://sul-libsys-airflow.stanford.edu")
+    assert links[1].attrs['href'].endswith("fddf7e4c-161e-4ae8-baad-058288f63e17")
+
+
+def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.is_production",
+        return_value=True,
+    )
+
+    summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
+
+    assert mock_send_email.call_args[1]["subject"].startswith(
+        "Summary of Adding 979 fields to MARC Workflows"
+    )
+
+    assert mock_send_email.call_args[1]["to"] == [
+        'test@example.com',
+        'dscully@stanford.edu',
+        'nobody@example.com',
+    ]

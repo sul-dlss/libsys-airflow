@@ -105,13 +105,14 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
         <h2>Results from adding 979 fields Workflows</h2>
         <ol>
         {% for dag_run_id, result in dag_runs.items() %}
-        <li><a href="{{ dag_url }}{{ dag_run_id|urlencode }}">{{ dag_run_id }}</a> {{ result.status }}<br>
+        <li>DAG Run <a href="{{ dag_url }}{{ dag_run_id|urlencode }}">{{ dag_run_id }}</a> {{ result.state }}<br>
            Instances:
            <ul>
            {% for uuid in result.instance_uuids %}
            <li><a href="{{ folio_url }}/instances/{{ uuid }}">{{ uuid }}</a></li>
            {% endfor %}
            </ul>
+        </li>
         {% endfor %}
         </ol>
     """
@@ -255,7 +256,7 @@ def summary_add_979_dag_runs(**kwargs):
     to_emails = [devs_to_email_addr]
     if additional_email:
         to_emails.append(additional_email)
-    html_content = _summary_add_979_email(dag_runs)
+    html_content = _summary_add_979_email(dag_runs, folio_url)
 
     if is_production():
         to_emails.append(bookplates_email_addr)
