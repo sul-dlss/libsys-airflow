@@ -41,7 +41,7 @@ def _trigger_add_979_dags(**kwargs) -> str:
 
 
 def _trigger_poll_add_979_dags(dag_runs: list, email: str):
-    """Placeholder for polling DAGs DAG"""
+    """Triggers polling DAGs DAG"""
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag('poll_for_digital_bookplate_979s')
     execution_date = timezone.utcnow()
