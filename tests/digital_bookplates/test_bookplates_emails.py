@@ -332,7 +332,7 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
     assert len(links) == 3
 
     assert links[0].attrs['href'].startswith("https://sul-libsys-airflow.stanford.edu")
-    assert links[1].attrs['href'].endswith("fddf7e4c-161e-4ae8-baad-058288f63e17")
+    assert links[1].attrs['href'].endswith("view/fddf7e4c-161e-4ae8-baad-058288f63e17")
 
 
 def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):

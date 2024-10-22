@@ -109,7 +109,7 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
            Instances:
            <ul>
            {% for uuid in result.instance_uuids %}
-           <li><a href="{{ folio_url }}/instances/{{ uuid }}">{{ uuid }}</a></li>
+           <li><a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a></li>
            {% endfor %}
            </ul>
         </li>
