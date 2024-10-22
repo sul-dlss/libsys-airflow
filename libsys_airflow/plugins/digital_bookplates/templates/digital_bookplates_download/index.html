@@ -24,7 +24,7 @@
             {{ item['date'] }}
             </td>
             <td>
-            <a class="{{item['date']}}" href="{{ url_for('DigitalBookplatesDownloadView.csv_file', year=item['year'], month=item['month'], day=item['day'], filename=item['filename']) }}" download>{{ item['filename'] }}</a>
+            <a id="{{item['date']}}" href="{{ url_for('DigitalBookplatesDownloadView.csv_file', year=item['year'], month=item['month'], day=item['day'], filename=item['filename']) }}" download>{{ item['filename'] }}</a>
             </td>
         </tr>
       {% endfor %}

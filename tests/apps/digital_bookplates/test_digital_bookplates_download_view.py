@@ -41,7 +41,7 @@ def test_download_view(test_airflow_client):
     response = test_airflow_client.get('/digital_bookplates_download/')
     assert response.status_code == 200
 
-    csv_download = response.html.find(class_="2024-10-22").get('href')
+    csv_download = response.html.find(id="2024-10-22").get('href')
     assert (
         csv_download
         == "/digital_bookplates_download/2024/10/22/SearchInstanceUUIDs2024-10-16T16_39_11-06_00.csv"
