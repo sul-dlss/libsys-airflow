@@ -1,8 +1,10 @@
 import logging
 
 from airflow.decorators import task
-from airflow.models import Variable
+from airflow.models import DagBag, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.utils import timezone
+from airflow.utils.state import State
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.shared import utils
@@ -101,14 +103,28 @@ def bookplate_funds_polines(**kwargs) -> list:
 @task
 def launch_add_979_fields_task(**kwargs):
     """
-    Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict:
-    "242c6000-8485-5fcd-9b5e-adb60788ca59": [
-        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-    ]
+    Triggers digital_bookplate_979 with a run id from params
     """
     params = kwargs.get("params", {})
-    return params.get("druids_for_instance_id", {})
+    payload = params.get("druids_for_instance_id", {})
+    if len(payload) < 0:
+        return
+
+    run_id = params.get("digital_bookplate_979_run_id")
+    dagbag = DagBag("/opt/airflow/dags")
+    dag = dagbag.get_dag("digital_bookplate_979")
+
+    execution_date = timezone.utcnow()
+
+    dag.create_dagrun(
+        run_id=run_id,
+        execution_date=execution_date,
+        state=State.RUNNING,
+        conf={"druids_for_instance_id": payload},
+        external_trigger=True,
+    )
+
+    return run_id
 
 
 @task
