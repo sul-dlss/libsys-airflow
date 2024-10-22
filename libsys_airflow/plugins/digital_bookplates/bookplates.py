@@ -102,10 +102,12 @@ def bookplate_funds_polines(**kwargs) -> list:
 def launch_add_979_fields_task(**kwargs):
     """
     Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict:
-    "242c6000-8485-5fcd-9b5e-adb60788ca59": [
-        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-    ]
+    { 'cc05eff0-56de-5e85-85ff-d046e6e593c4': {
+        'druid': 'bt942vy4674',
+        'title': 'Stanford Law Library in Memory of Henry Vrooman',
+        'fund_name': None
+        }
+    }
     """
     params = kwargs.get("params", {})
     return params.get("druids_for_instance_id", {})
@@ -128,7 +130,7 @@ def instance_id_for_druids(**kwargs) -> list:
 
 
 @task
-def add_979_marc_tags(druid_instances: dict) -> dict:
+def add_979_marc_tags(druid_instance: dict) -> dict:
     """
     get the bookplate data from the bookplates table and contruct a 979 tag with the
     fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
@@ -139,27 +141,25 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
         }
     }
     """
+    marc_instance_tags: dict = {'979': []}
+    for _instance_uuid, druids in druid_instance.items():
+        fund_name = druids.get('fund_name', None)
+        if fund_name is None:
+            fund_name = druids.get('druid', '')
+        marc_instance_tags['979'].append(
+            {
+                'ind1': ' ',
+                'ind2': ' ',
+                'subfields': [
+                    {'f': fund_name},
+                    {'b': f"druid:{druids.get('druid', '')}"},
+                    {'c': druids.get('image_filename', '')},
+                    {'d': druids.get('title', '')},
+                ],
+            }
+        )
 
-    marc_instances_tags: dict = {'979': []}
-    for _instance_uuid, druids in druid_instances.items():
-        for tag_data in druids:
-            fund_name = tag_data.get('fund_name', None)
-            if fund_name is None:
-                fund_name = tag_data.get('druid', '')
-            marc_instances_tags['979'].append(
-                {
-                    'ind1': ' ',
-                    'ind2': ' ',
-                    'subfields': [
-                        {'f': fund_name},
-                        {'b': f"druid:{tag_data.get('druid', '')}"},
-                        {'c': tag_data.get('image_filename', '')},
-                        {'d': tag_data.get('title', '')},
-                    ],
-                }
-            )
-
-    return marc_instances_tags
+    return marc_instance_tags
 
 
 @task

@@ -216,29 +216,34 @@ def test_new_bookplate_funds_polines(
 
 
 def test_add_979_marc_tags():
-    druid_instances = {
-        "b8932bcd-7498-4f7e-a598-de9010561e42": [
-            {
-                "druid": "kp761xz4568",
-                "fund_name": "ASHENR",
-                "image_filename": "dp698zx8237_00_0001.jp2",
-                "title": "Ruth Geraldine Ashen Memorial Book Fund",
-            },
-        ],
-        "06220dd4-7d6e-4e5b-986d-5fca21d856ca": [
-            {
-                "druid": "gc698jf6425",
-                "fund_name": None,
-                "image_filename": "gc698jf6425_00_0001.jp2",
-                "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
-            },
-        ],
+    druid_instance = {
+        "b8932bcd-7498-4f7e-a598-de9010561e42": {
+            "druid": "kp761xz4568",
+            "fund_name": "ASHENR",
+            "image_filename": "dp698zx8237_00_0001.jp2",
+            "title": "Ruth Geraldine Ashen Memorial Book Fund",
+        }
     }
 
-    marc_979_tags = add_979_marc_tags.function(druid_instances)
-    assert len(marc_979_tags["979"]) == 2
+    marc_979_tags = add_979_marc_tags.function(druid_instance)
     assert len(marc_979_tags["979"][0]["subfields"]) == 4
-    assert len(marc_979_tags["979"][1]["subfields"]) == 4
+    assert marc_979_tags["979"][0]["subfields"][0]["f"] == "ASHENR"
     assert marc_979_tags["979"][0]["subfields"][1]["b"] == "druid:kp761xz4568"
-    assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
-    assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
+    assert marc_979_tags["979"][0]["subfields"][2]["c"] == "dp698zx8237_00_0001.jp2"
+
+
+def test_add_979_marc_tags_no_fund():
+    druid_instance = {
+        "06220dd4-7d6e-4e5b-986d-5fca21d856ca": {
+            "druid": "gc698jf6425",
+            "fund_name": None,
+            "image_filename": "gc698jf6425_00_0001.jp2",
+            "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
+        },
+    }
+
+    marc_979_tags = add_979_marc_tags.function(druid_instance)
+    assert len(marc_979_tags["979"][0]["subfields"]) == 4
+    assert marc_979_tags["979"][0]["subfields"][0]["f"] == "gc698jf6425"
+    assert marc_979_tags["979"][0]["subfields"][1]["b"] == "druid:gc698jf6425"
+    assert marc_979_tags["979"][0]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
