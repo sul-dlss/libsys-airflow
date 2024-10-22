@@ -8,6 +8,7 @@ from airflow.decorators import task
 from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.utils import timezone
 
 from jsonpath_ng.ext import parse
 from sqlalchemy.orm import Session
@@ -163,21 +164,43 @@ def filter_updates_errors(db_results: list) -> dict:
 
 
 @task
-def trigger_instances_dag(**kwargs) -> bool:
+def trigger_instances_dag(**kwargs) -> list:
     new_funds = kwargs.get("new", [])
     if len(new_funds) < 1:
         logger.info("No new funds to trigger digital_bookplate_instances DAG")
-        return True
+        return []
     logger.error(f"Should trigger {len(new_funds)} DAG runs")
+    digital_bookplate_979_dag_runs: list = []
     for i, fund in enumerate(new_funds):
+        execution_date = timezone.utcnow()
+        run_id = f"manual-{i}__{execution_date.isoformat()}"
+        digital_bookplate_979_dag_runs.append(run_id)
         TriggerDagRunOperator(
             task_id=f"new-instance-dag-{i}",
             trigger_dag_id="digital_bookplate_instances",
-            conf={"logical_date": "2023-08-28T00:00:00+00:00", "funds": [fund]},
+            conf={
+                "logical_date": "2023-08-28T00:00:00+00:00",
+                "funds": [fund],
+                "digital_bookplate_979_run_id": run_id,
+            },
         ).execute(
             kwargs  # type: ignore
         )
-    return True
+    return digital_bookplate_979_dag_runs
+
+
+@task
+def trigger_polling_979_dag(**kwargs):
+    digital_bookplate_979_dag_runs = kwargs.get("dag_runs", [])
+    if len(digital_bookplate_979_dag_runs) < 1:
+        return
+    TriggerDagRunOperator(
+        task_id="poll-979-dag",
+        trigger_dag_id="poll_979_dags",
+        conf={"dag_runs": digital_bookplate_979_dag_runs},
+    ).execute(
+        kwargs  # type: ignore
+    )
 
 
 def _add_bookplate(metadata: dict, session: Session) -> tuple:
