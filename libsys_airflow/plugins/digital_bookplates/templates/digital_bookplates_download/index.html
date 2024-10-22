@@ -1,0 +1,34 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.7/js/dataTables.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.dataTables.css" />
+  <script>
+    $(document).ready(function () {
+      $('#csvDownloads').DataTable();
+    });
+  </script>
+  <table class="table table-striped" id="csvDownloads">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>CSV file download</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in content %}
+        <tr>
+            <td>
+            {{ item['date'] }}
+            </td>
+            <td>
+            <a class="{{item['date']}}" href="{{ url_for('DigitalBookplatesDownloadView.csv_file', year=item['year'], month=item['month'], day=item['day'], filename=item['filename']) }}" download>{{ item['filename'] }}</a>
+            </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    </table>
+</div>
+{% endblock %}
