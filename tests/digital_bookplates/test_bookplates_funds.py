@@ -173,7 +173,7 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 def test_bookplate_funds_polines(
-    pg_hook, mock_invoice_lines, mock_bookplate_funds_polines
+    pg_hook, mock_invoice_lines, mock_bookplate_funds_polines, caplog
 ):
     new_funds = []
     bookplates_polines = bookplate_funds_polines.function(
@@ -181,6 +181,7 @@ def test_bookplate_funds_polines(
     )
 
     assert bookplates_polines == mock_bookplate_funds_polines
+    assert "Getting bookplates data from the table" in caplog.text
 
 
 def test_new_bookplates(mock_new_funds, mock_new_bookplates):
@@ -189,7 +190,7 @@ def test_new_bookplates(mock_new_funds, mock_new_bookplates):
 
 
 def test_new_bookplate_funds_polines(
-    mock_invoice_lines, mock_new_funds, mock_new_bookplates
+    mock_invoice_lines, mock_new_funds, mock_new_bookplates, caplog
 ):
     mock_invoice_lines.append(
         {
@@ -213,6 +214,7 @@ def test_new_bookplate_funds_polines(
         == mock_new_bookplates["f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"]
     )
     assert bookplates_polines[0]["poline_id"] == "def456"
+    assert "Getting bookplates data from list of new funds" in caplog.text
 
 
 def test_add_979_marc_tags():
