@@ -164,7 +164,7 @@ def test_invoices_paid_since_beginning(
         dag_run=mock_manual_dag_run, params=params
     )
     from_date = params.get("logical_date")
-    assert invoice_ids['invoice_uuids'][0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
+    assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
     assert f"Querying paid invoices with paymentDate >= {from_date}" in caplog.text
 
 
@@ -179,7 +179,7 @@ def test_invoices_paid_within_date_range(
         dag_run=mock_scheduled_dag_run
     )
     assert len(invoice_ids) == 1
-    assert invoice_ids['invoice_uuids'][0] == "34cabbbd-d419-4853-ad3a-d0eafd4310c6"
+    assert invoice_ids[0] == "34cabbbd-d419-4853-ad3a-d0eafd4310c6"
     assert (
         f"Querying paid invoices with paymentDate range >= {mock_scheduled_dag_run.data_interval_start} and <= {mock_scheduled_dag_run.data_interval_end}"
         in caplog.text

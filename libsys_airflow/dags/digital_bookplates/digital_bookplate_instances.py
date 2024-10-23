@@ -61,7 +61,7 @@ def digital_bookplate_instances():
     retrieve_paid_invoices = invoices_paid_within_date_range()
 
     retrieve_instances = process_invoice_lines_group.expand(
-        invoice_id=retrieve_paid_invoices["invoice_uuids"]
+        invoice_id=retrieve_paid_invoices
     )
 
     launch_add_tag_dag = launch_add_979_fields_task(instances=retrieve_instances)
