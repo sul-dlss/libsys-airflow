@@ -31,7 +31,7 @@ class DataExportDownloadView(AppBuilderBaseView):
     def vendor_marc_record(self, vendor, state, folder, filename):
         folder_file = f"{vendor}-{state}-{folder}-{filename}"
         return send_file(
-            f"{self.file_base}/{vendor}/{state}/{folder}/{filename}",
+            f"/opt/airflow/{self.files_base}/{vendor}/{state}/{folder}/{filename}",
             as_attachment=True,
             mimetype="application/marc",
             download_name=folder_file,

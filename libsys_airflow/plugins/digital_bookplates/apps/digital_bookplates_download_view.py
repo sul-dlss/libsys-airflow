@@ -32,7 +32,7 @@ class DigitalBookplatesDownloadView(AppBuilderBaseView):
     def csv_file(self, year, month, day, filename):
         folder_file = f"{year}-{month}-{day}-{filename}"
         return send_file(
-            f"{self.files_base}/{year}/{month}/{day}/{filename}",
+            f"/opt/airflow/{self.files_base}/{year}/{month}/{day}/{filename}",
             as_attachment=True,
             mimetype="application/csv",
             download_name=folder_file,
