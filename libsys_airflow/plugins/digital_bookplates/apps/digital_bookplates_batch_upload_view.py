@@ -88,7 +88,12 @@ def _get_fund(fund_id: int) -> dict:
     pg_hook = PostgresHook("digital_bookplates")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         fund = session.query(DigitalBookplate).get(fund_id)
-    return {"druid": fund.druid, "title": fund.title, "fund_name": fund.fund_name}
+    return {
+        "druid": fund.druid,
+        "fund_name": fund.fund_name,
+        "image_filename": fund.image_filename,
+        "title": fund.title,
+    }
 
 
 class DigitalBookplatesBatchUploadView(AppBuilderBaseView):

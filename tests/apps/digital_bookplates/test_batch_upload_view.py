@@ -103,6 +103,26 @@ def test_missing_filename(test_airflow_client, mock_db):
     assert "Missing Instance UUIDs file" in alert
 
 
+def test_get_fund(mocker, mock_db, tmp_path):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view.DagBag"
+    )
+
+    mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
+
+    from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view import (
+        _get_fund,
+    )
+
+    fund = _get_fund(1)
+    assert fund == {
+        'druid': 'kp761xz4568',
+        'fund_name': 'ASHENR',
+        'image_filename': 'dp698zx8237_00_0001.jp2',
+        'title': 'Ruth Geraldine Ashen Memorial Book Fund',
+    }
+
+
 def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view.DagBag"
