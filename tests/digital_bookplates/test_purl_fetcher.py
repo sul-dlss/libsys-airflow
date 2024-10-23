@@ -316,6 +316,24 @@ def test_new_bookplate(pg_hook, mocker, mock_folio_client):
     assert result["new"]["fund_uuid"] == "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"
 
 
+def test_trigger_instances_dag_no_fund_uuid(caplog):
+    trigger_instances_dag.function(
+        new=[
+            {
+                'druid': 'ef919yq2614',
+                'failure': None,
+                'fund_name': 'KELP',
+                'title': 'The Kelp Foundation Fund',
+                'image_filename': 'ef919yq2614_00_0001.jp2',
+                'db_id': 4,
+                'fund_uuid': None,
+            }
+        ]
+    )
+
+    assert "Skipping new fund without fund uuid" in caplog.text
+
+
 def test_trigger_instances_dag_no_new(caplog):
     trigger_instances_dag.function(new=[])
 
