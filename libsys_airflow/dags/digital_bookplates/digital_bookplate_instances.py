@@ -4,6 +4,7 @@ from airflow.decorators import dag, task_group
 from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
+from airflow.utils import timezone
 
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
@@ -50,7 +51,12 @@ def process_invoice_lines_group(invoice_id: str):
             format="datetime",
             type="string",
             description="The earliest date to select paid invoices from FOLIO.",
-        )
+        ),
+        "digital_bookplate_979_run_id": Param(
+            f"manual__{timezone.utcnow().isoformat()}",
+            type="string",
+            description="The run id for the digital_bookplate_979 DAG run",
+        ),
     },
 )
 def digital_bookplate_instances():
