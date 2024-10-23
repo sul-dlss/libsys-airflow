@@ -80,8 +80,10 @@ def bookplate_funds_polines(**kwargs) -> list:
     params = kwargs.get("params", {})
     funds = params.get("funds", [])
     if len(funds) > 0:
+        logger.info("Getting bookplates data from list of new funds")
         bookplates = _new_bookplates(funds)
     else:
+        logger.info("Getting bookplates data from the table")
         bookplates = _get_bookplate_metadata_with_fund_uuids()
 
     for row in invoice_lines:
