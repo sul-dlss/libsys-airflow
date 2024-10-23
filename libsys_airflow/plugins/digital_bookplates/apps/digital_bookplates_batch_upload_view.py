@@ -23,7 +23,7 @@ def _trigger_add_979_dags(**kwargs) -> str:
     """Triggers add_bookplate_970 DAG"""
     instance_uuid = kwargs["instance_uuid"]
     fund = kwargs["fund"]
-    dag_payload = {instance_uuid: fund}
+    dag_payload = {instance_uuid: [fund]}
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("digital_bookplate_979")
 
