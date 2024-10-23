@@ -15,6 +15,8 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
 from libsys_airflow.plugins.folio.invoices import (
     invoices_paid_within_date_range,
     invoice_lines_from_invoices,
+    invoice_lines_paid_on_fund,
+    date_range_or_funds_path,
 )
 
 
@@ -28,10 +30,16 @@ default_args = {
 }
 
 
-@task_group(group_id="process-invoice-lines")
-def process_invoice_lines_group(invoice_id: str):
+@task_group(group_id="process-invoices")
+def process_date_range_group(invoice_id: str):
     paid_invoice_lines = invoice_lines_from_invoices(invoice_id)
     paid_bookplate_polines = bookplate_funds_polines(invoice_lines=paid_invoice_lines)
+    return instances_from_po_lines(po_lines_funds=paid_bookplate_polines)
+
+
+@task_group(group_id="process-new-funds")
+def process_new_funds_group(invoice_line: str):
+    paid_bookplate_polines = bookplate_funds_polines(invoice_lines=[invoice_line])
     return instances_from_po_lines(po_lines_funds=paid_bookplate_polines)
 
 
@@ -58,16 +66,25 @@ def digital_bookplate_instances():
 
     end = EmptyOperator(task_id="end")
 
-    retrieve_paid_invoices = invoices_paid_within_date_range()
+    choose_branch = date_range_or_funds_path()
 
-    retrieve_instances = process_invoice_lines_group.expand(
+    retrieve_paid_invoices = invoices_paid_within_date_range()
+    retrieve_instances = process_date_range_group.expand(
         invoice_id=retrieve_paid_invoices
     )
+    launch_add_tag = launch_add_979_fields_task(instances=retrieve_instances)
 
-    launch_add_tag_dag = launch_add_979_fields_task(instances=retrieve_instances)
+    paid_invoice_lines_new_fund = invoice_lines_paid_on_fund()
+    retrieve_instances_new_fund = process_new_funds_group.expand(
+        invoice_line=paid_invoice_lines_new_fund
+    )
+    launch_add_tag_new_fund = launch_add_979_fields_task(
+        instances=retrieve_instances_new_fund
+    )
 
-    start >> retrieve_paid_invoices
-    launch_add_tag_dag >> end
+    start >> choose_branch >> [retrieve_paid_invoices, paid_invoice_lines_new_fund]
+    retrieve_paid_invoices >> launch_add_tag >> end
+    paid_invoice_lines_new_fund >> launch_add_tag_new_fund >> end
 
 
 digital_bookplate_instances()

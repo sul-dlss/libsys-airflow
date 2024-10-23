@@ -6,6 +6,7 @@ from libsys_airflow.plugins.folio.invoices import (
     invoices_awaiting_payment_task,
     invoices_paid_within_date_range,
     invoice_lines_from_invoices,
+    invoice_lines_paid_on_fund,
     _get_ids_from_vouchers,
     _get_all_ids_from_invoices,
 )
@@ -85,6 +86,8 @@ def mock_folio_client(mock_invoice_lines):
                 return [mock_invoice_lines[0], mock_invoice_lines[1]]
             elif kwargs["query"].startswith("?query=(invoiceId==2dcebfd3"):
                 return [mock_invoice_lines[2]]
+            elif kwargs["query"].startswith("?query=(fundDistributions==*"):
+                return mock_invoice_lines
             else:
                 return mock_invoice_lines
 
@@ -128,6 +131,20 @@ def mock_manual_dag_run(mocker):
     return dag_run
 
 
+@pytest.fixture
+def mock_new_funds():
+    return [
+        {
+            "druid": "ef919yq2614",
+            "failure": None,
+            "fund_name": "KELP",
+            "fund_uuid": "f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4",
+            "title": "The Kelp Foundation Fund",
+            "image_filename": "ef919yq2614_00_0001.jp2",
+        }
+    ]
+
+
 def test_get_vouchers(mock_folio_client):
     invoice_ids = _get_ids_from_vouchers("exportToAccounting=true", mock_folio_client)
     assert invoice_ids[0] == 'a6452c96-53ef-4e51-bd7b-aa67ac971133'
@@ -150,22 +167,6 @@ def test_get_invoices(mock_folio_client, mock_manual_dag_run):
         mock_folio_client,
     )
     assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
-
-
-def test_invoices_paid_since_beginning(
-    mocker, mock_folio_client, mock_manual_dag_run, caplog
-):
-    mocker.patch(
-        "libsys_airflow.plugins.folio.invoices._folio_client",
-        return_value=mock_folio_client,
-    )
-    params = {"logical_date": "2023-08-28 00:00:33.619135+00:00"}
-    invoice_ids = invoices_paid_within_date_range.function(
-        dag_run=mock_manual_dag_run, params=params
-    )
-    from_date = params.get("logical_date")
-    assert invoice_ids[0] == "649c0a8e-6741-49a1-a8a9-de1b8c01358f"
-    assert f"Querying paid invoices with paymentDate >= {from_date}" in caplog.text
 
 
 def test_invoices_paid_within_date_range(
@@ -196,7 +197,7 @@ def test_no_invoices_paid_within_date_range(
     invoice_ids = invoices_paid_within_date_range.function(
         dag_run=mock_scheduled_dag_run
     )
-    assert len(invoice_ids['invoice_uuids']) == 0
+    assert len(invoice_ids) == 0
     assert (
         f"NO PAID INVOICES between {mock_scheduled_dag_run.data_interval_start} and {mock_scheduled_dag_run.data_interval_end}. Downstream tasks will be skiped."
         in caplog.text
@@ -215,3 +216,38 @@ def test_invoice_lines_from_invoices(mocker, mock_folio_client, caplog):
         "Getting invoice lines for 29f339e3-dfdc-43e4-9442-eb817fdfb069" in caplog.text
     )
     assert len(invoice_lines) == 2
+
+
+def test_invoice_lines_paid_on_fund(mocker, mock_folio_client, mock_new_funds, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.invoices._folio_client",
+        return_value=mock_folio_client,
+    )
+    invoice_lines = invoice_lines_paid_on_fund.function(
+        params={"funds": mock_new_funds}
+    )
+    assert (
+        f"Getting paid invoice lines for {mock_new_funds[0].get('fund_uuid')}"
+        in caplog.text
+    )
+    assert len(invoice_lines) == 3
+
+
+def test_invoice_lines_paid_on_fund_not_in_folio(mocker, mock_folio_client, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.invoices._folio_client",
+        return_value=mock_folio_client,
+    )
+    invoice_lines_paid_on_fund.function(
+        params={
+            "funds": [
+                {
+                    "druid": "bt942vy4674",
+                    "fund_name": "",
+                    "image_filename": "bt942vy4674_00_0001.jp2",
+                    "title": "Stanford Law Library in Memory of Henry Vrooman",
+                }
+            ]
+        }
+    )
+    assert "Fund does not have fund_uuid:" in caplog.text

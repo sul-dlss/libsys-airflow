@@ -111,25 +111,15 @@ def invoices_paid_within_date_range(**kwargs) -> list:
     """
     Get invoices with status=Paid and paymentDate=<range>, return invoice UUIDs
     paymentDate range based on airflow DAG run data intervals end and start dates
-    Query paymentDate greater than params logical_date when run_id starts with "manual_"
     """
     folio_client = _folio_client()
     dag_run = kwargs["dag_run"]
-    params = kwargs.get("params", {})
-    logical_date = params.get("logical_date")
-    dag_run_id = dag_run.run_id
     from_date = dag_run.data_interval_start
     to_date = dag_run.data_interval_end
     query = f"""?query=((paymentDate>="{from_date}" and paymentDate<="{to_date}") and status=="Paid")"""
-    if dag_run_id.startswith("manual_") and logical_date is not None:
-        from_date = logical_date
-        logger.info(f"Querying paid invoices with paymentDate >= {from_date}")
-        query = f"""?query=((paymentDate>="{from_date}") and status=="Paid")"""
-
-    else:
-        logger.info(
-            f"Querying paid invoices with paymentDate range >= {from_date} and <= {to_date}"
-        )
+    logger.info(
+        f"Querying paid invoices with paymentDate range >= {from_date} and <= {to_date}"
+    )
 
     invoice_ids = _get_all_ids_from_invoices(query, folio_client)
     if len(invoice_ids) == 0:
@@ -153,3 +143,38 @@ def invoice_lines_from_invoices(invoice_id: str) -> list:
         all_invoice_lines.append(row)
 
     return all_invoice_lines
+
+
+@task(max_active_tis_per_dag=10)
+def invoice_lines_paid_on_fund(**kwargs) -> list:
+    """
+    Given a list of fund objects with a fund_uuid key, returns a
+    list of paid invoice lines dictionaries
+    """
+    folio_client = _folio_client()
+    all_invoice_lines = []
+    params = kwargs.get("params", {})
+    funds = params.get("funds", [])
+    for row in funds:
+        fund_uuid = row.get("fund_uuid")
+        if fund_uuid:
+            logger.info(f"Getting paid invoice lines for {fund_uuid}")
+            query = f"?query=(fundDistributions==*\"{fund_uuid}\"*) and invoiceLineStatus=\"Paid\""
+            invoice_lines = _get_all_invoice_lines(query, folio_client)
+            for row in invoice_lines:
+                all_invoice_lines.append(row)
+        else:
+            logger.info(f"Fund does not have fund_uuid: {row}")
+
+    return all_invoice_lines
+
+
+@task.branch()
+def date_range_or_funds_path(**kwargs):
+    params = kwargs.get("params", {})
+    funds = params.get("funds", [])
+    if len(funds) > 0:
+        logger.info(f"New fund {funds}")
+        return "invoice_lines_paid_on_fund"
+    else:
+        return "invoices_paid_within_date_range"
