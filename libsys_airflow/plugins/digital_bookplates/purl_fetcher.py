@@ -159,24 +159,41 @@ def filter_updates_errors(db_results: list) -> dict:
     logger.info(
         f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updates):,}"
     )
-    return {"failures": failures, "new": new, "updates": updates}
+    result = {"failures": failures, "new": new, "updates": updates}
+    return result
 
 
 @task
 def trigger_instances_dag(**kwargs) -> bool:
+    """
+    'new': [
+        {
+            'druid': 'ef919yq2614',
+            'failure': None,
+            'fund_name': 'KELP',
+            'title': 'The Kelp Foundation Fund',
+            'image_filename': 'ef919yq2614_00_0001.jp2',
+            'db_id': 4,
+            'fund_uuid': 'f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4'
+        },
+    ]
+    """
     new_funds = kwargs.get("new", [])
     if len(new_funds) < 1:
         logger.info("No new funds to trigger digital_bookplate_instances DAG")
         return True
-    logger.error(f"Should trigger {len(new_funds)} DAG runs")
+    logger.warning(f"Should trigger {len(new_funds)} DAG runs")
     for i, fund in enumerate(new_funds):
-        TriggerDagRunOperator(
-            task_id=f"new-instance-dag-{i}",
-            trigger_dag_id="digital_bookplate_instances",
-            conf={"logical_date": "2023-08-28T00:00:00+00:00", "funds": [fund]},
-        ).execute(
-            kwargs  # type: ignore
-        )
+        if fund["fund_uuid"] is not None:
+            TriggerDagRunOperator(
+                task_id=f"new-instance-dag-{i}",
+                trigger_dag_id="digital_bookplate_instances",
+                conf={"logical_date": "2023-08-28T00:00:00+00:00", "funds": [fund]},
+            ).execute(
+                kwargs  # type: ignore
+            )
+        else:
+            logger.warning(f"Skipping new fund without fund uuid")
     return True
 
 
