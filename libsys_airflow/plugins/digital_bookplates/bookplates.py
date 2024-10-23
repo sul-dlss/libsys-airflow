@@ -105,7 +105,8 @@ def launch_add_979_fields_task(**kwargs):
     { 'cc05eff0-56de-5e85-85ff-d046e6e593c4': {
         'druid': 'bt942vy4674',
         'title': 'Stanford Law Library in Memory of Henry Vrooman',
-        'fund_name': None
+        'fund_name': None,
+        'image_filename': 'bt942vy4674_00_0001.jp2',
         }
     }
     """
