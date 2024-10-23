@@ -192,7 +192,7 @@ def trigger_instances_dag(**kwargs) -> bool:
                 kwargs  # type: ignore
             )
         else:
-            logger.warning(f"Skipping new fund without fund uuid")
+            logger.warning("Skipping new fund without fund uuid")
     return True
 
 
