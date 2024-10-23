@@ -159,8 +159,7 @@ def filter_updates_errors(db_results: list) -> dict:
     logger.info(
         f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updates):,}"
     )
-    result = {"failures": failures, "new": new, "updates": updates}
-    return result
+    return {"failures": failures, "new": new, "updates": updates}
 
 
 @task
