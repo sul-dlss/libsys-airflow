@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task_group
-from airflow.models.param import Param
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
@@ -52,14 +51,6 @@ def process_new_funds_group(invoice_line: str):
     catchup=False,
     max_active_runs=10,
     tags=["digital bookplates"],
-    params={
-        "logical_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
-            format="datetime",
-            type="string",
-            description="The earliest date to select paid invoices from FOLIO.",
-        )
-    },
 )
 def digital_bookplate_instances():
     start = EmptyOperator(task_id="start")
