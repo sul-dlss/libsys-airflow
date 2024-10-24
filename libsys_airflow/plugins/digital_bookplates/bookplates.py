@@ -1,8 +1,12 @@
 import logging
 
+from typing import Union
+
 from airflow.decorators import task
-from airflow.models import Variable
+from airflow.models import DagBag, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.utils import timezone
+from airflow.utils.state import State
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.shared import utils
@@ -39,6 +43,54 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
             }
 
     return funds
+
+
+def launch_digital_bookplate_979_dag(**kwargs) -> str:
+    """
+    Triggers digital_bookplate_979 DAG with kwargs
+    """
+    instance_uuid: str = kwargs["instance_uuid"]
+    funds: list = kwargs["funds"]
+    dag_run_id: Union[str, None] = kwargs.get("run_id")
+    dag_payload = {instance_uuid: funds}
+
+    dagbag = DagBag("/opt/airflow/dags")
+    dag = dagbag.get_dag("digital_bookplate_979")
+
+    if dag_run_id is None:
+        execution_date = timezone.utcnow()
+        dag_run_id = f"manual__{execution_date.isoformat()}"
+
+    dag.create_dagrun(
+        run_id=dag_run_id,
+        execution_date=execution_date,
+        state=State.RUNNING,
+        conf={"druids_for_instance_id": dag_payload},
+        external_trigger=True,
+    )
+    logger.info(f"Triggers 979 DAG with dag_id {dag_run_id}")
+    return dag_run_id
+
+
+def launch_poll_for_979_dags(**kwargs):
+    """
+    Triggers poll_for_digital_bookplate_979s DAG with kwargs
+    """
+    dag_runs: list = kwargs["dag_runs"]
+    email: Union[str, None] = kwargs.get("email")
+
+    dagbag = DagBag("/opt/airflow/dags")
+    dag = dagbag.get_dag('poll_for_digital_bookplate_979s')
+    execution_date = timezone.utcnow()
+    run_id = f"manual__{execution_date.isoformat()}"
+    dag.create_dagrun(
+        run_id=run_id,
+        execution_date=execution_date,
+        state=State.RUNNING,
+        conf={"dag_runs": dag_runs, "email": email},
+        external_trigger=True,
+    )
+    logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
 
 
 def _new_bookplates(funds: list) -> dict:
