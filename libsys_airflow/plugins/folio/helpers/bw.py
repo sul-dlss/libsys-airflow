@@ -92,12 +92,12 @@ def add_admin_notes(note: str, task_instance, folio_client):
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
         holdings_record = folio_client.folio_get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
-        folio_client.put(holdings_endpoint, holdings_record)
+        folio_client.folio_put(holdings_endpoint, holdings_record)
 
         item_endpoint = f"/item-storage/items/{record['itemId']}"
-        item_record = folio_client.get(item_endpoint)
+        item_record = folio_client.folio_get(item_endpoint)
         item_record["administrativeNotes"].append(note)
-        folio_client.put(item_endpoint, item_record)
+        folio_client.folio_put(item_endpoint, item_record)
 
         if not count % 25:
             logger.info(f"Updated {count*2:,} Holdings and Items")
