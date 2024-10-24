@@ -4,56 +4,20 @@ import pathlib
 
 import pandas as pd
 
-from airflow.models import DagBag
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils import timezone
-from airflow.utils.state import State
 
 from flask import flash, redirect, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 from sqlalchemy.orm import Session
 
+from libsys_airflow.plugins.digital_bookplates.bookplates import (
+    launch_digital_bookplate_979_dag,
+    launch_poll_for_979_dags,
+)
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
 
 logger = logging.getLogger(__name__)
-
-
-def _trigger_add_979_dags(**kwargs) -> str:
-    """Triggers add_bookplate_970 DAG"""
-    instance_uuid = kwargs["instance_uuid"]
-    fund = kwargs["fund"]
-    dag_payload = {instance_uuid: [fund]}
-    dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag("digital_bookplate_979")
-
-    execution_date = timezone.utcnow()
-    run_id = f"manual__{execution_date.isoformat()}"
-    dag.create_dagrun(
-        run_id=run_id,
-        execution_date=execution_date,
-        state=State.RUNNING,
-        conf={"druids_for_instance_id": dag_payload},
-        external_trigger=True,
-    )
-    logger.info(f"Triggers 979 DAG with dag_id {run_id}")
-    return run_id
-
-
-def _trigger_poll_add_979_dags(dag_runs: list, email: str):
-    """Triggers polling DAGs DAG"""
-    dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag('poll_for_digital_bookplate_979s')
-    execution_date = timezone.utcnow()
-    run_id = f"manual__{execution_date.isoformat()}"
-    dag.create_dagrun(
-        run_id=run_id,
-        execution_date=execution_date,
-        state=State.RUNNING,
-        conf={"dag_runs": dag_runs, "email": email},
-        external_trigger=True,
-    )
-    logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
 
 
 def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame):
@@ -116,8 +80,8 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
             dag_runs = []
             for row in upload_instances_df.iterrows():
                 instance_uuid = row[1][0]
-                dag_run_id = _trigger_add_979_dags(
-                    instance_uuid=instance_uuid, fund=fund
+                dag_run_id = launch_digital_bookplate_979_dag(
+                    instance_uuid=instance_uuid, funds=[fund]
                 )
                 dag_runs.append(dag_run_id)
             _save_uploaded_file(
@@ -125,7 +89,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
                 raw_upload_instances_file.filename,
                 upload_instances_df,
             )
-            _trigger_poll_add_979_dags(dag_runs, email)
+            launch_poll_for_979_dags(dag_runs=dag_runs, email=email)
             flash(
                 f"Triggered the following DAGs {dag_runs} for {raw_upload_instances_file.filename}"
             )

@@ -104,10 +104,6 @@ def test_missing_filename(test_airflow_client, mock_db):
 
 
 def test_get_fund(mocker, mock_db, tmp_path):
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view.DagBag"
-    )
-
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
     from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view import (
@@ -124,9 +120,7 @@ def test_get_fund(mocker, mock_db, tmp_path):
 
 
 def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upload_view.DagBag"
-    )
+    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
 
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 

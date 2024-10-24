@@ -10,7 +10,7 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_funds_polines,
     instances_from_po_lines,
-    launch_add_979_fields_task,
+    trigger_digital_bookplate_979_task,
 )
 
 from libsys_airflow.plugins.folio.invoices import (
@@ -103,14 +103,14 @@ def digital_bookplate_instances():
     retrieve_instances = process_date_range_group.expand(
         invoice_id=retrieve_paid_invoices
     )
-    launch_add_tag = launch_add_979_fields_task(instances=retrieve_instances)
+    launch_add_tag = trigger_digital_bookplate_979_task(instances=retrieve_instances)
 
     # New funds branch
     paid_invoice_lines_new_fund = invoice_lines_paid_on_fund()
     retrieve_instances_new_fund = process_new_funds_group.expand(
         invoice_line=paid_invoice_lines_new_fund
     )
-    launch_add_tag_new_fund = launch_add_979_fields_task(
+    launch_add_tag_new_fund = trigger_digital_bookplate_979_task(
         instances=retrieve_instances_new_fund
     )
 
