@@ -239,3 +239,15 @@ def add_marc_tags_to_record(**kwargs):
     instance_id = kwargs["instance_uuid"]
     folio_add_marc_tags = utils.FolioAddMarcTags()
     return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
+
+
+@task
+def trigger_digital_bookplate_979_task(**kwargs):
+    instances = kwargs["instances"]
+    dag_run_ids = []
+    for instance_uuid, funds in instances.items():
+        run_id = launch_digital_bookplate_979_dag(
+            instance_uuid=instance_uuid, funds=funds
+        )
+        dag_run_ids.append(run_id)
+    return dag_run_ids
