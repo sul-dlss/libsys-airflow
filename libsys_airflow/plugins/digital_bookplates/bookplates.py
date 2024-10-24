@@ -176,11 +176,15 @@ def instance_id_for_druids(**kwargs) -> list:
 def add_marc_tags_to_record(**kwargs):
     # marc_tag:
     """
-    {
-        '979': [{'ind1': ' ', 'ind2': ' ', 'subfields': [
-                {'f': 'ABBOTT'}, {'b': 'druid:ws066yy0421'}, {'c': 'ws066yy0421_00_0001.jp2'}, {'d': 'The The Donald P. Abbott Fund for Marine Invertebrates'}
-            ]
-        }]
+    {'979':
+        [
+            {'ind1': ' ', 'ind2': ' ', 'subfields': [
+                    {'f': 'ABBOTT'}, {'b': 'druid:ws066yy0421'},
+                    {'c': 'ws066yy0421_00_0001.jp2'},
+                    {'d': 'The The Donald P. Abbott Fund for Marine Invertebrates'}
+                ]
+            },
+        ]
     }
     """
     marc_tags = kwargs["marc_instances_tags"]

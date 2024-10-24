@@ -61,17 +61,18 @@ class FolioAddMarcTags(object):
         reader = pymarc.reader.JSONReader(json.dumps(marc_json))
 
         for tag_name, indicator_subfields in marc_instances_tags.items():
-            for sfs in indicator_subfields['subfields']:
-                for sf_code, sf_val in sfs.items():
-                    new_tag = pymarc.Field(
-                        tag=tag_name,
-                        indicators=[indicator_subfields['ind1'], indicator_subfields['ind2']],  # type: ignore
-                        subfields=[pymarc.Subfield(code=sf_code, value=sf_val)],
-                    )
-                    for record in reader:
-                        existing_tags = record.get_fields(tag_name)
-                        if self.__tag_is_unique__(existing_tags, new_tag):
-                            record.add_field(new_tag)
+            for indsf in indicator_subfields:
+                for sfs in indsf['subfields']:
+                    for sf_code, sf_val in sfs.items():
+                        new_tag = pymarc.Field(
+                            tag=tag_name,
+                            indicators=[indsf['ind1'], indsf['ind2']],  # type: ignore
+                            subfields=[pymarc.Subfield(code=sf_code, value=sf_val)],
+                        )
+                        for record in reader:
+                            existing_tags = record.get_fields(tag_name)
+                            if self.__tag_is_unique__(existing_tags, new_tag):
+                                record.add_field(new_tag)
 
         return record.as_json()
 
