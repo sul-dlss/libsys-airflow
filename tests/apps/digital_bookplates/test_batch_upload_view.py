@@ -148,7 +148,7 @@ def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
 
     alert = redirect_response.html.find(class_="alert-message").get_text()
 
-    assert "Triggered the following DAGs" in alert
+    assert "Triggered 1 DAG run(s)" in alert
 
 
 def test_existing_upload_file(tmp_path):

@@ -127,7 +127,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
             )
             _trigger_poll_add_979_dags(dag_runs, email)
             flash(
-                f"Triggered the following DAGs {dag_runs} for {raw_upload_instances_file.filename}"
+                f"Triggered {len(dag_runs)} DAG run(s) for {raw_upload_instances_file.filename}"
             )
         except pd.errors.EmptyDataError:
             flash("Warning! Empty Instance UUID file.")
