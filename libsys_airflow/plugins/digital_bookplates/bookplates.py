@@ -175,15 +175,6 @@ def instances_from_po_lines(**kwargs) -> dict:
 
 
 @task
-def launch_add_979_fields_task(**kwargs):
-    """
-    Trigger add a tag dag with instance UUIDs and fund 979 data. Returns a dict
-    """
-    params = kwargs.get("params", {})
-    return params.get("druids_for_instance_id", {})  # -> add_979_marc_tags
-
-
-@task
 def add_979_marc_tags(druid_instances: dict) -> dict:
     """
     "242c6000-8485-5fcd-9b5e-adb60788ca59": [
@@ -239,6 +230,15 @@ def add_marc_tags_to_record(**kwargs):
     instance_id = kwargs["instance_uuid"]
     folio_add_marc_tags = utils.FolioAddMarcTags()
     return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
+
+
+@task
+def retrieve_druids_for_instance_task(**kwargs):
+    """
+    Retrieves and returns a dictionary from the DAG params
+    """
+    params = kwargs.get("params", {})
+    return params.get("druids_for_instance_id", {})
 
 
 @task
