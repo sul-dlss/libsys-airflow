@@ -1,6 +1,8 @@
+import logging
+
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, task_group
+from airflow.decorators import dag, task, task_group
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
@@ -15,8 +17,9 @@ from libsys_airflow.plugins.folio.invoices import (
     invoices_paid_within_date_range,
     invoice_lines_from_invoices,
     invoice_lines_paid_on_fund,
-    date_range_or_funds_path,
 )
+
+logger = logging.getLogger(__name__)
 
 
 default_args = {
@@ -51,6 +54,31 @@ def process_new_funds_group(invoice_line: dict):
     return instances_from_po_lines(
         po_lines_funds=paid_bookplate_polines
     )  # -> launch_add_979_fields_task
+
+
+@task.branch()
+def date_range_or_funds_path(**kwargs):
+    # params["funds"]:
+    """
+    [
+        {
+            'druid': 'ef919yq2614',
+            'failure': None,
+            'fund_name': 'KELP',
+            'title': 'The Kelp Foundation Fund',
+            'image_filename': 'ef919yq2614_00_0001.jp2',
+            'db_id': 4,
+            'fund_uuid': 'f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4'
+        },
+    ]
+    """
+    params = kwargs.get("params", {})
+    funds = params.get("funds", [])
+    if len(funds) > 0:
+        logger.info(f"New fund {funds}")
+        return "invoice_lines_paid_on_fund"
+    else:
+        return "invoices_paid_within_date_range"
 
 
 @dag(
