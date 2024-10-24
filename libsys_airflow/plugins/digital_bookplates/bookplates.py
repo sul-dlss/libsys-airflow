@@ -133,7 +133,6 @@ def launch_add_979_fields_task(**kwargs):
 
 @task
 def add_979_marc_tags(druid_instances: dict) -> dict:
-    # Get the bookplate data from the bookplates table:
     """
     "242c6000-8485-5fcd-9b5e-adb60788ca59": [
         { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
