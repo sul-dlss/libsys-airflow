@@ -34,35 +34,6 @@ def _folio_client():
 
 
 @task
-def add_update_model(metadata) -> dict:
-    report = {}
-    if metadata["failure"] is not None:
-        report["failure"] = metadata
-        return report
-    pg_hook = PostgresHook("digital_bookplates")
-
-    with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        bookplate = (
-            session.query(DigitalBookplate)
-            .where(DigitalBookplate.druid == metadata['druid'])
-            .first()
-        )
-        if bookplate is None:
-            logger.info("Bookplate is new")
-            (db_id, fund_uuid) = _add_bookplate(metadata, session)
-            metadata["db_id"] = db_id
-            metadata["fund_uuid"] = fund_uuid
-            report["new"] = metadata
-        else:
-            metadata = _update_bookplate(metadata, bookplate, session)
-            logger.info("Bookplate was updated")
-            if "reason" in metadata:
-                metadata["db_id"] = bookplate.id
-                report["updated"] = metadata
-    return report
-
-
-@task
 def check_deleted_from_argo(druid_purls: list):
     argo_druids = set(
         [druid_url.split("/")[-1].split(".json")[0] for druid_url in druid_purls]
@@ -146,7 +117,52 @@ def extract_bookplate_metadata(druid_url: str) -> dict:
 
 
 @task
+def add_update_model(metadata) -> dict:
+    """
+    {
+        'druid': 'bm244yj4074',
+        'image_filename': 'bm244yj4074_00_0001.jp2',
+        'failure': None,
+        'fund_name': 'DINSMOREM',
+        'title': 'Migsie and Treat Dinsmore Memorial Book Fund'
+    }
+    """
+    report = {}
+    if metadata["failure"] is not None:
+        report["failure"] = metadata
+        return report
+    pg_hook = PostgresHook("digital_bookplates")
+
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        bookplate = (
+            session.query(DigitalBookplate)
+            .where(DigitalBookplate.druid == metadata['druid'])
+            .first()
+        )
+        if bookplate is None:
+            logger.info("Bookplate is new")
+            (db_id, fund_uuid) = _add_bookplate(metadata, session)
+            metadata["db_id"] = db_id
+            metadata["fund_uuid"] = fund_uuid
+            report["new"] = metadata
+        else:
+            metadata = _update_bookplate(metadata, bookplate, session)
+            logger.info("Bookplate was updated")
+            if "reason" in metadata:
+                metadata["db_id"] = bookplate.id
+                report["updated"] = metadata
+    return report  # -> filter_updates_errors -> trigger_instances_dag
+
+
+@task
 def filter_updates_errors(db_results: list) -> dict:
+    """
+    [
+        {'new': {'druid': 'bm244yj4074', 'image_filename': 'bm244yj4074_00_0001.jp2', 'failure': None, 'fund_name': 'DINSMOREM', 'title': 'Migsie and Treat Dinsmore Memorial Book Fund', 'db_id': 4209, 'fund_uuid': 'cd8d6871-4697-4dd0-b271-8805a9c18fb0'}},
+        {'updates: {}'},
+        {'failure: {}'},
+    ]
+    """
     logger.info(db_results)
     failures, updates, new = [], [], []
     for row in db_results:
@@ -164,8 +180,9 @@ def filter_updates_errors(db_results: list) -> dict:
 
 @task
 def trigger_instances_dag(**kwargs) -> bool:
+    # kwargs["new"]
     """
-    'new': [
+    [
         {
             'druid': 'ef919yq2614',
             'failure': None,

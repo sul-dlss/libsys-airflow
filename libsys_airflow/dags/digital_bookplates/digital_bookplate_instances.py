@@ -31,15 +31,26 @@ default_args = {
 
 @task_group(group_id="process-invoices")
 def process_date_range_group(invoice_id: str):
+    """
+    Input: a single invoice uuid from the mapped task list
+    """
     paid_invoice_lines = invoice_lines_from_invoices(invoice_id)
     paid_bookplate_polines = bookplate_funds_polines(invoice_lines=paid_invoice_lines)
-    return instances_from_po_lines(po_lines_funds=paid_bookplate_polines)
+    return instances_from_po_lines(
+        po_lines_funds=paid_bookplate_polines
+    )  # -> launch_add_979_fields_task
 
 
 @task_group(group_id="process-new-funds")
-def process_new_funds_group(invoice_line: str):
+def process_new_funds_group(invoice_line: dict):
+    """
+    See https://s3.amazonaws.com/foliodocs/api/mod-invoice-storage/p/invoice.html#invoice_storage_invoice_lines_get
+    Input: an single invoice line dictionary, wrapped in a list:
+    """
     paid_bookplate_polines = bookplate_funds_polines(invoice_lines=[invoice_line])
-    return instances_from_po_lines(po_lines_funds=paid_bookplate_polines)
+    return instances_from_po_lines(
+        po_lines_funds=paid_bookplate_polines
+    )  # -> launch_add_979_fields_task
 
 
 @dag(
@@ -59,12 +70,14 @@ def digital_bookplate_instances():
 
     choose_branch = date_range_or_funds_path()
 
+    # Date range branch
     retrieve_paid_invoices = invoices_paid_within_date_range()
     retrieve_instances = process_date_range_group.expand(
         invoice_id=retrieve_paid_invoices
     )
     launch_add_tag = launch_add_979_fields_task(instances=retrieve_instances)
 
+    # New funds branch
     paid_invoice_lines_new_fund = invoice_lines_paid_on_fund()
     retrieve_instances_new_fund = process_new_funds_group.expand(
         invoice_line=paid_invoice_lines_new_fund
