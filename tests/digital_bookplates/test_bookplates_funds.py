@@ -8,6 +8,8 @@ from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_979_marc_tags,
     bookplate_funds_polines,
+    launch_digital_bookplate_979_dag,
+    launch_poll_for_979_dags,
     _new_bookplates,
 )
 
@@ -45,6 +47,16 @@ rows = Rows(
 )
 
 engine = create_sqlite_fixture(rows)
+
+
+@pytest.fixture
+def mock_dag_bag(mocker):
+    def mock_get_dag(dag_id: str):
+        return mocker.MagicMock()
+
+    dag_bag = mocker.MagicMock()
+    dag_bag.get_dag = mock_get_dag
+    return dag_bag
 
 
 @pytest.fixture
@@ -244,3 +256,29 @@ def test_add_979_marc_tags():
     assert marc_979_tags["979"][0]["subfields"][1]["b"] == "druid:kp761xz4568"
     assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
     assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
+
+
+def test_launch_digital_bookplate_979_dag(mocker, mock_dag_bag, caplog):
+    dag_bag = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
+        return_value=mock_dag_bag,
+    )
+
+    launch_digital_bookplate_979_dag(
+        instance_uuid="01ae59b3-d7c6-4bf6-8097-02f9227932fa", funds=[{}]
+    )
+
+    assert dag_bag.called
+    assert "Triggers 979 DAG with dag_id" in caplog.text
+
+
+def test_launch_poll_for_979_dags(mocker, mock_dag_bag, caplog):
+    dag_bag = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
+        return_value=mock_dag_bag,
+    )
+
+    launch_poll_for_979_dags(dag_runs=['manual__2024-10-24:00:00:00'])
+
+    assert dag_bag.called
+    assert "Triggers polling DAG for 979 DAG runs" in caplog.text
