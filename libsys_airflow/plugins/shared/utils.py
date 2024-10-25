@@ -20,7 +20,7 @@ class FolioAddMarcTags(object):
         self.httpx_client = httpx.Client()
         self.folio_client = folio_client()
 
-    def put_folio_records(self, marc_instances_tags: dict, instance_id: str) -> bool:
+    def put_folio_records(self, marc_instance_tags: dict, instance_id: str) -> bool:
         try:
             srs_record = self.__get_srs_record__(instance_id)
             srs_uuid = srs_record["recordId"]  # type: ignore
@@ -41,7 +41,7 @@ class FolioAddMarcTags(object):
                 "relatedRecordVersion": version,
                 "parsedRecord": {
                     "content": self.__marc_json_with_new_tags__(
-                        marc_json, marc_instances_tags
+                        marc_json, marc_instance_tags
                     )
                 },
                 "externalIdsHolder": {
@@ -57,10 +57,10 @@ class FolioAddMarcTags(object):
             return False
         return True
 
-    def __marc_json_with_new_tags__(self, marc_json: dict, marc_instances_tags: dict):
+    def __marc_json_with_new_tags__(self, marc_json: dict, marc_instance_tags: dict):
         reader = pymarc.reader.JSONReader(json.dumps(marc_json))
 
-        for tag_name, indicator_subfields in marc_instances_tags.items():
+        for tag_name, indicator_subfields in marc_instance_tags.items():
             for indsf in indicator_subfields:
                 for sfs in indsf['subfields']:
                     for sf_code, sf_val in sfs.items():

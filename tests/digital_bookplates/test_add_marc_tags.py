@@ -128,7 +128,7 @@ def mock_folio_add_marc_tags(mocker):
     return mocker
 
 
-marc_instances_tags = {
+marc_instance_tags = {
     '979': [
         {
             'ind1': ' ',
@@ -147,7 +147,7 @@ marc_instances_tags = {
 def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
     add_marc_tag = utils.FolioAddMarcTags()
     put_record_result = add_marc_tag.put_folio_records(
-        marc_instances_tags, "64a5a15b-d89e-4bdd-bbd6-fcd215b367e4"
+        marc_instance_tags, "64a5a15b-d89e-4bdd-bbd6-fcd215b367e4"
     )
     assert put_record_result is True
     assert "Skip adding duplicated 979 field" not in caplog.text
@@ -156,7 +156,7 @@ def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
 def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, caplog):
     add_marc_tag = utils.FolioAddMarcTags()
     put_record_result = add_marc_tag.put_folio_records(
-        marc_instances_tags, "242c6000-8485-5fcd-9b5e-adb60788ca59"
+        marc_instance_tags, "242c6000-8485-5fcd-9b5e-adb60788ca59"
     )
     assert put_record_result is True
     assert "Skip adding duplicated 979 field" in caplog.text
