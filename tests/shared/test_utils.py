@@ -2,6 +2,7 @@ import json
 import httpx
 import pytest
 
+from jsonpath_ng.ext import parse
 from libsys_airflow.plugins.shared import utils
 
 
@@ -147,7 +148,6 @@ def test__marc_json_with_new_tags__(
         marc_json, marc_instance_tags
     )
     new_record_dict = json.loads(marc_json_with_new_tags)
-    for tag in new_record_dict["fields"]:
-        for k, v in tag.items():
-            if k == "979":
-                assert len(v["subfields"]) == 4
+    tag_979_exp = parse("$.fields[?(@['979'])]")
+    tag_979 = tag_979_exp.find(new_record_dict)[0].value
+    assert len(tag_979["979"]["subfields"]) == 4
