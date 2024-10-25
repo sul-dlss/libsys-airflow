@@ -79,8 +79,9 @@ class FolioAddMarcTags(object):
                             if self.__tag_is_unique__(existing_tags, new_tag):
                                 record.add_field(new_tag)
 
-        logger.info(f"Constructing MARC record: {record.as_json()}")
-        return record.as_json()
+        record_json = record.as_json()
+        logger.info(f"Constructing MARC record: {record_json}")
+        return record_json
 
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
         source_storage_result = self.folio_client.folio_get(
