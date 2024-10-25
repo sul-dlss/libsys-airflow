@@ -185,13 +185,13 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
     fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
     """
 
-    marc_instances_tags: dict = {'979': []}
+    marc_instance_tags: dict = {'979': []}
     for _instance_uuid, druids in druid_instances.items():
         for tag_data in druids:
             fund_name = tag_data.get('fund_name', None)
             if fund_name is None:
                 fund_name = tag_data.get('druid', '')
-            marc_instances_tags['979'].append(
+            marc_instance_tags['979'].append(
                 {
                     'ind1': ' ',
                     'ind2': ' ',
@@ -204,7 +204,7 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
                 }
             )
 
-    return marc_instances_tags  # -> add_marc_tags_to_record
+    return marc_instance_tags  # -> add_marc_tags_to_record
 
 
 @task
@@ -230,7 +230,7 @@ def add_marc_tags_to_record(**kwargs):
         ]
     }
     """
-    marc_tags = kwargs["marc_instances_tags"]
+    marc_tags = kwargs["marc_instance_tags"]
     instance_id = kwargs["instance_uuid"]
     folio_add_marc_tags = utils.FolioAddMarcTags()
     return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
