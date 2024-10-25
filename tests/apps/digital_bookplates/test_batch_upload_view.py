@@ -189,7 +189,7 @@ def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
     )
     file = upload_path / "upload-file.csv"
     assert (file).exists()
-    
+
     with open(file) as f:
         first_line = f.readline()
         assert first_line == 'Instance UUID\n'
