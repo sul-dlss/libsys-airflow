@@ -310,3 +310,13 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
 
     assert "Total incoming instances 3" in caplog.text
     assert len(dag_run_ids) == 1
+
+
+def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_dag_bag, caplog):
+    incoming_instances = []
+    dag_run_ids = trigger_digital_bookplate_979_task.function(
+        instances=incoming_instances
+    )
+
+    assert "Total incoming instances 0" in caplog.text
+    assert len(dag_run_ids) == 0
