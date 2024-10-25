@@ -10,6 +10,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_funds_polines,
     launch_digital_bookplate_979_dag,
     launch_poll_for_979_dags,
+    trigger_digital_bookplate_979_task,
     _new_bookplates,
 )
 
@@ -282,3 +283,40 @@ def test_launch_poll_for_979_dags(mocker, mock_dag_bag, caplog):
 
     assert dag_bag.called
     assert "Triggers polling DAG for 979 DAG runs" in caplog.text
+
+
+def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
+        return_value=mock_dag_bag,
+    )
+    incoming_instances = [
+        {},
+        {
+            'a855e551-47da-4621-9e05-5da512f526f7': [
+                {
+                    'fund_name': 'TANENBAUM',
+                    'druid': 'yv459xj8957',
+                    'image_filename': 'yv459xj8957_00_0001.jp2',
+                    'title': 'The Mary M. Tanenbaum Chinese Art Fund',
+                }
+            ]
+        },
+        {},
+    ]
+    dag_run_ids = trigger_digital_bookplate_979_task.function(
+        instances=incoming_instances
+    )
+
+    assert "Total incoming instances 3" in caplog.text
+    assert len(dag_run_ids) == 1
+
+
+def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_dag_bag, caplog):
+    incoming_instances = []
+    dag_run_ids = trigger_digital_bookplate_979_task.function(
+        instances=incoming_instances
+    )
+
+    assert "Total incoming instances 0" in caplog.text
+    assert len(dag_run_ids) == 0
