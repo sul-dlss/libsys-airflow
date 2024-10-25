@@ -79,6 +79,7 @@ class FolioAddMarcTags(object):
                             if self.__tag_is_unique__(existing_tags, new_tag):
                                 record.add_field(new_tag)
 
+        logger.info(f"Constructing MARC record: {record.as_json()}")
         return record.as_json()
 
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
@@ -117,4 +118,4 @@ class FolioAddMarcTags(object):
                         return False
                     else:
                         return True
-        return False
+        return True
