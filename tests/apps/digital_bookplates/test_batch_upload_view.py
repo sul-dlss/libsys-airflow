@@ -163,3 +163,33 @@ def test_existing_upload_file(tmp_path):
     _save_uploaded_file(tmp_path, "new-bookplate-instances.csv", instance_uuids_df)
 
     assert (upload_path / "new-bookplate-instances-copy-2.csv").exists()
+
+
+def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
+    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
+
+    mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
+
+    test_airflow_client.post(
+        '/digital_bookplates_batch_upload/create',
+        data={
+            "email": "test@stanford.edu",
+            "fundSelect": 1,
+            "upload-instance-uuids": (
+                io.BytesIO(b"4670950c-a01a-428c-ba2f-f0bf539665f7"),
+                "upload-file.csv",
+            ),
+        },
+    )
+
+    current_timestamp = datetime.datetime.utcnow()
+    upload_path = (
+        tmp_path
+        / f"{current_timestamp.year}/{current_timestamp.month}/{current_timestamp.day}"
+    )
+    file = upload_path / "upload-file.csv"
+    assert (file).exists()
+    
+    with open(file) as f:
+        first_line = f.readline()
+        assert first_line == 'Instance UUID\n'
