@@ -234,9 +234,11 @@ def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, capl
     bookplates_polines = bookplate_funds_polines.function(
         invoice_lines=mock_invoice_lines, params={"funds": mock_new_funds}
     )
-    
+
     assert len(bookplates_polines) == 0
-    assert "No bookplate funds were used. Downstream tasks will be skipped" in caplog.text
+    assert (
+        "No bookplate funds were used. Downstream tasks will be skipped" in caplog.text
+    )
 
 
 def test_add_979_marc_tags():
