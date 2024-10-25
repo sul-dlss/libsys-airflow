@@ -55,12 +55,17 @@ class FolioAddMarcTags(object):
                 f"Failed to update FOLIO for Instance {instance_id} with SRS {srs_uuid}"
             )
             return False
+        else:
+            logger.info(
+                f"Successfully updated FOLIO Instance {instance_id} with SRS {srs_uuid}"
+            )
         return True
 
     def __marc_json_with_new_tags__(self, marc_json: dict, marc_instance_tags: dict):
         reader = pymarc.reader.JSONReader(json.dumps(marc_json))
 
         for tag_name, indicator_subfields in marc_instance_tags.items():
+            logger.info(f"Constructing MARC tag {tag_name}")
             for indsf in indicator_subfields:
                 for sfs in indsf['subfields']:
                     for sf_code, sf_val in sfs.items():
