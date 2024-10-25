@@ -236,9 +236,7 @@ def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, capl
     )
 
     assert len(bookplates_polines) == 0
-    assert (
-        "No bookplate funds were used" in caplog.text
-    )
+    assert "No bookplate funds were used" in caplog.text
 
 
 def test_add_979_marc_tags():
