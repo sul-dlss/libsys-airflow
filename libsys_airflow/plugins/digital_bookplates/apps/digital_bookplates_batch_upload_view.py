@@ -76,7 +76,8 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
         fund = _get_fund(fund_db_id)
         raw_upload_instances_file = request.files["upload-instance-uuids"]
         try:
-            upload_instances_df = pd.read_csv(raw_upload_instances_file, header=None)
+            df = pd.read_csv(raw_upload_instances_file, header=None)
+            upload_instances_df = df.rename(columns={0: 'Instance UUID'})
             dag_runs = []
             for row in upload_instances_df.iterrows():
                 instance_uuid = row[1][0]
