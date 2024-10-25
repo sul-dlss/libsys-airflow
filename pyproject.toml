@@ -39,7 +39,7 @@ xmlsec = "^1.3.14"
 bookops-worldcat = "^1.0.1"
 # Pinning wtforms because version 3.2.1 is breaking Flask AppBuilder
 # should remove when we upgrade Airflow
-wtforms = "3.2.1"
+wtforms = "3.0.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
