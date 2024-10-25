@@ -259,3 +259,9 @@ def trigger_digital_bookplate_979_task(**kwargs):
             )
             dag_run_ids.append(run_id)
     return dag_run_ids
+
+
+@task
+def trigger_poll_for_979s_task(**kwargs):
+    dag_run_ids = kwargs["dag_runs"]
+    launch_poll_for_979_dags(dag_runs=dag_run_ids)
