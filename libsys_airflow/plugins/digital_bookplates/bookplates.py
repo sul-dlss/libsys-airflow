@@ -138,6 +138,9 @@ def bookplate_funds_polines(**kwargs) -> list:
                         {"bookplate_metadata": bookplate, "poline_id": poline_id}
                     )
 
+    if len(bookplates_polines) == 0:
+        logger.info("No bookplate funds were used. Downstream tasks will be skipped.")
+    
     return bookplates_polines  # -> instances_from_po_lines
 
 
