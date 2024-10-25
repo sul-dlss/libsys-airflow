@@ -11,6 +11,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_funds_polines,
     instances_from_po_lines,
     trigger_digital_bookplate_979_task,
+    trigger_poll_for_979s_task,
 )
 
 from libsys_airflow.plugins.folio.invoices import (
@@ -104,6 +105,7 @@ def digital_bookplate_instances():
         invoice_id=retrieve_paid_invoices
     )
     launch_add_tag = trigger_digital_bookplate_979_task(instances=retrieve_instances)
+    launch_poll_979s = trigger_poll_for_979s_task(dag_runs=launch_add_tag)
 
     # New funds branch
     paid_invoice_lines_new_fund = invoice_lines_paid_on_fund()
@@ -113,10 +115,13 @@ def digital_bookplate_instances():
     launch_add_tag_new_fund = trigger_digital_bookplate_979_task(
         instances=retrieve_instances_new_fund
     )
+    launch_poll_979s_new_fund = trigger_poll_for_979s_task(
+        dag_runs=launch_add_tag_new_fund
+    )
 
     start >> choose_branch >> [retrieve_paid_invoices, paid_invoice_lines_new_fund]
-    retrieve_paid_invoices >> launch_add_tag >> end
-    paid_invoice_lines_new_fund >> launch_add_tag_new_fund >> end
+    retrieve_paid_invoices >> launch_poll_979s >> end
+    paid_invoice_lines_new_fund >> launch_poll_979s_new_fund >> end
 
 
 digital_bookplate_instances()
