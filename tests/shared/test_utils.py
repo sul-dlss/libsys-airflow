@@ -86,11 +86,12 @@ def mock_folio_add_marc_tags(mocker):
 def mock_httpx_client():
     def mock_response(request):
         response = None
-        match request.method:
+        # following is not used in test but leaving here for testing more parts of utils.py
+        # match request.method:
 
-            case 'PUT':
-                if request.url.path.startswith('/change-manager/parsedRecords'):
-                    response = httpx.Response(status_code=202)
+        #     case 'PUT':
+        #         if request.url.path.startswith('/change-manager/parsedRecords'):
+        #             response = httpx.Response(status_code=202)
 
         return response
 
@@ -98,34 +99,36 @@ def mock_httpx_client():
 
 
 def mock_folio_client(mocker):
-    def __srs_response__(path: str):
-        output = {}
-        instance_uuid = path.split("instanceId=")[-1]
+    # following is not used in test but leaving here for testing more parts of utils.py
+    # def __srs_response__(path: str):
+    #     output = {}
+    #     instance_uuid = path.split("instanceId=")[-1]
 
-        match instance_uuid:
-            case "06660d4f-982d-54e8-b34c-532c268868e1":
-                output = {
-                    "sourceRecords": [
-                        {
-                            "recordId": "e60b77d3-3a76-59e2-88f7-3d1a045af3b1",
-                            "parsedRecord": {"content": marc_json},
-                        }
-                    ]
-                }
+    #     match instance_uuid:
+    #         case "06660d4f-982d-54e8-b34c-532c268868e1":
+    #             output = {
+    #                 "sourceRecords": [
+    #                     {
+    #                         "recordId": "e60b77d3-3a76-59e2-88f7-3d1a045af3b1",
+    #                         "parsedRecord": {"content": marc_json},
+    #                     }
+    #                 ]
+    #             }
 
-        return output
+    #     return output
 
     def mock_folio_get(*args, **kwargs):
         output = {}
-        if args[0].startswith("/source-storage/source-records"):
-            output = __srs_response__(args[0])
-        if args[0].startswith("/inventory/instances/"):
-            for instance_uuid in [
-                "64a5a15b-d89e-4bdd-bbd6-fcd215b367e4",
-                "242c6000-8485-5fcd-9b5e-adb60788ca59",
-            ]:
-                if args[0].endswith(instance_uuid):
-                    output = {"_version": "1", "hrid": "a123456"}
+        # following is not used in test but leaving here for testing more parts of utils.py
+        # if args[0].startswith("/source-storage/source-records"):
+        #     output = __srs_response__(args[0])
+        # if args[0].startswith("/inventory/instances/"):
+        #     for instance_uuid in [
+        #         "64a5a15b-d89e-4bdd-bbd6-fcd215b367e4",
+        #         "242c6000-8485-5fcd-9b5e-adb60788ca59",
+        #     ]:
+        #         if args[0].endswith(instance_uuid):
+        #             output = {"_version": "1", "hrid": "a123456"}
 
         return output
 
