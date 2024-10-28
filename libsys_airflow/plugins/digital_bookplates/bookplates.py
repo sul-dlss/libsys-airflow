@@ -64,7 +64,7 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     dag.create_dagrun(
         run_id=dag_run_id,
         execution_date=execution_date,
-        state=State.RUNNING,
+        state=State.QUEUED,
         conf={"druids_for_instance_id": dag_payload},
         external_trigger=True,
     )
@@ -86,7 +86,7 @@ def launch_poll_for_979_dags(**kwargs):
     dag.create_dagrun(
         run_id=run_id,
         execution_date=execution_date,
-        state=State.RUNNING,
+        state=State.QUEUED,
         conf={"dag_runs": dag_runs, "email": email},
         external_trigger=True,
     )
