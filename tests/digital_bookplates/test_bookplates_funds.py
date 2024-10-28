@@ -230,6 +230,15 @@ def test_new_bookplate_funds_polines(
     assert "Getting bookplates data from list of new funds" in caplog.text
 
 
+def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, caplog):
+    bookplates_polines = bookplate_funds_polines.function(
+        invoice_lines=mock_invoice_lines, params={"funds": mock_new_funds}
+    )
+
+    assert len(bookplates_polines) == 0
+    assert "No bookplate funds were used" in caplog.text
+
+
 def test_add_979_marc_tags():
     druid_instances = {
         "b8932bcd-7498-4f7e-a598-de9010561e42": [
