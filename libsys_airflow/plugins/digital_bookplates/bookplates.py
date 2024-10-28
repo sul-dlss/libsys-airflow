@@ -109,7 +109,7 @@ def _new_bookplates(funds: list) -> dict:
     return bookplates
 
 
-@task
+@task(max_active_tis_per_dag=5)
 def bookplate_funds_polines(**kwargs) -> list:
     """
     Checks if fund Id from invoice lines contains bookplate fund
