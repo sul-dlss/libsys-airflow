@@ -40,6 +40,7 @@ def poll_979_dags(**kwargs):
     start_date=datetime(2024, 10, 15),
     catchup=False,
     tags=["digital bookplates"],
+    max_active_runs=3,
 )
 def poll_for_digital_bookplate_979s():
     start = EmptyOperator(task_id="start")

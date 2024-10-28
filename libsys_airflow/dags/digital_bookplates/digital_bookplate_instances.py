@@ -89,13 +89,13 @@ def date_range_or_funds_path(**kwargs):
     ),
     start_date=datetime(2023, 8, 28),
     catchup=False,
-    max_active_runs=10,
+    max_active_runs=5,
     tags=["digital bookplates"],
 )
 def digital_bookplate_instances():
     start = EmptyOperator(task_id="start")
 
-    end = EmptyOperator(task_id="end")
+    end = EmptyOperator(task_id="end", trigger_rule="none_failed_min_one_success")
 
     choose_branch = date_range_or_funds_path()
 
