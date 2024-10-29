@@ -61,27 +61,6 @@ class FolioAddMarcTags(object):
             )
         return True
 
-    def __marc_json_with_new_tags__(self, marc_json: dict, marc_instance_tags: dict):
-        reader = pymarc.reader.JSONReader(json.dumps(marc_json))
-
-        for tag_name, indicator_subfields in marc_instance_tags.items():
-            logger.info(f"Constructing MARC tag {tag_name}")
-            for indsf in indicator_subfields:
-                new_tag = pymarc.Field(
-                    tag=tag_name, indicators=[indsf['ind1'], indsf['ind2']]  # type: ignore
-                )
-                for sfs in indsf['subfields']:
-                    for sf_code, sf_val in sfs.items():
-                        new_tag.add_subfield(sf_code, sf_val)
-                for record in reader:
-                    existing_tags = record.get_fields(tag_name)
-                    if self.__tag_is_unique__(existing_tags, new_tag):
-                        record.add_ordered_field(new_tag)
-
-        record_json = record.as_json()
-        logger.info(f"Constructing MARC record: {record_json}")
-        return record_json
-
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
         source_storage_result = self.folio_client.folio_get(
             f"/source-storage/source-records?instanceId={instance_uuid}"
@@ -106,16 +85,67 @@ class FolioAddMarcTags(object):
         hrid = instance["hrid"]
         return version, hrid
 
+    def __marc_json_with_new_tags__(self, marc_json: dict, marc_instances_tags: dict):
+        reader = pymarc.reader.JSONReader(json.dumps(marc_json))
+
+        for tag_name, indicator_subfields in marc_instances_tags.items():
+            logger.info(f"Constructing MARC tag {tag_name}")
+            for record in reader:
+                existing_tags = record.get_fields(
+                    tag_name
+                )  # returns list of pymarc.Field or empty if record doesn't have any
+                if existing_tags:
+                    logger.info(
+                        f"Record has existing {tag_name}'s. New fields will be evaluated for uniqueness."
+                    )
+                else:
+                    logger.info(
+                        f"Record does not have existing {tag_name}'s. New fields will be added."
+                    )
+            # indicator_subfields:
+            # [{'ind1': ' ', 'ind2': ' ', 'subfields': [{'f': 'STEINMETZ'}, ...]},
+            # {'ind1': ' ', 'ind2': ' ', 'subfields': [{'f': 'WHITEHEAD'}, ...]}]
+            new_tags = []
+            for row in indicator_subfields:
+                new_field = self.__construct_new_field__(row, tag_name)
+                if self.__tag_is_unique__(existing_tags, new_field):
+                    logger.info(f"New field {new_field.tag} is unique tag.")
+                    new_tags.append(new_field)
+                else:
+                    logger.info(f"New field {new_field.tag} is not unique")
+
+            for x in new_tags:
+                record.add_ordered_field(x)
+
+        record_json = record.as_json()
+        logger.info(f"Constructing MARC record: {record_json}")
+        return record_json
+
+    def __construct_new_field__(
+        self, indicator_subfields: dict, tag_name: str
+    ) -> pymarc.Field:
+        new_field = pymarc.Field(
+            tag=tag_name, indicators=[indicator_subfields['ind1'], indicator_subfields['ind2']]  # type: ignore
+        )
+        for subfields in indicator_subfields['subfields']:
+            self.__construct_new_subfields__(new_field, subfields)
+
+        return new_field
+
+    def __construct_new_subfields__(self, field: pymarc.Field, subfields: dict):
+        for sf_code, sf_val in subfields.items():
+            field.add_subfield(sf_code, sf_val)
+
+        return field
+
     def __tag_is_unique__(self, fields: list, new_field: pymarc.Field) -> bool:
         for existing_fields in fields:
-            for esubfield in existing_fields:
-                for nsubfield in new_field:
-                    if (
-                        nsubfield.code == esubfield.code
-                        and nsubfield.value == esubfield.value
-                    ):
-                        logger.info(f"Skip adding duplicated {new_field.tag} field")
-                        return False
-                    else:
-                        return True
+            new_field_value = new_field.value()
+            existing_field_value = existing_fields.value()
+            if new_field_value == existing_field_value:
+                logger.info(f"Skip adding duplicated {new_field_value} field")
+                return False
+            else:
+                logger.info(f"{new_field_value} tag is unique")
+                return True
         return True
