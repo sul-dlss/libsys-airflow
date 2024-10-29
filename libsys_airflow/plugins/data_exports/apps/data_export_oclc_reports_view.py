@@ -24,7 +24,6 @@ LOOKUP_REPORT_NAME = {
 class DataExportOCLCReportsView(AppBuilderBaseView):
     default_view = "data_export_oclc_reports_home"
     route_base = "/data_export_oclc_reports"
-    # files_base = "data-export-files"
 
     @expose("/")
     def data_export_oclc_reports_home(self):
@@ -48,7 +47,9 @@ class DataExportOCLCReportsView(AppBuilderBaseView):
                     libraries[library.name][report_type.name]["reports"].append(report)
 
         return self.render_template(
-            "data-export-oclc-reports/index.html", libraries=libraries
+            "data-export-oclc-reports/index.html",
+            libraries=libraries,
+            sortlibs=sorted(libraries, key=lambda x: (libraries[x]['name'])),
         )
 
     @expose("/<library_code>/<report_type>/<report_name>")

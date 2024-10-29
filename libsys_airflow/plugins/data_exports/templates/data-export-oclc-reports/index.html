@@ -4,20 +4,20 @@
 <div>
   <h2>OCLC Data Export Reports</h2>
   <ul>
-    <li><a href="#STF">Stanford University Libraries</a></li>
+    <li><a href="#S7Z">Graduate School of Business</a></li>
+    <li><a href="#HIN">Hoover Institution Library and Archives</a></li>
     <li><a href="#CASUM">Lane Medical Library</a></li>
     <li><a href="#RCJ">Robert Crown Law Library</a></li>
-    <li><a href="#HIN">Hoover Institution Library and Archives</a></li>
-    <li><a href="#S7Z">Graduate School of Business</a></li>
+    <li><a href="#STF">Stanford University Libraries</a></li>
   </ul>
-  {% for code, library in libraries.items() %}
+   {% for code in sortlibs %}
   <div id="{{ code }}">
-    <h3>{{ library.name }}</h3>
+    <h3>{{ libraries.get(code)["name"] }}</h3>
     <div>
       <h4>Multiple OCLC Numbers</h4>
       <table>
         <tr>
-      {% for column in library.get('multiple_oclc_numbers', {}).get('reports', [])|slice(3)  %}
+        {% for column in libraries.get(code).get('multiple_oclc_numbers', {}).get('reports', [])|slice(3)  %}
         <td>
           <ul>
           {% for report in column %}
@@ -35,7 +35,7 @@
       <h4>Match Errors</h4>
       <table>
         <tr>
-        {% for column in library.get('match', {}).get('reports', [])|slice(3)  %}
+        {% for column in libraries.get(code).get('match', {}).get('reports', [])|slice(3)  %}
         <td>
           <ul>
             {% for report in column %}
@@ -53,7 +53,7 @@
       <h4>New Record Errors</h4>
       <table>
         <tr>
-          {% for column in library.get('new_marc_errors', {}).get('reports', [])|slice(3)  %}
+          {% for column in libraries.get(code).get('new_marc_errors', {}).get('reports', [])|slice(3)  %}
           <td>
             <ul>
               {% for report in column %}
@@ -71,7 +71,7 @@
       <h4>Set Holdings Errors</h4>
       <table>
         <tr>
-        {% for column in library.get('set_holdings', {}).get('reports', [])|slice(3)  %}
+        {% for column in libraries.get(code).get('set_holdings', {}).get('reports', [])|slice(3)  %}
           <td>
           <ul>
           {% for report in column %}
@@ -89,7 +89,7 @@
       <h4>Set Holdings (after matching) Errors</h4>
       <table>
         <tr>
-        {% for column in library.get('set_holdings_match', {}).get('reports', [])|slice(3)  %}
+        {% for column in libraries.get(code).get('set_holdings_match', {}).get('reports', [])|slice(3)  %}
           <td>
           <ul>
           {% for report in column %}
@@ -107,7 +107,7 @@
       <h4>Unset Holdings Errors</h4>
       <table>
         <tr>
-        {% for column in library.get('unset_holdings', {}).get('reports', [])|slice(3)  %}
+        {% for column in libraries.get(code).get('unset_holdings', {}).get('reports', [])|slice(3)  %}
           <td>
           <ul>
           {% for report in column %}
