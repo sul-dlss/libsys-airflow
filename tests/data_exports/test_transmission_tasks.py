@@ -370,7 +370,7 @@ def test_archive_transmitted_data_task_no_files(caplog):
     assert "No files to archive" in caplog.text
 
 
-def test_gather_oclc_files_task(tmp_path):
+def test_gather_oclc_files_task(tmp_path, caplog):
     airflow = tmp_path
     oclc_marc_path = airflow / "data-export-files/oclc/marc-files"
     oclc_marc_path.mkdir(parents=True, exist_ok=True)
@@ -395,6 +395,9 @@ def test_gather_oclc_files_task(tmp_path):
     updates_hin.touch()
     updates_stf = updates_path / "20240603113-STF.mrc"
     updates_stf.touch()
+    # MARC file  missing library code
+    updates_unknown = updates_path / "2024102923.mrc"
+    updates_unknown.touch()
 
     oclc_ops_libraries = gather_oclc_files_task.function(airflow=airflow)
 
@@ -410,6 +413,8 @@ def test_gather_oclc_files_task(tmp_path):
     assert len(oclc_ops_libraries["new"]["CASUM"]) == 1
     assert len(oclc_ops_libraries["updates"]["HIN"]) == 1
     assert len(oclc_ops_libraries["updates"]["CASUM"]) == 0
+
+    assert f"Cannot determine library from {updates_unknown}" in caplog.text
 
 
 def test_delete_from_oclc_task(mocker, mock_oclc_connection):
