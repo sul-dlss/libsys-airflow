@@ -94,7 +94,11 @@ def gather_oclc_files_task(**kwargs) -> dict:
     oclc_directory = Path(airflow) / "data-export-files/oclc/marc-files/"
     for marc_file_path in oclc_directory.glob("**/*.mrc"):
         type_of = marc_file_path.parent.name
-        library = marc_file_path.stem.split("-")[1]
+        name_parts = marc_file_path.stem.split("-")
+        if len(name_parts) < 2:
+            logger.error(f"Cannot determine library from {marc_file_path}")
+            continue
+        library = name_parts[1]
         output[type_of][library].append(str(marc_file_path))
     return output
 
