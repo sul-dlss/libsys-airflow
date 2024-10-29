@@ -129,7 +129,7 @@ def invoices_paid_within_date_range(**kwargs) -> list:
     return invoice_ids
 
 
-@task(max_active_tis_per_dag=10)
+@task(max_active_tis_per_dag=5)
 def invoice_lines_from_invoices(invoice_id: str) -> list:
     """
     Given an invoice UUID, returns a list of invoice lines dictionaries
@@ -145,7 +145,7 @@ def invoice_lines_from_invoices(invoice_id: str) -> list:
     return all_invoice_lines
 
 
-@task(max_active_tis_per_dag=10)
+@task(max_active_tis_per_dag=5)
 def invoice_lines_paid_on_fund(**kwargs) -> list:
     """
     Given a list of fund objects with a fund_uuid key, returns a
