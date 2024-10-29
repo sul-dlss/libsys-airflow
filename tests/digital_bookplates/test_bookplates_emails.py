@@ -313,9 +313,25 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
     dag_runs = {
         "manual__2024-10-20T02:00:00+00:00": {
             "state": "success",
-            "instance_uuids": [
-                "fddf7e4c-161e-4ae8-baad-058288f63e17",
-                "5394da8a-e503-424e-aca7-7ba73ddafc03",
+            "instances": [
+                {
+                    "uuid": "fddf7e4c-161e-4ae8-baad-058288f63e17",
+                    "funds": [
+                        {
+                            "name": "HOSKINS",
+                            "title": "Janina Wojcicka Hoskins Book Fund for Polish Humanities",
+                        }
+                    ],
+                },
+                {
+                    "uuid": "5394da8a-e503-424e-aca7-7ba73ddafc03",
+                    "funds": [
+                        {
+                            "name": None,
+                            "title": "David Jackman Jr. and Sally J. Jackman Endowed Book Fund for Archeology and Anthropology of Pre-Columbian Civilizations",
+                        }
+                    ],
+                },
             ],
         }
     }
@@ -333,6 +349,11 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
 
     assert links[0].attrs['href'].startswith("https://sul-libsys-airflow.stanford.edu")
     assert links[1].attrs['href'].endswith("view/fddf7e4c-161e-4ae8-baad-058288f63e17")
+
+    tds = html_body.find_all("td")
+    assert tds[0].text == "HOSKINS"
+    assert len(tds[2].text) == 0  # Tests blank fund name
+    assert tds[3].text.startswith("David Jackman Jr. and Sally J. Jackman")
 
 
 def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
