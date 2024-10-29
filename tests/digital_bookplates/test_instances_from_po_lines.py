@@ -19,7 +19,7 @@ mock_order_lines = {
 def mock_folio_client():
     def mock_get(*args, **kwargs):
         output = {}
-        if str(args[0]).startswith("/orders/order-lines"):
+        if str(args[0]).startswith("/orders-storage/po-lines"):
             poline_id = args[0].split("/")[-1]
             output = mock_order_lines[poline_id]
         return output
