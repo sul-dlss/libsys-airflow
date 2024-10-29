@@ -152,7 +152,7 @@ def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
     assert put_record_result is True
     assert "Skip adding duplicated 979 field" not in caplog.text
     assert (
-        "ABBOTT druid:ws066yy0421 ws066yy0421_00_0001.jp2 The The Donald P. Abbott Fund for Marine Invertebrates tag is unique"
+        r"=979  \\$fABBOTT$bdruid:ws066yy0421$cws066yy0421_00_0001.jp2$dThe The Donald P. Abbott Fund for Marine Invertebrates tag is unique"
         in caplog.text
     )
 
@@ -164,6 +164,6 @@ def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, caplog):
     )
     assert put_record_result is True
     assert (
-        "Skip adding duplicated ABBOTT druid:ws066yy0421 ws066yy0421_00_0001.jp2 The The Donald P. Abbott Fund for Marine Invertebrates field"
+        r"Skip adding duplicated =979  \\$fABBOTT$bdruid:ws066yy0421$cws066yy0421_00_0001.jp2$dThe The Donald P. Abbott Fund for Marine Invertebrates field"
         in caplog.text
     )

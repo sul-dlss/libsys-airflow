@@ -87,21 +87,21 @@ class FolioAddMarcTags(object):
 
     def __marc_json_with_new_tags__(self, marc_json: dict, marc_instances_tags: dict):
         reader = pymarc.reader.JSONReader(json.dumps(marc_json))
+        record = [record for record in reader][0]  # always one record in this context
 
         for tag_name, indicator_subfields in marc_instances_tags.items():
             logger.info(f"Constructing MARC tag {tag_name}")
-            for record in reader:
-                existing_tags = record.get_fields(
-                    tag_name
-                )  # returns list of pymarc.Field or empty if record doesn't have any
-                if existing_tags:
-                    logger.info(
-                        f"Record has existing {tag_name}'s. New fields will be evaluated for uniqueness."
-                    )
-                else:
-                    logger.info(
-                        f"Record does not have existing {tag_name}'s. New fields will be added."
-                    )
+            existing_tags = [
+                str(field) for field in record.get_fields(tag_name)
+            ]  # returns list of strings or empty if record doesn't have any
+            if existing_tags:
+                logger.info(
+                    f"Record has existing {tag_name}'s. New fields will be evaluated for uniqueness."
+                )
+            else:
+                logger.info(
+                    f"Record does not have existing {tag_name}'s. New fields will be added."
+                )
             # indicator_subfields:
             # [{'ind1': ' ', 'ind2': ' ', 'subfields': [{'f': 'STEINMETZ'}, ...]},
             # {'ind1': ' ', 'ind2': ' ', 'subfields': [{'f': 'WHITEHEAD'}, ...]}]
@@ -139,13 +139,10 @@ class FolioAddMarcTags(object):
         return field
 
     def __tag_is_unique__(self, fields: list, new_field: pymarc.Field) -> bool:
-        for existing_fields in fields:
-            new_field_value = new_field.value()
-            existing_field_value = existing_fields.value()
-            if new_field_value == existing_field_value:
-                logger.info(f"Skip adding duplicated {new_field_value} field")
-                return False
-            else:
-                logger.info(f"{new_field_value} tag is unique")
-                return True
+        new_field_string = str(new_field)
+        if new_field_string in fields:
+            logger.info(f"Skip adding duplicated {new_field_string} field")
+            return False
+
+        logger.info(f"{new_field_string} tag is unique")
         return True

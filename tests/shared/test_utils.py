@@ -54,18 +54,32 @@ def marc_json():
 
 @pytest.fixture
 def marc_979():
-    return {
-        "979": {
-            "ind1": " ",
-            "ind2": " ",
-            "subfields": [
-                {"f": "ABBOTT"},
-                {"b": "druid:ws066yy0421"},
-                {"c": "ws066yy0421_00_0001.jp2"},
-                {"d": "The Donald P. Abbott Fund for Marine Invertebrates"},
-            ],
-        }
-    }
+    return [
+        {
+            "979": {
+                "ind1": " ",
+                "ind2": " ",
+                "subfields": [
+                    {"f": "STEINMETZ"},
+                    {"b": "druid:nc092rd1979"},
+                    {"c": "nc092rd1979_00_0001.jp2"},
+                    {"d": "Verna Pace Steinmetz Endowed Book Fund in History"},
+                ],
+            },
+        },
+        {
+            "979": {
+                "ind1": " ",
+                "ind2": " ",
+                "subfields": [
+                    {"f": "WHITEHEAD"},
+                    {"b": "druid:ph944pq1002"},
+                    {"c": "ph944pq1002_00_0001.jp2"},
+                    {"d": "Barry Whitehead Memorial Book Fund"},
+                ],
+            },
+        },
+    ]
 
 
 @pytest.fixture
@@ -181,33 +195,37 @@ def test__marc_json_with_two_new_tags__(
 
 
 def test__marc_json_existing_tags__(
-    mock_folio_add_marc_tags, marc_json, marc_979, marc_instance_tags, caplog
+    mock_folio_add_marc_tags, marc_json, marc_979, marc_instance_two_tags, caplog
 ):
     add_marc_tag = utils.FolioAddMarcTags()
-    marc_json["fields"].append(marc_979)
+    marc_json["fields"].extend(marc_979)
     marc_json_with_new_tags = add_marc_tag.__marc_json_with_new_tags__(
-        marc_json, marc_instance_tags
+        marc_json, marc_instance_two_tags
     )
     new_record_dict = json.loads(marc_json_with_new_tags)
     tag_979_exp = parse("$.fields[?(@['979'])]")
     new_979_tags = tag_979_exp.find(new_record_dict)
-    assert len(new_979_tags) == 1
+    assert len(new_979_tags) == 2
     assert (
         "Record has existing 979's. New fields will be evaluated for uniqueness."
         in caplog.text
     )
     assert (
-        "Skip adding duplicated ABBOTT druid:ws066yy0421 ws066yy0421_00_0001.jp2 The Donald P. Abbott Fund for Marine Invertebrates field"
+        r"Skip adding duplicated =979  \\$fSTEINMETZ$bdruid:nc092rd1979$cnc092rd1979_00_0001.jp2$dVerna Pace Steinmetz Endowed Book Fund in History field"
+        in caplog.text
+    )
+    assert (
+        r"Skip adding duplicated =979  \\$fWHITEHEAD$bdruid:ph944pq1002$cph944pq1002_00_0001.jp2$dBarry Whitehead Memorial Book Fund field"
         in caplog.text
     )
     assert "New field 979 is not unique" in caplog.text
 
 
-def test__tag_is_unique__(mock_folio_add_marc_tags, marc_json):
+def test__tag_is_unique__(mock_folio_add_marc_tags, marc_json, caplog):
     add_marc_tag = utils.FolioAddMarcTags()
     reader = pymarc.reader.JSONReader(json.dumps(marc_json))
-    for record in reader:
-        existing_tags = record.get_fields("979")
+    record = [record for record in reader][0]
+    existing_tags = [str(field) for field in record.get_fields("979")]
 
     new_field = pymarc.Field(
         tag="979",
@@ -223,3 +241,4 @@ def test__tag_is_unique__(mock_folio_add_marc_tags, marc_json):
         ],
     )
     assert add_marc_tag.__tag_is_unique__(existing_tags, new_field) is True
+    assert "tag is unique" in caplog.text
