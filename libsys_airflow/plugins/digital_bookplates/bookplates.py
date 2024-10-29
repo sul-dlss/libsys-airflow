@@ -162,7 +162,7 @@ def instances_from_po_lines(**kwargs) -> dict:
     po_lines_funds = kwargs["po_lines_funds"]
     for row in po_lines_funds:
         poline_id = row['poline_id']
-        order_line = folio_client.folio_get(f"/orders/order-lines/{poline_id}")
+        order_line = folio_client.folio_get(f"/orders-storage/po-lines/{poline_id}")
         instance_id = order_line.get("instanceId")
         if instance_id is None:
             logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
