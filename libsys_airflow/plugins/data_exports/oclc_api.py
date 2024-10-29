@@ -16,6 +16,7 @@ from libsys_airflow.plugins.data_exports.marc.oclc import get_record_id
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import oclc_excluded
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
+from libsys_airflow.plugins.shared.utils import is_production
 
 from pymarc import Record
 
@@ -36,7 +37,6 @@ def get_instance_uuid(record) -> Union[str, None]:
 
 
 def oclc_records_operation(**kwargs) -> dict:
-
     function_name: str = kwargs["oclc_function"]
     connection_lookup: dict = kwargs["connections"]
 
@@ -44,30 +44,36 @@ def oclc_records_operation(**kwargs) -> dict:
     success: dict = kwargs.get("success", {})
     failures: dict = kwargs.get("failures", {})
 
-    for library, records in type_of_records.items():
-        success[library] = []
-        failures[library] = []
-
-        oclc_api = OCLCAPIWrapper(
-            client_id=connection_lookup[library]["username"],
-            secret=connection_lookup[library]["password"],
-        )
-
-        oclc_api_function = getattr(oclc_api, function_name)
-
-        success[library] = []
-        failures[library] = []
-        archive_files = []
-        if len(records) > 0:
-            oclc_result = oclc_api_function(records)
-            success[library].extend(oclc_result['success'])
-            failures[library].extend(oclc_result['failures'])
-            archive_files.extend(oclc_result['archive'])
-            logger.info(
-                f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
+    if is_production():
+        for library, records in type_of_records.items():
+            oclc_api = OCLCAPIWrapper(
+                client_id=connection_lookup[library]["username"],
+                secret=connection_lookup[library]["password"],
             )
-        else:
-            logger.info(f"No {function_name} records for {library}")
+
+            oclc_api_function = getattr(oclc_api, function_name)
+
+            success[library] = []
+            failures[library] = []
+            archive_files = []
+            if len(records) > 0:
+                oclc_result = oclc_api_function(records)
+                success[library].extend(oclc_result['success'])
+                failures[library].extend(oclc_result['failures'])
+                archive_files.extend(oclc_result['archive'])
+                logger.info(
+                    f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
+                )
+            else:
+                logger.info(f"No {function_name} records for {library}")
+    else:
+        archive_files = []
+        for library, records in type_of_records.items():
+            for record in records:
+                archive_files.append(record)
+                logger.info(
+                    f"Skipping OCLC API {function_name} record operation not in production"
+                )
 
     return {"success": success, "failures": failures, "archive": archive_files}
 
