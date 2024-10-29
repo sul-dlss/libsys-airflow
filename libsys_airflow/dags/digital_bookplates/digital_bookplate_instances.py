@@ -46,12 +46,12 @@ def process_date_range_group(invoice_id: str):
 
 
 @task_group(group_id="process-new-funds")
-def process_new_funds_group(invoice_line: dict):
+def process_new_funds_group(invoice_lines: list):
     """
     See https://s3.amazonaws.com/foliodocs/api/mod-invoice-storage/p/invoice.html#invoice_storage_invoice_lines_get
-    Input: an single invoice line dictionary, wrapped in a list:
+    Input: a list of invoice line dictionaries wrapped in a list, e.g. [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]
     """
-    paid_bookplate_polines = bookplate_funds_polines(invoice_lines=[invoice_line])
+    paid_bookplate_polines = bookplate_funds_polines(invoice_lines=invoice_lines)
     return instances_from_po_lines(
         po_lines_funds=paid_bookplate_polines
     )  # -> launch_add_979_fields_task
@@ -110,8 +110,9 @@ def digital_bookplate_instances():
     # New funds branch
     paid_invoice_lines_new_fund = invoice_lines_paid_on_fund()
     retrieve_instances_new_fund = process_new_funds_group.expand(
-        invoice_line=paid_invoice_lines_new_fund
+        invoice_lines=paid_invoice_lines_new_fund
     )
+
     launch_add_tag_new_fund = trigger_digital_bookplate_979_task(
         instances=retrieve_instances_new_fund
     )

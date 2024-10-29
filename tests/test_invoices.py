@@ -230,7 +230,8 @@ def test_invoice_lines_paid_on_fund(mocker, mock_folio_client, mock_new_funds, c
         f"Getting paid invoice lines for {mock_new_funds[0].get('fund_uuid')}"
         in caplog.text
     )
-    assert len(invoice_lines) == 3
+    assert len(invoice_lines) == 1
+    assert len(invoice_lines[0]) == 3
 
 
 def test_invoice_lines_paid_on_fund_not_in_folio(mocker, mock_folio_client, caplog):
