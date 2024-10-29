@@ -108,8 +108,22 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
         <li>DAG Run <a href="{{ dag_url }}{{ dag_run_id|urlencode }}">{{ dag_run_id }}</a> {{ result.state }}<br>
            Instances:
            <ul>
-           {% for uuid in result.instance_uuids %}
-           <li><a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a></li>
+           {% for instance in result.instances %}
+           <li><a href="{{ folio_url }}/inventory/view/{{ instance.uuid }}">{{ instance.uuid }}</a>
+             Funds:
+             <table>
+               <tr>
+                 <th>Name (if available)</th>
+                 <th>Title</th>
+               </tr>
+               {% for fund in instance.funds %}
+                <tr>
+                  <td>{% if fund.name %}{{ fund.name }}{% endif %}</td>
+                  <td>{{ fund.title }}</td>
+                </tr>
+               {% endfor %}
+             </table>
+           </li>
            {% endfor %}
            </ul>
         </li>

@@ -11,7 +11,7 @@ class DAG979Sensor(BaseSensorOperator):
     def __init__(self, dag_runs: list, **kwargs):
         self.dag_runs: dict = {}
         for dag_run_id in dag_runs:
-            self.dag_runs[dag_run_id] = {'state': None, 'instance_uuid': []}
+            self.dag_runs[dag_run_id] = {'state': None, 'instances': []}
         super().__init__(**kwargs)
 
     def poke(self, context) -> bool:
@@ -21,10 +21,24 @@ class DAG979Sensor(BaseSensorOperator):
             if len(dag_runs) < 1:
                 continue
             dag_run = dag_runs[0]
-            self.dag_runs[dag_run_id]['state'] = dag_run.get_state()
-            self.dag_runs[dag_run_id]['instance_uuids'] = list(
-                dag_run.conf['druids_for_instance_id'].keys()
-            )
+            state = dag_run.get_state()
+            self.dag_runs[dag_run_id]['state'] = state
+            if state in ['success', 'failed']:
+                instances = []
+                for instance, bookplates in dag_run.conf[
+                    'druids_for_instance_id'
+                ].items():
+                    funds = []
+                    for bookplate in bookplates:
+                        funds.append(
+                            {
+                                "name": bookplate.get("fund_name"),
+                                "title": bookplate.get("title"),
+                            }
+                        )
+                    instances.append({"uuid": instance, "funds": funds})
+
+                self.dag_runs[dag_run_id]['instances'] = instances
         poke_result = all(
             [val['state'] in ['success', 'failed'] for val in self.dag_runs.values()]
         )
