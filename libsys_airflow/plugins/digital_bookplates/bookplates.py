@@ -144,7 +144,7 @@ def bookplate_funds_polines(**kwargs) -> list:
     return bookplates_polines  # -> instances_from_po_lines
 
 
-@task
+@task(max_active_tis_per_dag=5)
 def instances_from_po_lines(**kwargs) -> dict:
     """
     Given a list of po lines with fund IDs, retrieves the instanceId
