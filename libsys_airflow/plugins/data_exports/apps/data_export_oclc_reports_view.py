@@ -24,10 +24,11 @@ LOOKUP_REPORT_NAME = {
 class DataExportOCLCReportsView(AppBuilderBaseView):
     default_view = "data_export_oclc_reports_home"
     route_base = "/data_export_oclc_reports"
+    files_base = "/opt/airflow/data-export-files"
 
     @expose("/")
     def data_export_oclc_reports_home(self):
-        oclc_reports_home = pathlib.Path("/opt/airflow/data-export-files/oclc/reports")
+        oclc_reports_home = pathlib.Path(f"{self.files_base}/oclc/reports")
         libraries = {}
         for library in oclc_reports_home.iterdir():
             if not library.is_dir():
