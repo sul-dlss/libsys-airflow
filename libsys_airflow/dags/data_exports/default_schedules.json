@@ -7,7 +7,7 @@
   "transmit_hathi": "0 3 * * *",
   "select_nielsen": "0 2 * * *",
   "transmit_nielsen": "0 4 * * *",
-  "select_oclc": "30 1 * * FRI",
+  "select_oclc": "30 1 * * *",
   "transmit_oclc": "30 3 * * FRI",
   "select_pod": "0 22 * * *",
   "transmit_pod": "0 0 * * *",

@@ -47,7 +47,7 @@ with DAG(
     "select_oclc_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("select_oclc", "30 1 * * FRI"), timezone="America/Los_Angeles"
+        cron=Variable.get("select_oclc", "30 1 * * *"), timezone="America/Los_Angeles"
     ),
     start_date=datetime(2024, 2, 25),
     catchup=False,
