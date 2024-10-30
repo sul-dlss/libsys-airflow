@@ -42,7 +42,7 @@ def poll_979_dags(**kwargs):
     tags=["digital bookplates"],
     max_active_runs=3,
 )
-def poll_for_digital_bookplate_979s():
+def poll_for_digital_bookplate_979s_email():
     start = EmptyOperator(task_id="start")
 
     end = EmptyOperator(task_id="end")
@@ -58,4 +58,4 @@ def poll_for_digital_bookplate_979s():
     email >> end
 
 
-poll_for_digital_bookplate_979s()
+poll_for_digital_bookplate_979s_email()

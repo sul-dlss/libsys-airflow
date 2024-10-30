@@ -74,13 +74,13 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
 
 def launch_poll_for_979_dags(**kwargs):
     """
-    Triggers poll_for_digital_bookplate_979s DAG with kwargs
+    Triggers poll_for_digital_bookplate_979s_email DAG with kwargs
     """
     dag_runs: list = kwargs["dag_runs"]
     email: Union[str, None] = kwargs.get("email")
 
     dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag('poll_for_digital_bookplate_979s')
+    dag = dagbag.get_dag('poll_for_digital_bookplate_979s_email')
     execution_date = timezone.utcnow()
     run_id = f"manual__{execution_date.isoformat()}"
     dag.create_dagrun(
