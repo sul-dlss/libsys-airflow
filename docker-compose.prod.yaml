@@ -81,7 +81,7 @@ x-airflow-common:
     AIRFLOW_VAR_ORAFIN_TO_EMAIL_BUS: ${AIRFLOW_VAR_ORAFIN_TO_EMAIL_BUS:-gsb_libraryts@stanford.edu}
     AIRFLOW_VAR_OCLC_EMAIL_BUS: ${AIRFLOW_VAR_OCLC_EMAIL_BUS:-sabbott@stanford.edu}
     AIRFLOW_VAR_OCLC_EMAIL_HOOVER: ${AIRFLOW_VAR_OCLC_EMAIL_HOOVER:-hooverdescription@stanford.edu}
-    AIRFLOW_VAR_OCLC_EMAIL_LANE: ${AIRFLOW_VAR_OCLC_EMAIL_LANE:-tsallen@stanford.edu}
+    AIRFLOW_VAR_OCLC_EMAIL_LANE: ${AIRFLOW_VAR_OCLC_EMAIL_LANE:-linkmanagement@lists.stanford.edu}
     AIRFLOW_VAR_OCLC_EMAIL_LAW: ${AIRFLOW_VAR_OCLC_EMAIL_LAW:-law_cataloging@lists.stanford.edu}
     AIRFLOW_VAR_OCLC_EMAIL_SUL: ${AIRFLOW_VAR_OCLC_EMAIL_SUL:-datacontrol@stanford.edu}
     AIRFLOW_CONN_VENDOR_LOADS: postgresql+psycopg2://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOSTNAME}/vendor_loads
