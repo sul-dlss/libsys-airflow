@@ -149,7 +149,7 @@ def invoice_lines_from_invoices(invoice_id: str) -> list:
 def invoice_lines_paid_on_fund(**kwargs) -> list:
     """
     Given a list of fund objects with a fund_uuid key, returns a
-    list of paid invoice lines dictionaries
+    list of paid invoice lines dictionaries in limit-sized chunks
     """
     folio_client = _folio_client()
     all_invoice_lines = []
@@ -166,4 +166,14 @@ def invoice_lines_paid_on_fund(**kwargs) -> list:
         else:
             logger.info(f"Fund does not have fund_uuid: {row}")
 
-    return all_invoice_lines
+    if len(all_invoice_lines) > 1000:
+        invoice_line_chunks = [
+            all_invoice_lines[x : x + 100]
+            for x in range(0, len(all_invoice_lines), 100)
+        ]
+    else:
+        invoice_line_chunks = [
+            all_invoice_lines[x : x + 5] for x in range(0, len(all_invoice_lines), 5)
+        ]
+
+    return invoice_line_chunks
