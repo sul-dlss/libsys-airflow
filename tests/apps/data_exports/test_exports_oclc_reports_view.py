@@ -13,7 +13,7 @@ from libsys_airflow.plugins.data_exports.apps.data_export_oclc_reports_view impo
 def test_airflow_client():
     templates_folder = f"{root_directory}/libsys_airflow/plugins/data_exports/templates"
     files_base = f"{root_directory}/tests/apps/data_exports/data_export_file_fixtures"
-    
+
     app = application.create_app(testing=True)
     app.config['WTF_CSRF_ENABLED'] = False
     setattr(DataExportOCLCReportsView, "files_base", files_base)
@@ -38,9 +38,15 @@ def test_oclc_reports_view(test_airflow_client):
     assert response.status_code == 200
 
     lib_divs = response.html.find_all("div", {"class": "oclc"})
-    
-    assert(lib_divs[0].find("h3").get_text()) == "Graduate School of Business"
-    assert(lib_divs[0].find("a").get("href")) == "/data_export_oclc_reports/S7Z/new_marc_errors/2024-09-13T16:01:18.963349.html"
-    
-    assert(lib_divs[1].find("h3").get_text()) == "Stanford University Libraries"
-    assert(lib_divs[1].find("a").get("href")) == "/data_export_oclc_reports/STF/unset_holdings/2024-09-13T15:47:28.857056.html"
+
+    assert (lib_divs[0].find("h3").get_text()) == "Graduate School of Business"
+    assert (
+        (lib_divs[0].find("a").get("href"))
+        == "/data_export_oclc_reports/S7Z/new_marc_errors/2024-09-13T16:01:18.963349.html"
+    )
+
+    assert (lib_divs[1].find("h3").get_text()) == "Stanford University Libraries"
+    assert (
+        (lib_divs[1].find("a").get("href"))
+        == "/data_export_oclc_reports/STF/unset_holdings/2024-09-13T15:47:28.857056.html"
+    )
