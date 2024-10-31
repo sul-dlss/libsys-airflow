@@ -73,6 +73,7 @@ exclude = '''
   /(
     vendor_loads_migration
     | digital_bookplates_migration
+    | libsys_airflow/plugins/folio/encumbrances
   )/
 '''
 skip-string-normalization = true
