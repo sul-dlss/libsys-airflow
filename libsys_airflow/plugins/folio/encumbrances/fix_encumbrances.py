@@ -23,7 +23,7 @@ client = httpx.AsyncClient()
 dryrun = False
 
 # request timeout in seconds
-ASYNC_CLIENT_TIMEOUT = 30
+ASYNC_CLIENT_TIMEOUT = 60
 
 # limit the number of parallel threads.
 # Try different values. Bigger values - for increasing performance, but could produce "Connection timeout exception"
