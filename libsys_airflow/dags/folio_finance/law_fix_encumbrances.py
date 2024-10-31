@@ -33,6 +33,7 @@ with DAG(
     ),
     start_date=datetime(2024, 8, 29),
     catchup=False,
+    retries=0,
     tags=["folio"],
     params={
         "choice": Param(
