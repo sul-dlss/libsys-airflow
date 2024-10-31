@@ -72,6 +72,15 @@ def oclc_records_operation(**kwargs) -> dict:
     return {"success": success, "failures": failures, "archive": archive_files}
 
 
+def __marc_modifications__(marc_record: pymarc.Record) -> pymarc.Record:
+    """
+    Modifies the 007 and 040 fields for new OCLC records. For 007 field,
+    replace any spaces with |. For 040 fields substitute CSt to STF.
+    """
+    for field in marc_record.get_fields("007"):
+        pass
+
+
 class OCLCAPIWrapper(object):
     # Helper class for transmitting MARC records to OCLC Worldcat API
 
@@ -468,6 +477,7 @@ class OCLCAPIWrapper(object):
 
             export_record = copy.deepcopy(record)
             export_record.remove_fields(*oclc_excluded)
+            export_record = __marc_modifications__(export_record)
 
             marc21 = export_record.as_marc21()
 
