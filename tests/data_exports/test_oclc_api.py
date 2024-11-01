@@ -14,6 +14,17 @@ def sample_marc_records():
     sample = []
     marc_record = pymarc.Record()
     marc_record.add_field(
+        pymarc.Field(tag="007", data="cr un         "),
+        pymarc.Field(
+            tag="040",
+            indicators=pymarc.Indicators(" ", " "),
+            subfields=[
+                pymarc.Subfield("a", "CSt"),
+                pymarc.Subfield("b", "eng"),
+                pymarc.Subfield("e", "rda"),
+                pymarc.Subfield("c", "CSt"),
+            ],
+        ),
         pymarc.Field(
             tag="100",
             indicators=['1', ''],
@@ -31,11 +42,21 @@ def sample_marc_records():
     sample.append(marc_record)
     no_srs_record = pymarc.Record()
     no_srs_record.add_field(
+        pymarc.Field(tag="007", data="cr un     a    "),
+        pymarc.Field(
+            tag="040",
+            indicators=pymarc.Indicators(" ", " "),
+            subfields=[
+                pymarc.Subfield("a", "CSt"),
+                pymarc.Subfield("e", "rda"),
+                pymarc.Subfield("c", "CSt"),
+            ],
+        ),
         pymarc.Field(
             tag='245',
             indicators=[' ', ' '],
             subfields=[pymarc.Subfield(code='a', value='Much Ado about Something')],
-        )
+        ),
     )
     sample.append(no_srs_record)
     another_record = pymarc.Record()
@@ -1005,6 +1026,20 @@ def test_oclc_records_operation_no_records(mock_oclc_api, caplog):
 
     assert result['success']['STF'] == []
     assert "No delete records for STF" in caplog.text
+
+
+def test_oclc_marc_modifications():
+    sample_records = sample_marc_records()
+    mod_record = oclc_api.__oclc_marc_modifications__(sample_records[0])
+
+    assert mod_record["007"].value() == "cr un|||||||||"
+    assert mod_record["040"]["a"] == "STF"
+    assert mod_record["040"]["b"] == "eng"
+
+    second_mod = oclc_api.__oclc_marc_modifications__(sample_records[1])
+
+    assert second_mod["007"].value() == "cr un|||||a||||"
+    assert second_mod["040"]["a"] == "STF"
 
 
 def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
