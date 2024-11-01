@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from airflow.decorators import dag, task, task_group
 from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
+from airflow.models import Variable
 
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
@@ -21,11 +22,12 @@ from libsys_airflow.plugins.folio.invoices import (
 )
 
 logger = logging.getLogger(__name__)
-
+devs_to_email_addr = Variable.get("EMAIL_DEVS")
 
 default_args = {
     "owner": "libsys",
     "depends_on_past": False,
+    "email": [devs_to_email_addr],
     "email_on_failure": True,
     "email_on_retry": False,
     "retries": 3,
