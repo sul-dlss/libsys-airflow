@@ -372,7 +372,9 @@ def test_determine_campus_code_http_error(mocker, mock_folio_client):
     assert codes == []
 
 
-def test_oclc_division(mocker, tmp_path, mock_folio_client, sample_marc_records):
+def test_oclc_division(
+    mocker, tmp_path, mock_folio_client, sample_marc_records, caplog
+):
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -385,9 +387,12 @@ def test_oclc_division(mocker, tmp_path, mock_folio_client, sample_marc_records)
         marc_writer = pymarc.MARCWriter(fo)
         for record in sample_marc_records:
             marc_writer.write(record)
+        fo.write(b"\n")
 
     oclc_transformer = OCLCTransformer()
     oclc_transformer.divide(marc_file=str(marc_file.absolute()))
+
+    assert "Record 3 is None" in caplog.text
 
     assert len(oclc_transformer.libraries["STF"]["holdings"]) == 1
     assert len(oclc_transformer.libraries["STF"]["marc"]) == 1
