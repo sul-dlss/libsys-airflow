@@ -51,7 +51,9 @@ def fetch_record_ids(**kwargs) -> dict:
                         "from_date": from_date,
                         "to_date": to_date,
                     },
-                ).execute(context)
+                ).execute(
+                    context
+                )  # type: ignore
             )
 
         results[kind] = list(np.unique(results[kind]))
