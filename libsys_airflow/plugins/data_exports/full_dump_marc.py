@@ -39,7 +39,9 @@ def fetch_number_of_records(**kwargs) -> int:
         conn_id="postgres_folio",
         database=kwargs.get("database", "okapi"),
         sql=query,
-    ).execute(context)
+    ).execute(
+        context
+    )  # type: ignore
 
     count = result[0][0]
     logger.info(f"Record count: {count}")
