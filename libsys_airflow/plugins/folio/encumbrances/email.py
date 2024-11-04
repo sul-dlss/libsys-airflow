@@ -1,3 +1,5 @@
+import re
+
 from airflow.models import Variable
 from airflow.utils.email import send_email
 from jinja2 import Template
@@ -46,7 +48,9 @@ def _email_body(log):
 
 def subject(**kwargs):
     library = kwargs.get("library", "")
+    folio_url = Variable.get("FOLIO_URL", "Test or Stage")
     if is_production():
-        return f"Fix Encumbrances for {library} - folio-prod"
+        return f"Fix Encumbrances for {library}"
     else:
-        return f"Fix Encumbrances for {library} (not production)"
+        folio_url = re.sub('http?://', '', folio_url)
+        return f"{folio_url} - Fix Encumbrances for {library}"

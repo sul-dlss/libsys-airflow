@@ -58,4 +58,4 @@ def test_fix_encumbrances_email_subject():
     from libsys_airflow.plugins.folio.encumbrances.email import subject
 
     subj = subject(library="SUL2024")
-    assert subj == "Fix Encumbrances for SUL2024 (not production)"
+    assert subj == "okapi-test - Fix Encumbrances for SUL2024"
