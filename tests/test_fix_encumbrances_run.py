@@ -1,8 +1,8 @@
 import pytest
 
-from unittest.mock import AsyncMock
-
 from airflow.models import Variable
+
+from unittest.mock import AsyncMock
 
 
 @pytest.fixture
@@ -21,10 +21,6 @@ def mock_okapi(monkeypatch):
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
-def reset_mock_okapi(monkeypatch):
-    monkeypatch.delenv('OKAPI_URL', raising=False)
-
-
 def test_fix_encumbrances_log_file_params(
     mocker, tmp_path, mock_task_instance, mock_okapi, monkeypatch
 ):
@@ -39,6 +35,7 @@ def test_fix_encumbrances_log_file_params(
         side_effect=async_mock,
         return_value=None,
     )
+
     from libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_run import (
         fix_encumbrances_run,
     )
@@ -55,3 +52,10 @@ def test_fix_encumbrances_log_file_params(
     )
 
     assert log_path.endswith("foo-scheduled__2024-07-29T19:00:00:00:00.log")
+
+
+def test_fix_encumbrances_email_subject():
+    from libsys_airflow.plugins.folio.encumbrances.email import subject
+
+    subj = subject(library="SUL2024")
+    assert subj == "Fix Encumbrances for SUL2024 (not production)"

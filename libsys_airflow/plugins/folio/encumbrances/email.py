@@ -2,6 +2,8 @@ from airflow.models import Variable
 from airflow.utils.email import send_email
 from jinja2 import Template
 
+from libsys_airflow.plugins.shared.utils import is_production
+
 
 def email_log(**kwargs):
     library = kwargs.get("library", "")
@@ -26,7 +28,7 @@ def email_log(**kwargs):
     with open(log_file, 'r') as fo:
         send_email(
             to=to_addresses,
-            subject=f"Fix Encumbrances for {library}",
+            subject=subject(library=library),
             html_content=_email_body(fo),
         )
 
@@ -40,3 +42,11 @@ def _email_body(log):
     html_body = email_template.render(log_content=log.read())
 
     return html_body
+
+
+def subject(**kwargs):
+    library = kwargs.get("library", "")
+    if is_production():
+        return f"Fix Encumbrances for {library} - folio-prod"
+    else:
+        return f"Fix Encumbrances for {library} (not production)"
