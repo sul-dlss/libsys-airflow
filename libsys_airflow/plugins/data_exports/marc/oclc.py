@@ -131,7 +131,7 @@ class OCLCTransformer(Transformer):
                 logger.info(f"{i:,} records processed")
 
             if record is None:
-                logger.error(f"Record {i} is None")
+                logger.error(f"Record {i} is None in {marc_file}")
                 continue
 
             record_ids = get_record_id(record)
