@@ -35,7 +35,7 @@ def send_email_with_server_name(**kwargs):
 
 def _subject_with_server_name(**kwargs):
     subject = kwargs.get("subject")
-    folio_url = Variable.get("FOLIO_URL", "Test or Stage")
+    folio_url = Variable.get("FOLIO_URL", "folio-test/stage")
     if is_production():
         return subject
     else:
