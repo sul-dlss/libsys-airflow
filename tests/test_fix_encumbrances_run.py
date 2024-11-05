@@ -55,7 +55,8 @@ def test_fix_encumbrances_log_file_params(
 
 
 def test_fix_encumbrances_email_subject():
+    from libsys_airflow.plugins.shared.utils import _subject_with_server_name
     from libsys_airflow.plugins.folio.encumbrances.email import subject
 
-    subj = subject(library="SUL2024")
+    subj = _subject_with_server_name(subject=subject(library="SUL2024"))
     assert subj == "okapi-test - Fix Encumbrances for SUL2024"

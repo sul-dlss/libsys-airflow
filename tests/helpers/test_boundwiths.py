@@ -229,7 +229,9 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
         </html>"""
         return response
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
+    )
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
@@ -265,7 +267,9 @@ def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
         response.text = """Internal Server Error"""
         return response
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
+    )
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
@@ -293,7 +297,9 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
         response.text = """<div></div>"""
         return response
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
+    )
     mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
@@ -315,7 +321,9 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
 
 
 def test_email_bw_summary(mocker, mock_task_instance, mock_context):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
+    )
 
     email_bw_summary('libsys-lists@example.com', mock_task_instance)
 

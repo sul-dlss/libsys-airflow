@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from jinja2 import Template
 
 from airflow.models import Variable
-from airflow.utils.email import send_email
+from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ def email_bw_summary(devs_email, task_instance):
     )
     if user_email and len(user_email) > 0:
         to_addresses.append(user_email)
-    send_email(
+    send_email_with_server_name(
         to=to_addresses,
         subject=f"Boundwith Summary for file {file_name}",
         html_content=html_content,
@@ -140,7 +140,9 @@ def email_failure(context):
 
     html_body = _bw_error_body(ti, params)
 
-    send_email(to=to_addresses, subject=f"Error {ti.task_id}", html_content=html_body)
+    send_email_with_server_name(
+        to=to_addresses, subject=f"Error {ti.task_id}", html_content=html_body
+    )
 
 
 def create_bw_record(**kwargs) -> dict:

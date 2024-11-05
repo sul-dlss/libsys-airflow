@@ -7,7 +7,7 @@ from jinja2 import Template
 from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
-from airflow.utils.email import send_email
+from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 from libsys_airflow.plugins.shared.utils import is_production
 
@@ -132,7 +132,9 @@ def generate_holdings_errors_emails(error_reports: dict):
 
         html_content = _oclc_report_html(report, library)
 
-        send_email(to=to_emails, subject=subject_line, html_content=html_content)
+        send_email_with_server_name(
+            to=to_emails, subject=subject_line, html_content=html_content
+        )
 
 
 def generate_oclc_new_marc_errors_email(error_reports: dict):
@@ -168,7 +170,9 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
 
         html_content = _oclc_report_html(report, library)
 
-        send_email(to=to_emails, subject=subject_line, html_content=html_content)
+        send_email_with_server_name(
+            to=to_emails, subject=subject_line, html_content=html_content
+        )
 
 
 def generate_multiple_oclc_identifiers_email(multiple_codes: list):
@@ -189,7 +193,7 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
     html_content = _oclc_identifiers(multiple_codes, folio_url)
 
     if is_production():
-        send_email(
+        send_email_with_server_name(
             to=[
                 devs_email,
                 cohort_emails["business"],
@@ -203,7 +207,7 @@ def generate_multiple_oclc_identifiers_email(multiple_codes: list):
         )
     else:
         folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
-        send_email(
+        send_email_with_server_name(
             to=[
                 devs_email,
             ],
@@ -269,7 +273,7 @@ def failed_transmission_email(files: list, **kwargs):
         run_url,
     )
 
-    send_email(
+    send_email_with_server_name(
         to=[
             devs_to_email_addr,
         ],

@@ -31,7 +31,7 @@ failures = [
 
 @pytest.fixture
 def mock_folio_variables(monkeypatch):
-    def mock_get(key):
+    def mock_get(key, *args):
         value = None
         match key:
             case "FOLIO_URL":
@@ -82,7 +82,7 @@ def test_bookplates_metadata_email(
 ):
 
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name",
     )
 
     bookplates_metadata_email.function(
@@ -122,7 +122,7 @@ def test_bookplates_metadata_email(
 
 def test_bookplates_metadata_email_none(mocker, mock_folio_variables, caplog):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     bookplates_metadata_email.function(new=None, updated=None)
@@ -139,7 +139,7 @@ def test_no_new_bookplates_metadata_email(
 ):
 
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     bookplates_metadata_email.function(
@@ -174,7 +174,7 @@ def test_no_updated_bookplates_metadata_email(
 ):
 
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     bookplates_metadata_email.function(
@@ -202,7 +202,7 @@ def test_no_updated_bookplates_metadata_email(
 def test_deleted_from_argo_email(mocker, mock_folio_variables):
 
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     deleted_druids_info = [
@@ -227,7 +227,7 @@ def test_deleted_from_argo_email(mocker, mock_folio_variables):
 
 def test_deleted_from_argo_email_no_druids(mocker, caplog):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     deleted_from_argo_email.function(deleted_druids=[])
@@ -238,7 +238,7 @@ def test_deleted_from_argo_email_no_druids(mocker, caplog):
 
 def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     mocker.patch(
@@ -255,7 +255,7 @@ def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
 
 def test_missing_fields_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     missing_fields_email.function(failures=failures)
@@ -285,7 +285,7 @@ def test_missing_fields_email_no_failures(mock_folio_variables, caplog):
 
 def test_missing_fields_email_prod(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     mocker.patch(
@@ -302,7 +302,7 @@ def test_missing_fields_email_prod(mocker, mock_folio_variables):
 
 def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     mocker.patch(
@@ -358,7 +358,7 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
 
 def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
+        "libsys_airflow.plugins.digital_bookplates.email.send_email_with_server_name"
     )
 
     mocker.patch(

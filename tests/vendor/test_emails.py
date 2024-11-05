@@ -89,7 +89,9 @@ def marc_path(tmp_path):
 def test_send_files_fetched_email(pg_hook, mocker, mock_folio_variables):
     mock_date = mocker.patch("libsys_airflow.plugins.vendor.emails.date")
     mock_date.today.return_value = date(2021, 1, 1)
-    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
 
     send_files_fetched_email(
         vendor_uuid='375C6E33-2468-40BD-A5F2-73F82FE56DB0',
@@ -102,9 +104,9 @@ def test_send_files_fetched_email(pg_hook, mocker, mock_folio_variables):
     )
 
     mock_send_email.assert_called_once_with(
-        'test@stanford.edu',
-        "Acme FTP (ACME) - Daily Fetch Report (2021-01-01) [development]",
-        """
+        to='test@stanford.edu',
+        subject="Acme FTP (ACME) - Daily Fetch Report (2021-01-01) [development]",
+        html_content="""
         <h5>Acme FTP (ACME) - <a href="https://folio-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
         <p>
@@ -124,7 +126,7 @@ def test_send_files_fetched_email(pg_hook, mocker, mock_folio_variables):
 def test_files_fetched_email_task(pg_hook, mocker, mock_folio_variables, caplog):
     mock_date = mocker.patch("libsys_airflow.plugins.vendor.emails.date")
     mock_date.today.return_value = date(2021, 1, 1)
-    mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mocker.patch("libsys_airflow.plugins.vendor.emails.send_email_with_server_name")
 
     files_fetched_email_task.function(
         [],
@@ -153,7 +155,9 @@ def test_send_file_loaded_bib_email_no_001s(
     )
     mock_date = mocker.patch("libsys_airflow.plugins.vendor.emails.date")
     mock_date.today.return_value = date(2021, 1, 1)
-    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -200,9 +204,9 @@ def test_send_file_loaded_bib_email_no_001s(
     )
 
     mock_send_email.assert_called_once_with(
-        'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
-        f"""
+        to='test@stanford.edu',
+        subject="Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
+        html_content=f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
@@ -228,7 +232,9 @@ def test_send_file_loaded_bib_email_with_001s(
     mock_date = mocker.patch("libsys_airflow.plugins.vendor.emails.date")
     mock_date.today.return_value = date(2021, 1, 1)
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
     mocker.patch(
         "libsys_airflow.plugins.vendor.emails.is_marc",
         return_value=True,
@@ -277,9 +283,9 @@ def test_send_file_loaded_bib_email_with_001s(
     )
 
     mock_send_email.assert_called_once_with(
-        'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
-        f"""
+        to='test@stanford.edu',
+        subject="Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
+        html_content=f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
@@ -316,7 +322,9 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_folio_variables, tmp_p
         return_value="https://sul-libsys-airflow-stage.stanford.edu/",
     )
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
 
     now = datetime.now()
 
@@ -349,9 +357,9 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_folio_variables, tmp_p
     )
 
     mock_send_email.assert_called_once_with(
-        'test@stanford.edu',
-        "Acme FTP (ACME) - (inv574076.edi.txt) - File Load Report [development]",
-        f"""
+        to='test@stanford.edu',
+        subject="Acme FTP (ACME) - (inv574076.edi.txt) - File Load Report [development]",
+        html_content=f"""
         <h5>FOLIO Catalog EDI Load started on {now}</h5>
         <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
@@ -364,7 +372,9 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_folio_variables, tmp_p
 
 
 def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.vendor.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
     mocker.patch(
         "libsys_airflow.plugins.vendor.emails.conf.get",
         return_value="https://sul-libsys-airflow-stage.stanford.edu/",
@@ -381,9 +391,9 @@ def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
     )
 
     mock_send_email.assert_called_once_with(
-        'test@stanford.edu',
-        "Acme FTP (ACME) - (123456.mrc) - File Processed [development]",
-        f"""
+        to='test@stanford.edu',
+        subject="Acme FTP (ACME) - (123456.mrc) - File Processed [development]",
+        html_content=f"""
         <h5>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
         <p>
