@@ -52,5 +52,5 @@ def subject(**kwargs):
     if is_production():
         return f"Fix Encumbrances for {library}"
     else:
-        folio_url = re.sub('http?://', '', folio_url)
+        folio_url = re.sub('https?://', '', folio_url)
         return f"{folio_url} - Fix Encumbrances for {library}"
