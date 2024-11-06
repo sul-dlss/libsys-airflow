@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_production():
-    return bool(Variable.get("OKAPI_URL").find("prod") > 0)
+    return Variable.get("OKAPI_URL").find("prod") > 0
 
 
 def send_email_with_server_name(**kwargs):

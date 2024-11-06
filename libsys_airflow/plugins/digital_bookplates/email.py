@@ -6,8 +6,10 @@ from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 
-from libsys_airflow.plugins.shared.utils import is_production
-from libsys_airflow.plugins.shared.utils import send_email_with_server_name
+from libsys_airflow.plugins.shared.utils import (
+    is_production,
+    send_email_with_server_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +135,15 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
     ).render(dag_runs=dag_runs, folio_url=folio_url, dag_url=dag_url)
 
 
+def _to_addresses():
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
+    addresses = [devs_to_email_addr]
+    if is_production():
+        addresses.append(bookplates_email_addr)
+    return addresses
+
+
 @task
 def bookplates_metadata_email(**kwargs):
     """
@@ -165,7 +176,7 @@ def bookplates_metadata_email(**kwargs):
     )
 
     send_email_with_server_name(
-        to=to_addresses(),
+        to=_to_addresses(),
         subject="Digital bookplates new and updated metadata",
         html_content=html_content,
     )
@@ -185,7 +196,7 @@ def deleted_from_argo_email(**kwargs):
     html_content = _deleted_from_argo_email_body(deleted_druids)
 
     send_email_with_server_name(
-        to=to_addresses(),
+        to=_to_addresses(),
         subject="Deleted Druids from Argo for Digital bookplates",
         html_content=html_content,
     )
@@ -202,7 +213,7 @@ def missing_fields_email(**kwargs):
     html_content = _missing_fields_body(failures)
 
     send_email_with_server_name(
-        to=to_addresses(),
+        to=_to_addresses(),
         subject="Missing Fields for Digital Bookplates",
         html_content=html_content,
     )
@@ -214,26 +225,15 @@ def missing_fields_email(**kwargs):
 def summary_add_979_dag_runs(**kwargs):
     dag_runs = kwargs["dag_runs"]
     additional_email = kwargs.get("email")
-
     folio_url = Variable.get("FOLIO_URL")
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
 
-    to_emails = [devs_to_email_addr]
+    to_emails = _to_addresses()
     if additional_email:
         to_emails.append(additional_email)
     html_content = _summary_add_979_email(dag_runs, folio_url)
 
     send_email_with_server_name(
-        to=to_addresses(),
+        to=to_emails,
         subject="Summary of Adding 979 fields to MARC Workflows",
         html_content=html_content,
     )
-
-
-def to_addresses():
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    bookplates_email_addr = Variable.get("BOOKPLATES_EMAIL")
-    addresses = [devs_to_email_addr]
-    if is_production():
-        addresses.append(bookplates_email_addr)
-    return addresses
