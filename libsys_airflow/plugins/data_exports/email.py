@@ -156,6 +156,7 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
         )
 
 
+@task
 def generate_multiple_oclc_identifiers_email(**kwargs):
     """
     Generates an email for review by staff when multiple OCLC numbers
@@ -167,60 +168,24 @@ def generate_multiple_oclc_identifiers_email(**kwargs):
         logger.info("No multiple OCLC Identifiers")
         return
 
-    folio_url = Variable.get("FOLIO_URL")
-    devs_email = Variable.get("EMAIL_DEVS")
     cohort_emails = _cohort_emails()
 
     for library, report in reports.items():
-        to_emails = [
-            devs_email,
-        ]
-
-<<<<<<< HEAD
-    if is_production():
-        send_email_with_server_name(
-            to=[
-                devs_email,
-                cohort_emails["business"],
-                cohort_emails["hoover"],
-                cohort_emails["lane"],
-                cohort_emails["law"],
-                cohort_emails["sul"],
-            ],
-            subject="Review Instances with Multiple OCLC Indentifiers",
-            html_content=html_content,
-        )
-    else:
-        folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
-        send_email_with_server_name(
-            to=[
-                devs_email,
-            ],
-            subject=f"{folio_url} - Review Instances with Multiple OCLC Indentifiers",
-=======
-        subject_line = "Review Instances with Multiple OCLC Identifiers"
 
         to_emails, subject_line = _match_oclc_library(
             library=library,
-            to_emails=to_emails,
+            to_emails=[Variable.get("EMAIL_DEVS")],
             cohort_emails=cohort_emails,
-            subject_line=subject_line,
+            subject_line="Review Instances with Multiple OCLC Identifiers",
         )
 
-        if is_production():
-            subject_line = f"Production {subject_line}"
-        else:
-            folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
-            subject_line = f"{folio_url} {subject_line}"
-            to_emails.pop(0)
+        if not is_production():
+            to_emails.pop(0)  # Should only send report to libsys devs
 
-        html_content = _oclc_report_html(report, library)
-
-        send_email(
+        send_email_with_server_name(
             to=to_emails,
             subject=subject_line,
->>>>>>> e0feae39 (bug: Use existing tasks to generate report for multiple OCLC numbers)
-            html_content=html_content,
+            html_content=_oclc_report_html(report, library),
         )
 
 

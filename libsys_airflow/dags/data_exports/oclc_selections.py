@@ -131,14 +131,10 @@ with DAG(
         updates_records = kwargs.get("updates_records", [])
         return divide_into_oclc_libraries(marc_file_list=updates_records)
 
-    @task
-    def aggregate_email_multiple_records(**kwargs):
-        generate_multiple_oclc_identifiers_email(**kwargs)
-
     @task_group(group_id="multiple-oclc-numbers-group")
     def multiple_oclc_numbers_group(**kwargs):
         kwargs["reports"] = multiple_oclc_numbers_task(**kwargs)
-        aggregate_email_multiple_records(**kwargs)
+        generate_multiple_oclc_identifiers_email(**kwargs)
 
     @task
     def remove_original_marc_files(**kwargs):
