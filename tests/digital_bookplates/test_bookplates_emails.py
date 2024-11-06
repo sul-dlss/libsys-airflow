@@ -337,16 +337,19 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
 
 
 def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
+    mock_send_email = mocker.MagicMock()
 
-    mocker.patch(
-        "libsys_airflow.plugins.shared.utils.is_production",
-        return_value=True,
-    )
+    mock_is_production = lambda: True  # noqa
 
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.email.is_production",
         return_value=True,
+    )
+
+    mocker.patch.multiple(
+        "libsys_airflow.plugins.shared.utils",
+        send_email=mock_send_email,
+        is_production=mock_is_production,
     )
 
     summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
