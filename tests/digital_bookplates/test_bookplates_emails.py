@@ -77,6 +77,35 @@ def mock_bookplate_metadata():
     }
 
 
+@pytest.fixture
+def mock_DAG979Sensor():
+    return {
+        "manual__2024-10-20T02:00:00+00:00": {
+            "state": "success",
+            "instances": [
+                {
+                    "uuid": "fddf7e4c-161e-4ae8-baad-058288f63e17",
+                    "funds": [
+                        {
+                            "name": "HOSKINS",
+                            "title": "Janina Wojcicka Hoskins Book Fund for Polish Humanities",
+                        }
+                    ],
+                },
+                {
+                    "uuid": "5394da8a-e503-424e-aca7-7ba73ddafc03",
+                    "funds": [
+                        {
+                            "name": None,
+                            "title": "David Jackman Jr. and Sally J. Jackman Endowed Book Fund for Archeology and Anthropology of Pre-Columbian Civilizations",
+                        }
+                    ],
+                },
+            ],
+        }
+    }
+
+
 def test_bookplates_metadata_email(
     mocker, mock_bookplate_metadata, mock_folio_variables
 ):
@@ -282,7 +311,7 @@ def test_missing_fields_email_prod(mocker, mock_folio_variables):
     )
 
 
-def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
+def test_summary_add_979_dag_runs(mocker, mock_DAG979Sensor, mock_folio_variables):
     mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     mocker.patch(
@@ -290,32 +319,9 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
         return_value="https://sul-libsys-airflow.stanford.edu",
     )
 
-    dag_runs = {
-        "manual__2024-10-20T02:00:00+00:00": {
-            "state": "success",
-            "instances": [
-                {
-                    "uuid": "fddf7e4c-161e-4ae8-baad-058288f63e17",
-                    "funds": [
-                        {
-                            "name": "HOSKINS",
-                            "title": "Janina Wojcicka Hoskins Book Fund for Polish Humanities",
-                        }
-                    ],
-                },
-                {
-                    "uuid": "5394da8a-e503-424e-aca7-7ba73ddafc03",
-                    "funds": [
-                        {
-                            "name": None,
-                            "title": "David Jackman Jr. and Sally J. Jackman Endowed Book Fund for Archeology and Anthropology of Pre-Columbian Civilizations",
-                        }
-                    ],
-                },
-            ],
-        }
-    }
-    summary_add_979_dag_runs.function(dag_runs=dag_runs, email="dscully@stanford.edu")
+    summary_add_979_dag_runs.function(
+        dag_runs=mock_DAG979Sensor, email="dscully@stanford.edu"
+    )
 
     assert mock_send_email.called
 
@@ -336,7 +342,7 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
     assert tds[3].text.startswith("David Jackman Jr. and Sally J. Jackman")
 
 
-def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
+def test_summary_add_979_dag_runs_prod(mocker, mock_DAG979Sensor, mock_folio_variables):
     mock_send_email = mocker.MagicMock()
 
     mock_is_production = lambda: True  # noqa
@@ -352,7 +358,9 @@ def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
         is_production=mock_is_production,
     )
 
-    summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
+    summary_add_979_dag_runs.function(
+        dag_runs=mock_DAG979Sensor, email="dscully@stanford.edu"
+    )
 
     assert mock_send_email.call_args[1]["subject"].startswith(
         "Summary of Adding 979 fields to MARC Workflows"
@@ -363,3 +371,16 @@ def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
         'nobody@example.com',
         'dscully@stanford.edu',
     ]
+
+
+def test_no_summary_add_979_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
+
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.email.conf.get",
+        return_value="https://sul-libsys-airflow.stanford.edu",
+    )
+
+    summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
+
+    assert mock_send_email.called is False
