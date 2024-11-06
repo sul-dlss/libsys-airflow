@@ -2,9 +2,11 @@ import httpx
 import json
 import logging
 import pymarc
+import re
 
 from typing import Union
 from airflow.models import Variable
+from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
@@ -12,7 +14,33 @@ logger = logging.getLogger(__name__)
 
 
 def is_production():
-    return bool(Variable.get("OKAPI_URL").find("prod") > 0)
+    return Variable.get("OKAPI_URL").find("prod") > 0
+
+
+def send_email_with_server_name(**kwargs):
+    """
+    send_email wrapper to include subject with server name
+        when not run in production
+    """
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    to_addresses = kwargs.get("to", devs_to_email_addr)
+    subject = kwargs.get("subject")
+    html_content = kwargs.get("html_content")
+    send_email(
+        to=to_addresses,
+        subject=_subject_with_server_name(subject=subject),
+        html_content=html_content,
+    )
+
+
+def _subject_with_server_name(**kwargs):
+    subject = kwargs.get("subject")
+    folio_url = Variable.get("FOLIO_URL", "folio-test/stage")
+    if is_production():
+        return subject
+    else:
+        folio_url = re.sub('https?://', '', folio_url)
+        return f"{folio_url} - {subject}"
 
 
 class FolioAddMarcTags(object):

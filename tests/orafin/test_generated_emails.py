@@ -144,7 +144,9 @@ def mock_retrieve_invoice_task_xcom_pull(**kwargs):
 
 
 def test_generate_ap_error_report_email(mocker):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -211,7 +213,9 @@ def test_generate_ap_error_report_email_options(mocker):
             return [{"invoice_id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1"}]
         return None
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -260,7 +264,9 @@ def test_generate_ap_paid_report_email(mocker):
                 },
             ]
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -290,7 +296,9 @@ def test_generate_ap_paid_report_email(mocker):
 
 
 def test_generate_excluded_email(mocker):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -382,7 +390,9 @@ def test_generate_invoice_error_email(mocker):
             'PoNumber': None,
         }
 
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -421,7 +431,9 @@ def test_generate_invoice_error_email(mocker):
 
 
 def test_generate_summary_email(mocker):
-    mock_send_email = mocker.patch("libsys_airflow.plugins.orafin.emails.send_email")
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",

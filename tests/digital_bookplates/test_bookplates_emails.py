@@ -31,7 +31,7 @@ failures = [
 
 @pytest.fixture
 def mock_folio_variables(monkeypatch):
-    def mock_get(key):
+    def mock_get(key, *args):
         value = None
         match key:
             case "FOLIO_URL":
@@ -81,9 +81,7 @@ def test_bookplates_metadata_email(
     mocker, mock_bookplate_metadata, mock_folio_variables
 ):
 
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     bookplates_metadata_email.function(
         new=mock_bookplate_metadata["new"], updated=mock_bookplate_metadata["updated"]
@@ -121,9 +119,7 @@ def test_bookplates_metadata_email(
 
 
 def test_bookplates_metadata_email_none(mocker, mock_folio_variables, caplog):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     bookplates_metadata_email.function(new=None, updated=None)
 
@@ -138,9 +134,7 @@ def test_no_new_bookplates_metadata_email(
     mocker, mock_bookplate_metadata, mock_folio_variables, caplog
 ):
 
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     bookplates_metadata_email.function(
         new=[], updated=mock_bookplate_metadata["updated"]
@@ -173,9 +167,7 @@ def test_no_updated_bookplates_metadata_email(
     mocker, mock_bookplate_metadata, mock_folio_variables, caplog
 ):
 
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     bookplates_metadata_email.function(
         new=mock_bookplate_metadata["new"],
@@ -201,9 +193,7 @@ def test_no_updated_bookplates_metadata_email(
 
 def test_deleted_from_argo_email(mocker, mock_folio_variables):
 
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     deleted_druids_info = [
         {"title": "The Happy Fund", "druid": "ab123xy4567", "fund_name": "HAPY"}
@@ -226,9 +216,7 @@ def test_deleted_from_argo_email(mocker, mock_folio_variables):
 
 
 def test_deleted_from_argo_email_no_druids(mocker, caplog):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     deleted_from_argo_email.function(deleted_druids=[])
 
@@ -237,12 +225,10 @@ def test_deleted_from_argo_email_no_druids(mocker, caplog):
 
 
 def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.is_production",
+        "libsys_airflow.plugins.shared.utils.is_production",
         return_value=True,
     )
 
@@ -254,9 +240,7 @@ def test_deleted_from_argo_email_prod(mocker, mock_folio_variables, caplog):
 
 
 def test_missing_fields_email(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     missing_fields_email.function(failures=failures)
 
@@ -284,12 +268,10 @@ def test_missing_fields_email_no_failures(mock_folio_variables, caplog):
 
 
 def test_missing_fields_email_prod(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.is_production",
+        "libsys_airflow.plugins.shared.utils.is_production",
         return_value=True,
     )
 
@@ -301,9 +283,7 @@ def test_missing_fields_email_prod(mocker, mock_folio_variables):
 
 
 def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.email.conf.get",
@@ -357,13 +337,19 @@ def test_summary_add_979_dag_runs(mocker, mock_folio_variables):
 
 
 def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.send_email"
-    )
+    mock_send_email = mocker.MagicMock()
+
+    mock_is_production = lambda: True  # noqa
 
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.email.is_production",
         return_value=True,
+    )
+
+    mocker.patch.multiple(
+        "libsys_airflow.plugins.shared.utils",
+        send_email=mock_send_email,
+        is_production=mock_is_production,
     )
 
     summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
@@ -374,6 +360,6 @@ def test_summary_add_979_dag_runs_prod(mocker, mock_folio_variables):
 
     assert mock_send_email.call_args[1]["to"] == [
         'test@example.com',
-        'dscully@stanford.edu',
         'nobody@example.com',
+        'dscully@stanford.edu',
     ]

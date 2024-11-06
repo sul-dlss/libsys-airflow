@@ -56,7 +56,7 @@ def mock_dag_run(mocker):
 
 def test_multiple_oclc_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email"
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     generate_multiple_oclc_identifiers_email(
@@ -99,7 +99,9 @@ def test_multiple_oclc_email(mocker, mock_folio_variables):
 
 
 def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
-    mocker.patch("libsys_airflow.plugins.data_exports.email.send_email")
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
 
     generate_multiple_oclc_identifiers_email([])
 
@@ -108,7 +110,7 @@ def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
 
 def test_nonprod_oclc_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email"
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     mocker.patch(
@@ -149,7 +151,7 @@ def test_no_failed_transmission_email(mock_dag_run, caplog):
 
 def test_failed_transmission_email(mocker, mock_dag_run, mock_folio_variables, caplog):
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email"
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     files = [
@@ -200,7 +202,7 @@ def test_failed_full_dump_transmission_email(
     mock_dag_run.id = "send_all_records"
 
     mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email"
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     files = [

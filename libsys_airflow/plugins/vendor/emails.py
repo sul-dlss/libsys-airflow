@@ -5,7 +5,6 @@ import pathlib
 from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
-from airflow.utils.email import send_email
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session
@@ -17,6 +16,8 @@ from libsys_airflow.plugins.vendor.marc import (
     extract_double_zero_one_field_values,
 )
 from libsys_airflow.plugins.vendor.edi import invoice_count
+from libsys_airflow.plugins.shared.utils import send_email_with_server_name
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,10 @@ def send_files_fetched_email(**kwargs):
     subject = Template(
         "{{vendor_interface_name}} ({{vendor_code}}) - Daily Fetch Report ({{date}}) [{{environment}}]"
     ).render(kwargs)
-    send_email(
-        Variable.get('VENDOR_LOADS_TO_EMAIL'),
-        subject,
-        _files_fetched_html_content(**kwargs),
+    send_email_with_server_name(
+        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        subject=subject,
+        html_content=_files_fetched_html_content(**kwargs),
     )
 
 
@@ -103,10 +104,10 @@ def send_file_loaded_email(**kwargs):
     subject = Template(
         "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]"
     ).render(kwargs)
-    send_email(
-        Variable.get('VENDOR_LOADS_TO_EMAIL'),
-        subject,
-        html_content,
+    send_email_with_server_name(
+        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        subject=subject,
+        html_content=html_content,
     )
 
 
@@ -193,12 +194,12 @@ def file_not_loaded_email_task(**kwargs):
 
 
 def send_file_not_loaded_email(**kwargs):
-    send_email(
-        Variable.get('VENDOR_LOADS_TO_EMAIL'),
-        Template(
+    send_email_with_server_name(
+        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        subject=Template(
             "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Processed [{{environment}}]"
         ).render(kwargs),
-        _file_not_loaded_html_content(**kwargs),
+        html_content=_file_not_loaded_html_content(**kwargs),
     )
 
 

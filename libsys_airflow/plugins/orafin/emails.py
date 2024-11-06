@@ -9,10 +9,10 @@ from typing import Union
 from jinja2 import Environment, Template
 
 from airflow.models import Variable
-from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.orafin.models import Invoice
 from libsys_airflow.plugins.orafin.payments import models_converter
+from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 logger = logging.getLogger(__name__)
 
@@ -223,7 +223,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     sul_html_content = _excluded_email_body(sul_invoices, folio_url)
     if len(sul_html_content.strip()) > 0:
         logger.info(f"Sending email to {sul_to_email_addr} for SUL rejected invoices")
-        send_email(
+        send_email_with_server_name(
             to=[
                 sul_to_email_addr,
                 devs_to_email_addr,
@@ -238,7 +238,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
         logger.info(
             f"Sending email to {bus_to_email_addr} for Business rejected invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[bus_to_email_addr, devs_to_email_addr],
             subject="Rejected Invoices for Business",
             html_content=bus_html_content,
@@ -247,7 +247,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     law_html_content = _excluded_email_body(law_invoices, folio_url)
     if len(law_html_content.strip()) > 0:
         logger.info(f"Sending email to {law_to_email_addr} for Law rejected invoices")
-        send_email(
+        send_email_with_server_name(
             to=[
                 law_to_email_addr,
                 devs_to_email_addr,
@@ -293,7 +293,7 @@ def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
         folio_url=folio_url, invoice_id=invoice_id, row=ap_report_row
     )
 
-    send_email(
+    send_email_with_server_name(
         to=[
             sul_to_email_addr,
             bus_to_email_addr,
@@ -352,7 +352,7 @@ def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
         missing_invoices_df, cancelled_invoices_df, paid_invoices_df, folio_url
     )
 
-    send_email(
+    send_email_with_server_name(
         to=[
             sul_to_email_addr,
             law_to_email_addr,
@@ -392,7 +392,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         logger.info(
             f"Sending email to {sul_to_email_addr} for {len(sul_invoices):,} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[
                 sul_to_email_addr,
                 devs_to_email_addr,
@@ -409,7 +409,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         logger.info(
             f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[bus_to_email_addr, devs_to_email_addr],
             subject=f"Paid Invoices from {ap_report_name} for Business",
             html_content=business_html_content,
@@ -424,7 +424,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         logger.info(
             f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[
                 law_to_email_addr,
                 devs_to_email_addr,
@@ -456,7 +456,7 @@ def generate_summary_email(invoices: list, folio_url: str):
         logger.info(
             f"Sending email to {sul_to_email_addr} for {len(sul_invoices)} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[
                 sul_to_email_addr,
                 devs_to_email_addr,
@@ -471,7 +471,7 @@ def generate_summary_email(invoices: list, folio_url: str):
         logger.info(
             f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[bus_to_email_addr, devs_to_email_addr],
             subject="Approved Invoices Sent to AP for Business",
             html_content=business_html_content,
@@ -483,7 +483,7 @@ def generate_summary_email(invoices: list, folio_url: str):
         logger.info(
             f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
         )
-        send_email(
+        send_email_with_server_name(
             to=[
                 law_to_email_addr,
                 devs_to_email_addr,

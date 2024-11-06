@@ -1,10 +1,7 @@
-import re
-
 from airflow.models import Variable
-from airflow.utils.email import send_email
 from jinja2 import Template
 
-from libsys_airflow.plugins.shared.utils import is_production
+from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 
 def email_log(**kwargs):
@@ -28,7 +25,7 @@ def email_log(**kwargs):
             to_addresses.append(lane_email)
 
     with open(log_file, 'r') as fo:
-        send_email(
+        send_email_with_server_name(
             to=to_addresses,
             subject=subject(library=library),
             html_content=_email_body(fo),
@@ -48,9 +45,4 @@ def _email_body(log):
 
 def subject(**kwargs):
     library = kwargs.get("library", "")
-    folio_url = Variable.get("FOLIO_URL", "Test or Stage")
-    if is_production():
-        return f"Fix Encumbrances for {library}"
-    else:
-        folio_url = re.sub('https?://', '', folio_url)
-        return f"{folio_url} - Fix Encumbrances for {library}"
+    return f"Fix Encumbrances for {library}"
