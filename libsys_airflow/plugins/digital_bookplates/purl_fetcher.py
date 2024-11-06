@@ -159,23 +159,23 @@ def filter_updates_errors(db_results: list) -> dict:
     """
     [
         {'new': {'druid': 'bm244yj4074', 'image_filename': 'bm244yj4074_00_0001.jp2', 'failure': None, 'fund_name': 'DINSMOREM', 'title': 'Migsie and Treat Dinsmore Memorial Book Fund', 'db_id': 4209, 'fund_uuid': 'cd8d6871-4697-4dd0-b271-8805a9c18fb0'}},
-        {'updates: {}'},
+        {'updated: {}'},
         {'failure: {}'},
     ]
     """
     logger.info(db_results)
-    failures, updates, new = [], [], []
+    failures, updated, new = [], [], []
     for row in db_results:
         if "failure" in row:
             failures.append(row["failure"])
         if "new" in row:
             new.append(row["new"])
-        if "updates" in row:
-            updates.append(row["updates"])
+        if "updated" in row:
+            updated.append(row["updated"])
     logger.info(
-        f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updates):,}"
+        f"Totals: New records {len(new):,}, Failures {len(failures):,} and Updates {len(updated):,}"
     )
-    return {"failures": failures, "new": new, "updates": updates}
+    return {"failures": failures, "new": new, "updated": updated}
 
 
 @task
