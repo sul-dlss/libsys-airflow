@@ -241,7 +241,7 @@ def test_dont_fetch_folio_fund_id():
 
 
 def test_filter_updates_errors():
-    db_results = [{"failure": {}}, {"new": {}}, {"update": {}}]
+    db_results = [{"failure": {}}, {"new": {}}, {"updated": {}}]
 
     result = filter_updates_errors.function(db_results)
 
