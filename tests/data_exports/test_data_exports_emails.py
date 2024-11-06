@@ -11,7 +11,7 @@ from libsys_airflow.plugins.data_exports.email import (
 
 @pytest.fixture
 def mock_folio_variables(monkeypatch):
-    def mock_get(key):
+    def mock_get(key, *args):
         value = None
         match key:
             case "FOLIO_URL":
@@ -55,11 +55,21 @@ def mock_dag_run(mocker):
 
 
 def test_multiple_oclc_email(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+
+    mock_send_email = mocker.MagicMock()
+
+    mocker.patch.multiple(
+        "libsys_airflow.plugins.shared.utils",
+        send_email=mock_send_email,
+        is_production=lambda: False,
     )
 
-    generate_multiple_oclc_identifiers_email(
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=False,
+    )
+
+    generate_multiple_oclc_identifiers_email.function(
         reports={
             "STF": "/opt/airflow/data-export-files/oclc/reports/STF/multiple_oclc_numbers/2024-11-05T23:26:11.316254.html",
             "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
@@ -87,7 +97,7 @@ def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
-    generate_multiple_oclc_identifiers_email(reports={})
+    generate_multiple_oclc_identifiers_email.function(reports={})
 
     assert "No multiple OCLC Identifiers" in caplog.text
 
@@ -102,7 +112,7 @@ def test_prod_oclc_email(mocker, mock_folio_variables):
         return_value=True,
     )
 
-    generate_multiple_oclc_identifiers_email(
+    generate_multiple_oclc_identifiers_email.function(
         reports={
             "CASUM": "/opt/airflow/data-export-files/oclc/reports/CASUM/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
             "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
@@ -113,7 +123,7 @@ def test_prod_oclc_email(mocker, mock_folio_variables):
 
     assert (
         mock_send_email.call_args_list[1][1]["subject"]
-        == "Production Review Instances with Multiple OCLC Identifiers Hoover"
+        == "Review Instances with Multiple OCLC Identifiers Hoover"
     )
     assert mock_send_email.call_args_list[1][1]['to'] == [
         "hoover@example.com",
