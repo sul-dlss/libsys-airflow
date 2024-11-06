@@ -3,6 +3,7 @@ import logging
 from typing import Union
 
 from airflow.decorators import task
+from airflow.exceptions import AirflowException
 from airflow.models import DagBag, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.utils import timezone
@@ -236,7 +237,10 @@ def add_marc_tags_to_record(**kwargs):
     marc_tags = kwargs["marc_instance_tags"]
     instance_id = kwargs["instance_uuid"]
     folio_add_marc_tags = utils.FolioAddMarcTags()
-    return folio_add_marc_tags.put_folio_records(marc_tags, instance_id)
+    if folio_add_marc_tags.put_folio_records(marc_tags, instance_id):
+        return True
+    else:
+        raise AirflowException("Failed to add marc tags to record.")
 
 
 @task

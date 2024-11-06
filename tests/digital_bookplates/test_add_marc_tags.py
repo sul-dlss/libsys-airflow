@@ -44,20 +44,6 @@ def sample_marc_records():
     return sample
 
 
-def mock_httpx_client():
-    def mock_response(request):
-        response = None
-        match request.method:
-
-            case 'PUT':
-                if request.url.path.startswith('/change-manager/parsedRecords'):
-                    response = httpx.Response(status_code=202)
-
-        return response
-
-    return httpx.Client(transport=httpx.MockTransport(mock_response))
-
-
 def mock_folio_client(mocker):
     sample_marc = sample_marc_records()
 
@@ -114,11 +100,11 @@ def mock_folio_client(mocker):
 
 
 @pytest.fixture
-def mock_folio_add_marc_tags(mocker):
-    mock_httpx = mocker.MagicMock()
-    mock_httpx.Client = lambda: mock_httpx_client()
-
-    mocker.patch.object(utils, "httpx", mock_httpx)
+def mock_folio_add_marc_tags(mocker, mock_httpx_success):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.httpx.Client",
+        return_value=mock_httpx_success,
+    )
 
     mocker.patch(
         "libsys_airflow.plugins.shared.utils.folio_client",
@@ -126,6 +112,35 @@ def mock_folio_add_marc_tags(mocker):
     )
 
     return mocker
+
+
+@pytest.fixture
+def mock_folio_add_marc_tags_failed(mocker, mock_httpx_failure):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.httpx.Client",
+        return_value=mock_httpx_failure,
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.folio_client",
+        return_value=mock_folio_client(mocker),
+    )
+
+    return mocker
+
+
+@pytest.fixture
+def mock_httpx_success():
+    return httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(202))
+    )
+
+
+@pytest.fixture
+def mock_httpx_failure():
+    return httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(404))
+    )
 
 
 marc_instance_tags = {
@@ -165,5 +180,17 @@ def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, caplog):
     assert put_record_result is True
     assert (
         r"Skip adding duplicated =979  \\$fABBOTT$bdruid:ws066yy0421$cws066yy0421_00_0001.jp2$dThe The Donald P. Abbott Fund for Marine Invertebrates field"
+        in caplog.text
+    )
+
+
+def test_put_folio_records_failed(mock_folio_add_marc_tags_failed, caplog):
+    add_marc_tag = utils.FolioAddMarcTags()
+    put_record_result = add_marc_tag.put_folio_records(
+        marc_instance_tags, "242c6000-8485-5fcd-9b5e-adb60788ca59"
+    )
+    assert put_record_result is False
+    assert (
+        "Failed to update FOLIO for Instance 242c6000-8485-5fcd-9b5e-adb60788ca59 with SRS e5c1d877-5707-4bd7-8576-1e2e69d83e70"
         in caplog.text
     )
