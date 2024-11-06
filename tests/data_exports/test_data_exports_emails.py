@@ -60,41 +60,25 @@ def test_multiple_oclc_email(mocker, mock_folio_variables):
     )
 
     generate_multiple_oclc_identifiers_email(
-        [
-            (
-                "ae0b6949-6219-51cd-9a61-7794c2081fe7",
-                "STF",
-                ["(OCoLC-M)21184692", "(OCoLC-I)272673749"],
-            ),
-            (
-                "0221724f-2bca-497b-8d42-6786295e7173",
-                "HIN",
-                ["(OCoLC-M)99087632", "(OCoLC-I)889220055"],
-            ),
-        ]
+        reports={
+            "STF": "/opt/airflow/data-export-files/oclc/reports/STF/multiple_oclc_numbers/2024-11-05T23:26:11.316254.html",
+            "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "S7Z": "/opt/airflow/data-export-files/oclc/reports/S7Z/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+        }
     )
-    assert mock_send_email.called
+    assert mock_send_email.call_count == 3
 
-    html_body = BeautifulSoup(
-        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    sul_html_body = BeautifulSoup(
+        mock_send_email.call_args_list[0][1]['html_content'], 'html.parser'
     )
 
-    list_items = html_body.find_all("li")
+    sul_report_link = sul_html_body.find("a")
 
-    assert (
-        list_items[0]
-        .find("a")
-        .get("href")
-        .endswith("/inventory/viewsource/ae0b6949-6219-51cd-9a61-7794c2081fe7")
-    )
+    assert sul_report_link.text == "2024-11-05T23:26:11.316254.html"
 
-    assert "(OCoLC-M)21184692" in list_items[0].text
-
-    assert (
-        list_items[1]
-        .find("a")
-        .get("href")
-        .endswith("/inventory/viewsource/0221724f-2bca-497b-8d42-6786295e7173")
+    assert mock_send_email.call_args_list[1][1]["to"] == ['test@stanford.edu']
+    assert mock_send_email.call_args_list[1][1]["subject"].endswith(
+        "Multiple OCLC Identifiers Hoover"
     )
 
 
@@ -103,43 +87,37 @@ def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
-    generate_multiple_oclc_identifiers_email([])
+    generate_multiple_oclc_identifiers_email(reports={})
 
     assert "No multiple OCLC Identifiers" in caplog.text
 
 
-def test_nonprod_oclc_email(mocker, mock_folio_variables):
+def test_prod_oclc_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
-        return_value=False,
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=True,
     )
 
     generate_multiple_oclc_identifiers_email(
-        [
-            (
-                "ae0b6949-6219-51cd-9a61-7794c2081fe7",
-                "STF",
-                ["(OCoLC-M)21184692", "(OCoLC-I)272673749"],
-            ),
-            (
-                "0221724f-2bca-497b-8d42-6786295e7173",
-                "HIN",
-                ["(OCoLC-M)99087632", "(OCoLC-I)889220055"],
-            ),
-        ]
+        reports={
+            "CASUM": "/opt/airflow/data-export-files/oclc/reports/CASUM/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "RCJ": "/opt/airflow/data-export-files/oclc/reports/RCJ/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+        }
     )
     assert mock_send_email.called
 
     assert (
-        mock_send_email.call_args[1]["subject"]
-        == "folio-test - Review Instances with Multiple OCLC Indentifiers"
+        mock_send_email.call_args_list[1][1]["subject"]
+        == "Production Review Instances with Multiple OCLC Identifiers Hoover"
     )
-    assert mock_send_email.call_args[1]['to'] == [
-        'test@stanford.edu',
+    assert mock_send_email.call_args_list[1][1]['to'] == [
+        "hoover@example.com",
+        "test@stanford.edu",
     ]
 
 
