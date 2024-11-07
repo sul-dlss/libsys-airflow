@@ -101,7 +101,7 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
 
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
-    dag_url = f"{airflow_url}dags/digital_bookplate_979/grid?run_id="
+    dag_url = f"{airflow_url}dags/digital_bookplate_979/grid?dag_run_id="
     return Template(
         """
         <h2>Results from adding 979 fields Workflows</h2>
