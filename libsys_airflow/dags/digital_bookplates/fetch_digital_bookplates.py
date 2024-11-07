@@ -36,7 +36,7 @@ def email_group(**kwargs):
     deleted_druids = kwargs["deleted"]
     failures = kwargs["failures"]
     new_bookplates = kwargs["new"]
-    updated_bookplates = kwargs["updates"]
+    updated_bookplates = kwargs["updated"]
 
     bookplates_metadata_email(new=new_bookplates, updated=updated_bookplates)
     deleted_from_argo_email(deleted_druids=deleted_druids)
@@ -78,7 +78,7 @@ def fetch_digital_bookplates():
             deleted=deleted_druids,
             failures=filtered_data["failures"],
             new=filtered_data["new"],
-            updates=filtered_data["updates"],
+            updated=filtered_data["updated"],
         )
         >> end
     )
