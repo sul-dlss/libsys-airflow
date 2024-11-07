@@ -38,6 +38,7 @@ def poll_979_dags(**kwargs):
 @dag(
     default_args=default_args,
     start_date=datetime(2024, 10, 15),
+    schedule=None,
     catchup=False,
     tags=["digital bookplates"],
     max_active_runs=3,

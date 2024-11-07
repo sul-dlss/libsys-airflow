@@ -98,6 +98,8 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
 
 def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
     airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+    if len(dag_runs) < 1:
+        return ""
 
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
@@ -232,8 +234,9 @@ def summary_add_979_dag_runs(**kwargs):
         to_emails.append(additional_email)
     html_content = _summary_add_979_email(dag_runs, folio_url)
 
-    send_email_with_server_name(
-        to=to_emails,
-        subject="Summary of Adding 979 fields to MARC Workflows",
-        html_content=html_content,
-    )
+    if len(html_content.strip()) > 0:
+        send_email_with_server_name(
+            to=to_emails,
+            subject="Summary of Adding 979 fields to MARC Workflows",
+            html_content=html_content,
+        )
