@@ -14,25 +14,6 @@ from libsys_airflow.plugins.shared.utils import is_production
 logger = logging.getLogger(__name__)
 
 
-def _oclc_identifiers(multiple_codes: list, folio_url: str):
-    template = Template(
-        """<h2>Multiple OCLC Identifiers</h2>
-    <p>These Instances contain multiple OCLC identifiers and need
-    manual remediation to be uploaded to OCLC</p>
-    <ul>
-    {% for row in multiple_codes %}
-     <li>
-       <a href="{{folio_url}}/inventory/viewsource/{{row[0]}}">MARC view of Instance {{row[0]}}</a>
-       with OCLC Identifiers {% for code in row[2] %}{{ code }}{% if not loop.list %}, {% endif %}{% endfor %}.
-     </li>
-    {% endfor %}
-    </ul>
-    """
-    )
-
-    return template.render(folio_url=folio_url, multiple_codes=multiple_codes)
-
-
 def _cohort_emails():
     return {
         "business": Variable.get("OCLC_EMAIL_BUS"),
@@ -175,44 +156,36 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
         )
 
 
-def generate_multiple_oclc_identifiers_email(multiple_codes: list):
+@task
+def generate_multiple_oclc_identifiers_email(**kwargs):
     """
     Generates an email for review by staff when multiple OCLC numbers
     exist for a record
     """
-    if len(multiple_codes) < 1:
+    reports = kwargs["reports"]
+
+    if len(reports) < 1:
         logger.info("No multiple OCLC Identifiers")
         return
-    logger.info(
-        f"Generating Email of Multiple OCLC Identifiers for {len(multiple_codes)}"
-    )
-    folio_url = Variable.get("FOLIO_URL")
-    devs_email = Variable.get("EMAIL_DEVS")
+
     cohort_emails = _cohort_emails()
 
-    html_content = _oclc_identifiers(multiple_codes, folio_url)
+    for library, report in reports.items():
 
-    if is_production():
-        send_email_with_server_name(
-            to=[
-                devs_email,
-                cohort_emails["business"],
-                cohort_emails["hoover"],
-                cohort_emails["lane"],
-                cohort_emails["law"],
-                cohort_emails["sul"],
-            ],
-            subject="Review Instances with Multiple OCLC Indentifiers",
-            html_content=html_content,
+        to_emails, subject_line = _match_oclc_library(
+            library=library,
+            to_emails=[Variable.get("EMAIL_DEVS")],
+            cohort_emails=cohort_emails,
+            subject_line="Review Instances with Multiple OCLC Identifiers",
         )
-    else:
-        folio_url = folio_url.replace("https://", "").replace(".stanford.edu", "")
+
+        if not is_production():
+            to_emails.pop(0)  # Should only send report to libsys devs
+
         send_email_with_server_name(
-            to=[
-                devs_email,
-            ],
-            subject=f"{folio_url} - Review Instances with Multiple OCLC Indentifiers",
-            html_content=html_content,
+            to=to_emails,
+            subject=subject_line,
+            html_content=_oclc_report_html(report, library),
         )
 
 

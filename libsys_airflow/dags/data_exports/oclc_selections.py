@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 
-from airflow.decorators import task
+from airflow.decorators import task, task_group
 from airflow.models.param import Param
 from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
@@ -31,6 +31,8 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
 )
+
+from libsys_airflow.plugins.data_exports.oclc_reports import multiple_oclc_numbers_task
 
 logger = logging.getLogger(__name__)
 
@@ -129,15 +131,10 @@ with DAG(
         updates_records = kwargs.get("updates_records", [])
         return divide_into_oclc_libraries(marc_file_list=updates_records)
 
-    @task
-    def aggregate_email_multiple_records(**kwargs):
-        ti = kwargs["ti"]
-        new_multiple_records = ti.xcom_pull(task_ids='divide_new_records_by_library')
-        deletes_multiple_records = ti.xcom_pull(
-            task_ids='divide_delete_records_by_library'
-        )
-        all_multiple_records = new_multiple_records + deletes_multiple_records
-        generate_multiple_oclc_identifiers_email(all_multiple_records)
+    @task_group(group_id="multiple-oclc-numbers-group")
+    def multiple_oclc_numbers_group(**kwargs):
+        kwargs["reports"] = multiple_oclc_numbers_task(**kwargs)
+        generate_multiple_oclc_identifiers_email(**kwargs)
 
     @task
     def remove_original_marc_files(**kwargs):
@@ -162,6 +159,8 @@ with DAG(
 
     finish_division = EmptyOperator(task_id="finish_division")
 
+    multiple_oclc_numbers = multiple_oclc_numbers_group()
+
     remove_original_marc = remove_original_marc_files(marc_file_list=fetch_marc_records)
 
     finish_processing_marc = EmptyOperator(
@@ -171,7 +170,6 @@ with DAG(
 
 check_record_ids >> fetch_folio_record_ids >> filter_out_updates_ids >> save_ids_to_file
 check_record_ids >> save_ids_to_file >> fetch_marc_records
-
 
 (
     fetch_marc_records
@@ -185,6 +183,6 @@ check_record_ids >> save_ids_to_file >> fetch_marc_records
 
 (
     finish_division
-    >> [aggregate_email_multiple_records(), remove_original_marc, archive_csv]
+    >> [multiple_oclc_numbers, remove_original_marc, archive_csv]
     >> finish_processing_marc
 )

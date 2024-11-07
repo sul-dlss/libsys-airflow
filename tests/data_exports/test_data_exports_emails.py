@@ -11,7 +11,7 @@ from libsys_airflow.plugins.data_exports.email import (
 
 @pytest.fixture
 def mock_folio_variables(monkeypatch):
-    def mock_get(key):
+    def mock_get(key, *args):
         value = None
         match key:
             case "FOLIO_URL":
@@ -55,46 +55,40 @@ def mock_dag_run(mocker):
 
 
 def test_multiple_oclc_email(mocker, mock_folio_variables):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+
+    mock_send_email = mocker.MagicMock()
+
+    mocker.patch.multiple(
+        "libsys_airflow.plugins.shared.utils",
+        send_email=mock_send_email,
+        is_production=lambda: False,
     )
 
-    generate_multiple_oclc_identifiers_email(
-        [
-            (
-                "ae0b6949-6219-51cd-9a61-7794c2081fe7",
-                "STF",
-                ["(OCoLC-M)21184692", "(OCoLC-I)272673749"],
-            ),
-            (
-                "0221724f-2bca-497b-8d42-6786295e7173",
-                "HIN",
-                ["(OCoLC-M)99087632", "(OCoLC-I)889220055"],
-            ),
-        ]
-    )
-    assert mock_send_email.called
-
-    html_body = BeautifulSoup(
-        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=False,
     )
 
-    list_items = html_body.find_all("li")
+    generate_multiple_oclc_identifiers_email.function(
+        reports={
+            "STF": "/opt/airflow/data-export-files/oclc/reports/STF/multiple_oclc_numbers/2024-11-05T23:26:11.316254.html",
+            "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "S7Z": "/opt/airflow/data-export-files/oclc/reports/S7Z/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+        }
+    )
+    assert mock_send_email.call_count == 3
 
-    assert (
-        list_items[0]
-        .find("a")
-        .get("href")
-        .endswith("/inventory/viewsource/ae0b6949-6219-51cd-9a61-7794c2081fe7")
+    sul_html_body = BeautifulSoup(
+        mock_send_email.call_args_list[0][1]['html_content'], 'html.parser'
     )
 
-    assert "(OCoLC-M)21184692" in list_items[0].text
+    sul_report_link = sul_html_body.find("a")
 
-    assert (
-        list_items[1]
-        .find("a")
-        .get("href")
-        .endswith("/inventory/viewsource/0221724f-2bca-497b-8d42-6786295e7173")
+    assert sul_report_link.text == "2024-11-05T23:26:11.316254.html"
+
+    assert mock_send_email.call_args_list[1][1]["to"] == ['test@stanford.edu']
+    assert mock_send_email.call_args_list[1][1]["subject"].endswith(
+        "Multiple OCLC Identifiers Hoover"
     )
 
 
@@ -103,43 +97,37 @@ def test_no_multiple_oclc_code_email(mocker, mock_folio_variables, caplog):
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
-    generate_multiple_oclc_identifiers_email([])
+    generate_multiple_oclc_identifiers_email.function(reports={})
 
     assert "No multiple OCLC Identifiers" in caplog.text
 
 
-def test_nonprod_oclc_email(mocker, mock_folio_variables):
+def test_prod_oclc_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
-        return_value=False,
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=True,
     )
 
-    generate_multiple_oclc_identifiers_email(
-        [
-            (
-                "ae0b6949-6219-51cd-9a61-7794c2081fe7",
-                "STF",
-                ["(OCoLC-M)21184692", "(OCoLC-I)272673749"],
-            ),
-            (
-                "0221724f-2bca-497b-8d42-6786295e7173",
-                "HIN",
-                ["(OCoLC-M)99087632", "(OCoLC-I)889220055"],
-            ),
-        ]
+    generate_multiple_oclc_identifiers_email.function(
+        reports={
+            "CASUM": "/opt/airflow/data-export-files/oclc/reports/CASUM/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+            "RCJ": "/opt/airflow/data-export-files/oclc/reports/RCJ/multiple_oclc_numbers/2024-11-05T23:26:12.316254.html",
+        }
     )
     assert mock_send_email.called
 
     assert (
-        mock_send_email.call_args[1]["subject"]
-        == "folio-test - Review Instances with Multiple OCLC Indentifiers"
+        mock_send_email.call_args_list[1][1]["subject"]
+        == "Review Instances with Multiple OCLC Identifiers Hoover"
     )
-    assert mock_send_email.call_args[1]['to'] == [
-        'test@stanford.edu',
+    assert mock_send_email.call_args_list[1][1]['to'] == [
+        "hoover@example.com",
+        "test@stanford.edu",
     ]
 
 
