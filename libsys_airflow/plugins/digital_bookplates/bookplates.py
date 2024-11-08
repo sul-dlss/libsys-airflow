@@ -110,14 +110,29 @@ def _new_bookplates(funds: list) -> dict:
     return bookplates
 
 
+def _dedup_bookplates(bookplates: list) -> list:
+    return [
+        dict(bp_tuple)
+        for bp_tuple in {tuple(sorted(bookplate.items())) for bookplate in bookplates}
+    ]
+
+
+def _add_poline_bookplate(
+    poline_id: str, bookplates_polines: dict, bookplate: dict
+) -> list:
+    bookplates_list = bookplates_polines[poline_id]["bookplate_metadata"]
+    bookplates_list.append(bookplate)
+    return _dedup_bookplates(bookplates_list)
+
+
 @task(max_active_tis_per_dag=5)
-def bookplate_funds_polines(**kwargs) -> list:
+def bookplate_funds_polines(**kwargs) -> dict:
     """
     Checks if fund Id from invoice lines contains bookplate fund
     This task gets digital bookplates data from the table or uses
-    a list of new funds from params.
+    a list of new funds from params. Groups by po line Id
     """
-    bookplates_polines: list = []
+    bookplates_polines: dict = {}
     invoice_lines = kwargs["invoice_lines"]
     params = kwargs.get("params", {})
     funds = params.get("funds", [])
@@ -134,10 +149,20 @@ def bookplate_funds_polines(**kwargs) -> list:
         if fund_distribution and poline_id:
             for fund in fund_distribution:
                 bookplate = bookplates.get(fund["fundId"])
-                if bookplate:
-                    bookplates_polines.append(
-                        {"bookplate_metadata": bookplate, "poline_id": poline_id}
-                    )
+                if bookplate is None:
+                    next
+                else:
+                    if poline_id in bookplates_polines:
+                        new_bookplates_data = _add_poline_bookplate(
+                            poline_id, bookplates_polines, bookplate
+                        )
+                        bookplates_polines[poline_id][
+                            "bookplate_metadata"
+                        ] = new_bookplates_data
+                    else:
+                        bookplates_polines[poline_id] = {
+                            "bookplate_metadata": [bookplate]
+                        }
 
     if len(bookplates_polines) == 0:
         logger.info("No bookplate funds were used")
@@ -148,15 +173,17 @@ def bookplate_funds_polines(**kwargs) -> list:
 @task(max_active_tis_per_dag=5)
 def instances_from_po_lines(**kwargs) -> dict:
     """
-    Given a list of po lines with fund IDs, retrieves the instanceId
+    Given a dict of po lines with list of bookplate metadata, retrieves the instanceId
     It is possible for an instance to have multiple 979's
-    [
-      {
-        "bookplate_metadata": { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
-        "poline_id": "798596da-12a6-4c6d-8d3a-3bb6c54cb2f1"
+    {
+      "5513c3d7-7c6b-45ea-a875-09798b368873": {
+        "bookplate_metadata": [
+          {"fund_name": "...", "druid": "...", "image_filename": "...", "title": "..."},
+          {"fund_name": "...", "druid": "...", "image_filename": "...", "title": "..."},
+        ]
       },
       ...
-    ]
+    }
     """
     folio_client = _folio_client()
     instances: dict = {}

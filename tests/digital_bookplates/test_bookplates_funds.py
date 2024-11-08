@@ -80,6 +80,22 @@ def mock_invoice_lines():
             "poLineId": "be0af62c-665e-4178-ae13-e3250d89bcc6",
         },
         {
+            "id": "036bb673-b025-482d-bdee-08c68fc96fa5",
+            "fundDistributions": [
+                {
+                    "code": "ASHENR-SUL",
+                    "encumbrance": "cfb59e90-014a-4860-9f5e-bdcfbf1a9f6f",
+                    "fundId": "b8932bcd-7498-4f7e-a598-de9010561e42",
+                    "distributionType": "percentage",
+                    "value": 100.0,
+                }
+            ],
+            "invoiceId": "ac542af8-9c14-4c1b-9ac6-5ec25f3842a3",
+            "invoiceLineNumber": "1",
+            "invoiceLineStatus": "Paid",
+            "poLineId": "be0af62c-665e-4178-ae13-e3250d89bcc6",
+        },
+        {
             "id": "5c6cffcf-1951-47c9-817f-145cbe931dea",
             "invoiceId": "2dcebfd3-82b0-429d-afbb-dff743602bea",
             "invoiceLineNumber": "29",
@@ -145,35 +161,34 @@ def mock_new_bookplates():
 
 @pytest.fixture
 def mock_bookplate_funds_polines():
-    return [
-        {
-            "bookplate_metadata": {
-                "fund_name": "ASHENR",
-                "druid": "kp761xz4568",
-                "image_filename": "dp698zx8237_00_0001.jp2",
-                "title": "Ruth Geraldine Ashen Memorial Book Fund",
-            },
-            "poline_id": "be0af62c-665e-4178-ae13-e3250d89bcc6",
+    return {
+        "be0af62c-665e-4178-ae13-e3250d89bcc6": {
+            "bookplate_metadata": [
+                {
+                    "fund_name": "ASHENR",
+                    "druid": "kp761xz4568",
+                    "image_filename": "dp698zx8237_00_0001.jp2",
+                    "title": "Ruth Geraldine Ashen Memorial Book Fund",
+                }
+            ],
         },
-        {
-            "bookplate_metadata": {
-                "fund_name": "RHOADES",
-                "druid": "gc698jf6425",
-                "image_filename": "gc698jf6425_00_0001.jp2",
-                "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
-            },
-            "poline_id": "5513c3d7-7c6b-45ea-a875-09798b368873",
+        "5513c3d7-7c6b-45ea-a875-09798b368873": {
+            "bookplate_metadata": [
+                {
+                    "fund_name": "RHOADES",
+                    "druid": "gc698jf6425",
+                    "image_filename": "gc698jf6425_00_0001.jp2",
+                    "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
+                },
+                {
+                    "fund_name": "ASHENR",
+                    "druid": "kp761xz4568",
+                    "image_filename": "dp698zx8237_00_0001.jp2",
+                    "title": "Ruth Geraldine Ashen Memorial Book Fund",
+                },
+            ]
         },
-        {
-            "bookplate_metadata": {
-                "fund_name": "ASHENR",
-                "druid": "kp761xz4568",
-                "image_filename": "dp698zx8237_00_0001.jp2",
-                "title": "Ruth Geraldine Ashen Memorial Book Fund",
-            },
-            "poline_id": "5513c3d7-7c6b-45ea-a875-09798b368873",
-        },
-    ]
+    }
 
 
 @pytest.fixture
@@ -193,8 +208,35 @@ def test_bookplate_funds_polines(
         invoice_lines=mock_invoice_lines, params={"funds": new_funds}
     )
 
-    assert bookplates_polines == mock_bookplate_funds_polines
     assert "Getting bookplates data from the table" in caplog.text
+    assert (
+        len(
+            bookplates_polines["be0af62c-665e-4178-ae13-e3250d89bcc6"][
+                "bookplate_metadata"
+            ]
+        )
+        == 1
+    )
+    assert (
+        len(
+            bookplates_polines["5513c3d7-7c6b-45ea-a875-09798b368873"][
+                "bookplate_metadata"
+            ]
+        )
+        == 2
+    )
+    bookplate_metadata = bookplates_polines["5513c3d7-7c6b-45ea-a875-09798b368873"][
+        "bookplate_metadata"
+    ]
+    sorted_bookplates = [sorted(bookplate.values()) for bookplate in bookplate_metadata]
+    mock_bookplate_metadata = mock_bookplate_funds_polines[
+        "5513c3d7-7c6b-45ea-a875-09798b368873"
+    ]["bookplate_metadata"]
+    sorted_mock_bookplates = [
+        sorted(bookplate.values()) for bookplate in mock_bookplate_metadata
+    ]
+    for row in sorted_bookplates:
+        assert row in sorted_mock_bookplates
 
 
 def test_new_bookplates(mock_new_funds, mock_new_bookplates):
@@ -221,13 +263,12 @@ def test_new_bookplate_funds_polines(
     bookplates_polines = bookplate_funds_polines.function(
         invoice_lines=mock_invoice_lines, params={"funds": mock_new_funds}
     )
-    assert len(bookplates_polines) == 1
-    assert (
-        bookplates_polines[0]["bookplate_metadata"]
-        == mock_new_bookplates["f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"]
-    )
-    assert bookplates_polines[0]["poline_id"] == "def456"
+
     assert "Getting bookplates data from list of new funds" in caplog.text
+    assert len(bookplates_polines) == 1
+    assert bookplates_polines["def456"]["bookplate_metadata"] == [
+        mock_new_bookplates["f916c6e4-1bc7-4892-a5a8-73b8ede6e3a4"]
+    ]
 
 
 def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, caplog):
