@@ -46,6 +46,7 @@ default_args = {
 with DAG(
     "select_oclc_records",
     default_args=default_args,
+    schedule=None,
     tags=["data export", "oclc"],
     params={
         "from_date": Param(

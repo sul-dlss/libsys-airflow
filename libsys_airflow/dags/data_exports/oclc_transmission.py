@@ -50,6 +50,7 @@ connections = [
 @dag(
     default_args=default_args,
     tags=["data export", "oclc"],
+    schedule=None,
 )
 def send_oclc_records():
     start = EmptyOperator(task_id="start")
