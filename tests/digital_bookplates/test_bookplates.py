@@ -1,6 +1,7 @@
 import datetime
 import pytest  # noqa
 
+from unittest.mock import MagicMock
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
@@ -8,6 +9,7 @@ from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_979_marc_tags,
     bookplate_funds_polines,
+    instances_from_po_lines,
     launch_digital_bookplate_979_dag,
     launch_poll_for_979_dags,
     trigger_digital_bookplate_979_task,
@@ -48,6 +50,15 @@ rows = Rows(
 )
 
 engine = create_sqlite_fixture(rows)
+
+
+@pytest.fixture
+def pg_hook(mocker, engine) -> PostgresHook:
+    mock_hook = mocker.patch(
+        "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
+    )
+    mock_hook.return_value = engine
+    return mock_hook
 
 
 @pytest.fixture
@@ -188,16 +199,40 @@ def mock_bookplate_funds_polines():
                 },
             ]
         },
+        "9f7031df-d30b-40c2-955a-7d522c303a43": {
+            "bookplate_metadata": {
+                "druid": "",
+                "fund_name": "",
+                "image_filename": "",
+                "title": "",
+            },
+        },
     }
 
 
 @pytest.fixture
-def pg_hook(mocker, engine) -> PostgresHook:
-    mock_hook = mocker.patch(
-        "airflow.providers.postgres.hooks.postgres.PostgresHook.get_sqlalchemy_engine"
-    )
-    mock_hook.return_value = engine
-    return mock_hook
+def mock_folio_client():
+    def mock_get(*args, **kwargs):
+        output = {}
+        if str(args[0]).startswith("/orders-storage/po-lines"):
+            poline_id = args[0].split("/")[-1]
+            output = mock_order_lines[poline_id]
+        return output
+
+    mock_client = MagicMock()
+    mock_client.folio_get = mock_get
+    return mock_client
+
+
+mock_order_lines = {
+    "be0af62c-665e-4178-ae13-e3250d89bcc6": {
+        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93"
+    },
+    "5513c3d7-7c6b-45ea-a875-09798b368873": {
+        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93"
+    },
+    "9f7031df-d30b-40c2-955a-7d522c303a43": {},
+}
 
 
 def test_bookplate_funds_polines(
@@ -278,6 +313,43 @@ def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, capl
 
     assert len(bookplates_polines) == 0
     assert "No bookplate funds were used" in caplog.text
+
+
+def test_instances_from_po_lines(
+    mocker, mock_folio_client, mock_bookplate_funds_polines
+):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
+        return_value=mock_folio_client,
+    )
+
+    instances_dict = instances_from_po_lines.function(
+        po_lines_funds=mock_bookplate_funds_polines
+    )
+
+    assert len(instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]) == 2
+    bookplates = [sorted(bookplate.values()) for bookplate in instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]]
+    for x in bookplates:
+        assert "RHOADES" or "ASHENR" in x
+
+
+def test_instances_from_po_lines_no_instance(
+    mocker, mock_folio_client, mock_bookplate_funds_polines, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
+        return_value=mock_folio_client,
+    )
+
+    instances_dict = instances_from_po_lines.function(
+        po_lines_funds=mock_bookplate_funds_polines
+    )
+
+    assert "9f7031df-d30b-40c2-955a-7d522c303a43" not in instances_dict.keys()
+    assert (
+        "PO Line 9f7031df-d30b-40c2-955a-7d522c303a43 not linked to a FOLIO Instance"
+        in caplog.text
+    )
 
 
 def test_add_979_marc_tags():

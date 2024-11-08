@@ -188,20 +188,21 @@ def instances_from_po_lines(**kwargs) -> dict:
     folio_client = _folio_client()
     instances: dict = {}
     po_lines_funds = kwargs["po_lines_funds"]
-    for row in po_lines_funds:
-        poline_id = row['poline_id']
+    for poline_id, bookplates in po_lines_funds.items():
         order_line = folio_client.folio_get(f"/orders-storage/po-lines/{poline_id}")
         instance_id = order_line.get("instanceId")
         if instance_id is None:
             logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
             continue
-        bookplate_metadata = row["bookplate_metadata"]
+        bookplate_metadata = bookplates["bookplate_metadata"]
         if instance_id in instances:
-            instances[instance_id].append(bookplate_metadata)
+            instances[instance_id].extend(bookplate_metadata)
         else:
-            instances[instance_id] = [
-                bookplate_metadata,
-            ]
+            instances[instance_id] = bookplate_metadata
+
+    for k, v in instances.items():
+        instances[k] = _dedup_bookplates(v)
+
     return instances
 
 
