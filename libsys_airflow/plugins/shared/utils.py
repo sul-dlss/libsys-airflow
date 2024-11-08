@@ -3,14 +3,30 @@ import json
 import logging
 import pymarc
 import re
+import urllib
 
 from typing import Union
+
+from airflow.configuration import conf
 from airflow.models import Variable
 from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
+
+
+def dag_run_url(**kwargs) -> str:
+    dag_run = kwargs["dag_run"]
+    airflow_url = kwargs.get("airflow_url")
+
+    if not airflow_url:
+        airflow_url = conf.get('webserver', 'base_url')
+        if not airflow_url.endswith("/"):
+            airflow_url = f"{airflow_url}/"
+
+    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
+    return f"{airflow_url}dags/{dag_run.dag.dag_id}/grid?{params}"
 
 
 def is_production():
