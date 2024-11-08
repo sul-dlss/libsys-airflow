@@ -2,7 +2,6 @@ import logging
 
 from jinja2 import Template
 
-from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.models import Variable
 
@@ -97,19 +96,14 @@ def _new_updated_bookplates_email_body(new: list, updated: list):
 
 
 def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
-    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
     if len(dag_runs) < 1:
         return ""
-
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-    dag_url = f"{airflow_url}dags/digital_bookplate_979/grid?dag_run_id="
     return Template(
         """
         <h2>Results from adding 979 fields Workflows</h2>
         <ol>
         {% for dag_run_id, result in dag_runs.items() %}
-        <li>DAG Run <a href="{{ dag_url }}{{ dag_run_id|urlencode }}">{{ dag_run_id }}</a> {{ result.state }}<br>
+        <li>DAG Run <a href="{{ result.url }}">{{ dag_run_id }}</a> {{ result.state }}<br>
            Instances:
            <ul>
            {% for instance in result.instances %}
@@ -134,7 +128,7 @@ def _summary_add_979_email(dag_runs: list, folio_url: str) -> str:
         {% endfor %}
         </ol>
     """
-    ).render(dag_runs=dag_runs, folio_url=folio_url, dag_url=dag_url)
+    ).render(dag_runs=dag_runs, folio_url=folio_url)
 
 
 def _to_addresses():
@@ -232,6 +226,7 @@ def summary_add_979_dag_runs(**kwargs):
     to_emails = _to_addresses()
     if additional_email:
         to_emails.append(additional_email)
+
     html_content = _summary_add_979_email(dag_runs, folio_url)
 
     if len(html_content.strip()) > 0:
