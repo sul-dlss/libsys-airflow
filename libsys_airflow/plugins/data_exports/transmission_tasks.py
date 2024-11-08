@@ -129,7 +129,9 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     ) as client:
         for f in gather_files["file_list"]:
             files = {files_params: path_module(f).open("rb")}
-            request = client.build_request("POST", connection.host, files=files)
+            request = client.build_request(
+                "POST", connection.host, files=files, timeout=10
+            )
             try:
                 logger.info(f"Start transmission of data from file {f}")
                 response = client.send(request)
