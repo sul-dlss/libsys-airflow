@@ -17,10 +17,12 @@ from libsys_airflow.plugins.data_exports.oclc_reports import (
 
 @pytest.fixture
 def mock_dag_run(mocker):
-    mock_dag = mocker.MagicMock()
-    mock_dag.id = "send_oclc_records"
-    mock_dag.run_id = "scheduled__2024-07-29T19:00:00:00:00"
-    return mock_dag
+    dag_run = mocker.stub(name="dag_run")
+    dag_run.run_id = "scheduled__2024-07-29T19:00:00:00:00"
+    dag_run.dag = mocker.stub(name="dag")
+    dag_run.dag.dag_id = "send_oclc_records"
+
+    return dag_run
 
 
 @pytest.fixture

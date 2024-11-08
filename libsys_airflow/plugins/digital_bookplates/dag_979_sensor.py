@@ -3,6 +3,8 @@ import logging
 from airflow.models import DagRun
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
 
+from libsys_airflow.plugins.shared.utils import dag_run_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,7 @@ class DAG979Sensor(BaseSensorOperator):
             dag_run = dag_runs[0]
             state = dag_run.get_state()
             self.dag_runs[dag_run_id]['state'] = state
+            self.dag_runs[dag_run_id]['url'] = dag_run_url(dag_run=dag_run)
             if state in ['success', 'failed']:
                 instances = []
                 for instance, bookplates in dag_run.conf[

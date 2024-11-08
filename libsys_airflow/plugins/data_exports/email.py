@@ -1,6 +1,5 @@
 import logging
 import pathlib
-import urllib
 
 from jinja2 import Template
 
@@ -9,7 +8,7 @@ from airflow.decorators import task
 from airflow.models import Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
-from libsys_airflow.plugins.shared.utils import is_production
+from libsys_airflow.plugins.shared.utils import is_production, dag_run_url
 
 logger = logging.getLogger(__name__)
 
@@ -66,14 +65,6 @@ def _oclc_report_html(report: str, library: str):
     report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
 
     return f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
-
-
-def dag_run_url(dag_run) -> str:
-    airflow_url = conf.get('webserver', 'base_url')
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
-    return f"{airflow_url}dags/{dag_run.id}/grid?{params}"
 
 
 def generate_holdings_errors_emails(error_reports: dict):
@@ -227,9 +218,10 @@ def failed_transmission_email(files: list, **kwargs):
     Sends to libsys devs to troubleshoot
     """
     dag_run = kwargs["dag_run"]
-    dag_id = dag_run.id
     dag_run_id = dag_run.run_id
-    run_url = dag_run_url(dag_run)
+    dag_id = dag_run.dag.dag_id
+
+    run_url = dag_run_url(dag_run=dag_run)
     params = kwargs.get("params", {})
     full_dump_vendor = params.get("vendor", {})
     if len(files) == 0:
