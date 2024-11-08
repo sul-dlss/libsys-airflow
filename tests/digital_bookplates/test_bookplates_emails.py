@@ -82,6 +82,7 @@ def mock_DAG979Sensor():
     return {
         "manual__2024-10-20T02:00:00+00:00": {
             "state": "success",
+            "url": "https://sul-libsys-airflow.stanford.edu/dags/digital_bookplate_979/grid?dag_run_id=manual__2024-10-20T02:00:00+00:00",
             "instances": [
                 {
                     "uuid": "fddf7e4c-161e-4ae8-baad-058288f63e17",
@@ -314,11 +315,6 @@ def test_missing_fields_email_prod(mocker, mock_folio_variables):
 def test_summary_add_979_dag_runs(mocker, mock_DAG979Sensor, mock_folio_variables):
     mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
 
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.conf.get",
-        return_value="https://sul-libsys-airflow.stanford.edu",
-    )
-
     summary_add_979_dag_runs.function(
         dag_runs=mock_DAG979Sensor, email="dscully@stanford.edu"
     )
@@ -375,11 +371,6 @@ def test_summary_add_979_dag_runs_prod(mocker, mock_DAG979Sensor, mock_folio_var
 
 def test_no_summary_add_979_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch("libsys_airflow.plugins.shared.utils.send_email")
-
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.email.conf.get",
-        return_value="https://sul-libsys-airflow.stanford.edu",
-    )
 
     summary_add_979_dag_runs.function(dag_runs={}, email="dscully@stanford.edu")
 

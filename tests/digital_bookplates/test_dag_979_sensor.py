@@ -10,6 +10,8 @@ def mock_dag_run():
 
     mock_dag_run = MagicMock()
     mock_dag_run.get_state = mock_get_state
+    mock_dag_run.run_id = "manual__2024-10-17"
+    mock_dag_run.dag.dag_id = "digital_bookplate_979"
     mock_dag_run.conf = {
         "druids_for_instance_id": {"d55f7f1b-9512-452c-98ff-5e2be9dcdb16": {}}
     }
@@ -35,3 +37,6 @@ def test_dag_979_sensor(mocker):
     )
     result = sensor.poke(context={})
     assert result is True
+    assert sensor.dag_runs['manual__2024-10-17']["url"].endswith(
+        "digital_bookplate_979/grid?dag_run_id=manual__2024-10-17"
+    )
