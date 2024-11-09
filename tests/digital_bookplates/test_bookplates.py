@@ -328,7 +328,10 @@ def test_instances_from_po_lines(
     )
 
     assert len(instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]) == 2
-    bookplates = [sorted(bookplate.values()) for bookplate in instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]]
+    bookplates = [
+        sorted(bookplate.values())
+        for bookplate in instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]
+    ]
     for x in bookplates:
         assert "RHOADES" or "ASHENR" in x
 
