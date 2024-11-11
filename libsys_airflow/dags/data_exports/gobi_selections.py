@@ -18,9 +18,12 @@ from libsys_airflow.plugins.data_exports.marc.gobi import gobi_list_from_marc_fi
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
+devs_to_email_addr = Variable.get("EMAIL_DEVS")
+
 default_args = {
     "owner": "libsys",
     "depends_on_past": False,
+    "email": [devs_to_email_addr],
     "email_on_failure": True,
     "email_on_retry": False,
     "retries": 1,
