@@ -216,7 +216,10 @@ def get_closed_orders_ids() -> list:
     logger.info('Retrieving closed order ids...')
     query = 'workflowStatus=="Closed"'
     closed_orders_ids = get_order_ids_by_query(query)
-    logger.info('  Closed orders:', len(closed_orders_ids))
+    try
+        logger.info('  Closed orders:', len(closed_orders_ids))
+    except TypeError
+        logger.info('No closed orders')
     return closed_orders_ids
 
 
@@ -224,7 +227,10 @@ def get_open_orders_ids() -> list:
     logger.info('Retrieving open order ids...')
     query = 'workflowStatus=="Open"'
     open_orders_ids = get_order_ids_by_query(query)
-    logger.info('  Open orders:', len(open_orders_ids))
+    try
+        logger.info('  Open orders:', len(open_orders_ids))
+    except TypeError
+        logger.info('No open orders')
     return open_orders_ids
 
 
