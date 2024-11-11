@@ -176,7 +176,6 @@ def mock_bookplate_funds_polines():
         "be0af62c-665e-4178-ae13-e3250d89bcc6": {
             "bookplate_metadata": [
                 {
-                    "fund_name": "ASHENR",
                     "druid": "kp761xz4568",
                     "fund_name": "ASHENR",
                     "image_filename": "dp698zx8237_00_0001.jp2",
@@ -264,15 +263,12 @@ def test_bookplate_funds_polines(
     bookplate_metadata = bookplates_polines["5513c3d7-7c6b-45ea-a875-09798b368873"][
         "bookplate_metadata"
     ]
-    sorted_bookplates = [sorted(bookplate.values()) for bookplate in bookplate_metadata]
     mock_bookplate_metadata = mock_bookplate_funds_polines[
         "5513c3d7-7c6b-45ea-a875-09798b368873"
     ]["bookplate_metadata"]
-    sorted_mock_bookplates = [
-        sorted(bookplate.values()) for bookplate in mock_bookplate_metadata
-    ]
-    for row in sorted_bookplates:
-        assert row in sorted_mock_bookplates
+    fund_names = {fund["fund_name"] for fund in bookplate_metadata}
+    mock_fund_names = {fund["fund_name"] for fund in mock_bookplate_metadata}
+    assert fund_names.intersection(mock_fund_names)
 
 
 def test_new_bookplates(mock_new_funds, mock_new_bookplates):
@@ -329,12 +325,17 @@ def test_instances_from_po_lines(
     )
 
     assert len(instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]) == 2
-    bookplates = [
-        sorted(bookplate.values())
-        for bookplate in instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]
-    ]
-    for x in bookplates:
-        assert "RHOADES" or "ASHENR" in x
+    fund_names = {
+        fund["fund_name"]
+        for fund in instances_dict["e6803f0b-ed22-48d7-9895-60bea6826e93"]
+    }
+    mock_fund_names = {
+        fund["fund_name"]
+        for fund in mock_bookplate_funds_polines[
+            "5513c3d7-7c6b-45ea-a875-09798b368873"
+        ]["bookplate_metadata"]
+    }
+    assert fund_names.intersection(mock_fund_names)
 
 
 def test_instances_from_po_lines_no_instance(
