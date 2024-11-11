@@ -178,6 +178,7 @@ def mock_bookplate_funds_polines():
                 {
                     "fund_name": "ASHENR",
                     "druid": "kp761xz4568",
+                    "fund_name": "ASHENR",
                     "image_filename": "dp698zx8237_00_0001.jp2",
                     "title": "Ruth Geraldine Ashen Memorial Book Fund",
                 }
@@ -186,14 +187,14 @@ def mock_bookplate_funds_polines():
         "5513c3d7-7c6b-45ea-a875-09798b368873": {
             "bookplate_metadata": [
                 {
-                    "fund_name": "RHOADES",
                     "druid": "gc698jf6425",
+                    "fund_name": "RHOADES",
                     "image_filename": "gc698jf6425_00_0001.jp2",
                     "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
                 },
                 {
-                    "fund_name": "ASHENR",
                     "druid": "kp761xz4568",
+                    "fund_name": "ASHENR",
                     "image_filename": "dp698zx8237_00_0001.jp2",
                     "title": "Ruth Geraldine Ashen Memorial Book Fund",
                 },
