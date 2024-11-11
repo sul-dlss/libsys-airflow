@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 @dag(
     schedule=CronDataIntervalTimetable(
-        cron="00 18 * * 2,4", timezone="America/Los_Angeles"
+        cron="00 18 * * *", timezone="America/Los_Angeles"
     ),
-    start_date=datetime(2023, 10, 20),
+    start_date=datetime(2024, 11, 11),
     catchup=False,
     tags=["folio", "orafin"],
 )
