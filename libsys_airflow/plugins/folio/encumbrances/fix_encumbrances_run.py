@@ -19,7 +19,6 @@ def fix_encumbrances_run(*args, **kwargs):
     log_path = pathlib.Path(airflow) / f"fix_encumbrances/{library}-{run_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    
     with log_path.open("w+", 1) as log:
         logging.basicConfig(level=logging.INFO, filename=log)
         with contextlib.redirect_stdout(OutputLogger()):
