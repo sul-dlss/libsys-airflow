@@ -283,16 +283,22 @@ def retrieve_druids_for_instance_task(**kwargs):
 @task
 def trigger_digital_bookplate_979_task(**kwargs):
     instances = kwargs["instances"]
+    instances_list = [item for row in instances for item in row]
     dag_run_ids = []
-    logger.info(f"Total incoming instances {len(instances)}")
-    for row in instances:
+    logger.info(f"Total incoming lists of instances {len(instances)}")
+    total_instances: int = 0
+    for row in instances_list:
         if len(row) < 1:
             continue
+
+        total_instances += len(row.keys())
         for instance_uuid, funds in row.items():
             run_id = launch_digital_bookplate_979_dag(
                 instance_uuid=instance_uuid, funds=funds
             )
             dag_run_ids.append(run_id)
+
+    logger.info(f"Total incoming instances {total_instances}")
     return dag_run_ids
 
 

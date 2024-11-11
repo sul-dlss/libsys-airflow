@@ -418,25 +418,57 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
         return_value=mock_dag_bag,
     )
     incoming_instances = [
-        {},
-        {
-            'a855e551-47da-4621-9e05-5da512f526f7': [
-                {
-                    'fund_name': 'TANENBAUM',
-                    'druid': 'yv459xj8957',
-                    'image_filename': 'yv459xj8957_00_0001.jp2',
-                    'title': 'The Mary M. Tanenbaum Chinese Art Fund',
-                }
-            ]
-        },
-        {},
+        [
+            {},
+            {
+                'a855e551-47da-4621-9e05-5da512f526f7': [
+                    {
+                        'fund_name': 'TANENBAUM',
+                        'druid': 'yv459xj8957',
+                        'image_filename': 'yv459xj8957_00_0001.jp2',
+                        'title': 'The Mary M. Tanenbaum Chinese Art Fund',
+                    }
+                ]
+            },
+            {},
+        ],
+        [
+            {
+                "e6803f0b-ed22-48d7-9895-60bea6826e93": [
+                    {
+                        "druid": "gc698jf6425",
+                        "fund_name": "RHOADES",
+                        "image_filename": "gc698jf6425_00_0001.jp2",
+                        "title": "John Skylstead and Carmel Cole Rhoades Fund for California History and the History of the North American West",
+                    },
+                    {
+                        "druid": "kp761xz4568",
+                        "fund_name": "ASHENR",
+                        "image_filename": "dp698zx8237_00_0001.jp2",
+                        "title": "Ruth Geraldine Ashen Memorial Book Fund",
+                    },
+                ]
+            },
+            {
+                "eefe185b-2f25-4d5a-ba6f-cfc60b79e33e": [
+                    {
+                        "druid": "xg474qk4925",
+                        "fund_name": "LINDER",
+                        "image_filename": "xg474qk4925_00_0001.jp2",
+                        "title": "The Doris H. Linder Book Fund",
+                    }
+                ],
+            },
+        ],
     ]
     dag_run_ids = trigger_digital_bookplate_979_task.function(
         instances=incoming_instances
     )
 
+    assert "Total incoming lists of instances 2" in caplog.text
     assert "Total incoming instances 3" in caplog.text
-    assert len(dag_run_ids) == 1
+    assert len(dag_run_ids) == 3
+    assert len(set(dag_run_ids)) == 3
 
 
 def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_dag_bag, caplog):
