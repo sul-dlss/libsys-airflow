@@ -56,8 +56,9 @@ def login(tenant, username, password):
             'Content-Type': 'application/json',
         }
     except Exception as err:
+        print('Error during login:', err)
         logger.error('Error during login:', err)
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def get_request_without_query(url: str) -> dict:
@@ -67,11 +68,13 @@ async def get_request_without_query(url: str) -> dict:
         if resp.status_code == HTTPStatus.OK:
             return resp.json()
         else:
+            print(f'Error getting record with url {url} : \n{resp.text} ')
             logger.error(f'Error getting record with url {url} : \n{resp.text} ')
-            # raise SystemExit(1)
+            raise SystemExit(1)
     except Exception as err:
+        print(f'Error getting record with url {url} : {err=}')
         logger.error(f'Error getting record with url {url} : {err=}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def get_request(url: str, query: str) -> dict:
@@ -85,11 +88,13 @@ async def get_request(url: str, query: str) -> dict:
         if resp.status_code == HTTPStatus.OK:
             return resp.json()
         else:
+            print(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
             logger.error(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
-            # raise SystemExit(1)
+            raise SystemExit(1)
     except Exception as err:
+        print(f'Error getting records by {url}?query={query}: {err=}')
         logger.error(f'Error getting records by {url}?query={query}: {err=}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def put_request(url: str, data):
@@ -101,12 +106,14 @@ async def put_request(url: str, data):
         )
         if resp.status_code == HTTPStatus.NO_CONTENT:
             return
+        print(f'Error updating record {url} "{data}": {resp.text}')
         logger.error(f'Error updating record {url} "{data}": {resp.text}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
     except Exception as err:
+        print(f'Error updating record {url} "{data}": {err=}')
         logger.error(f'Error updating record {url} "{data}": {err=}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def delete_request(url: str):
@@ -116,12 +123,14 @@ async def delete_request(url: str):
         resp = await client.delete(url, headers=headers, timeout=ASYNC_CLIENT_TIMEOUT)
         if resp.status_code == HTTPStatus.NO_CONTENT:
             return
+        print(f'Error deleting record {url}: {resp.text}')
         logger.error(f'Error deleting record {url}: {resp.text}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
     except Exception as err:
+        print(f'Error deleting record {url}: {err=}')
         logger.error(f'Error deleting record {url}: {err=}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 def get_fiscal_years_by_query(query) -> dict:
@@ -134,8 +143,9 @@ def get_fiscal_years_by_query(query) -> dict:
             raise_exception_for_reply(r)
         return r.json()['fiscalYears']
     except Exception as err:
+        print(f'Error getting fiscal years with query "{query}": {err}')
         logger.error(f'Error getting fiscal years with query "{query}": {err}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 def get_by_chunks(url, query, key) -> list:
@@ -173,8 +183,9 @@ def get_order_ids_by_query(query) -> list:
         for order in orders:
             ids.append(order['id'])
     except Exception as err:
+        print(f'Error getting order ids with query "{query}": {err}')
         logger.error(f'Error getting order ids with query "{query}": {err}')
-        # raise SystemExit(1)
+        raise SystemExit(1)
     return ids
 
 
@@ -200,8 +211,9 @@ def get_fiscal_year(fiscal_year_code) -> dict:
     query = f'code=="{fiscal_year_code}"'
     fiscal_years = get_fiscal_years_by_query(query)
     if len(fiscal_years) == 0:
+        print(f'Could not find fiscal year "{fiscal_year_code}".')
         logger.error(f'Could not find fiscal year "{fiscal_year_code}".')
-        # raise SystemExit(1)
+        raise SystemExit(1)
     return fiscal_years[0]
 
 
@@ -249,10 +261,13 @@ async def get_budget_by_fund_id(fund_id, fiscal_year_id) -> dict:
     query = f'fundId=={fund_id} AND fiscalYearId=={fiscal_year_id}'
     budgets = await get_budgets_by_query(query)
     if len(budgets) == 0:
+        print(
+            f'Could not find budget for fund "{fund_id}" and fiscal year "{fiscal_year_id}".'
+        )
         logger.error(
             f'Could not find budget for fund "{fund_id}" and fiscal year "{fiscal_year_id}".'
         )
-        # raise SystemExit(1)
+        raise SystemExit(1)
     return budgets[0]
 
 
@@ -624,10 +639,13 @@ async def fix_order_status_and_release_encumbrances(order_id, encumbrances):
             await put_request(url, encumbrance)
 
     except Exception as err:
+        print(
+            f'Error when fixing order status in encumbrances for order {order_id}:', err
+        )
         logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def fix_order_encumbrances_order_status(order_id, encumbrances):
@@ -648,10 +666,13 @@ async def fix_order_encumbrances_order_status(order_id, encumbrances):
                 order_id, modified_encumbrances
             )
     except Exception as err:
+        print(
+            f'Error when fixing order status in encumbrances for order {order_id}:', err
+        )
         logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
-        # raise SystemExit(1)
+        raise SystemExit(1)
 
 
 async def fix_encumbrance_order_status_for_closed_order(
