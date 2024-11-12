@@ -5,6 +5,7 @@ from airflow import DAG
 
 from airflow.decorators import task, task_group
 from airflow.models.param import Param
+from airflow.models import Variable
 from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
@@ -34,9 +35,12 @@ from libsys_airflow.plugins.data_exports.oclc_reports import multiple_oclc_numbe
 
 logger = logging.getLogger(__name__)
 
+devs_to_email_addr = Variable.get("EMAIL_DEVS")
+
 default_args = {
     "owner": "libsys",
     "depends_on_past": False,
+    "email": [devs_to_email_addr],
     "email_on_failure": True,
     "email_on_retry": False,
     "retries": 1,
