@@ -56,7 +56,8 @@ def login(tenant, username, password):
             'Content-Type': 'application/json',
         }
     except Exception as err:
-        logger.info('Error during login:', err)
+        print('Error during login:', err)
+        logger.error('Error during login:', err)
         raise SystemExit(1)
 
 
@@ -67,10 +68,12 @@ async def get_request_without_query(url: str) -> dict:
         if resp.status_code == HTTPStatus.OK:
             return resp.json()
         else:
-            logger.info(f'Error getting record with url {url} : \n{resp.text} ')
+            print(f'Error getting record with url {url} : \n{resp.text} ')
+            logger.error(f'Error getting record with url {url} : \n{resp.text} ')
             raise SystemExit(1)
     except Exception as err:
-        logger.info(f'Error getting record with url {url} : {err=}')
+        print(f'Error getting record with url {url} : {err=}')
+        logger.error(f'Error getting record with url {url} : {err=}')
         raise SystemExit(1)
 
 
@@ -85,10 +88,12 @@ async def get_request(url: str, query: str) -> dict:
         if resp.status_code == HTTPStatus.OK:
             return resp.json()
         else:
-            logger.info(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
+            print(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
+            logger.error(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
             raise SystemExit(1)
     except Exception as err:
-        logger.info(f'Error getting records by {url}?query={query}: {err=}')
+        print(f'Error getting records by {url}?query={query}: {err=}')
+        logger.error(f'Error getting records by {url}?query={query}: {err=}')
         raise SystemExit(1)
 
 
@@ -101,11 +106,13 @@ async def put_request(url: str, data):
         )
         if resp.status_code == HTTPStatus.NO_CONTENT:
             return
-        logger.info(f'Error updating record {url} "{data}": {resp.text}')
+        print(f'Error updating record {url} "{data}": {resp.text}')
+        logger.error(f'Error updating record {url} "{data}": {resp.text}')
         raise SystemExit(1)
 
     except Exception as err:
-        logger.info(f'Error updating record {url} "{data}": {err=}')
+        print(f'Error updating record {url} "{data}": {err=}')
+        logger.error(f'Error updating record {url} "{data}": {err=}')
         raise SystemExit(1)
 
 
@@ -116,11 +123,13 @@ async def delete_request(url: str):
         resp = await client.delete(url, headers=headers, timeout=ASYNC_CLIENT_TIMEOUT)
         if resp.status_code == HTTPStatus.NO_CONTENT:
             return
-        logger.info(f'Error deleting record {url}: {resp.text}')
+        print(f'Error deleting record {url}: {resp.text}')
+        logger.error(f'Error deleting record {url}: {resp.text}')
         raise SystemExit(1)
 
     except Exception as err:
-        logger.info(f'Error deleting record {url}: {err=}')
+        print(f'Error deleting record {url}: {err=}')
+        logger.error(f'Error deleting record {url}: {err=}')
         raise SystemExit(1)
 
 
@@ -134,7 +143,8 @@ def get_fiscal_years_by_query(query) -> dict:
             raise_exception_for_reply(r)
         return r.json()['fiscalYears']
     except Exception as err:
-        logger.info(f'Error getting fiscal years with query "{query}": {err}')
+        print(f'Error getting fiscal years with query "{query}": {err}')
+        logger.error(f'Error getting fiscal years with query "{query}": {err}')
         raise SystemExit(1)
 
 
@@ -173,7 +183,8 @@ def get_order_ids_by_query(query) -> list:
         for order in orders:
             ids.append(order['id'])
     except Exception as err:
-        logger.info(f'Error getting order ids with query "{query}": {err}')
+        print(f'Error getting order ids with query "{query}": {err}')
+        logger.error(f'Error getting order ids with query "{query}": {err}')
         raise SystemExit(1)
     return ids
 
@@ -200,7 +211,8 @@ def get_fiscal_year(fiscal_year_code) -> dict:
     query = f'code=="{fiscal_year_code}"'
     fiscal_years = get_fiscal_years_by_query(query)
     if len(fiscal_years) == 0:
-        logger.info(f'Could not find fiscal year "{fiscal_year_code}".')
+        print(f'Could not find fiscal year "{fiscal_year_code}".')
+        logger.error(f'Could not find fiscal year "{fiscal_year_code}".')
         raise SystemExit(1)
     return fiscal_years[0]
 
@@ -213,18 +225,24 @@ def test_fiscal_year_current(fiscal_year) -> bool:
 
 
 def get_closed_orders_ids() -> list:
-    logger.info('Retrieving closed order ids...')
+    print('Retrieving closed order ids...')
     query = 'workflowStatus=="Closed"'
     closed_orders_ids = get_order_ids_by_query(query)
-    logger.info('  Closed orders:', len(closed_orders_ids))
+    if len(closed_orders_ids):
+        print('  Closed orders:', len(closed_orders_ids))
+    else:
+        print('No closed orders')
     return closed_orders_ids
 
 
 def get_open_orders_ids() -> list:
-    logger.info('Retrieving open order ids...')
+    print('Retrieving open order ids...')
     query = 'workflowStatus=="Open"'
     open_orders_ids = get_order_ids_by_query(query)
-    logger.info('  Open orders:', len(open_orders_ids))
+    if len(open_orders_ids):
+        print('  Open orders:', len(open_orders_ids))
+    else:
+        print('No open orders')
     return open_orders_ids
 
 
@@ -243,7 +261,10 @@ async def get_budget_by_fund_id(fund_id, fiscal_year_id) -> dict:
     query = f'fundId=={fund_id} AND fiscalYearId=={fiscal_year_id}'
     budgets = await get_budgets_by_query(query)
     if len(budgets) == 0:
-        logger.info(
+        print(
+            f'Could not find budget for fund "{fund_id}" and fiscal year "{fiscal_year_id}".'
+        )
+        logger.error(
             f'Could not find budget for fund "{fund_id}" and fiscal year "{fiscal_year_id}".'
         )
         raise SystemExit(1)
@@ -360,16 +381,16 @@ async def remove_duplicate_encumbrances_in_order(order_id, fiscal_year_id, sem) 
     if len(encumbrance_changes) == 0:
         sem.release()
         return 0
-    logger.info(f"  Removing the following encumbrances for order {order_id}:")
+    print(f"  Removing the following encumbrances for order {order_id}:")
     for change in encumbrance_changes:
-        logger.info(f"    {change['remove']['id']}")
+        print(f"    {change['remove']['id']}")
     await remove_encumbrances_and_update_polines(encumbrance_changes)
     sem.release()
     return len(encumbrance_changes)
 
 
 async def remove_duplicate_encumbrances(open_and_closed_orders_ids, fiscal_year_id):
-    logger.info('Removing duplicate encumbrances...')
+    print('Removing duplicate encumbrances...')
     futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
     for idx, order_id in enumerate(open_and_closed_orders_ids):
@@ -383,7 +404,7 @@ async def remove_duplicate_encumbrances(open_and_closed_orders_ids, fiscal_year_
 
     nb_removed_encumbrances = await asyncio.gather(*futures)
     # progress(len(open_and_closed_orders_ids), len(open_and_closed_orders_ids))
-    logger.info(f'  Removed {sum(nb_removed_encumbrances)} encumbrance(s).')
+    print(f'  Removed {sum(nb_removed_encumbrances)} encumbrance(s).')
 
 
 # ---------------------------------------------------
@@ -401,7 +422,7 @@ async def update_encumbrance_fund_id(encumbrance, new_fund_id, poline):
     encumbrance['fromFundId'] = new_fund_id
     encumbrance_id = encumbrance['id']
     order_id = poline['purchaseOrderId']
-    logger.info(
+    print(
         f"  Fixing fromFundId for po line {poline['id']} ({poline['poLineNumber']}) encumbrance {encumbrance_id}"
     )
     await transaction_summary(order_id, 1)
@@ -419,20 +440,20 @@ async def fix_fund_id_with_duplicate_encumbrances(encumbrances, fd_fund_id, poli
         else:
             encumbrances_with_bad_fund.append(encumbrance)
     if len(encumbrances_with_bad_fund) == 0:
-        logger.info(
+        print(
             f"  Warning: there is a remaining duplicate encumbrance for poline {poline['id']} "
             f"({poline['poLineNumber']})."
         )
         return
     if len(encumbrances_with_right_fund) != 1:
-        logger.info(
+        print(
             f"  Problem fixing encumbrances for poline {poline['id']} ({poline['poLineNumber']}), "
             "please fix by hand."
         )
         return
     replace_by = encumbrances_with_right_fund[0]
     for encumbrance_to_remove in encumbrances_with_bad_fund:
-        logger.info(
+        print(
             f"  Removing encumbrance {encumbrance_to_remove['id']} for po line {poline['id']} "
             f"({poline['poLineNumber']})"
         )
@@ -527,12 +548,12 @@ async def process_order_encumbrances_relations(order_id, fiscal_year_id, order_s
 async def fix_poline_encumbrances_relations(
     open_orders_ids, fiscal_year_id, fy_is_current
 ):
-    logger.info('Fixing poline-encumbrance links...')
+    print('Fixing poline-encumbrance links...')
     if len(open_orders_ids) == 0:
-        logger.info('  Found no open orders.')
+        print('  Found no open orders.')
         return
     if not fy_is_current:
-        logger.info(
+        print(
             '  Fiscal year is not current, the step to fix po line encumbrance relations will be skipped.'
         )
         return
@@ -618,7 +639,10 @@ async def fix_order_status_and_release_encumbrances(order_id, encumbrances):
             await put_request(url, encumbrance)
 
     except Exception as err:
-        logger.info(
+        print(
+            f'Error when fixing order status in encumbrances for order {order_id}:', err
+        )
+        logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
         raise SystemExit(1)
@@ -631,9 +655,9 @@ async def fix_order_encumbrances_order_status(order_id, encumbrances):
     # Eventually we could rely on the post-MODFISTO-328 implementation to change orderStatus directly
     # (Morning Glory bug fix).
     try:
-        # logger.info(f'\n  Fixing the following encumbrance(s) for order {order_id} :')
+        # print(f'\n  Fixing the following encumbrance(s) for order {order_id} :')
         for encumbrance in encumbrances:
-            logger.info(f"    {encumbrance['id']}")
+            print(f"    {encumbrance['id']}")
         modified_encumbrances = await unrelease_order_encumbrances(
             order_id, encumbrances
         )
@@ -642,7 +666,10 @@ async def fix_order_encumbrances_order_status(order_id, encumbrances):
                 order_id, modified_encumbrances
             )
     except Exception as err:
-        logger.info(
+        print(
+            f'Error when fixing order status in encumbrances for order {order_id}:', err
+        )
+        logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
         raise SystemExit(1)
@@ -663,9 +690,9 @@ async def fix_encumbrance_order_status_for_closed_order(
 async def fix_encumbrance_order_status_for_closed_orders(
     closed_orders_ids, fiscal_year_id
 ):
-    logger.info('Fixing encumbrance order status for closed orders...')
+    print('Fixing encumbrance order status for closed orders...')
     if len(closed_orders_ids) == 0:
-        logger.info('  Found no closed orders.')
+        print('  Found no closed orders.')
         return
     fix_encumbrance_futures = []
     max_active_order_threads = 5
@@ -680,7 +707,7 @@ async def fix_encumbrance_order_status_for_closed_orders(
     nb_fixed_encumbrances = await asyncio.gather(*fix_encumbrance_futures)
     # progress(len(closed_orders_ids), len(closed_orders_ids))
 
-    logger.info(f'  Fixed order status for {sum(nb_fixed_encumbrances)} encumbrance(s).')
+    print(f'  Fixed order status for {sum(nb_fixed_encumbrances)} encumbrance(s).')
 
 
 # ---------------------------------------------------
@@ -688,9 +715,9 @@ async def fix_encumbrance_order_status_for_closed_orders(
 
 
 async def unrelease_encumbrances(order_id, encumbrances):
-    # logger.info(f'\n  Unreleasing the following encumbrance(s) for order {order_id} :')
+    # print(f'\n  Unreleasing the following encumbrance(s) for order {order_id} :')
     for encumbrance in encumbrances:
-        logger.info(f"    {encumbrance['id']}")
+        print(f"    {encumbrance['id']}")
 
     await transaction_summary(order_id, len(encumbrances))
 
@@ -723,9 +750,9 @@ async def unrelease_encumbrances_with_non_zero_amounts(
 async def unrelease_open_orders_encumbrances_with_nonzero_amounts(
     fiscal_year_id, open_orders_ids
 ):
-    logger.info('Unreleasing open orders encumbrances with non-zero amounts...')
+    print('Unreleasing open orders encumbrances with non-zero amounts...')
     if len(open_orders_ids) == 0:
-        logger.info('  Found no open orders.')
+        print('  Found no open orders.')
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
@@ -742,7 +769,7 @@ async def unrelease_open_orders_encumbrances_with_nonzero_amounts(
     unreleased_encumbrances_amounts = await asyncio.gather(*enc_futures)
     # progress(len(open_orders_ids), len(open_orders_ids))
 
-    logger.info(
+    print(
         f'  Unreleased {sum(unreleased_encumbrances_amounts)} open order encumbrance(s) with non-zero amounts.'
     )
 
@@ -752,9 +779,9 @@ async def unrelease_open_orders_encumbrances_with_nonzero_amounts(
 
 
 async def release_encumbrances(order_id, encumbrances):
-    # logger.info\(f'\n  Releasing the following encumbrances for order {order_id} :')
+    # print\(f'\n  Releasing the following encumbrances for order {order_id} :')
     for encumbrance in encumbrances:
-        logger.info(f"    {encumbrance['id']}")
+        print(f"    {encumbrance['id']}")
 
     await transaction_summary(order_id, len(encumbrances))
 
@@ -788,9 +815,9 @@ async def release_encumbrances_with_negative_amounts(
 async def release_open_orders_encumbrances_with_negative_amounts(
     fiscal_year_id, open_orders_ids
 ):
-    logger.info('Releasing open orders encumbrances with negative amounts...')
+    print('Releasing open orders encumbrances with negative amounts...')
     if len(open_orders_ids) == 0:
-        logger.info('  Found no open orders.')
+        print('  Found no open orders.')
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
@@ -807,7 +834,7 @@ async def release_open_orders_encumbrances_with_negative_amounts(
     released_encumbrances_amounts = await asyncio.gather(*enc_futures)
     # progress(len(open_orders_ids), len(open_orders_ids))
 
-    logger.info(
+    print(
         f'  Released {sum(released_encumbrances_amounts)} open order encumbrance(s) with negative amounts.'
     )
 
@@ -848,9 +875,9 @@ async def release_cancelled_pol_encumbrances(order_id, fiscal_year_id, sem) -> i
 
 
 async def release_cancelled_order_line_encumbrances(fiscal_year_id, open_orders_ids):
-    logger.info('Releasing cancelled order line encumbrances...')
+    print('Releasing cancelled order line encumbrances...')
     if len(open_orders_ids) == 0:
-        logger.info('  Found no open orders.')
+        print('  Found no open orders.')
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
@@ -865,7 +892,7 @@ async def release_cancelled_order_line_encumbrances(fiscal_year_id, open_orders_
     released_encumbrances_amounts = await asyncio.gather(*enc_futures)
     # progress(len(open_orders_ids), len(open_orders_ids))
 
-    logger.info(
+    print(
         f'  Released {sum(released_encumbrances_amounts)} cancelled order line encumbrance(s).'
     )
 
@@ -880,7 +907,7 @@ async def update_budgets(encumbered, fund_id, fiscal_year_id, sem) -> int:
 
     # Cast into decimal values, so 0 == 0.0 == 0.00 will return true
     if Decimal(str(budget['encumbered'])) != Decimal(encumbered):
-        # logger.info(f"    Budget \"{budget['name']}\": changing encumbered from {budget['encumbered']} to {encumbered}")
+        # print(f"    Budget \"{budget['name']}\": changing encumbered from {budget['encumbered']} to {encumbered}")
         budget['encumbered'] = encumbered
 
         url = f"{okapi_url}/finance-storage/budgets/{budget['id']}"
@@ -893,7 +920,7 @@ async def update_budgets(encumbered, fund_id, fiscal_year_id, sem) -> int:
 async def recalculate_budget_encumbered(open_and_closed_orders_ids, fiscal_year_id):
     # Recalculate the encumbered property for all the budgets related to these encumbrances
     # Take closed orders into account because we might have to set a budget encumbered to 0
-    logger.info(
+    print(
         f'Recalculating budget encumbered for {len(open_and_closed_orders_ids)} orders ...'
     )
     enc_future = []
@@ -920,7 +947,7 @@ async def recalculate_budget_encumbered(open_and_closed_orders_ids, fiscal_year_
         if fund_id in encumbered_for_fund:
             encumbered_for_fund[fund_id] += Decimal(str(encumbrance['amount']))
 
-    logger.info('  Updating budgets...')
+    print('  Updating budgets...')
 
     update_budget_futures = []
     for fund_id, encumbered in encumbered_for_fund.items():
@@ -932,8 +959,8 @@ async def recalculate_budget_encumbered(open_and_closed_orders_ids, fiscal_year_
         )
     nb_modified = sum(await asyncio.gather(*update_budget_futures))
 
-    logger.info(f'  Edited {nb_modified} budget(s).')
-    logger.info('  Done recalculating budget encumbered.')
+    print(f'  Edited {nb_modified} budget(s).')
+    print('  Done recalculating budget encumbered.')
 
 
 # ---------------------------------------------------
@@ -959,9 +986,9 @@ async def release_order_encumbrances(order_id, fiscal_year_id, sem) -> int:
 async def release_unreleased_encumbrances_for_closed_orders(
     closed_orders_ids, fiscal_year_id
 ):
-    logger.info('Releasing unreleased encumbrances for closed orders...')
+    print('Releasing unreleased encumbrances for closed orders...')
     if len(closed_orders_ids) == 0:
-        logger.info('  Found no closed orders.')
+        print('  Found no closed orders.')
         return
     nb_released_encumbrance_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
@@ -977,7 +1004,7 @@ async def release_unreleased_encumbrances_for_closed_orders(
     nb_released_encumbrances = await asyncio.gather(*nb_released_encumbrance_futures)
     # progress(len(closed_orders_ids), len(closed_orders_ids))
 
-    logger.info(f'  Released {sum(nb_released_encumbrances)} encumbrance(s).')
+    print(f'  Released {sum(nb_released_encumbrances)} encumbrance(s).')
 
 
 # ---------------------------------------------------
