@@ -48,7 +48,7 @@ def login(tenant, username, password):
         r = requests.post(okapi_url + '/authn/login', headers=login_headers, json=data)
         if r.status_code != 201:
             raise_exception_for_reply(r)
-        print('Logged in successfully.')
+        logger.info('Logged in successfully.')
         okapi_token = r.json()['okapiToken']
         return {
             'x-okapi-tenant': tenant,
