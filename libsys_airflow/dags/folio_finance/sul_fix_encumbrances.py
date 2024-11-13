@@ -18,7 +18,7 @@ default_args = {
     "depends_on_past": False,
     "email_on_failure": True,
     "email_on_retry": False,
-    "retries": 0,
+    "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
 
@@ -64,6 +64,7 @@ with DAG(
     send_logs = PythonOperator(
         task_id="email_fix_encumbrances_log",
         python_callable=email_log,
+        trigger_rule='all_done',
         op_kwargs={
             "log_file": "{{ ti.xcom_pull('run_fix_encumbrances_script') }}",
             "library": FY_CODE,
