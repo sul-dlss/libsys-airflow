@@ -6,7 +6,6 @@ from airflow.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 from airflow.operators.python import PythonOperator
 from airflow.models.param import Param
-from airflow.utils.trigger_rule import TriggerRule
 
 from libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_run import (
     fix_encumbrances_run,
