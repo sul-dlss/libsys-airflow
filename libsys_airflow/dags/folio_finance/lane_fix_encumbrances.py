@@ -64,6 +64,7 @@ with DAG(
     send_logs = PythonOperator(
         task_id="email_fix_encumbrances_log",
         python_callable=email_log,
+        trigger_rule='all_done',
         op_kwargs={
             "log_file": "{{ ti.xcom_pull('run_fix_encumbrances_script') }}",
             "library": FY_CODE,
