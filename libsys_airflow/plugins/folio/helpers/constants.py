@@ -83,6 +83,12 @@ expense_codes = [
         'Expense code': '53262',
     },
     {
+        'acquisition method': 'Package',
+        'order format': 'Electronic Resource',
+        'material type': 'periodical',
+        'Expense code': '53262',
+    },
+    {
         'acquisition method': 'Maintenance fee',
         'order format': 'Electronic Resource',
         'material type': nan,
@@ -90,14 +96,32 @@ expense_codes = [
     },
     {
         'acquisition method': nan,
-        'order format': 'Physical Resource',
+        'order format': nan,
+        'material type': 'archival',
+        'Expense code': '53265',
+    },
+    {
+        'acquisition method': nan,
+        'order format': nan,
+        'material type': 'map',
+        'Expense code': '53270',
+    },
+    {
+        'acquisition method': nan,
+        'order format': nan,
+        'material type': 'score',
+        'Expense code': '53270',
+    },
+    {
+        'acquisition method': nan,
+        'order format': nan,
         'material type': 'sound recording',
         'Expense code': '53270',
     },
     {
         'acquisition method': nan,
-        'order format': 'Physical Resource',
-        'material type': 'map',
+        'order format': nan,
+        'material type': 'video recording',
         'Expense code': '53270',
     },
     {
@@ -109,20 +133,8 @@ expense_codes = [
     {
         'acquisition method': nan,
         'order format': 'Physical Resource',
-        'material type': 'score',
-        'Expense code': '53270',
-    },
-    {
-        'acquisition method': nan,
-        'order format': 'Physical Resource',
         'material type': 'software',
         'Expense code': '55410',
-    },
-    {
-        'acquisition method': nan,
-        'order format': 'Physical Resource',
-        'material type': 'video recording',
-        'Expense code': '53270',
     },
     {
         'acquisition method': 'Shipping',

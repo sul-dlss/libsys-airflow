@@ -383,6 +383,11 @@ class FeederFile:
                         == invoice_line.poLine.orderFormat
                     )
                 ),
+                # Attempts match on material type
+                (
+                    self.expense_codes_df["material type uuid"]  # type: ignore
+                    == invoice_line.poLine.materialType
+                ),
                 # Attempts match for Shipping
                 (
                     (

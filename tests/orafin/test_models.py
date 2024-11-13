@@ -215,6 +215,20 @@ def test_expense_codes(mock_folio_client):
         orderFormat=None,
     )
 
+    periodical_package = PurchaseOrderLine(
+        id=str(uuid.uuid4()),
+        acquisitionMethod="a8737ea5-c500-41a0-8d17-0390ada22727",
+        materialType="d934e614-215d-4667-b231-aed97887f289",
+        orderFormat="Electronic Resource",
+    )
+
+    archival = PurchaseOrderLine(
+        id=str(uuid.uuid4()),
+        acquisitionMethod=None,
+        materialType='69edaa1b-e40b-4f1c-8cb5-4b615ac6a664',
+        orderFormat=None,
+    )
+
     match_default = PurchaseOrderLine(
         id=str(uuid.uuid4()),
         acquisitionMethod="e2ce5ac8-2d48-45e8-b39c-c2d02e17a366",
@@ -314,6 +328,22 @@ def test_expense_codes(mock_folio_client):
                 total=0.00,
                 poLine=match_default,
             ),
+            InvoiceLine(
+                id=str(uuid.uuid4()),
+                adjustmentsTotal=0.00,
+                invoiceLineNumber="11",
+                subTotal=0.00,
+                total=0.00,
+                poLine=periodical_package,
+            ),
+            InvoiceLine(
+                id=str(uuid.uuid4()),
+                adjustmentsTotal=0.00,
+                invoiceLineNumber="12",
+                subTotal=0.00,
+                total=0.00,
+                poLine=archival,
+            ),
         ],
     )
 
@@ -330,6 +360,8 @@ def test_expense_codes(mock_folio_client):
     assert feeder_file.invoices[0].lines[7].expense_code == "55410"
     assert feeder_file.invoices[0].lines[8].expense_code == "55320"
     assert feeder_file.invoices[0].lines[9].expense_code == "53245"
+    assert feeder_file.invoices[0].lines[10].expense_code == "53262"
+    assert feeder_file.invoices[0].lines[11].expense_code == "53265"
 
     feeder_file.invoices[0].lines[0].poLine = None
     feeder_file.add_expense_lines(mock_folio_client)
