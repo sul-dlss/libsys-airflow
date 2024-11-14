@@ -435,7 +435,7 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
         instances=incoming_instances
     )
 
-    assert "Total incoming instances 3" in caplog.text
+    assert "Total incoming instances 1" in caplog.text
     assert len(dag_run_ids) == 1
 
 
