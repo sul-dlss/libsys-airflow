@@ -1014,7 +1014,12 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
     assert "Sets new holdings for 958835d2-39cc-4ab3-9c56-53bf7940421b" in caplog.text
 
 
-def test_oclc_records_operation_no_records(mock_oclc_api, caplog):
+def test_oclc_records_operation_no_records(mocker, mock_oclc_api, caplog):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.oclc_api.is_production',
+        return_value=True,
+    )
+
     connections = {"STF": {"username": "sul-admin", "password": "123245"}}
     test_records_dict = {"STF": []}
 
@@ -1043,6 +1048,11 @@ def test_oclc_marc_modifications():
 
 
 def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.oclc_api.is_production',
+        return_value=True,
+    )
+
     connections = {"STF": {"username": "sul-admin", "password": "123245"}}
 
     marc_file = tmp_path / "2024070113-STF.mrc"
@@ -1060,6 +1070,31 @@ def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
 
     assert result['success'] == {'STF': []}
     assert result['failures'] == {'STF': []}
+
+
+def test_oclc_records_operation_not_prod(mocker, mock_oclc_api, tmp_path, caplog):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.oclc_api.is_production',
+        return_value=False,
+    )
+
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+
+    marc_file = tmp_path / "2024070113-STF.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        for record in missing_or_multiple_oclc_records():
+            marc_writer.write(record)
+
+    test_records_dict = {"STF": [str(marc_file.absolute())]}
+
+    result = oclc_api.oclc_records_operation(
+        oclc_function="delete", connections=connections, records=test_records_dict
+    )
+
+    assert "Skipping OCLC API" in caplog.text
+    assert result['archive'][0].endswith('2024070113-STF.mrc')
 
 
 def test_worldcat_error(mocker, mock_oclc_api, tmp_path):
