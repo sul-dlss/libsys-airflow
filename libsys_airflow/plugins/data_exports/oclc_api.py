@@ -178,6 +178,7 @@ class OCLCAPIWrapper(object):
                     "instanceHrid": instance_hrid,
                 },
             },
+            timeout=60,
         )
         if put_result.status_code != 202:
             logger.error(
