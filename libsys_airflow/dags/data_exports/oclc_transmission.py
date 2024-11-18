@@ -80,6 +80,8 @@ def send_oclc_records():
         connection_details=connections, new_records=filtered_new_records
     )
 
+    new_records >> set_holdings_for_records
+
     filtered_errors = filter_failures_task(
         update=set_holdings_for_records['failures'],
         delete=deleted_records['failures'],
