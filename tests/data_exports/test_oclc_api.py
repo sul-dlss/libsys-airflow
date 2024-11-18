@@ -1052,7 +1052,7 @@ def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
         'libsys_airflow.plugins.data_exports.oclc_api.is_production',
         return_value=True,
     )
-    
+
     connections = {"STF": {"username": "sul-admin", "password": "123245"}}
 
     marc_file = tmp_path / "2024070113-STF.mrc"
