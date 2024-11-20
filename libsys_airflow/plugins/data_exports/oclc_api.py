@@ -271,7 +271,7 @@ class OCLCAPIWrapper(object):
         successful_files: set = set()
         failed_files: set = set()
 
-        with MetadataSession(authorization=self.oclc_token, timeout=30) as session:
+        with MetadataSession(authorization=self.oclc_token, timeout=60) as session:
             for record, file_name in marc_records:
                 instance_uuid = get_instance_uuid(record)
                 if instance_uuid is None:
@@ -524,6 +524,7 @@ class OCLCAPIWrapper(object):
                     "Authorization": f"Bearer {session.authorization.token_str}",
                 },
                 data=marc21,
+                timeout=60,
             )
 
             logger.info(
