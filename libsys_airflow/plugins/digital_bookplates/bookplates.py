@@ -54,6 +54,7 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     funds: list = kwargs["funds"]
     dag_run_id: Union[str, None] = kwargs.get("run_id")
     dag_payload = {instance_uuid: funds}
+    action = kwargs["action"]
 
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("digital_bookplate_979")
@@ -66,14 +67,14 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
         run_id=dag_run_id,
         execution_date=execution_date,
         state=State.QUEUED,
-        conf={"druids_for_instance_id": dag_payload},
+        conf={"druids_for_instance_id": dag_payload, "action": action},
         external_trigger=True,
     )
     logger.info(f"Triggers 979 DAG with dag_id {dag_run_id}")
     return dag_run_id
 
 
-def launch_poll_for_979_email_dags(**kwargs):
+def launch_poll_for_979_dags(**kwargs):
     """
     Triggers poll_for_digital_bookplate_979s_email DAG with kwargs
     """
@@ -207,6 +208,13 @@ def instances_from_po_lines(**kwargs) -> dict:
 
 
 @task
+def delete_979_marc_tags(druid_instances: dict):
+    print(druid_instances)
+    """ """
+    return None
+
+
+@task
 def add_979_marc_tags(druid_instances: dict) -> dict:
     """
     "242c6000-8485-5fcd-9b5e-adb60788ca59": [
@@ -271,6 +279,23 @@ def add_marc_tags_to_record(**kwargs):
         raise AirflowException("Failed to add marc tags to record.")
 
 
+@task.branch()
+def check_979_action(**kwargs):
+    """
+    Retrieves and returns a dictionary from the DAG params
+    """
+    params = kwargs.get("params", {})
+    action = params.get("action", {})
+    if action.endswith("create"):
+        logger.info("Adding marc 979 tags")
+        return "marc_add_for_druid_instances"
+    elif action.endswith("delete"):
+        logger.info("Removing marc 979 tags")
+        return "marc_delete_for_druid_instances"
+    else:
+        logger.error("No action was sent to the DAG params?")
+
+
 @task
 def retrieve_druids_for_instance_task(**kwargs):
     """
@@ -302,4 +327,4 @@ def trigger_digital_bookplate_979_task(**kwargs):
 @task
 def trigger_poll_for_979s_task(**kwargs):
     dag_run_ids = kwargs["dag_runs"]
-    launch_poll_for_979_email_dags(dag_runs=dag_run_ids)
+    launch_poll_for_979_dags(dag_runs=dag_run_ids)

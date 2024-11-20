@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_digital_bookplate_979_dag,
-    launch_poll_for_979_email_dags,
+    launch_poll_for_979_dags,
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
@@ -66,6 +66,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
     files_base = "digital-bookplates"
 
     @expose("/create", methods=["POST"])
+    @expose("/delete", methods=["POST"])
     def trigger_add_979_dags(self):
         if "upload-instance-uuids" not in request.files:
             flash("Missing Instance UUIDs file")
@@ -82,7 +83,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
             for row in upload_instances_df.iterrows():
                 instance_uuid = row[1][0]
                 dag_run_id = launch_digital_bookplate_979_dag(
-                    instance_uuid=instance_uuid, funds=[fund]
+                    instance_uuid=instance_uuid, funds=[fund], action=request.full_path
                 )
                 dag_runs.append(dag_run_id)
             _save_uploaded_file(
@@ -90,7 +91,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
                 raw_upload_instances_file.filename,
                 upload_instances_df,
             )
-            launch_poll_for_979_email_dags(dag_runs=dag_runs, email=email)
+            launch_poll_for_979_dags(dag_runs=dag_runs, email=email)
             flash(
                 f"Triggered {len(dag_runs)} DAG run(s) for {raw_upload_instances_file.filename}"
             )
