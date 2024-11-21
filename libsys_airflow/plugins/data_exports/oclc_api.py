@@ -55,27 +55,23 @@ def oclc_records_operation(**kwargs) -> dict:
 
             success[library] = []
             failures[library] = []
-            archive_files = []
             if len(records) > 0:
                 oclc_result = oclc_api_function(records)
                 success[library].extend(oclc_result['success'])
                 failures[library].extend(oclc_result['failures'])
-                archive_files.extend(oclc_result['archive'])
                 logger.info(
                     f"Processed {function_name} for {library} successful {len(success[library])} failures {len(failures[library])}"
                 )
             else:
                 logger.info(f"No {function_name} records for {library}")
     else:
-        archive_files = []
         for library, records in type_of_records.items():
             for record in records:
-                archive_files.append(record)
                 logger.info(
                     f"Skipping OCLC API {function_name} record operation not in production"
                 )
 
-    return {"success": success, "failures": failures, "archive": archive_files}
+    return {"success": success, "failures": failures}
 
 
 def __mod_007__(field_007: pymarc.Field):
@@ -298,7 +294,6 @@ class OCLCAPIWrapper(object):
                     )
                     failed_files.add(file_name)
                     continue
-        output["archive"] = list(successful_files.difference(failed_files))
         return output
 
     def __test_oclc_numbers__(self, oclc_numbers: list, instance_uuid: str):
