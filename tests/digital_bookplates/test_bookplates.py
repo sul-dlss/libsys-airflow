@@ -358,7 +358,7 @@ def test_instances_from_po_lines_no_instance(
 
 
 def test_add_979_marc_tags():
-    druid_instances = {
+    dag_payload = {
         "b8932bcd-7498-4f7e-a598-de9010561e42": [
             {
                 "druid": "kp761xz4568",
@@ -377,7 +377,9 @@ def test_add_979_marc_tags():
         ],
     }
 
-    marc_979_tags = add_979_marc_tags.function(druid_instances)
+    params = { "druids_for_instance_id": dag_payload, "action": "/create"}
+    marc_979_tags = add_979_marc_tags.function(params=params)
+    
     assert len(marc_979_tags["979"]) == 2
     assert len(marc_979_tags["979"][0]["subfields"]) == 4
     assert len(marc_979_tags["979"][1]["subfields"]) == 4
