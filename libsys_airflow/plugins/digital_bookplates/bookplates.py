@@ -46,6 +46,37 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
     return funds
 
 
+def _new_bookplates(funds: list) -> dict:
+    """
+    Transforms new funds list into dictionary with fund_uuid as key
+    """
+    bookplates = {}
+    for row in funds:
+        bookplates[row["fund_uuid"]] = {
+            "fund_name": row["fund_name"],
+            "druid": row["druid"],
+            "image_filename": row["image_filename"],
+            "title": row["title"],
+        }
+
+    return bookplates
+
+
+def _dedup_bookplates(bookplates: list) -> list:
+    return [
+        dict(bp_tuple)
+        for bp_tuple in {tuple(sorted(bookplate.items())) for bookplate in bookplates}
+    ]
+
+
+def _add_poline_bookplate(
+    poline_id: str, bookplates_polines: dict, bookplate: dict
+) -> list:
+    bookplates_list = bookplates_polines[poline_id]["bookplate_metadata"]
+    bookplates_list.append(bookplate)
+    return _dedup_bookplates(bookplates_list)
+
+
 def launch_digital_bookplate_979_dag(**kwargs) -> str:
     """
     Triggers digital_bookplate_979 DAG with kwargs
@@ -93,37 +124,6 @@ def launch_poll_for_979_dags(**kwargs):
         external_trigger=True,
     )
     logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
-
-
-def _new_bookplates(funds: list) -> dict:
-    """
-    Transforms new funds list into dictionary with fund_uuid as key
-    """
-    bookplates = {}
-    for row in funds:
-        bookplates[row["fund_uuid"]] = {
-            "fund_name": row["fund_name"],
-            "druid": row["druid"],
-            "image_filename": row["image_filename"],
-            "title": row["title"],
-        }
-
-    return bookplates
-
-
-def _dedup_bookplates(bookplates: list) -> list:
-    return [
-        dict(bp_tuple)
-        for bp_tuple in {tuple(sorted(bookplate.items())) for bookplate in bookplates}
-    ]
-
-
-def _add_poline_bookplate(
-    poline_id: str, bookplates_polines: dict, bookplate: dict
-) -> list:
-    bookplates_list = bookplates_polines[poline_id]["bookplate_metadata"]
-    bookplates_list.append(bookplate)
-    return _dedup_bookplates(bookplates_list)
 
 
 @task(max_active_tis_per_dag=5)
@@ -208,14 +208,16 @@ def instances_from_po_lines(**kwargs) -> dict:
 
 
 @task
-def delete_979_marc_tags(druid_instances: dict):
+def delete_979_marc_tags(**kwargs):
+    params = kwargs.get("params", {})
+    druid_instances = params.get("druids_for_instance_id", {})
     print(druid_instances)
     """ """
     return None
 
 
 @task
-def add_979_marc_tags(druid_instances: dict) -> dict:
+def add_979_marc_tags(**kwargs) -> dict:
     """
     "242c6000-8485-5fcd-9b5e-adb60788ca59": [
         { "druid": "", "fund_name": "", "image_filename": "", "title": "" },
@@ -224,6 +226,8 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
     Contruct a 979 tag with the
     fund name in subfield f, druid in subfield b, image filename in subfield c, and title in subfield d:
     """
+    params = kwargs.get("params", {})
+    druid_instances = params.get("druids_for_instance_id", {})
 
     marc_instance_tags: dict = {'979': []}
     for _instance_uuid, druids in druid_instances.items():
@@ -245,14 +249,6 @@ def add_979_marc_tags(druid_instances: dict) -> dict:
             )
 
     return marc_instance_tags  # -> add_marc_tags_to_record
-
-
-@task
-def instance_id_for_druids(**kwargs) -> list:
-    druids_instances = kwargs["druid_instances"]
-    if druids_instances is None:
-        return []
-    return list(druids_instances.keys())[0]
 
 
 @task
@@ -279,6 +275,12 @@ def add_marc_tags_to_record(**kwargs):
         raise AirflowException("Failed to add marc tags to record.")
 
 
+@task
+def remove_marc_tags_from_record(**kwargs):
+    """ """
+    return None
+
+
 @task.branch()
 def check_979_action(**kwargs):
     """
@@ -289,20 +291,10 @@ def check_979_action(**kwargs):
     if action.endswith("create"):
         logger.info("Adding marc 979 tags")
         return "marc_add_for_druid_instances"
-    elif action.endswith("delete"):
+
+    if action.endswith("delete"):
         logger.info("Removing marc 979 tags")
         return "marc_delete_for_druid_instances"
-    else:
-        logger.error("No action was sent to the DAG params?")
-
-
-@task
-def retrieve_druids_for_instance_task(**kwargs):
-    """
-    Retrieves and returns a dictionary from the DAG params
-    """
-    params = kwargs.get("params", {})
-    return params.get("druids_for_instance_id", {})
 
 
 @task
