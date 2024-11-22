@@ -244,6 +244,24 @@ field_915_alt = pymarc.Field(
     subfields=[pymarc.Subfield(code='a', value='NO EXPORT')],
 )
 
+field_915_authority = pymarc.Field(
+    tag="915",
+    indicators=['1', '0'],  # type: ignore
+    subfields=[
+        pymarc.Subfield(code='a', value='NO EXPORT'),
+        pymarc.Subfield(code='b', value='AUTHORITY VENDOR'),
+    ],
+)
+
+
+def test_exclude_marc_by_vendor_backstage(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    exporter = Exporter()
+    marc_record = pymarc.Record()
+    marc_record.add_field(field_590, field_915_authority)
+
+    assert exporter.exclude_marc_by_vendor(marc_record, 'backstage')
+
 
 def test_exclude_marc_by_vendor_gobi(mocker):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')

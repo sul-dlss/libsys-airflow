@@ -49,6 +49,15 @@ class Exporter(object):
             ):
                 reject = True
         return reject
+    
+    def check_915_authority(self, fields915: list) -> bool:
+        reject = False
+        for field in fields915:
+            if any("NO EXPORT" in sf for sf in field.get_subfields("a")) and any(
+                "AUTHORITY VENDOR" in sf for sf in field.get_subfields("b")
+            ):
+                reject = True
+        return reject
 
     def exclude_marc_by_vendor(self, marc_record: marcRecord, vendor: str):
         """
@@ -69,6 +78,14 @@ class Exporter(object):
                     [
                         self.check_590(marc_record.get_fields("590")),
                         self.check_915(marc_record.get_fields("915")),
+                    ]
+                )
+
+            case "backstage":
+                exclude = any(
+                    [
+                        self.check_590(marc_record.get_fields("590")),
+                        self.check_915_authority(marc_record.get_fields("915")),
                     ]
                 )
 
