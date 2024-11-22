@@ -255,16 +255,18 @@ def mock_folio_client():
     return mock_client
 
 
-@pytest.fixture
-def mock_marc_dir(tmp_path):
+@pytest.fixture(params=["pod", "vendor"])
+def mock_marc_dir(tmp_path, request):
     airflow = tmp_path / "airflow"
-    vendor_dir = airflow / "data-export-files/vendor/"
+    vendor = request.param
+    vendor_dir = airflow / f"data-export-files/{vendor}/"
     marc_dir = vendor_dir / "marc-files" / "updates"
     marc_dir.mkdir(parents=True, exist_ok=True)
 
     return marc_dir
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -303,6 +305,7 @@ def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
     assert len(mod_marc_records) == 0
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client):
 
     mocker.patch(
@@ -347,6 +350,7 @@ def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client)
     assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -386,6 +390,7 @@ def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_clien
     assert field_999s[1].get_subfields('l') == field_999s[2].get_subfields('l')
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -424,7 +429,8 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
     assert field_999s[1].get_subfields('a')[0] == "QA 124378"
 
 
-def test_marc_clean_serialize(mock_marc_dir, tmp_path):
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_clean_serialize(mock_marc_dir):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -473,6 +479,7 @@ def test_marc_clean_serialize(mock_marc_dir, tmp_path):
     assert pathlib.Path(xml_file).stat().st_size > 0
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_change_leader(mock_marc_dir):
     marc_file = mock_marc_dir / "20240509.mrc"
 
@@ -499,11 +506,9 @@ def test_change_leader(mock_marc_dir):
     assert modified_marc_record.leader[5] == 'd'
 
 
-def test_zip_marc_file(tmp_path):
-    marc_dir = tmp_path / "pod" / "marc-files" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-
-    marc_file = marc_dir / "20240509.xml"
+@pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)
+def test_zip_marc_file(mock_marc_dir):
+    marc_file = mock_marc_dir / "20240509.xml"
 
     raw_xml = """<?xml version="1.0" encoding="UTF-8"?><collection xmlns="http://www.loc.gov/MARC21/slim">"""
 
@@ -522,12 +527,13 @@ def test_zip_marc_file(tmp_path):
 
     zip_marc_file(str(marc_file), False)
 
-    marc_zip_file = marc_dir / "20240509.xml.gz"
+    marc_zip_file = mock_marc_dir / "20240509.xml.gz"
 
     assert marc_zip_file.stat()[6] == 336
     assert marc_file.exists() is False
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_zip_marc_files_not_pod(mock_marc_dir):
     marc_file = mock_marc_dir / "20240509.xml"
 
