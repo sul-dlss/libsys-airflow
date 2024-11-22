@@ -1,7 +1,7 @@
 import datetime
 
+import httpx
 import pytest
-import requests
 
 
 from bs4 import BeautifulSoup
@@ -44,7 +44,7 @@ def mock_okapi_boundwith(monkeypatch, mocker: MockerFixture):
             post_response.status_code = 201
         return post_response
 
-    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(httpx, "post", mock_post)
 
 
 @pytest.fixture
@@ -118,7 +118,11 @@ def mock_folio_client(mocker):
             kwargs['payload']['holdingsRecordId']
             == "17ce339c-2277-4f25-bdb1-e75f8cc00b0e"
         ):
-            raise requests.exceptions.HTTPError("500 Invalid payload")
+            raise httpx.HTTPStatusError(
+                "500 Invalid payload",
+                request=httpx.Request("POST", "/inventory-storage/bound-with-parts"),
+                response=httpx.Response(500),
+            )
         return {"id": "71bd1912-d0e0-4de5-831a-1615affe3e81"}
 
     mock_client = mocker.MagicMock()
@@ -135,7 +139,7 @@ def test_add_admin_notes(mock_task_instance, mock_folio_client, caplog):
         mock_folio_client,
     )
 
-    assert "Total 1 Item/Holding pairs administrative notes"
+    assert "Total 1 Item/Holding pairs administrative notes" in caplog.text
 
 
 def test_create_admin_note():
@@ -232,7 +236,7 @@ def test_email_failure(mocker, mock_context, mock_task_instance):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
     )
-    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.httpx")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@example.com'
@@ -270,7 +274,7 @@ def test_email_failure_bad_log_url(mocker, mock_context, mock_task_instance):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
     )
-    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.httpx")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@example.com'
@@ -300,7 +304,7 @@ def test_email_failure_no_log(mocker, mock_context, mock_task_instance):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.folio.helpers.bw.send_email_with_server_name"
     )
-    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.requests")
+    mock_requests = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.httpx")
     mock_requests.get = mock_get
     mock_variable = mocker.patch("libsys_airflow.plugins.folio.helpers.bw.Variable")
     mock_variable.get = lambda _: 'libsys-lists@example.com'

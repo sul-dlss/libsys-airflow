@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-import requests
+import httpx
 
 from bs4 import BeautifulSoup
 from jinja2 import Template
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def _bw_error_body(task_instance, params) -> str:
     log_url = task_instance.log_url.replace("localhost", "airflow-webserver")
-    log_result = requests.get(log_url)
+    log_result = httpx.get(log_url)
 
     email_template = Template(
         """
@@ -89,6 +89,7 @@ def add_admin_notes(note: str, task_instance, folio_client):
     for record in task_instance.xcom_pull(
         task_ids="new_bw_record", key="success", default=[]
     ):
+
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
         holdings_record = folio_client.folio_get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
@@ -190,7 +191,7 @@ def post_bw_record(**kwargs):
         )
         record["id"] = post_result["id"]
         task_instance.xcom_push(key="success", value=record)
-    except requests.exceptions.HTTPError as e:
+    except httpx.HTTPError as e:
         task_instance.xcom_push(
             key="error", value={"record": record, "message": str(e)}
         )

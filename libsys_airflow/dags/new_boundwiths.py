@@ -34,6 +34,9 @@ def _folio_client():
     start_date=datetime(2023, 11, 7),
     catchup=False,
     tags=["folio", "boundwith"],
+    default_args={
+        "email_on_failure": False,
+    },
     on_failure_callback=email_failure,
 )
 def add_bw_relationships(**kwargs):
