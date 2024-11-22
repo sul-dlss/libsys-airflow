@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     leader_for_deletes,
+    clean_and_serialize_marc_files,
     marc_clean_serialize,
     zip_marc_file,
 )
@@ -427,6 +428,15 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
     # Item specific subfields are not present
     assert field_999s[1].get_subfields('e', 'j', 't') == []
     assert field_999s[1].get_subfields('a')[0] == "QA 124378"
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_clean_and_serialize_marc_files(mock_marc_dir, caplog):
+    marc_file = mock_marc_dir / "20240228.mrc"
+    marc_file.touch()
+    marc_file_list = {"updates": [str(marc_file)]}
+    clean_and_serialize_marc_files(marc_file_list)
+    assert f"Removed MARC fields and serialized records for updates files: {str(marc_file)}"
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
