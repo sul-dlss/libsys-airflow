@@ -257,10 +257,11 @@ def set_holdings_oclc_task(connection_details: list, update_records: dict) -> di
 
 
 @task
-def consolidate_oclc_archive_files(
-    deleted, matched: list, new_files: list, updated: list
-) -> list:
-    unique_files = set(deleted + matched + new_files + updated)
+def consolidate_oclc_archive_files(gathered_oclc_files: dict) -> list:
+    unique_files = set()
+    for _, library in gathered_oclc_files.items():
+        for files in library.values():
+            [unique_files.add(file) for file in files]  # type: ignore
     return list(unique_files)
 
 

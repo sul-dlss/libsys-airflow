@@ -18,6 +18,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     transmit_data_ftp_task,
     oclc_connections,
     archive_transmitted_data_task,
+    consolidate_oclc_archive_files,
     delete_from_oclc_task,
     filter_new_marc_records_task,
     gather_oclc_files_task,
@@ -305,6 +306,62 @@ def test_oclc_connections(mocker, mock_oclc_connection):
     connection_lookup = oclc_connections(["http.oclc-LIB"])
     assert connection_lookup["LIB"]["username"] == "client_id"
     assert connection_lookup["LIB"]["password"] == "secret"
+
+
+def test_consolidate_oclc_archive_files_task():
+    gathered_files = {
+        'deletes': {
+            'S7Z': [
+                '/opt/airflow/data-export-files/oclc/marc-files/deletes/202411211347-S7Z.mrc'
+            ],
+            'HIN': [],
+            'CASUM': [
+                '/opt/airflow/data-export-files/oclc/marc-files/deletes/202411211347-CASUM.mrc'
+            ],
+            'RCJ': [
+                '/opt/airflow/data-export-files/oclc/marc-files/deletes/202411211347-RCJ.mrc'
+            ],
+            'STF': [
+                '/opt/airflow/data-export-files/oclc/marc-files/deletes/202411211347-STF.mrc'
+            ],
+        },
+        'new': {
+            'S7Z': [],
+            'HIN': [],
+            'CASUM': [
+                '/opt/airflow/data-export-files/oclc/marc-files/new/202411211347-CASUM.mrc'
+            ],
+            'RCJ': [],
+            'STF': [
+                '/opt/airflow/data-export-files/oclc/marc-files/new/202411211347-STF.mrc'
+            ],
+        },
+        'updates': {
+            'S7Z': [
+                '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-S7Z.mrc'
+            ],
+            'HIN': [
+                '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-HIN.mrc'
+            ],
+            'CASUM': [
+                '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-CASUM.mrc'
+            ],
+            'RCJ': [
+                '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-RCJ.mrc'
+            ],
+            'STF': [
+                '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-STF.mrc'
+            ],
+        },
+    }
+
+    archived_files = consolidate_oclc_archive_files.function(gathered_files)
+
+    assert len(archived_files) == 11
+    assert (
+        '/opt/airflow/data-export-files/oclc/marc-files/updates/202411211347mv-RCJ.mrc'
+        in archived_files
+    )
 
 
 def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):

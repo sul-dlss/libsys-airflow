@@ -580,7 +580,6 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
 
     assert updated_result['success'] == ['958835d2-39cc-4ab3-9c56-53bf7940421b']
     assert updated_result['failures'] == []
-    assert updated_result['archive'] == [str(marc_file.absolute())]
 
 
 def test_oclc_api_failed_authentication(mock_oclc_api):
@@ -735,7 +734,6 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
             "context": "445667",
         }
     ]
-    assert new_results['archive'] == []
 
 
 def test_no_update_records(mock_oclc_api, caplog):
@@ -1094,7 +1092,7 @@ def test_oclc_records_operation_not_prod(mocker, mock_oclc_api, tmp_path, caplog
     )
 
     assert "Skipping OCLC API" in caplog.text
-    assert result['archive'][0].endswith('2024070113-STF.mrc')
+    assert result["success"] == {}
 
 
 def test_worldcat_error(mocker, mock_oclc_api, tmp_path):

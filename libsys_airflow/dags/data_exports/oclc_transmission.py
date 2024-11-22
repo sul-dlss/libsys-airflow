@@ -120,14 +120,11 @@ def send_oclc_records():
             marc_errors_email_task(new_oclc_marc_errors_reports),
         ] >> end_emails
 
-    archive_files = consolidate_oclc_archive_files(
-        deleted_records["archive"],
-        new_records["archive"],
-        matched_records["archive"],
-        set_holdings_for_records["archive"],
-    )
+    archive_files = consolidate_oclc_archive_files(gather_files)
 
     archive_data = archive_transmitted_data_task(archive_files)
+
+    set_holdings_for_records >> archive_data
 
     start >> gather_files >> filtered_errors
 
