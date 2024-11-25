@@ -11,7 +11,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     bookplate_funds_polines,
     instances_from_po_lines,
     launch_digital_bookplate_979_dag,
-    launch_poll_for_979_dags,
+    launch_poll_for_979_dags_email,
     trigger_digital_bookplate_979_task,
     _new_bookplates,
 )
@@ -406,7 +406,7 @@ def test_launch_poll_for_979_dags(mocker, mock_dag_bag, caplog):
         return_value=mock_dag_bag,
     )
 
-    launch_poll_for_979_dags(dag_runs=['manual__2024-10-24:00:00:00'])
+    launch_poll_for_979_dags_email(dag_runs=['manual__2024-10-24:00:00:00'])
 
     assert dag_bag.called
     assert "Triggers polling DAG for 979 DAG runs" in caplog.text

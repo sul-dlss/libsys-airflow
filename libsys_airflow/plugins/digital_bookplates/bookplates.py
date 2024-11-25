@@ -73,7 +73,7 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     return dag_run_id
 
 
-def launch_poll_for_979_dags(**kwargs):
+def launch_poll_for_979_dags_email(**kwargs):
     """
     Triggers poll_for_digital_bookplate_979s_email DAG with kwargs
     """
@@ -302,4 +302,4 @@ def trigger_digital_bookplate_979_task(**kwargs):
 @task
 def trigger_poll_for_979s_task(**kwargs):
     dag_run_ids = kwargs["dag_runs"]
-    launch_poll_for_979_dags(dag_runs=dag_run_ids)
+    launch_poll_for_979_dags_email(dag_runs=dag_run_ids)

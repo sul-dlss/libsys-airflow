@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_digital_bookplate_979_dag,
-    launch_poll_for_979_dags,
+    launch_poll_for_979_dags_email,
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
@@ -90,7 +90,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
                 raw_upload_instances_file.filename,
                 upload_instances_df,
             )
-            launch_poll_for_979_dags(dag_runs=dag_runs, email=email)
+            launch_poll_for_979_dags_email(dag_runs=dag_runs, email=email)
             flash(
                 f"Triggered {len(dag_runs)} DAG run(s) for {raw_upload_instances_file.filename}"
             )
