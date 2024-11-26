@@ -5,6 +5,7 @@ from airflow.models import Variable
 
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
+    generate_oclc_new_marc_errors_email,
     failed_transmission_email,
 )
 
@@ -183,6 +184,28 @@ def test_failed_transmission_email(mocker, mock_dag_run, mock_folio_variables, c
         list_items[1].text.strip()
         == "data-export-files/some-vendor/marc-files/updates/5678.mrc"
     )
+
+
+def test_generate_oclc_new_marc_errors_email(
+    mocker, mock_dag_run, mock_folio_variables
+):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    error_reports = {
+        "STF": "/opt/airflow/data-export-files/oclc/reports/STF/new_marc_errors/2024-11-26T23:26:11.316254.html",
+        "HIN": "/opt/airflow/data-export-files/oclc/reports/HIN/new_marc_errors/2024-11-26T23:26:12.316254.html",
+        "S7Z": "/opt/airflow/data-export-files/oclc/reports/S7Z/new_marc_errors/2024-11-26T23:26:12.316254.html",
+    }
+
+    generate_oclc_new_marc_errors_email(error_reports)
+
+    assert mock_send_email.call_count == 3
+
+    assert mock_send_email.call_args_list[0][1]["subject"].endswith("SUL")
+    assert mock_send_email.call_args_list[1][1]["subject"].endswith("Hoover")
+    assert mock_send_email.call_args_list[2][1]["subject"].endswith("Business")
 
 
 def test_failed_full_dump_transmission_email(

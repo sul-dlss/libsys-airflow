@@ -123,18 +123,18 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
 
-    subject_line = "OCLC: MARC Errors for New Record"
+    subject_template = "OCLC: MARC Errors for New Record"
 
     for library, report in error_reports.items():
         to_emails = [
             devs_email,
         ]
 
-        _match_oclc_library(
+        to_emails, subject_line = _match_oclc_library(
             library=library,
             to_emails=to_emails,
             cohort_emails=cohort_emails,
-            subject_line=subject_line,
+            subject_line=subject_template,
         )
 
         if not is_production():
