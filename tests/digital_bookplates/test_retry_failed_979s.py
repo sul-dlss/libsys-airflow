@@ -79,6 +79,16 @@ def mock_dag_bag(mocker):
     return dag_bag
 
 
+@pytest.fixture
+def mock_dag(mocker):
+    def mock_clear_dags(dags: list):
+        return mocker.MagicMock()
+
+    dag = mocker.MagicMock()
+    dag.clear_dags = mock_clear_dags
+    return dag
+
+
 def test_find_failed_979_dags(mocker, caplog):
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.find",
@@ -90,7 +100,7 @@ def test_find_failed_979_dags(mocker, caplog):
     assert f"Found: scheduled__2024-{month()}-4" in caplog.text
 
 
-def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, caplog):
+def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, mock_dag, caplog):
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.find",
         return_value=mock_dag_runs(),
@@ -99,9 +109,13 @@ def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, caplog):
         "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
         return_value=mock_dag_bag,
     )
+    dag = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag.get_dag",
+        return_value=mock_dag,
+    )
 
     dag_runs = {"digital_bookplate_979s": mock_dag_runs()}
-    run_failed_979_dags.function(dags=dag_runs)
+    run_failed_979_dags.function(dag_runs=dag_runs)
 
     assert dag_bag.called
-    assert "Launching new dag" in caplog.text
+    assert "Clearing failed 979 DAG runs" in caplog.text

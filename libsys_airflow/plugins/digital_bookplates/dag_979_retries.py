@@ -1,17 +1,12 @@
 import logging
 
-from datetime import (
-    datetime,
-    timedelta,
-    timezone,
-)
+from datetime import datetime, timedelta, timezone
+
 from airflow.decorators import task
-from airflow.models import DagRun
-from airflow.models import Variable
+from airflow.models import DagBag, DagRun, Variable
 from airflow.utils.state import DagRunState
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
-    launch_digital_bookplate_979_dag,
     launch_poll_for_979_dags_email,
 )
 
@@ -42,24 +37,19 @@ def run_failed_979_dags(**kwargs):
     """
     Re-run the failed digital_bookplate_979 DAGs and launch the email poll
     """
-    params = kwargs.get("dags", {})
-    dag_runs = params.get("digital_bookplate_979s", {})
+    params = kwargs.get("dag_runs", {})
     devs_email_addr = Variable.get("EMAIL_DEVS")
 
-    for dag in dag_runs:
-        logger.info(f"Re-running dag with id: {dag}")
-        dag_run = DagRun.find(run_id=dag)
-        ti = dag_run[0].get_task_instance("retrieve_druids_for_instance_task")
-        prev_val = ti.xcom_pull("retrieve_druids_for_instance_task")
+    dag_runs = params.get("digital_bookplate_979s", {})
+    logger.info(f"Clearing failed 979 DAG runs: {dag_runs}")
 
-        for key, value in prev_val.items():
-            instance_id = key
-            fund = value
-
-            new_dag_run_id = launch_digital_bookplate_979_dag(
-                instance_uuid=instance_id, funds=fund
-            )
-            logger.info(f"Launching new dag: {new_dag_run_id}")
+    dagbag = DagBag("/opt/airflow/dags")
+    dag = dagbag.get_dag("digital_bookplate_979")
+    dag.clear_dags(
+        dags=[dag],
+        only_failed=True,
+        dry_run=False,
+    )
 
     launch_poll_for_979_dags_email(dag_runs=dag_runs, email=devs_email_addr)
 
