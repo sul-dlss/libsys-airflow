@@ -1,5 +1,3 @@
-import pathlib
-
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -17,10 +15,6 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 )
 
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
-from libsys_airflow.plugins.data_exports.marc.transforms import (
-    change_leader_for_deletes,
-    clean_and_serialize_marc_files,
-)
 
 devs_to_email_addr = Variable.get("EMAIL_DEVS")
 
@@ -39,7 +33,8 @@ with DAG(
     "select_backstage_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("select_backstage", "30 22 * * FRI"), timezone="America/Los_Angeles"
+        cron=Variable.get("select_backstage", "30 22 * * FRI"),
+        timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 11, 18),
     catchup=False,

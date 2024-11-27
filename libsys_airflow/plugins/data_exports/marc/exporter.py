@@ -49,7 +49,7 @@ class Exporter(object):
             ):
                 reject = True
         return reject
-    
+
     def check_915_authority(self, fields915: list) -> bool:
         reject = False
         for field in fields915:
