@@ -98,12 +98,14 @@ def __mod_040__(field_040: pymarc.Field):
 
 def __oclc_marc_modifications__(marc_record: pymarc.Record) -> pymarc.Record:
     """
-    Modifies the 007 and 040 fields for new OCLC records. For 007 field,
+    Modifies the 007, 035, and 040 fields for new OCLC records. For 007 field,
     replace any spaces with |. For 040 substitute CSt with STF for all
     subfields.
     """
     for field in marc_record.get_fields("007"):
         __mod_007__(field)
+    for field in marc_record.get_fields("035"):
+        field.indicators = pymarc.Indicators(" ", " ")
     for field in marc_record.get_fields("040"):
         __mod_040__(field)
     return marc_record

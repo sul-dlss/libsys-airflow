@@ -16,6 +16,11 @@ def sample_marc_records():
     marc_record.add_field(
         pymarc.Field(tag="007", data="cr un         "),
         pymarc.Field(
+            tag="035",
+            indicators=pymarc.Indicators("1", "0"),
+            subfields=[pymarc.Subfield("a", "234577")],
+        ),
+        pymarc.Field(
             tag="040",
             indicators=pymarc.Indicators(" ", " "),
             subfields=[
@@ -1036,6 +1041,7 @@ def test_oclc_marc_modifications():
     mod_record = oclc_api.__oclc_marc_modifications__(sample_records[0])
 
     assert mod_record["007"].value() == "cr un|||||||||"
+    assert mod_record["035"].indicators == pymarc.Indicators(" ", " ")
     assert mod_record["040"]["a"] == "STF"
     assert mod_record["040"]["b"] == "eng"
 
