@@ -18,11 +18,9 @@ def failed_979_dags() -> dict:
     """
     Find all of the failed digital_bookplate_979 DAG runs
     """
-    start_date = datetime.now(timezone.utc) - timedelta(30)
     dag_runs = DagRun.find(
         state=DagRunState.FAILED,
         dag_id="digital_bookplate_979",
-        execution_start_date=start_date,
     )
     db_979_dags: dict = {"digital_bookplate_979s": []}
     for dag_run in dag_runs:
