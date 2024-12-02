@@ -1,7 +1,5 @@
 import logging
 
-from datetime import datetime, timedelta, timezone
-
 from airflow.decorators import task
 from airflow.models import DagBag, DagRun, Variable
 from airflow.utils.state import DagRunState
