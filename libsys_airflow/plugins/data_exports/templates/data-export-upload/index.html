@@ -1,5 +1,48 @@
 {% extends "appbuilder/base.html" %}
 
+{% block head_js %}
+{{ super() }}
+<script>
+function toggleRecordTypes() {
+  const vendorSelect = document.getElementById("vendor");
+  const vendor = vendorSelect.value;
+
+  const radioButtons = document.querySelectorAll('input[type="radio"][name="kind"]');
+
+  switch(vendor) {
+    case "gobi":
+    case "backstage":
+      radioButtons.forEach(radio => {
+        if (radio.value !== "new") {
+          radio.disabled = true;
+          radio.checked = false;
+        } else {
+          radio.disabled = false;
+        }
+      });
+      break;
+
+    case "oclc":
+      radioButtons.forEach(radio => {
+        if (radio.value === "updates") {
+          radio.disabled = true;
+          radio.checked = false;
+        } else {
+          radio.disabled = false;
+        }
+      });
+      break;
+
+    default:
+      radioButtons.forEach(radio => {
+         radio.disabled = false;
+         radio.checked = false;
+      });
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div>
   <h2>Data Export CSV Upload</h2>
@@ -20,7 +63,7 @@
         <p class="help-block">
           Select Export Vendor (required)
         </p>
-        <select class="form-control" id="vendor" name="vendor">
+        <select class="form-control" onchange="toggleRecordTypes()" id="vendor" name="vendor">
           <option value="">--Choose vendor--</option>
           {%for v in vendors%}
             <option value="{{v}}">{{v}}</option>
