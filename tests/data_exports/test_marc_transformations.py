@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     leader_for_deletes,
+    clean_and_serialize_marc_files,
     marc_clean_serialize,
     zip_marc_file,
 )
@@ -255,7 +256,19 @@ def mock_folio_client():
     return mock_client
 
 
-def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
+@pytest.fixture(params=["pod", "vendor"])
+def mock_marc_dir(tmp_path, request):
+    airflow = tmp_path / "airflow"
+    vendor = request.param
+    vendor_dir = airflow / f"data-export-files/{vendor}/"
+    marc_dir = vendor_dir / "marc-files" / "updates"
+    marc_dir.mkdir(parents=True, exist_ok=True)
+
+    return marc_dir
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -278,9 +291,7 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
         ),
     )
 
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "20240514.mrc"
+    marc_file = mock_marc_dir / "20240514.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -295,7 +306,8 @@ def test_skip_record_no_999i(mocker, tmp_path, mock_folio_client):
     assert len(mod_marc_records) == 0
 
 
-def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client):
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -314,9 +326,7 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
         )
     )
 
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "20240228.mrc"
+    marc_file = mock_marc_dir / "20240228.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -341,7 +351,8 @@ def test_add_holdings_items_single_999(mocker, tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
 
 
-def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -357,9 +368,7 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
         )
     )
 
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "2024022911.mrc"
+    marc_file = mock_marc_dir / "2024022911.mrc"
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -382,7 +391,8 @@ def test_add_holdings_items_multiple_999(mocker, tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('l') == field_999s[2].get_subfields('l')
 
 
-def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -399,9 +409,7 @@ def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
         )
     )
 
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "2024022914.mrc"
+    marc_file = mock_marc_dir / "2024022914.mrc"
 
     with marc_file.open("wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -422,7 +430,17 @@ def test_add_holdings_items_no_items(mocker, tmp_path, mock_folio_client):
     assert field_999s[1].get_subfields('a')[0] == "QA 124378"
 
 
-def test_marc_clean_serialize(tmp_path):
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_clean_and_serialize_marc_files(mock_marc_dir, caplog):
+    marc_file = mock_marc_dir / "20240228.mrc"
+    marc_file.touch()
+    marc_file_list = {"updates": [str(marc_file)]}
+    clean_and_serialize_marc_files(marc_file_list)
+    assert f"Removed MARC fields and serialized records for updates files: {str(marc_file)}"
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_clean_serialize(mock_marc_dir):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -447,9 +465,7 @@ def test_marc_clean_serialize(tmp_path):
         ),
     )
 
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "20240228.mrc"
+    marc_file = mock_marc_dir / "20240228.mrc"
 
     with marc_file.open("wb+") as fo:
         marc_writer = pymarc.MARCWriter(fo)
@@ -468,16 +484,14 @@ def test_marc_clean_serialize(tmp_path):
     assert "598" not in current_fields
     assert "699" not in current_fields
 
-    xml_dir = tmp_path / "vendor" / "updates"
-    xml_file = xml_dir / "20240228.xml"
+    xml_file = mock_marc_dir / "20240228.xml"
 
     assert pathlib.Path(xml_file).stat().st_size > 0
 
 
-def test_change_leader(tmp_path):
-    marc_dir = tmp_path / "vendor" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-    marc_file = marc_dir / "20240509.mrc"
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_change_leader(mock_marc_dir):
+    marc_file = mock_marc_dir / "20240509.mrc"
 
     record = pymarc.Record()
     record.add_field(
@@ -502,11 +516,9 @@ def test_change_leader(tmp_path):
     assert modified_marc_record.leader[5] == 'd'
 
 
-def test_zip_marc_file(tmp_path):
-    marc_dir = tmp_path / "pod" / "marc-files" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-
-    marc_file = marc_dir / "20240509.xml"
+@pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)
+def test_zip_marc_file(mock_marc_dir):
+    marc_file = mock_marc_dir / "20240509.xml"
 
     raw_xml = """<?xml version="1.0" encoding="UTF-8"?><collection xmlns="http://www.loc.gov/MARC21/slim">"""
 
@@ -525,23 +537,21 @@ def test_zip_marc_file(tmp_path):
 
     zip_marc_file(str(marc_file), False)
 
-    marc_zip_file = marc_dir / "20240509.xml.gz"
+    marc_zip_file = mock_marc_dir / "20240509.xml.gz"
 
     assert marc_zip_file.stat()[6] == 336
     assert marc_file.exists() is False
 
 
-def test_zip_marc_files_not_pod(tmp_path):
-    marc_dir = tmp_path / "vendor" / "marc-files" / "updates"
-    marc_dir.mkdir(parents=True, exist_ok=True)
-
-    marc_file = marc_dir / "20240509.xml"
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_zip_marc_files_not_pod(mock_marc_dir):
+    marc_file = mock_marc_dir / "20240509.xml"
 
     marc_file.touch()
 
     zip_marc_file(str(marc_file), False)
 
-    marc_zip_file = marc_dir / "20240509.gz"
+    marc_zip_file = mock_marc_dir / "20240509.gz"
 
     assert marc_file.exists()
     assert marc_zip_file.exists() is False
