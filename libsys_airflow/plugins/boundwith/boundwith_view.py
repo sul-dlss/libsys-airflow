@@ -52,7 +52,7 @@ class BoundWithView(AppBuilderBaseView):
                 raw_csv = request.files["upload-boundwith"]
                 email_addr = request.form.get("user-email")
                 bw_df = pd.read_csv(raw_csv)
-                if ["parts_holdings_hrid", "principle_barcode"] != list(bw_df.columns):
+                if ["part_holdings_hrid", "principle_barcode"] != list(bw_df.columns):
                     flash(f"Invalid columns: {list(bw_df.columns)} for CSV file")
                     rendered_page = self.render_template("boundwith/index.html")
                 elif len(bw_df) > 1_000:
