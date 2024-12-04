@@ -102,7 +102,7 @@ def add_bw_relationships(**kwargs):
 
     admin_note = generate_admin_note()
 
-    start >> [rows, admin_note]
+    start >> rows >> admin_note
 
     bw_records = add_bw_record.expand(row=rows)
 
