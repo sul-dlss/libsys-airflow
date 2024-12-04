@@ -68,6 +68,7 @@ with DAG(
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
+        op_kwargs={"record_kind": ["new"]},
     )
 
     save_ids_to_file = PythonOperator(
