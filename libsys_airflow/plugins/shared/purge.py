@@ -16,7 +16,7 @@ from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorI
 logger = logging.getLogger(__name__)
 
 
-PRIOR_DAYS = 90
+PRIOR_DAYS = 180
 
 
 @task(multiple_outputs=True)
@@ -70,13 +70,15 @@ def _extract_uuids(directory: str):
     return output
 
 
-def find_directories(archive_directory: pathlib.Path) -> list[str]:
+def find_directories(
+    archive_directory: pathlib.Path, prior_days: int = PRIOR_DAYS
+) -> list[str]:
     """
     Iterates through archives to determine what vendor management
     directories to delete based on age
     """
     target_dirs = []
-    prior_datestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).strftime(
+    prior_datestamp = (datetime.utcnow() - timedelta(days=prior_days)).strftime(
         "%Y%m%d"
     )
     for directory in sorted(archive_directory.iterdir()):
@@ -87,12 +89,12 @@ def find_directories(archive_directory: pathlib.Path) -> list[str]:
     return target_dirs
 
 
-def find_files(downloads_directory: pathlib.Path):
+def find_files(downloads_directory: pathlib.Path, prior_days: int = PRIOR_DAYS):
     """
     Iterates through downloads directory determing what files to
     delete based on the file's age
     """
-    prior_timestamp = (datetime.utcnow() - timedelta(days=PRIOR_DAYS)).timestamp()
+    prior_timestamp = (datetime.utcnow() - timedelta(days=prior_days)).timestamp()
     files = []
     for file_path in downloads_directory.glob("**/*"):
         if file_path.is_file() and file_path.stat().st_mtime <= prior_timestamp:

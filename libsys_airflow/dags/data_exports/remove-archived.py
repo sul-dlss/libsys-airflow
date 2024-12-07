@@ -37,7 +37,7 @@ with DAG(
         airflow = kwargs.get("airflow", "/opt/airflow")
         _directory = pathlib.Path(airflow) / "data-export-files/*/transmitted/"
 
-        return find_files(downloads_directory=_directory)
+        return find_files(downloads_directory=_directory, prior_days=90)
 
     start = EmptyOperator(task_id='start_removing_archived')
 
