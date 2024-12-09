@@ -23,16 +23,16 @@ def mock_folio_variables(monkeypatch):
 
             case "EMAIL_ENC_SUL":
                 value = "sul@example.com"
-            
+
             case "EMAIL_ENC_LAW":
                 value = "law@example.com"
-            
+
             case "EMAIL_ENC_LANE":
                 value = "lane@example.com"
 
             case "OKAPI_URL":
                 value = "okapi-test"
-            
+
             case "FOLIO_URL":
                 value = "okapi-test"
 
@@ -87,11 +87,10 @@ def test_fix_encumbrances_email_subject():
 def test_email_to(mocker):
     mocker.patch(
         'libsys_airflow.plugins.shared.utils.send_email_with_server_name',
-        return_value = None
+        return_value=None,
     )
-    
+
     from libsys_airflow.plugins.folio.encumbrances.email import email_to
 
     to_addresses = email_to(fy_code='SUL2025')
     assert to_addresses == ['test@stanford.edu', 'sul@example.com']
-
