@@ -14,19 +14,41 @@ def mock_task_instance(mocker):
 
 
 @pytest.fixture
-def mock_okapi(monkeypatch):
-    def mock_get(*args):
-        return "http://okapi-test"
+def mock_folio_variables(monkeypatch):
+    def mock_get(key, *args):
+        value = None
+        match key:
+            case "EMAIL_DEVS":
+                value = "test@stanford.edu"
+
+            case "EMAIL_ENC_SUL":
+                value = "sul@example.com"
+
+            case "EMAIL_ENC_LAW":
+                value = "law@example.com"
+
+            case "EMAIL_ENC_LANE":
+                value = "lane@example.com"
+
+            case "OKAPI_URL":
+                value = "okapi-test"
+
+            case "FOLIO_URL":
+                value = "okapi-test"
+
+            case _:
+                raise ValueError("")
+        return value
 
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
 def test_fix_encumbrances_log_file_params(
-    mocker, tmp_path, mock_task_instance, mock_okapi, monkeypatch
+    mocker, tmp_path, mock_task_instance, mock_folio_variables, monkeypatch
 ):
     mocker.patch(
         'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances.Variable.get',
-        return_value=mock_okapi,
+        return_value=mock_folio_variables,
     )
 
     async_mock = AsyncMock()
@@ -58,5 +80,17 @@ def test_fix_encumbrances_email_subject():
     from libsys_airflow.plugins.shared.utils import _subject_with_server_name
     from libsys_airflow.plugins.folio.encumbrances.email import subject
 
-    subj = _subject_with_server_name(subject=subject(library="SUL2024"))
+    subj = _subject_with_server_name(subject=subject(fy_code="SUL2024"))
     assert subj == "okapi-test - Fix Encumbrances for SUL2024"
+
+
+def test_email_to(mocker):
+    mocker.patch(
+        'libsys_airflow.plugins.shared.utils.send_email_with_server_name',
+        return_value=None,
+    )
+
+    from libsys_airflow.plugins.folio.encumbrances.email import email_to
+
+    to_addresses = email_to(fy_code='SUL2025')
+    assert to_addresses == ['test@stanford.edu', 'sul@example.com']
