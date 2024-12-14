@@ -1,0 +1,45 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <h1>Orafin Feeder-files and AP Reports</h1>
+  <h2>Feeder-files sent to AP</h2>
+  <table class="table table-striped" id="feederFileDownloads">
+    <thead>
+        <tr>
+          <th>Filename</th>
+          <th>Date Created</th>
+          <th>Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for feeder_file in feeder_files %}
+        <tr>
+            <td>{{ feeder_file.name }}</td>
+            <td>{{ feeder_file.date_created }}</td>
+            <td>{{ feeder_file.size }} kb</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+  </table>
+  <h2>AP Reports</h2>
+  <table class="table table-striped" id="apReportsDownloads">
+    <thead>
+        <tr>
+        <th>Filename</th>
+        <th>Date Created</th>
+        <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in ap_reports %}
+        <tr>
+            <td>{{ report.name }}</td>
+            <td>{{ report.date_created }}</td>
+            <td>{{ report.size }} kb</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
