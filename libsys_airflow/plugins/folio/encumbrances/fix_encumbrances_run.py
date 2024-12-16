@@ -20,6 +20,7 @@ def fix_encumbrances_run(*args, **kwargs):
     library = kwargs.get("library", "")
     log_path = pathlib.Path(airflow) / f"fix_encumbrances/{library}-{run_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    log = str(log_path.absolute())
 
     with log_path.open("w+", 1) as log:
         with contextlib.redirect_stdout(log):
@@ -31,6 +32,6 @@ def fix_encumbrances_run(*args, **kwargs):
                 )
             except Exception as e:
                 logger.error(f"fix_encumbrance_script failed with: {e}")
-                return str(log_path.absolute())
+                return log
 
-    return str(log_path.absolute())
+    return log
