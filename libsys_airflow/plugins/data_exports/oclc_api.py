@@ -10,7 +10,7 @@ import pymarc
 from typing import List, Union, Callable
 
 from bookops_worldcat import WorldcatAccessToken, MetadataSession
-from bookops_worldcat.errors import WorldcatRequestError
+from bookops_worldcat.errors import InvalidOclcNumber, WorldcatRequestError
 
 from libsys_airflow.plugins.data_exports.marc.oclc import get_record_id
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import oclc_excluded
@@ -284,7 +284,7 @@ class OCLCAPIWrapper(object):
                         successes=successful_files,
                         failures=failed_files,
                     )
-                except WorldcatRequestError as e:
+                except (InvalidOclcNumber, WorldcatRequestError) as e:
                     msg = f"Instance UUID {instance_uuid} Error: {e}"
                     logger.error(msg)
                     output['failures'].append(
