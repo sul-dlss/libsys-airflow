@@ -1,5 +1,17 @@
 {% extends "appbuilder/base.html" %}
 
+{% block head_css %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
+{% endblock %}
+
+{% block head_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+{% endblock %}
+
+
 {% block content %}
 <div>
   <h1>Orafin Feeder-files and AP Reports</h1>
@@ -42,4 +54,21 @@
     </tbody>
   </table>
 </div>
+
+<script type="text/javascript">
+    let feederFilesDownloadsTable = document.querySelector("#feederFileDownloads");
+    let feederFilesDownloadsDataTable = new simpleDatatables.DataTable(feederFilesDownloadsTable, {
+      searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
+    });
+    let apReportsDownloadsTable = document.querySelector("#apReportsDownloads");
+    let apReportsDownloadsTableDataTable = new simpleDatatables.DataTable(apReportsDownloadsTable, {
+    searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
+    });
+</script>
 {% endblock %}
