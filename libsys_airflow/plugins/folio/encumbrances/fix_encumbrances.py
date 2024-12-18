@@ -58,7 +58,7 @@ def login(tenant, username, password):
     except Exception as err:
         print('Error during login:', err)
         logger.error('Error during login:', err)
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def get_request_without_query(url: str) -> dict:
@@ -70,11 +70,11 @@ async def get_request_without_query(url: str) -> dict:
         else:
             print(f'Error getting record with url {url} : \n{resp.text} ')
             logger.error(f'Error getting record with url {url} : \n{resp.text} ')
-            raise SystemExit(1)
+            raise Exception("Exiting Fix Encumbrances script.")
     except Exception as err:
         print(f'Error getting record with url {url} : {err=}')
         logger.error(f'Error getting record with url {url} : {err=}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def get_request(url: str, query: str) -> dict:
@@ -90,11 +90,11 @@ async def get_request(url: str, query: str) -> dict:
         else:
             print(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
             logger.error(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
-            raise SystemExit(1)
+            raise Exception("Exiting Fix Encumbrances script.")
     except Exception as err:
         print(f'Error getting records by {url}?query={query}: {err=}')
         logger.error(f'Error getting records by {url}?query={query}: {err=}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def put_request(url: str, data):
@@ -108,12 +108,12 @@ async def put_request(url: str, data):
             return
         print(f'Error updating record {url} "{data}": {resp.text}')
         logger.error(f'Error updating record {url} "{data}": {resp.text}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
     except Exception as err:
         print(f'Error updating record {url} "{data}": {err=}')
         logger.error(f'Error updating record {url} "{data}": {err=}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def delete_request(url: str):
@@ -125,12 +125,12 @@ async def delete_request(url: str):
             return
         print(f'Error deleting record {url}: {resp.text}')
         logger.error(f'Error deleting record {url}: {resp.text}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
     except Exception as err:
         print(f'Error deleting record {url}: {err=}')
         logger.error(f'Error deleting record {url}: {err=}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 def get_fiscal_years_by_query(query) -> dict:
@@ -145,7 +145,7 @@ def get_fiscal_years_by_query(query) -> dict:
     except Exception as err:
         print(f'Error getting fiscal years with query "{query}": {err}')
         logger.error(f'Error getting fiscal years with query "{query}": {err}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 def get_by_chunks(url, query, key) -> list:
@@ -185,7 +185,7 @@ def get_order_ids_by_query(query) -> list:
     except Exception as err:
         print(f'Error getting order ids with query "{query}": {err}')
         logger.error(f'Error getting order ids with query "{query}": {err}')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
     return ids
 
 
@@ -213,7 +213,7 @@ def get_fiscal_year(fiscal_year_code) -> dict:
     if len(fiscal_years) == 0:
         print(f'Could not find fiscal year "{fiscal_year_code}".')
         logger.error(f'Could not find fiscal year "{fiscal_year_code}".')
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
     return fiscal_years[0]
 
 
@@ -267,7 +267,7 @@ async def get_budget_by_fund_id(fund_id, fiscal_year_id) -> dict:
         logger.error(
             f'Could not find budget for fund "{fund_id}" and fiscal year "{fiscal_year_id}".'
         )
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
     return budgets[0]
 
 
@@ -645,7 +645,7 @@ async def fix_order_status_and_release_encumbrances(order_id, encumbrances):
         logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def fix_order_encumbrances_order_status(order_id, encumbrances):
@@ -672,7 +672,7 @@ async def fix_order_encumbrances_order_status(order_id, encumbrances):
         logger.error(
             f'Error when fixing order status in encumbrances for order {order_id}:', err
         )
-        raise SystemExit(1)
+        raise Exception("Exiting Fix Encumbrances script.")
 
 
 async def fix_encumbrance_order_status_for_closed_order(
