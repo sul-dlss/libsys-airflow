@@ -1,0 +1,74 @@
+{% extends "appbuilder/base.html" %}
+
+{% block head_css %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
+{% endblock %}
+
+{% block head_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+{% endblock %}
+
+
+{% block content %}
+<div>
+  <h1>Orafin Feeder-files and AP Reports</h1>
+  <h2>Feeder-files sent to AP</h2>
+  <table class="table table-striped" id="feederFileDownloads">
+    <thead>
+        <tr>
+          <th>Filename</th>
+          <th>Date Created</th>
+          <th>Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for feeder_file in feeder_files %}
+        <tr>
+            <td><a href="{{ url_for('OrafinFilesView.download', type_of='data', file_name=feeder_file.name) }}" download>{{ feeder_file.name }}</a></td>
+            <td>{{ feeder_file.date_created }}</td>
+            <td>{{ feeder_file.size }} kb</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+  </table>
+  <h2>AP Reports</h2>
+  <table class="table table-striped" id="apReportsDownloads">
+    <thead>
+        <tr>
+        <th>Filename</th>
+        <th>Date Created</th>
+        <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in ap_reports %}
+        <tr>
+            <td><a href="{{ url_for('OrafinFilesView.download', type_of='reports', file_name=report.name) }}" download>{{ report.name }}</a></td>
+            <td>{{ report.date_created }}</td>
+            <td>{{ report.size }} kb</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+    let feederFilesDownloadsTable = document.querySelector("#feederFileDownloads");
+    let feederFilesDownloadsDataTable = new simpleDatatables.DataTable(feederFilesDownloadsTable, {
+      searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
+    });
+    let apReportsDownloadsTable = document.querySelector("#apReportsDownloads");
+    let apReportsDownloadsTableDataTable = new simpleDatatables.DataTable(apReportsDownloadsTable, {
+    searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
+    });
+</script>
+{% endblock %}
