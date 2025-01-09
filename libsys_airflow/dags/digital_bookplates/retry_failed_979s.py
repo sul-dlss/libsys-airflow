@@ -35,7 +35,7 @@ def retry_failed_979s():
 
     find_failed_979_dags = failed_979_dags()
 
-    rerun_failed_979_dags = run_failed_979_dags(dags=find_failed_979_dags)
+    rerun_failed_979_dags = run_failed_979_dags(dag_runs=find_failed_979_dags)
 
     start >> find_failed_979_dags >> rerun_failed_979_dags >> end
 
