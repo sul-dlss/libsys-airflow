@@ -102,10 +102,6 @@ def test_find_failed_979_dags(mocker, caplog):
 
 def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, mock_dag, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.find",
-        return_value=mock_dag_runs(),
-    )
-    mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.get_dag",
         return_value=mock_dag,
     )
@@ -120,9 +116,8 @@ def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, mock_dag, capl
 
     dag_runs = {"digital_bookplate_979s": mock_dag_runs()}
     assert len(dag_runs) > 0
-
     run_failed_979_dags.function(dag_runs=dag_runs)
 
     assert dag_bag.called
     assert dag.called
-    assert "Clearing failed 979 DAG runs" in caplog.text
+    assert "Clearing 5 failed 979 DAG runs" in caplog.text

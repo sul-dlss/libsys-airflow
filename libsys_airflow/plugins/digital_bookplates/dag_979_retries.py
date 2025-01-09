@@ -37,10 +37,11 @@ def run_failed_979_dags(**kwargs):
     devs_email_addr = Variable.get("EMAIL_DEVS")
 
     dag_runs = params.get("digital_bookplate_979s", {})
-    logger.info(f"Clearing failed 979 DAG runs: {dag_runs}")
+    logger.info(f"Clearing {len(dag_runs)} failed 979 DAG runs: {dag_runs}")
 
     dagbag = DagBag("/opt/airflow/dags")
     dag = dagbag.get_dag("digital_bookplate_979")
+    # default is only_failed=False, this will clear history of all dag runs and put them in queued state
     dag.clear_dags(
         dags=[dag],
         only_failed=True,
