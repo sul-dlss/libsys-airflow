@@ -104,6 +104,18 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  useload-harvest:
+    platform: linux/arm64/v8
+    image: ghcr.io/sul-dlss/userload-harvest:airflow-userload
+    command: /bin/bash -c "while true; do sleep 30; done;"
+    volumes:
+      - /home/harvester/out
+      - /home/harvester/harvestlog
+      - /home/harvester/properties/harvester.properties
+      - /home/harvester/properties/processor.properties
+      - /home/harvester/properties/salt.properties
+      - /home/harvester/etc/sulharvester-uat.p12
+  
   postgres:
     image: postgres:14
     environment:
