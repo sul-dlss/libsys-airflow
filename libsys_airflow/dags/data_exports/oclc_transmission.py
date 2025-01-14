@@ -1,8 +1,10 @@
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task, task_group
+from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
+from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     archive_transmitted_data_task,
@@ -50,7 +52,12 @@ connections = [
 @dag(
     default_args=default_args,
     tags=["data export", "oclc"],
-    schedule=None,
+    schedule=CronDataIntervalTimetable(
+        cron=Variable.get("transmit_oclc", "30 3 * * *"),
+        timezone="America/Los_Angeles",
+    ),
+    start_date=datetime(2025, 1, 14),
+    catchup=False,
 )
 def send_oclc_records():
     start = EmptyOperator(task_id="start")
