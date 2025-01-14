@@ -73,6 +73,7 @@ with DAG(
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
+    start_date=datetime(2025, 1, 14),
     catchup=False,
 ) as dag:
     check_record_ids = BranchPythonOperator(
