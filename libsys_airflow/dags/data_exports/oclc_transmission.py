@@ -56,7 +56,7 @@ connections = [
         cron=Variable.get("transmit_oclc", "30 3 * * FRI"),
         timezone="America/Los_Angeles",
     ),
-    start_date=datetime(2025, 1, 1),
+    start_date=datetime(2025, 1, 14),
     catchup=False,
 )
 def send_oclc_records():
