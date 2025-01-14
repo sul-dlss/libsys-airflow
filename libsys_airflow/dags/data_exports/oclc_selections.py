@@ -58,7 +58,7 @@ with DAG(
     tags=["data export", "oclc"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
@@ -73,6 +73,7 @@ with DAG(
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
+    catchup=False,
 ) as dag:
     check_record_ids = BranchPythonOperator(
         task_id="check_record_ids",

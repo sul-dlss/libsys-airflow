@@ -53,7 +53,7 @@ connections = [
     default_args=default_args,
     tags=["data export", "oclc"],
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("transmit_oclc", "30 3 * * FRI"),
+        cron=Variable.get("transmit_oclc", "30 3 * * *"),
         timezone="America/Los_Angeles",
     ),
     start_date=datetime(2025, 1, 14),
