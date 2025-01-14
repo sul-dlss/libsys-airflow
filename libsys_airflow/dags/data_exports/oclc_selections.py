@@ -10,6 +10,8 @@ from airflow.operators.python import BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 
+from airflow.timetables.interval import CronDataIntervalTimetable
+
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
     fetch_record_ids,
@@ -50,7 +52,9 @@ default_args = {
 with DAG(
     "select_oclc_records",
     default_args=default_args,
-    schedule=None,
+    schedule=CronDataIntervalTimetable(
+        cron=Variable.get("select_oclc", "30 1 * * *"), timezone="America/Los_Angeles"
+    ),
     tags=["data export", "oclc"],
     params={
         "from_date": Param(
