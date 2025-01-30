@@ -105,7 +105,7 @@ def mock_httpx_connection():
 
 @pytest.fixture
 def mock_ftphook_connection():
-    return Connection(
+    return Connection(  # noqa
         conn_id="ftp-example.com",
         conn_type="ftp",
         host="ftp://www.example.com",
@@ -118,7 +118,7 @@ def mock_ftphook_connection():
 
 @pytest.fixture
 def mock_oclc_connection():
-    return Connection(
+    return Connection(  # noqa
         conn_id="http.oclc-LIB",
         conn_type="http",
         host=None,

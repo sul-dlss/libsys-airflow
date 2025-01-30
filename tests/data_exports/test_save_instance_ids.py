@@ -65,7 +65,7 @@ def test_save_ids_to_fs(tmp_path, mock_task_instance):
     assert "updates" in save_path[1]
     assert "deletes" in save_path[2]
 
-    for i, path in enumerate(save_path):
+    for _, path in enumerate(save_path):
         file = pathlib.Path(path)
         assert file.exists()
         with file.open('r') as fo:

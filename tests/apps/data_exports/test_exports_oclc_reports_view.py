@@ -16,7 +16,7 @@ def test_airflow_client():
 
     app = application.create_app(testing=True)
     app.config['WTF_CSRF_ENABLED'] = False
-    setattr(DataExportOCLCReportsView, "files_base", files_base)
+    setattr(DataExportOCLCReportsView, "files_base", files_base)  # noqa
     app.appbuilder.add_view(
         DataExportOCLCReportsView, "DataExport", category="Data export"
     )

@@ -1,6 +1,9 @@
 import logging
 
+from datetime import datetime, timedelta
+from pathlib import Path
 from s3path import S3Path
+from typing import Union
 
 from airflow.models import Variable
 from airflow.operators.python import get_current_context
@@ -8,6 +11,45 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
 logger = logging.getLogger(__name__)
+
+
+def create_materialized_view(**kwargs) -> Union[str, None]:
+    context = get_current_context()
+    params = context.get("params", {})  # type: ignore
+    recreate = params.get("recreate_view", False)
+    from_date = params.get("from_date")
+    to_date = params.get(
+        "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
+    )
+
+    query = None
+    if recreate:
+        with open(materialized_view_sql_file()) as sqf:
+            query = sqf.read()
+
+        SQLExecuteQueryOperator(
+            task_id="postgres_full_count_query",
+            conn_id="postgres_folio",
+            database=kwargs.get("database", "okapi"),
+            sql=query,
+            parameters={
+                "from_date": from_date,
+                "to_date": to_date,
+            },
+        ).execute(context)
+    else:
+        logger.info("Skipping refresh of materialized view")
+
+    return query
+
+
+def materialized_view_sql_file(**kwargs) -> Path:
+    sql_path = (
+        Path(kwargs.get("airflow", "/opt/airflow"))
+        / "libsys_airflow/plugins/data_exports/sql/materialized_view.sql"
+    )
+
+    return sql_path
 
 
 def fetch_full_dump_marc(**kwargs) -> str:

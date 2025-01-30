@@ -1,5 +1,5 @@
 import pytest
-import requests
+import httpx
 
 from pytest_mock import MockerFixture
 
@@ -125,7 +125,7 @@ def mock_requests(monkeypatch, mocker: MockerFixture):  # noqa
         get_response.json = json_func
         return get_response
 
-    monkeypatch.setattr(requests, "get", mock_get)
+    monkeypatch.setattr(httpx, "get", mock_get)
 
 
 @pytest.fixture

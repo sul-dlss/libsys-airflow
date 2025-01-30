@@ -1,3 +1,5 @@
+DROP MATERIALIZED VIEW IF EXISTS data_export_marc
+;
 create materialized view data_export_marc as
 select I.id, I.jsonb->'hrid' as hrid, M.content
 from sul_mod_inventory_storage.instance I
@@ -12,7 +14,7 @@ and (I.jsonb->>'statusId')::uuid in (
     from sul_mod_inventory_storage.instance_status
     where jsonb->>'name' = 'Cataloged'
   )
-  and I.jsonb->>'catalogedDate' is not null
+  and I.jsonb->>'catalogedDate' between %(from_date)s and %(to_date)s
   and (I.jsonb->>'discoverySuppress')::boolean is false
   and I.jsonb->>'source' = 'MARC'
 join sul_mod_source_record_storage.marc_records_lb M
