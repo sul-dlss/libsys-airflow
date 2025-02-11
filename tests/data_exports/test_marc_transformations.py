@@ -439,8 +439,7 @@ def test_clean_and_serialize_marc_files(mock_marc_dir, caplog):
     assert f"Removed MARC fields and serialized records for updates files: {str(marc_file)}"
 
 
-@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
-def test_marc_clean_serialize(mock_marc_dir):
+def setup_marc_file_for_clean_serialize(mock_marc_dir):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
@@ -471,7 +470,15 @@ def test_marc_clean_serialize(mock_marc_dir):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(record)
 
-    marc_clean_serialize(str(marc_file.absolute()), full_dump=False)
+    return marc_file
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_clean_serialize(mock_marc_dir):
+
+    marc_file = setup_marc_file_for_clean_serialize(mock_marc_dir)
+
+    marc_clean_serialize(str(marc_file.absolute()), full_dump=False, exclude_tags=True)
 
     with marc_file.open('rb') as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -483,6 +490,27 @@ def test_marc_clean_serialize(mock_marc_dir):
 
     assert "598" not in current_fields
     assert "699" not in current_fields
+
+    xml_file = mock_marc_dir / "20240228.xml"
+
+    assert pathlib.Path(xml_file).stat().st_size > 0
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_no_clean_serialize(mock_marc_dir):
+
+    marc_file = setup_marc_file_for_clean_serialize(mock_marc_dir)
+
+    marc_clean_serialize(str(marc_file.absolute()), full_dump=False, exclude_tags=False)
+
+    with marc_file.open('rb') as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        modified_marc_record = next(marc_reader)
+
+    current_fields = [field.tag for field in modified_marc_record.fields]
+
+    assert "598" in current_fields
+    assert "699" in current_fields
 
     xml_file = mock_marc_dir / "20240228.xml"
 
