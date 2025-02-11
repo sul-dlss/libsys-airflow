@@ -83,13 +83,13 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 def clean_and_serialize_marc_files(marc_file_list: dict):
     for kind, file_list in marc_file_list.items():
         for filepath in file_list:
-            marc_clean_serialize(filepath, False)
+            marc_clean_serialize(filepath, False, True)
             logger.info(
                 f"Removed MARC fields and serialized records for '{kind}' files: {filepath}"
             )
 
 
-def marc_clean_serialize(marc_file: str, full_dump: bool):
+def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
     """
     Removes MARC fields from export MARC21 file
     """
@@ -101,16 +101,16 @@ def marc_clean_serialize(marc_file: str, full_dump: bool):
     with marc_path.open('rb') as fo:
         marc_records = [record for record in pymarc.MARCReader(fo)]
 
-    logger.info(f"Removing MARC fields for {len(marc_records):,} records")
-
-    for i, record in enumerate(marc_records):
-        try:
-            record.remove_fields(*excluded_tags)
-            if not i % 100:
-                logger.info(f"{i:,} records processed")
-        except AttributeError as e:
-            logger.warning(e)
-            continue
+    if exclude_tags:
+        logger.info(f"Removing MARC fields for {len(marc_records):,} records")
+        for i, record in enumerate(marc_records):
+            try:
+                record.remove_fields(*excluded_tags)
+                if not i % 100:
+                    logger.info(f"{i:,} records processed")
+            except AttributeError as e:
+                logger.warning(e)
+                continue
 
     """
     Writes the records back to the filesystem

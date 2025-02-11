@@ -54,6 +54,11 @@ with DAG(
             type="integer",
             description="Number of batch processing jobs to run in parallel.",
         ),
+        "exclude_tags": Param(
+            True,
+            type="boolean",
+            description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
+        ),
     },
 ) as dag:
 
@@ -131,8 +136,13 @@ with DAG(
 
         @task
         def transform_marc_records_clean_serialize(marc_files: list):
+            context = get_current_context()
+            params = context.get("params", {})  # type: ignore
+            exclude_tags = params.get("exclude_tags", True)
             for marc_file in marc_files:
-                marc_clean_serialize(marc_file, full_dump=True)
+                marc_clean_serialize(
+                    marc_file, full_dump=True, exclude_tags=exclude_tags
+                )
 
         @task
         def compress_marc_files(marc_files: list):
