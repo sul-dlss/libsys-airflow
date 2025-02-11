@@ -6,6 +6,15 @@ from libsys_airflow.plugins.data_exports import full_dump_marc
 from libsys_airflow.plugins.data_exports.marc import exporter
 
 
+class MockSQLExecuteQueryOperator(pydantic.BaseModel):
+    recreate: bool = False
+    from_date: str = "2023-09-01"
+    to_date: str = "2025-02-12"
+
+    def execute(self, sql):
+        return None
+
+
 class MockCursor(pydantic.BaseModel):
     batch_size: int = 0
     offset: int = 0
@@ -48,7 +57,7 @@ def mock_marc_records():
 @pytest.fixture
 def mock_airflow_connection():
     return Connection(
-        conn_id="postgres-folio",
+        conn_id="postgres_folio",
         conn_type="postgres",
         host="example.com",
         password="pass",
@@ -152,10 +161,69 @@ def mock_result_set():
 
 
 @pytest.fixture
-def mock_get_current_context(mocker):
-    context = mocker.stub(name="context")
-    context.get = lambda arg: {}
-    return context
+def mock_get_current_context_no_recreate(monkeypatch, mocker):
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {
+            "recreate_view": False,
+            "from_date": "2023-09-01",
+            "to_date": "2025-02-01",
+        }
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+
+
+@pytest.fixture
+def mock_get_current_context_no_from_date(monkeypatch, mocker):
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {
+            "recreate_view": True,
+            "from_date": None,
+            "to_date": "2025-02-01",
+        }
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+
+
+@pytest.fixture
+def mock_get_current_context_recreate(monkeypatch, mocker):
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {
+            "recreate_view": True,
+            "from_date": "2023-09-01",
+            "to_date": "2025-02-01",
+        }
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+
+
+def setup_recreate_tests(mocker, mock_airflow_connection):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
+        return_value=mock_airflow_connection,
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.SQLExecuteQueryOperator',
+        return_value=MockSQLExecuteQueryOperator(),
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+    )
 
 
 def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
@@ -175,3 +243,49 @@ def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
         offset=3, batch_size=3, connection=MockConnection()
     )
     assert "Saving 3 marc records to 3_6.mrc in bucket" in caplog.text
+
+
+def test_no_recreate_materialized_view(
+    mocker, mock_get_current_context_no_recreate, mock_airflow_connection, caplog
+):
+    setup_recreate_tests(mocker, mock_airflow_connection)
+
+    query = full_dump_marc.create_materialized_view()
+
+    if query is None:
+        assert True
+
+    assert (
+        "Skipping refresh of materialized view: check the from_date and recreate params."
+        in caplog.text
+    )
+
+
+def test_no_from_date_materialized_view(
+    mocker, mock_get_current_context_no_from_date, mock_airflow_connection, caplog
+):
+    setup_recreate_tests(mocker, mock_airflow_connection)
+
+    query = full_dump_marc.create_materialized_view()
+
+    if query is None:
+        assert True
+
+    assert (
+        "Skipping refresh of materialized view: check the from_date and recreate params."
+        in caplog.text
+    )
+
+
+def test_recreate_materialized_view(
+    mocker, mock_get_current_context_recreate, mock_airflow_connection, caplog
+):
+    setup_recreate_tests(mocker, mock_airflow_connection)
+
+    query = full_dump_marc.create_materialized_view()
+
+    assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
+    assert (
+        "Skipping refresh of materialized view: check the from_date and recreate params."
+        not in caplog.text
+    )
