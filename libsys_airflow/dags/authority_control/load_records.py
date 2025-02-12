@@ -1,3 +1,5 @@
+"""Load MARC Authority and Bibiliographic Records into FOLIO."""
+
 import logging
 from datetime import datetime
 
@@ -20,9 +22,7 @@ logger = logging.getLogger(__name__)
     tags=["authorities", "folio"],
 )
 def load_marc_file(**kwargs):
-    """
-    DAG loads an Authority or Bib File into FOLIO
-    """
+    """DAG loads an Authority or Bib File into FOLIO."""
 
     @task
     def prepare_file_upload(*args, **kwargs):
