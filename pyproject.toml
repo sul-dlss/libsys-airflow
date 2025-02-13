@@ -40,6 +40,7 @@ bookops-worldcat = "^1.0.1"
 # Pinning wtforms because version 3.2.1 is breaking Flask AppBuilder
 # should remove when we upgrade Airflow
 wtforms = "3.0.1"
+folio-data-import = "^0.2.7"
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
