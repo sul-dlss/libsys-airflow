@@ -183,7 +183,6 @@ def mock_get_current_context_no_from_date(monkeypatch, mocker):
         context = mocker.stub(name="context")
         context.get = lambda *args: {
             "recreate_view": True,
-            "from_date": None,
             "to_date": "2025-02-01",
         }
         return context
@@ -255,10 +254,7 @@ def test_no_recreate_materialized_view(
     if query is None:
         assert True
 
-    assert (
-        "Skipping refresh of materialized view: check the from_date and recreate params."
-        in caplog.text
-    )
+    assert "Skipping refresh of materialized view" in caplog.text
 
 
 def test_no_from_date_materialized_view(
@@ -271,10 +267,8 @@ def test_no_from_date_materialized_view(
     if query is None:
         assert True
 
-    assert (
-        "Skipping refresh of materialized view: check the from_date and recreate params."
-        in caplog.text
-    )
+    assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
+    assert "Skipping refresh of materialized view" not in caplog.text
 
 
 def test_recreate_materialized_view(
@@ -285,7 +279,4 @@ def test_recreate_materialized_view(
     query = full_dump_marc.create_materialized_view()
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
-    assert (
-        "Skipping refresh of materialized view: check the from_date and recreate params."
-        not in caplog.text
-    )
+    assert "Skipping refresh of materialized view" not in caplog.text

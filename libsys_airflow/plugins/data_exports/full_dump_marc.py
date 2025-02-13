@@ -23,7 +23,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     )
 
     query = None
-    if recreate and from_date:
+    if recreate:
         with open(materialized_view_sql_file()) as sqf:
             query = sqf.read()
 
@@ -38,9 +38,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
             },
         ).execute(context)
     else:
-        logger.info(
-            "Skipping refresh of materialized view: check the from_date and recreate params."
-        )
+        logger.info("Skipping refresh of materialized view")
 
     return query
 

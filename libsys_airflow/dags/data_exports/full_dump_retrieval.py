@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 from airflow.decorators import task, task_group
@@ -61,7 +62,7 @@ with DAG(
             description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
         ),
         "from_date": Param(
-            None,
+            Variable.get("FOLIO_EPOCH_DATE", "2023-08-23"),
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
