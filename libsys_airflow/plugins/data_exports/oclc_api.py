@@ -66,9 +66,9 @@ def oclc_records_operation(**kwargs) -> dict:
                 logger.info(f"No {function_name} records for {library}")
     else:
         for library, records in type_of_records.items():
-            for record in records:
+            for _record in records:
                 logger.info(
-                    f"Skipping OCLC API {function_name} record operation not in production"
+                    f"Skipping OCLC API {function_name} record operation for {library} not in production"
                 )
 
     return {"success": success, "failures": failures}

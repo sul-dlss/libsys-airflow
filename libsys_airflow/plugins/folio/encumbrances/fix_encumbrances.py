@@ -45,7 +45,9 @@ def login(tenant, username, password):
     login_headers = {'x-okapi-tenant': tenant, 'Content-Type': 'application/json'}
     data = {'username': username, 'password': password}
     try:
-        r = requests.post(okapi_url + '/authn/login', headers=login_headers, json=data)
+        r = requests.post(
+            okapi_url + '/authn/login', headers=login_headers, json=data, timeout=15
+        )
         if r.status_code != 201:
             raise_exception_for_reply(r)
         logger.info('Logged in successfully.')
@@ -89,7 +91,9 @@ async def get_request(url: str, query: str) -> dict:
             return resp.json()
         else:
             print(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
-            logger.error(f'Error getting records by {url} ?query= "{query}": \n{resp.text} ')
+            logger.error(
+                f'Error getting records by {url} ?query= "{query}": \n{resp.text} '
+            )
             raise Exception("Exiting Fix Encumbrances script.")
     except Exception as err:
         print(f'Error getting records by {url}?query={query}: {err=}')
@@ -137,7 +141,10 @@ def get_fiscal_years_by_query(query) -> dict:
     params = {'query': query, 'offset': '0', 'limit': ITEM_MAX}
     try:
         r = requests.get(
-            okapi_url + '/finance-storage/fiscal-years', headers=headers, params=params
+            okapi_url + '/finance-storage/fiscal-years',
+            headers=headers,
+            params=params,
+            timeout=15,
         )
         if r.status_code != 200:
             raise_exception_for_reply(r)
@@ -158,7 +165,7 @@ def get_by_chunks(url, query, key) -> list:
         else:
             modified_query = query + f' AND id > {last_id} sortBy id'
         params = {'query': modified_query, 'offset': 0, 'limit': MAX_BY_CHUNK}
-        r = requests.get(url, headers=headers, params=params)
+        r = requests.get(url, headers=headers, params=params, timeout=15)
         if r.status_code != 200:
             raise_exception_for_reply(r)
         j = r.json()
@@ -393,9 +400,9 @@ async def remove_duplicate_encumbrances(open_and_closed_orders_ids, fiscal_year_
     print('Removing duplicate encumbrances...')
     futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_and_closed_orders_ids):
+    for _idx, order_id in enumerate(open_and_closed_orders_ids):
         await sem.acquire()
-        # progress(idx, len(open_and_closed_orders_ids))
+        # progress(_idx, len(open_and_closed_orders_ids))
         futures.append(
             asyncio.ensure_future(
                 remove_duplicate_encumbrances_in_order(order_id, fiscal_year_id, sem)
@@ -559,9 +566,9 @@ async def fix_poline_encumbrances_relations(
         return
     orders_futures = []
     order_sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_orders_ids):
+    for _idx, order_id in enumerate(open_orders_ids):
         await order_sem.acquire()
-        # progress(idx, len(open_orders_ids))
+        # progress(_idx, len(open_orders_ids))
         orders_futures.append(
             asyncio.ensure_future(
                 process_order_encumbrances_relations(
@@ -615,9 +622,9 @@ def build_ids_2d_array(entities) -> list:
     # prepare two-dimensional array of ids for requesting the records by ids in bulks
     ids_2d_array = []
     index = 0
-    for row in range(ITEM_MAX):
+    for _row in range(ITEM_MAX):
         inner_list = []
-        for col in range(20):
+        for _col in range(20):
             if index == len(entities):
                 break
             inner_list.append(entities[index]['id'])
@@ -697,9 +704,9 @@ async def fix_encumbrance_order_status_for_closed_orders(
     fix_encumbrance_futures = []
     max_active_order_threads = 5
     sem = asyncio.Semaphore(max_active_order_threads)
-    for idx, order_id in enumerate(closed_orders_ids):
+    for _idx, order_id in enumerate(closed_orders_ids):
         await sem.acquire()
-        # progress(idx, len(closed_orders_ids))
+        # progress(_idx, len(closed_orders_ids))
         fixed_encumbrance_future = asyncio.ensure_future(
             fix_encumbrance_order_status_for_closed_order(order_id, fiscal_year_id, sem)
         )
@@ -756,9 +763,9 @@ async def unrelease_open_orders_encumbrances_with_nonzero_amounts(
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_orders_ids):
+    for _idx, order_id in enumerate(open_orders_ids):
         await sem.acquire()
-        # progress(idx, len(open_orders_ids))
+        # progress(_idx, len(open_orders_ids))
         enc_futures.append(
             asyncio.ensure_future(
                 unrelease_encumbrances_with_non_zero_amounts(
@@ -821,9 +828,9 @@ async def release_open_orders_encumbrances_with_negative_amounts(
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_orders_ids):
+    for _idx, order_id in enumerate(open_orders_ids):
         await sem.acquire()
-        # progress(idx, len(open_orders_ids))
+        # progress(_idx, len(open_orders_ids))
         enc_futures.append(
             asyncio.ensure_future(
                 release_encumbrances_with_negative_amounts(
@@ -881,9 +888,9 @@ async def release_cancelled_order_line_encumbrances(fiscal_year_id, open_orders_
         return
     enc_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_orders_ids):
+    for _idx, order_id in enumerate(open_orders_ids):
         await sem.acquire()
-        # progress(idx, len(open_orders_ids))
+        # progress(_idx, len(open_orders_ids))
         enc_futures.append(
             asyncio.ensure_future(
                 release_cancelled_pol_encumbrances(order_id, fiscal_year_id, sem)
@@ -925,9 +932,9 @@ async def recalculate_budget_encumbered(open_and_closed_orders_ids, fiscal_year_
     )
     enc_future = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
-    for idx, order_id in enumerate(open_and_closed_orders_ids):
+    for _idx, order_id in enumerate(open_and_closed_orders_ids):
         await sem.acquire()
-        # progress(idx, len(open_and_closed_orders_ids))
+        # progress(_idx, len(open_and_closed_orders_ids))
         enc_future.append(
             asyncio.ensure_future(get_order_encumbrances(order_id, fiscal_year_id, sem))
         )
@@ -993,9 +1000,9 @@ async def release_unreleased_encumbrances_for_closed_orders(
     nb_released_encumbrance_futures = []
     sem = asyncio.Semaphore(MAX_ACTIVE_THREADS)
 
-    for idx, order_id in enumerate(closed_orders_ids):
+    for _idx, order_id in enumerate(closed_orders_ids):
         await sem.acquire()
-        # progress(idx, len(closed_orders_ids))
+        # progress(_idx, len(closed_orders_ids))
         nb_released_encumbrance_futures.append(
             asyncio.ensure_future(
                 release_order_encumbrances(order_id, fiscal_year_id, sem)

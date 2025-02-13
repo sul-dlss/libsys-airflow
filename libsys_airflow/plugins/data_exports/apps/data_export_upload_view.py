@@ -93,7 +93,7 @@ class DataExportUploadView(AppBuilderBaseView):
             except Exception as e:
                 flash(f"Error: {e}")
             finally:
-                return default_rendered_page(self)
+                return default_rendered_page(self)  # noqa
 
     @expose("/")
     def data_export_upload_home(self):

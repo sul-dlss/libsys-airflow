@@ -58,7 +58,7 @@ def _filter_filenames(filenames: list[str], regex: Optional[str]) -> str:
             f for f in filenames if re.compile(regex, flags=re.IGNORECASE).match(f)
         ]
     if len(filtered_filenames) != 1:
-        raise Exception(
+        raise ValueError(
             f"Expected to extract 1 file, but found {len(filtered_filenames)}"
         )
     return filtered_filenames[0]
