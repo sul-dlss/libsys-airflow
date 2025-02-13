@@ -3,7 +3,7 @@ import logging
 import pathlib
 import urllib.parse
 
-import requests
+import httpx
 
 from typing import Union
 from airflow.operators.python import get_current_context
@@ -39,8 +39,10 @@ def _friendly_name(**kwargs):
     query = kwargs["query"]
     json_path = kwargs["json_path"]
     fallback = kwargs["fallback"]
-    folio_result = requests.get(
-        f"{folio_client.okapi_url}/{query}", headers=folio_client.okapi_headers
+    folio_result = httpx.get(
+        f"{folio_client.okapi_url}/{query}",
+        headers=folio_client.okapi_headers,
+        timeout=15,
     )
     expression = parse(json_path)
     matches = expression.find(folio_result.json())
@@ -68,9 +70,10 @@ def _library_location_names(**kwargs):
     instance = kwargs["task_instance"]
     location_id = kwargs["location_id"]
     row_count = kwargs.get("row_count", "")
-    library_location_result = requests.get(
+    library_location_result = httpx.get(
         f"""{folio_client.okapi_url}/locations?query=(id=="{location_id}")""",
         headers=folio_client.okapi_headers,
+        timeout=15,
     )
     library_location_payload = library_location_result.json()
     lib_name_expr = parse("$.locations[0].name")
@@ -87,9 +90,10 @@ def _library_location_names(**kwargs):
     if len(lib_id_match) > 0:
         # Second call to Okapi
         library_id = lib_id_match[0].value
-        location_units_results = requests.get(
+        location_units_results = httpx.get(
             f"""{folio_client.okapi_url}/location-units/libraries?query=(id=="{library_id}")""",
             headers=folio_client.okapi_headers,
+            timeout=15,
         )
         location_code_expr = parse("$.loclibs[0].code")
         location_code_matches = location_code_expr.find(location_units_results.json())
@@ -295,7 +299,9 @@ def policy_report(**kwargs):
 
     policy_url = f"{folio_client.okapi_url}/{endpoint}?limit=2000"
 
-    policies_result = requests.get(policy_url, headers=folio_client.okapi_headers)
+    policies_result = httpx.get(
+        policy_url, headers=folio_client.okapi_headers, timeout=15
+    )
 
     policies = policies_result.json()
 
@@ -364,8 +370,10 @@ def retrieve_policies(**kwargs):
         task_ids=task_id, key=f"all-policies-url{row_count}"
     )
 
-    single_policy_result = requests.get(
-        single_policy_url, headers=folio_client.okapi_headers
+    single_policy_result = httpx.get(
+        single_policy_url,
+        headers=folio_client.okapi_headers,
+        timeout=15,
     )
 
     if single_policy_result.status_code == 200:
@@ -377,8 +385,10 @@ def retrieve_policies(**kwargs):
             f"Cannot retrieve {single_policy_url}\n{single_policy_result.text}"
         )
 
-    all_policies_result = requests.get(
-        all_policies_url, headers=folio_client.okapi_headers
+    all_policies_result = httpx.get(
+        all_policies_url,
+        headers=folio_client.okapi_headers,
+        timeout=15,
     )
     if all_policies_result.status_code == 200:
         instance.xcom_push(

@@ -19,7 +19,7 @@ def test_airflow_client():
 
     app = application.create_app(testing=True)
     app.config['WTF_CSRF_ENABLED'] = False
-    setattr(OrafinFilesView, "files_base", files_base)
+    setattr(OrafinFilesView, "files_base", files_base)  # noqa
     app.appbuilder.add_view(OrafinFilesView, "Orafin", category="Folio")
     app.blueprints['OrafinFilesView'].template_folder = templates_folder
     app.response_class = HTMLResponse

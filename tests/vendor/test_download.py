@@ -1,4 +1,4 @@
-import ftplib
+import ftplib  # noqa
 import pytest  # noqa
 from datetime import datetime
 from pytest_mock_resources import create_sqlite_fixture, Rows
@@ -228,9 +228,9 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
 
 
 def test_download_error(ftp_hook, download_path, pg_hook):
-    ftp_hook.retrieve_file.side_effect = Exception("Error")
+    ftp_hook.retrieve_file.side_effect = Exception("Server Error")
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match="Server Error"):
         download(
             ftp_hook,
             "oclc",

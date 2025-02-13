@@ -56,8 +56,8 @@ def mock_marc_records():
 
 @pytest.fixture
 def mock_airflow_connection():
-    return Connection(
-        conn_id="postgres_folio",
+    return Connection(  # noqa
+        conn_id="postgres-folio",
         conn_type="postgres",
         host="example.com",
         password="pass",

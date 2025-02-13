@@ -183,7 +183,8 @@ jinja_env = Environment(
             "new-oclc-marc-errors.html": new_oclc_invalid_records,
             "oclc-payload-template.html": oclc_payload_template,
         }
-    )
+    ),
+    autoescape=True,
 )
 
 

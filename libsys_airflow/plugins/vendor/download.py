@@ -1,5 +1,5 @@
 import logging
-import ftplib
+import ftplib  # noqa
 import pathlib
 import re
 
