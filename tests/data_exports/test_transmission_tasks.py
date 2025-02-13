@@ -192,9 +192,7 @@ def test_transmit_data_ftp_task(
     transmit_data = transmit_data_ftp_task.function("ftp-example.com", mock_marc_files)
     assert len(transmit_data["success"]) == 3
     assert "Start transmission of file" in caplog.text
-    assert ftp_hook.store_file.called_with(
-        "/remote/path/dir/2024022914.xml", "2024022914.xml"
-    )
+    assert "Transmitted file to /remote/path/dir/2024022914.xml" in caplog.text
 
 
 @pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
@@ -216,12 +214,10 @@ def test_transmit_gobi_data_ftp_task(
 
     airflow = tmp_path / "airflow"
     marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
-    transmit_data = transmit_data_ftp_task.function("ftp-example.com", marc_files)
+    transmit_data = transmit_data_ftp_task.function("gobi", marc_files)
     assert len(transmit_data["success"]) == 1
     assert "Start transmission of file" in caplog.text
-    assert ftp_hook.store_file.called_with(
-        "/remote/path/dir/2024030214.txt", "stf.2024030214.txt"
-    )
+    assert "Transmitted file to /remote/path/dir/stf2024030214.txt" in caplog.text
 
 
 def test_transmit_data_task(

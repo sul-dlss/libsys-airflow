@@ -165,7 +165,7 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
             logger.info(f"Start transmission of file {f}")
             hook.store_file(remote_file_path, f)
             success.append(f)
-            logger.info(f"End transmission of file {f}")
+            logger.info(f"Transmitted file to {remote_file_path}")
         except Exception as e:
             logger.error(e)
             logger.error(f"Exception for transmission of file {f}")
@@ -349,7 +349,7 @@ def vendor_filename_spec(conn_id, filename):
     elif conn_id == "sharevde":
         return "tbd"
     else:
-        Path(filename).name
+        return Path(filename).name
 
 
 def vendor_url_params(conn_id, is_s3_path) -> dict:
