@@ -4,11 +4,11 @@ import pathlib
 logger = logging.getLogger(__name__)
 
 
-def clean_up(marc_file_path: str, airflow: str = '/opt/airflow'):
+def clean_up(marc_file: str, airflow: str = '/opt/airflow'):
     """
     Moves marc file after running folio data import
     """
-    marc_file_path = pathlib.Path(marc_file_path)
+    marc_file_path = pathlib.Path(marc_file)
     archive_dir = pathlib.Path(airflow) / "authorities/archive"
     archive_dir.mkdir(parents=True, exist_ok=True)
 

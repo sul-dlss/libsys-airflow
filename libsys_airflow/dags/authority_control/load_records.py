@@ -46,8 +46,8 @@ def load_marc_file(**kwargs):
         return bash_operator.execute(context)
 
     @task
-    def email_load_report(bash_result):
-        return email_report(bash_result)
+    def email_load_report(**kwargs):
+        return email_report(**kwargs)
 
     @task
     def clean_up_dag(*args, **kwargs):
@@ -60,7 +60,7 @@ def load_marc_file(**kwargs):
         dag_params["file_path"], dag_params["profile_name"]
     )
 
-    email_load_report(bash_result)
+    email_load_report(bash_result=bash_result)
     bash_result >> clean_up_dag()
 
 

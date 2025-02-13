@@ -13,9 +13,9 @@ def run_folio_data_import(file_path: str, profile_name: str):
     args = [
         "python3 -m folio_data_import",
         "--record-type MARC21",
-        f"--gateway_url $gateway_url",
+        "--gateway_url $gateway_url",
         "--tenant_id sul",
-        f"--username $username",
+        "--username $username",
         "--password $password",
         "--marc_file_path $marc_file_path",
         "--import_profile_name \"$profile_name\"",
