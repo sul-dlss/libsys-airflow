@@ -10,11 +10,6 @@ def run_folio_data_import(file_path: str, profile_name: str):
     """
     Run the folio data import
     """
-
-    okapi_url = Variable.get("OKAPI_URL")
-    logger.info(
-        f"Running folio data import for {file_path} with profile {profile_name} okapi {okapi_url}"
-    )
     args = [
         "python3 -m folio_data_import",
         "--record-type MARC21",
