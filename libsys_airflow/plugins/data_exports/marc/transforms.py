@@ -3,7 +3,7 @@ import logging
 import pathlib
 
 import pymarc
-import xml.etree.ElementTree as etree
+import xml.etree.ElementTree as etree  # noqa
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
@@ -133,7 +133,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
             for record in marc_records:
                 try:
                     xml_element = pymarc.record_to_xml_node(record, namespace=True)
-                    etree.fromstring(etree.tostring(xml_element))
+                    etree.fromstring(etree.tostring(xml_element))  # noqa
                     xml_writer.write(record)
 
                 except AttributeError as e:

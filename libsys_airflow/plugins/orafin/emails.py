@@ -117,7 +117,7 @@ def _ap_report_paid_email_body(
 
 
 def _excluded_email_body(grouped_reasons: dict, folio_url: str) -> str:
-    jinja_env = Environment()
+    jinja_env = Environment()  # noqa
     jinja_env.filters["invoice_line_links"] = _invoice_line_links
 
     template = jinja_env.from_string(
@@ -149,7 +149,7 @@ def _summary_email_body(invoices: list, folio_url: str):
         return ""
 
     converter = models_converter()
-    jinja_env = Environment()
+    jinja_env = Environment(autoescape=True)
 
     template = jinja_env.from_string(
         """

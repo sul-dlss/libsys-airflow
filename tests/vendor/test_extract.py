@@ -42,10 +42,10 @@ def test_extract_regex(download_path):
 
 
 def test_extract_no_file(download_path):
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         extract(pathlib.Path(download_path) / "0720230118.tar.gz", r"^.*\.EDI$")
 
 
 def test_extract_multiple_files(download_path):
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         extract(pathlib.Path(download_path) / "download.tar.gz", None)

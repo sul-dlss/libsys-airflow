@@ -53,7 +53,7 @@ def _bw_summary_body(task_instance, file_name) -> str:
     ):
         errors.append(row)
     total_success = 0
-    for row in task_instance.xcom_pull(
+    for _ in task_instance.xcom_pull(
         task_ids="new_bw_record", key="success", default=[]
     ):
         total_success += 1

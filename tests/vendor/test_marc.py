@@ -67,7 +67,7 @@ def test_batch(tmp_path, marc_path):
     count = 0
     with batch_path.open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
-        for record in marc_reader:
+        for _ in marc_reader:
             count += 1
     assert count == 10
 

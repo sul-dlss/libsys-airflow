@@ -154,7 +154,7 @@ def test_extract_rows_large_file(tmp_path):
     existing_csv = orafin_reports / "xxdl_ap_payment_112820231000.csv"
     with existing_csv.open('w+') as fo:
         fo.write(f"{report[0]}\n")
-        for i in range(1200):
+        for _ in range(1200):
             fo.write(f"{report[1]}\n")
 
     assert existing_csv.exists()
