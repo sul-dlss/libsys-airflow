@@ -345,7 +345,7 @@ def mock_metadata_session(authorization=None, timeout=None):
     mock_session._url_manage_bibs_create = (
         lambda: 'https://metadata.api.oclc.org/worldcat'
     )
-    mock_session.authorization.token_str = "ab3565ackelas"
+    mock_session.authorization.token_str = "ab3565ackelas"  # noqa: S105
     mock_session.bib_create = mock_bib_create
     mock_session.bib_match = mock_bib_match
     mock_session.holdings_set = mock_holdings_set
@@ -514,18 +514,21 @@ def mock_oclc_api(mocker):
 
 def test_oclc_api_class_init(mock_oclc_api):
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
 
     assert oclc_api_instance.folio_client.okapi_url == "https://okapi.stanford.edu"
-    assert oclc_api_instance.oclc_token == "tk_6e302a204c2bfa4d266813cO647d62a77b10"
+    assert (
+        oclc_api_instance.oclc_token
+        == "tk_6e302a204c2bfa4d266813cO647d62a77b10"  # noqa
+    )
 
 
 def test_oclc_api_class_no_new_records(mock_oclc_api, caplog):
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -544,7 +547,7 @@ def test_oclc_api_class_new_records(tmp_path, mock_oclc_api):
         for record in [marc_record, no_srs_record]:
             marc_writer.write(record)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -576,7 +579,7 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
         for record in [marc_record, no_srs_record]:
             marc_writer.write(record)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -590,7 +593,7 @@ def test_oclc_api_class_updated_records(tmp_path, mock_oclc_api):
 def test_oclc_api_failed_authentication(mock_oclc_api):
 
     with pytest.raises(Exception, match="Unable to Retrieve Worldcat Access Token"):
-        oclc_api.OCLCAPIWrapper(
+        oclc_api.OCLCAPIWrapper(  # noqa
             client_id="n0taVal1dC1i3nt", secret="c867b1dd75e6490f99d1cd1c9252ef22"
         )
 
@@ -628,10 +631,10 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
     with marc_file.open('wb+') as fo:
         marc_writer = pymarc.MARCWriter(fo)
-        for record in [error_records[1], error_records[4], error_records[5], record]:
-            marc_writer.write(record)
+        for rec in [error_records[1], error_records[4], error_records[5], record]:
+            marc_writer.write(rec)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -678,7 +681,7 @@ def test_failed_oclc_new_record(tmp_path, mock_oclc_api):
 
 
 def test_new_no_control_number(mock_oclc_api, tmp_path):
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -718,7 +721,7 @@ def test_new_no_control_number(mock_oclc_api, tmp_path):
 
 def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -742,7 +745,7 @@ def test_bad_srs_put_in_new_context(tmp_path, mock_oclc_api):
 
 
 def test_no_update_records(mock_oclc_api, caplog):
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -762,7 +765,7 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
         ),
     )
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -775,7 +778,7 @@ def test_already_exists_control_number(tmp_path, mock_oclc_api):
 
 
 def test_missing_srs_record_id(mock_oclc_api, caplog):
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -822,7 +825,7 @@ def test_oclc_update_errors(mock_oclc_api, caplog, tmp_path):
         for record in missing_or_multiple_oclc_records():
             marc_writer.write(record)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -868,7 +871,7 @@ def test_oclc_update_errors(mock_oclc_api, caplog, tmp_path):
 
 def test_failed_folio_put(mock_oclc_api, caplog):
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -888,7 +891,7 @@ def test_delete_missing_or_multiple_oclc_numbers(mock_oclc_api, tmp_path):
         for record in missing_or_multiple_oclc_records():
             marc_writer.write(record)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -921,7 +924,7 @@ def test_delete_result_success_and_errors(mock_oclc_api, tmp_path, caplog):
         for record in [error_records[0], error_records[2], good_record]:
             marc_writer.write(record)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -977,7 +980,7 @@ def test_match_oclc_number(mock_oclc_api, tmp_path, caplog):
         for row in [existing_record, new_record, bad_oclc_num, bad_srs_record]:
             marc_writer.write(row)
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )
@@ -1109,7 +1112,7 @@ def test_worldcat_error(mocker, mock_oclc_api, tmp_path):
         marc_writer = pymarc.MARCWriter(fo)
         marc_writer.write(bad_records()[0])
 
-    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(  # noqa
         client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
         secret="c867b1dd75e6490f99d1cd1c9252ef22",
     )

@@ -51,7 +51,7 @@ def test_connection_does_not_exist(db_session):
 
 def test_connection_already_exists(db_session):
     delete_connection("ftp-example.com-user", db_session)
-    prev_conn = Connection(
+    prev_conn = Connection(  # noqa
         conn_id="ftp-example.com",
         conn_type="ftp",
         host="prev.example.com",

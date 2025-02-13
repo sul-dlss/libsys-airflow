@@ -18,7 +18,7 @@ def test_airflow_client():
 
     app = application.create_app(testing=True)
     app.config['WTF_CSRF_ENABLED'] = False
-    setattr(DigitalBookplatesDownloadView, "files_base", files_base)
+    setattr(DigitalBookplatesDownloadView, "files_base", files_base)  # noqa
     app.appbuilder.add_view(
         DigitalBookplatesDownloadView,
         "DigitalBookplates",
