@@ -6,11 +6,13 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.models.param import Param
+from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 from airflow.decorators import task, task_group
 
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
+    create_materialized_view,
     fetch_number_of_records,
     fetch_full_dump_marc,
     reset_s3,
@@ -59,10 +61,31 @@ with DAG(
             type="boolean",
             description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
         ),
+        "from_date": Param(
+            Variable.get("FOLIO_EPOCH_DATE", "2023-08-23"),
+            format="date",
+            type="string",
+            description="The earliest date to select record IDs from FOLIO.",
+        ),
+        "to_date": Param(
+            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            format="date",
+            type="string",
+            description="The latest date to select record IDs from FOLIO.",
+        ),
+        "recreate_view": Param(
+            False,
+            type="boolean",
+            description="Recreate the materialized view with the original FOLIO marc records to process.",
+        ),
     },
 ) as dag:
 
     start = EmptyOperator(task_id='start')
+
+    @task
+    def create_full_selection_matrerialized_view():
+        create_materialized_view()
 
     @task
     def reset_s3_bucket():
@@ -171,6 +194,8 @@ with DAG(
         number_in_batch=batch_size,
     )
 
+    create_view = create_full_selection_matrerialized_view()
+
     delete_s3_files = reset_s3_bucket()
 
     start_stop = calculate_start_stop.partial(div=record_div).expand(job=number_of_jobs)
@@ -185,5 +210,5 @@ with DAG(
         task_id="finish_marc",
     )
 
-    start >> delete_s3_files >> total_records
+    start >> create_view >> delete_s3_files >> total_records
     finish_transforms >> finish_processing_marc
