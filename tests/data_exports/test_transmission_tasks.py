@@ -27,6 +27,10 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     set_holdings_oclc_task,
 )
 
+from libsys_airflow.dags.data_exports.full_dump_transmission import (
+    http_or_ftp_path,
+)
+
 
 @pytest.fixture(params=["pod", "gobi", "backstage"])
 def mock_vendor_marc_files(tmp_path, request):
@@ -88,6 +92,12 @@ def mock_marc_files(mock_file_system):
         marc_files.append(str(marc_file))
 
     return {"file_list": marc_files, "s3": False}
+
+
+@pytest.fixture(params=["http-example.com", "ftp-example.com"])
+def mock_full_dump_params(request):
+    conn_id = request.param
+    return {"conn_id": conn_id}
 
 
 @pytest.fixture
@@ -266,6 +276,28 @@ def test_transmit_data_task(
     assert len(transmit_data["success"]) == 3
     assert "Transmit data to pod" in caplog.text
     assert "Setting URL params to" not in caplog.text
+
+
+@pytest.mark.parametrize("mock_full_dump_params", ["http-example.com"], indirect=True)
+def test_full_dump_http(mocker, mock_httpx_connection, mock_full_dump_params, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_httpx_connection,
+    )
+    branch = http_or_ftp_path.function(connection=mock_full_dump_params["conn_id"])
+    assert branch == "transmit_data_http_task"
+    assert "Transmit data via http" in caplog.text
+
+
+@pytest.mark.parametrize("mock_full_dump_params", ["ftp-example.com"], indirect=True)
+def test_full_dump_ftp(mocker, mock_ftphook_connection, mock_full_dump_params, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_ftphook_connection,
+    )
+    branch = http_or_ftp_path.function(connection=mock_full_dump_params["conn_id"])
+    assert branch == "transmit_data_ftp_task"
+    assert "Transmit data via ftp" in caplog.text
 
 
 def test_transmit_data_from_s3_task(
