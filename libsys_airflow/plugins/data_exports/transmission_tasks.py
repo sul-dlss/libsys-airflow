@@ -335,6 +335,8 @@ def vendor_fileformat_spec(vendor):
             return "**/*.gz"
         case "gobi":
             return "**/*.txt"
+        case "backstage":
+            return "**/*.mrc"
         case _:
             return "**/*.xml"
 
@@ -346,6 +348,8 @@ def vendor_filename_spec(conn_id, filename):
     if conn_id == "gobi":
         # gobi should have "stf" prepended
         return "stf" + Path(filename).name
+    elif conn_id == "backstage":
+        return "STF" + Path(filename).name
     elif conn_id == "sharevde":
         return "tbd"
     else:

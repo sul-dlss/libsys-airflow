@@ -28,7 +28,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 )
 
 
-@pytest.fixture(params=["pod", "gobi"])
+@pytest.fixture(params=["pod", "gobi", "backstage"])
 def mock_vendor_marc_files(tmp_path, request):
     airflow = tmp_path / "airflow"
     vendor = request.param
@@ -49,7 +49,7 @@ def mock_vendor_marc_files(tmp_path, request):
     for i, x in enumerate(setup_files['filenames']):
         file = pathlib.Path(f"{marc_file_dir}/{x}")
         file.touch()
-        if i in [0, 2, 5]:
+        if i in [0, 2, 4, 5]:
             file.write_text("hello world")
         files.append(str(file))
     return {"file_list": files, "s3": False}
@@ -176,7 +176,7 @@ def test_retry_failed_files_task(mock_marc_files, caplog):
 def test_transmit_data_ftp_task(
     mocker, mock_ftphook_connection, mock_marc_files, caplog
 ):
-    ftp_hook = mocker.patch(
+    mocker.patch(
         "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
     )
     mocker.patch(
@@ -199,7 +199,7 @@ def test_transmit_data_ftp_task(
 def test_transmit_gobi_data_ftp_task(
     mocker, mock_ftphook_connection, mock_vendor_marc_files, tmp_path, caplog
 ):
-    ftp_hook = mocker.patch(
+    mocker.patch(
         "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
     )
     mocker.patch(
@@ -218,6 +218,31 @@ def test_transmit_gobi_data_ftp_task(
     assert len(transmit_data["success"]) == 1
     assert "Start transmission of file" in caplog.text
     assert "Transmitted file to /remote/path/dir/stf2024030214.txt" in caplog.text
+
+
+@pytest.mark.parametrize("mock_vendor_marc_files", ["backstage"], indirect=True)
+def test_transmit_backstage_data_ftp_task(
+    mocker, mock_ftphook_connection, mock_vendor_marc_files, tmp_path, caplog
+):
+    mocker.patch(
+        "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        return_value=mock_ftphook_connection,
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=True,
+    )
+
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="backstage")
+    transmit_data = transmit_data_ftp_task.function("backstage", marc_files)
+    assert len(transmit_data["success"]) == 1
+    assert "Start transmission of file" in caplog.text
+    assert "Transmitted file to /remote/path/dir/STF2024020314.mrc" in caplog.text
 
 
 def test_transmit_data_task(
