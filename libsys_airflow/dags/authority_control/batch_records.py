@@ -6,6 +6,7 @@ from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.authority_control.helpers import (
+    clean_up,
     create_batches,
     trigger_load_record_dag,
 )
@@ -50,9 +51,15 @@ def batch_marc21_records(*args, **kwargs):
             profile_name)
         dag_run.execute(context)
 
+    @task
+    def clean_up_dag(*args, **kwargs):
+        task_instance = kwargs["ti"]
+        marc_file_path = task_instance.xcom_pull(task_ids="setup_dag", key="file_path")
+        return clean_up(marc_file_path)
+    
     setup = setup_dag()
     batches = batch_records(setup["file_path"])
-    trigger_dag.expand(batch=batches)
+    trigger_dag.expand(batch=batches) >> clean_up_dag()
 
 
 batch_marc21_records()
