@@ -47,8 +47,8 @@ def batch_marc21_records(*args, **kwargs):
         profile_name = ti.xcom_pull(task_ids="setup_dag", key="profile_name")
         context = get_current_context()
         dag_run = trigger_load_record_dag(
-            f"/opt/airflow/authorities/{file_name}", 
-            profile_name)
+            f"/opt/airflow/authorities/{file_name}", profile_name
+        )
         dag_run.execute(context)
 
     @task
@@ -56,7 +56,7 @@ def batch_marc21_records(*args, **kwargs):
         task_instance = kwargs["ti"]
         marc_file_path = task_instance.xcom_pull(task_ids="setup_dag", key="file_path")
         return clean_up(marc_file_path)
-    
+
     setup = setup_dag()
     batches = batch_records(setup["file_path"])
     trigger_dag.expand(batch=batches) >> clean_up_dag()

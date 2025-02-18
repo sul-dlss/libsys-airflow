@@ -59,7 +59,7 @@ def trigger_load_record_dag(file_path: str, profile_name: str) -> TriggerDagRunO
     trigger_dag = TriggerDagRunOperator(
         task_id="trigger_load_record_dag",
         trigger_dag_id="load_marc_file",
-        conf={"file": file_path, "profile": profile_name},
+        conf={"kwargs": {"file": file_path, "profile": profile_name}},
     )
     logger.info(f"Triggered load_marc_file DAG with {file_path} and {profile_name}")
     return trigger_dag
