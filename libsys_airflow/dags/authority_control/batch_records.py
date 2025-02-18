@@ -23,14 +23,14 @@ def batch_marc21_records(*args, **kwargs):
     record file.
     """
 
-    @task
+    @task(multiple_outputs=True)
     def setup_dag(*args, **kwargs):
         context = get_current_context()
         params = context.get("params", {})
-        file_path = params.get("file")
+        file_path = params["kwargs"].get("file")
         if file_path is None:
             raise ValueError("File path is required")
-        profile_name = params.get("profile")
+        profile_name = params["kwargs"].get("profile")
         if profile_name is None:
             raise ValueError("Profile name is required")
         return {"file_path": file_path, "profile_name": profile_name}
@@ -41,11 +41,13 @@ def batch_marc21_records(*args, **kwargs):
 
     @task
     def trigger_dag(*args, **kwargs):
-        file_path = kwargs["file"]
+        file_name = kwargs["batch"]
         ti = kwargs["ti"]
         profile_name = ti.xcom_pull(task_ids="setup_dag", key="profile_name")
         context = get_current_context()
-        dag_run = trigger_load_record_dag(file_path, profile_name)
+        dag_run = trigger_load_record_dag(
+            f"/opt/airflow/authorities/{file_name}", 
+            profile_name)
         dag_run.execute(context)
 
     setup = setup_dag()
