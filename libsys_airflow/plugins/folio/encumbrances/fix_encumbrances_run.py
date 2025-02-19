@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import logging
 import pathlib
-import libsys_airflow.plugins.folio.encumbrances.fix_encumbrances as fix_encumbrances_script
+import libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_quesnelia as fix_encumbrances_script
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,12 @@ def fix_encumbrances_run(*args, **kwargs):
     library = kwargs.get("library", "")
     log_path = pathlib.Path(airflow) / f"fix_encumbrances/{library}-{run_id}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not fiscal_year_code:
+        logger.warning(
+            f"fix_encumbrance_script exiting: Set Airflow Variable FISCAL_YEAR_CODE_{library.upper()}"
+        )
+        return None
 
     with log_path.open("w+", 1) as log:
         with contextlib.redirect_stdout(log):

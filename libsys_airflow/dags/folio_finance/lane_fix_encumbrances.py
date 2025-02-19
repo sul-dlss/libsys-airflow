@@ -22,7 +22,7 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
-FY_CODE = Variable.get("FISCAL_YEAR_CODE_LANE", "LANE2025")
+FY_CODE = Variable.get("FISCAL_YEAR_CODE_LANE", "")
 
 
 with DAG(
