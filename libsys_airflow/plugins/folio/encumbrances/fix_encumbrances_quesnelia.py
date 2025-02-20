@@ -30,7 +30,7 @@ ASYNC_CLIENT_TIMEOUT = 30
 
 # limit the number of parallel threads.
 # Try different values. Bigger values - for increasing performance, but could produce "Connection timeout exception"
-MAX_ACTIVE_THREADS = Variable.get("FIX_ENC_THREADS", 1)
+MAX_ACTIVE_THREADS = int(Variable.get("FIX_ENC_THREADS", 1) )
 
 
 # ---------------------------------------------------
