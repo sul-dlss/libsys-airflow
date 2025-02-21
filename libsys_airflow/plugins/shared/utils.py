@@ -33,6 +33,29 @@ def is_production():
     return Variable.get("OKAPI_URL").find("prod") > 0
 
 
+class MatchFolioRegex(str):
+
+    def __eq__(self, pattern):
+        return re.match(pattern, self)
+
+
+def folio_name() -> Union[str, None]:
+    okapi_url = Variable.get("OKAPI_URL")
+    match MatchFolioRegex(okapi_url):
+        case r'.*stage.*':
+            name = "Stage"
+
+        case r'.*dev.*':
+            name = "Dev"
+
+        case r'.*test.*':
+            name = "Test"
+
+        case _:
+            name = None  # type: ignore
+    return name
+
+
 def send_email_with_server_name(**kwargs):
     """
     send_email wrapper to include subject with server name
