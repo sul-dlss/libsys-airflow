@@ -64,7 +64,15 @@ def mock_db(mocker, engine):
     return mock_hook
 
 
-def test_file_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+@pytest.fixture
+def mock_variable(mocker):
+    return mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.Variable.get',
+        return_value='https://folio-stage.edu/',
+    )
+
+
+def test_file_view(test_airflow_client, mock_db, mock_variable, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -95,7 +103,9 @@ def test_missing_file(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert response.status_code == 404
 
 
-def test_expected_processing_time(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_expected_processing_time(
+    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
+):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -127,7 +137,7 @@ def test_expected_processing_time(test_airflow_client, mock_db, mocker):  # noqa
         assert vendor_file.expected_processing_time.time() == tomorrow.time()
 
 
-def test_set_status(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_set_status(test_airflow_client, mock_variable, mock_db, mocker):  # noqa: F811
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',

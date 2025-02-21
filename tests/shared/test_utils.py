@@ -242,3 +242,26 @@ def test__tag_is_unique__(mock_folio_add_marc_tags, marc_json, caplog):
     )
     assert add_marc_tag.__tag_is_unique__(existing_tags, new_field) is True
     assert "tag is unique" in caplog.text
+
+
+def test_folio_name(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.Variable.get",
+        return_value="https://okapi-stage.edu/",
+    )
+    assert utils.folio_name() == "Stage"
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.Variable.get",
+        return_value="https://okapi-test.edu/",
+    )
+    assert utils.folio_name() == "Test"
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.Variable.get",
+        return_value="https://okapi-dev.edu/",
+    )
+    assert utils.folio_name() == "Dev"
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.Variable.get",
+        return_value="https://okapi.edu/",
+    )
+    assert utils.folio_name() is None

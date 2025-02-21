@@ -114,7 +114,7 @@ def test_vendors_dashboard_view(
         )
         response = test_airflow_client.get('/vendor_management/')
         assert response.status_code == 200
-        assert response.html.h1.text == "Vendor Management"
+        assert response.html.h1.text == "Vendor Management - Test"
         error_table = response.html.find(id='errorsTable')
         error_rows = error_table.find_all('tr')
         assert len(error_rows) == 2
@@ -128,7 +128,9 @@ def test_vendors_dashboard_view(
         assert retry_cell2.form["action"].startswith("/vendor_management/files/2/load")
 
 
-def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_vendors_index_view(
+    test_airflow_client, mock_db, mock_okapi_url_variable, mocker  # noqa: F811
+):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -136,7 +138,7 @@ def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         )
         response = test_airflow_client.get('/vendor_management/vendors')
         assert response.status_code == 200
-        assert response.html.h1.text == "Vendors"
+        assert response.html.h1.text == "Vendors - Test"
 
         rows = response.html.find_all('tr')
         assert len(rows) == 2
@@ -150,7 +152,9 @@ def test_vendors_index_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert link["href"] == "/vendor_management/vendors/2"
 
 
-def test_vendor_show_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_vendor_show_view(
+    test_airflow_client, mock_db, mock_okapi_url_variable, mocker  # noqa: F811
+):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -158,7 +162,7 @@ def test_vendor_show_view(test_airflow_client, mock_db, mocker):  # noqa: F811
         )
         response = test_airflow_client.get('/vendor_management/vendors/1')
         assert response.status_code == 200
-        assert response.html.h1.text == "Acme"
+        assert response.html.h1.text == "Acme - Test"
 
         rows = response.html.find_all('tr')
         assert len(rows) == 2
