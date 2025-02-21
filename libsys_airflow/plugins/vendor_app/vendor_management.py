@@ -24,6 +24,7 @@ from libsys_airflow.plugins.vendor_app.database import Session
 from libsys_airflow.plugins.vendor.archive import archive_file
 from libsys_airflow.plugins.airflow.connections import create_connection
 from libsys_airflow.plugins.vendor.download import create_hook
+from libsys_airflow.plugins.shared.utils import folio_name
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class VendorManagementView(BaseView):
             in_progress_files=in_progress_files,
             errors_files=errors_files,
             folio_base_url=Variable.get("FOLIO_URL"),
+            folio_name=folio_name(),
         )
 
     @expose("/vendors")
@@ -78,7 +80,10 @@ class VendorManagementView(BaseView):
         else:
             vendors = Session().query(Vendor).order_by(Vendor.display_name)
         return self.render_template(
-            "vendors/index.html", vendors=vendors, filter=filter
+            "vendors/index.html",
+            vendors=vendors,
+            filter=filter,
+            folio_name=folio_name(),
         )
 
     @expose("/vendors/<int:vendor_id>")
@@ -86,7 +91,9 @@ class VendorManagementView(BaseView):
         vendor = Session().query(Vendor).get(vendor_id)
         if vendor is None:
             abort(404)
-        return self.render_template("vendors/vendor.html", vendor=vendor)
+        return self.render_template(
+            "vendors/vendor.html", vendor=vendor, folio_name=folio_name()
+        )
 
     @expose("/vendors/<int:vendor_id>/interfaces", methods=["POST"])
     def create_vendor_interface(self, vendor_id):
@@ -116,7 +123,9 @@ class VendorManagementView(BaseView):
         interface = Session().query(VendorInterface).get(interface_id)
         if interface is None:
             abort(404)
-        return self.render_template("vendors/interface.html", interface=interface)
+        return self.render_template(
+            "vendors/interface.html", interface=interface, folio_name=folio_name()
+        )
 
     @expose("/interfaces/<int:interface_id>/edit", methods=['GET', 'POST'])
     def interface_edit(self, interface_id):
@@ -128,6 +137,7 @@ class VendorManagementView(BaseView):
                 "vendors/interface-edit.html",
                 interface=interface,
                 job_profiles=job_profiles(),
+                folio_name=folio_name(),
             )
         else:
             self._update_vendor_interface_form(interface, request.form)
@@ -326,7 +336,10 @@ class VendorManagementView(BaseView):
         elif file is None:
             abort(404)
         return self.render_template(
-            "vendors/file.html", file=file, FileStatus=FileStatus
+            "vendors/file.html",
+            file=file,
+            FileStatus=FileStatus,
+            folio_name=folio_name(),
         )
 
     @expose("/files/<int:file_id>/load", methods=["POST"])
@@ -357,7 +370,7 @@ class VendorManagementView(BaseView):
             )
             filename = file.vendor_filename
 
-        print(f"Downloading {filename} from {path}")
+        logger.info(f"Downloading {filename} from {path}")
         if not os.path.exists(os.path.join(path, filename)):
             flash(f"Oops, {filename} is not available.")
             return redirect(request.referrer)

@@ -14,7 +14,7 @@
 
 {% block content %}
 <header class="page-header">
-  <h1>Interface: {{ interface.display_name }}</h1>
+  <h1>Interface: {{ interface.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
 </header>
 
 <nav>
