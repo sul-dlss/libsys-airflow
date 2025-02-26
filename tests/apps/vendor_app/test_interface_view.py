@@ -149,6 +149,14 @@ def mock_dag_run():
     return mock_dag_run
 
 
+@pytest.fixture
+def mock_variable(mocker):
+    return mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.Variable.get',
+        return_value='https://folio-stage.edu/',
+    )
+
+
 def test_vendor_files(engine):  # noqa: F811
     with Session(engine) as session:
         interface = session.get(VendorInterface, 1)
@@ -178,7 +186,9 @@ def test_processed_files(engine):
         ]
 
 
-def test_interface_view(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_interface_view(
+    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
+):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -208,7 +218,7 @@ def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
 
 
 def test_interface_edit_view(
-    test_airflow_client, mock_db, mocker, job_profiles  # noqa: F811
+    test_airflow_client, mock_db, mocker, mock_variable, job_profiles  # noqa: F811
 ):
     with Session(mock_db()) as session:
         mocker.patch(
