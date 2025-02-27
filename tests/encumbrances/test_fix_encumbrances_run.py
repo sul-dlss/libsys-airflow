@@ -36,6 +36,9 @@ def mock_folio_variables(monkeypatch):
             case "FOLIO_URL":
                 value = "okapi-test"
 
+            case "FIX_ENC_THREADS":
+                value = "1"
+
             case _:
                 raise ValueError("")
         return value
@@ -47,13 +50,13 @@ def test_fix_encumbrances_log_file_params(
     mocker, tmp_path, mock_task_instance, mock_folio_variables, monkeypatch
 ):
     mocker.patch(
-        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances.Variable.get',
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_quesnelia.Variable.get',
         return_value=mock_folio_variables,
     )
 
     async_mock = AsyncMock()
     mocker.patch(
-        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances.run_operation',
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_quesnelia.run_operation',
         side_effect=async_mock,
         return_value=None,
     )
@@ -74,6 +77,42 @@ def test_fix_encumbrances_log_file_params(
     )
 
     assert log_path.endswith("foo-scheduled__2024-07-29T19:00:00:00:00.log")
+
+
+def test_fix_encumbrances_fiscal_code(
+    mocker, tmp_path, mock_task_instance, mock_folio_variables, monkeypatch, caplog
+):
+    mocker.patch(
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_quesnelia.Variable.get',
+        return_value=mock_folio_variables,
+    )
+
+    async_mock = AsyncMock()
+    mocker.patch(
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_quesnelia.run_operation',
+        side_effect=async_mock,
+        return_value=None,
+    )
+
+    from libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_run import (
+        fix_encumbrances_run,
+    )
+
+    fix_encumbrances_run(
+        1,
+        None,
+        "sul",
+        "username",
+        "password",
+        airflow=tmp_path,
+        task_instance=mock_task_instance,
+        library="foo",
+    )
+
+    assert (
+        "fix_encumbrance_script exiting: Set Airflow Variable FISCAL_YEAR_CODE_"
+        in caplog.text
+    )
 
 
 def test_fix_encumbrances_email_subject():
