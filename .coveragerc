@@ -2,5 +2,5 @@
 omit =
     tests/*
     vendor_loads_migration/*
-    libsys_airflow/plugins/folio/encumbrances/fix_encumbrances.py
+    libsys_airflow/plugins/folio/encumbrances/fix_encumbrances*.py
     libsys_airflow/dags/*
