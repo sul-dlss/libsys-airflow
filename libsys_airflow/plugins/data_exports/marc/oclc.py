@@ -67,6 +67,7 @@ class OCLCTransformer(Transformer):
         self.libraries = {}
         for code in ["CASUM", "HIN", "RCJ", "S7Z", "STF"]:
             self.libraries[code] = {"holdings": {}, "marc": {}}
+        self.no_holdings = []
         self.staff_notices = []
 
     def __filter_999__(self, record: pymarc.Record) -> str:
@@ -91,6 +92,9 @@ class OCLCTransformer(Transformer):
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to retrieve holdings; error {e}")
             return codes
+
+        if len(holdings_result['holdingsRecords']) < 1:
+            self.no_holdings.append(instance_uuid)
 
         for holding in holdings_result['holdingsRecords']:
             campus = self.campus_lookup.get(holding.get('permanentLocationId'))
