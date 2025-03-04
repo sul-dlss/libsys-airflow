@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime, UTC
+from datetime import datetime
 from pathlib import Path
 
 from airflow.decorators import task
@@ -223,7 +223,7 @@ def _filter_failures(failures: dict, errors: dict):
 
 
 def _generate_holdings_set_report(**kwargs) -> dict:
-    date: datetime = kwargs.get('date', datetime.now(UTC))
+    date: datetime = kwargs.get('date', datetime.utcnow())
 
     match = kwargs.get("match", False)
 
@@ -249,7 +249,7 @@ def _generate_holdings_set_report(**kwargs) -> dict:
 
 
 def _generate_holdings_unset_report(**kwargs) -> dict:
-    date: datetime = kwargs.get('date', datetime.now(UTC))
+    date: datetime = kwargs.get('date', datetime.utcnow())
 
     if date not in kwargs:
         kwargs["date"] = date
