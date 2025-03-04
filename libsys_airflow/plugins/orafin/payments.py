@@ -12,6 +12,7 @@ from folioclient import FolioClient
 
 from libsys_airflow.plugins.folio.finances import current_fiscal_years, active_ledgers
 from libsys_airflow.plugins.orafin.models import Invoice, FeederFile
+from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
 
@@ -140,15 +141,15 @@ def models_converter():
 
 
 def transfer_to_orafin(feeder_file: str):
+    if is_production():
+        server_info = "of_aplib@intxfer-prd.stanford.edu:/home/of_aplib/OF1_PRD"
+    else:
+        server_info = "of_aplib@intxfer-uat.stanford.edu:/home/of_aplib/OF1_DEV"
     command = [
         "scp",
-        "-i /opt/airflow/vendor-keys/apdrop.key",
-        "-o KexAlgorithms=diffie-hellman-group14-sha1",
-        "-o StrictHostKeyChecking=no",
-        "-o HostKeyAlgorithms=+ssh-rsa",
-        "-o PubkeyAcceptedAlgorithms=+ssh-rsa",
+        "-i /opt/airflow/vendor-keys/apserver.key",
         str(feeder_file),
-        "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/inbound/data/xxdl_ap_lib.dat",
+        f"{server_info}/inbound/data/xxdl_ap_lib.dat",
     ]
     logger.info(f"Command {command}")
     return BashOperator(task_id="sftp_feederfile", bash_command=" ".join(command))
