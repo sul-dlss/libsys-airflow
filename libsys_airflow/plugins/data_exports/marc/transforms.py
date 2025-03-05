@@ -40,7 +40,7 @@ def divide_into_oclc_libraries(**kwargs):
 
     oclc_transformer.save()
 
-    return oclc_transformer.staff_notices
+    return oclc_transformer.no_holdings, oclc_transformer.staff_notices
 
 
 def change_leader_for_deletes(marc_file_list: dict):

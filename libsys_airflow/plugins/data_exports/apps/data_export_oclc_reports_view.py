@@ -29,8 +29,11 @@ class DataExportOCLCReportsView(AppBuilderBaseView):
     @expose("/")
     def data_export_oclc_reports_home(self):
         oclc_reports_home = pathlib.Path(f"{self.files_base}/oclc/reports")
-        libraries = {}
+        libraries, no_holdings = {}, []
         for library in oclc_reports_home.iterdir():
+            if library.name.startswith("missing_holdings"):
+                no_holdings = [report for report in library.glob("*.html")]
+                continue
             if not library.is_dir():
                 continue
             libraries[library.name] = {
@@ -51,6 +54,7 @@ class DataExportOCLCReportsView(AppBuilderBaseView):
             "data-export-oclc-reports/index.html",
             libraries=libraries,
             sortlibs=sorted(libraries, key=lambda x: (libraries[x]['name'])),
+            no_holdings_instances=sorted(no_holdings),
         )
 
     @expose("/<library_code>/<report_type>/<report_name>")
@@ -63,5 +67,17 @@ class DataExportOCLCReportsView(AppBuilderBaseView):
             "data-export-oclc-reports/report.html",
             library_name=LOOKUP_LIBRARY_CODE[library_code],
             report_name=LOOKUP_REPORT_NAME[report_type],
+            contents=report_path.read_text(),
+        )
+
+    @expose("/missing_holdings/<report_name>")
+    def oclc_missing_holdings(self, report_name):
+        report_path = pathlib.Path(
+            f"/opt/airflow/data-export-files/oclc/reports/missing_holdings/{report_name}"
+        )
+
+        return self.render_template(
+            "data-export-oclc-reports/report.html",
+            library_name="All",
             contents=report_path.read_text(),
         )

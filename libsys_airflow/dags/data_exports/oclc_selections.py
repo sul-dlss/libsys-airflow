@@ -31,9 +31,13 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 )
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
+    generate_no_holdings_instances_email,
 )
 
-from libsys_airflow.plugins.data_exports.oclc_reports import multiple_oclc_numbers_task
+from libsys_airflow.plugins.data_exports.oclc_reports import (
+    multiple_oclc_numbers_task,
+    no_holdings_task,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -122,23 +126,43 @@ with DAG(
 
     @task
     def divide_new_records_by_library(**kwargs):
+        task_instance = kwargs["ti"]
         new_records = kwargs.get("new_records", [])
-        return divide_into_oclc_libraries(marc_file_list=new_records)
+        missing_holdings, divided_records = divide_into_oclc_libraries(
+            marc_file_list=new_records
+        )
+        task_instance.xcom_push(key="missing_holdings", value=missing_holdings)
+        return divided_records
 
     @task
     def divide_delete_records_by_library(**kwargs):
+        task_instance = kwargs["ti"]
         deleted_records = kwargs.get("deleted_records", [])
-        return divide_into_oclc_libraries(marc_file_list=deleted_records)
+        missing_holdings, divided_records = divide_into_oclc_libraries(
+            marc_file_list=deleted_records
+        )
+        task_instance.xcom_push(key="missing_holdings", value=missing_holdings)
+        return divided_records
 
     @task
     def divide_updates_records_by_library(**kwargs):
+        task_instance = kwargs["ti"]
         updates_records = kwargs.get("updates_records", [])
-        return divide_into_oclc_libraries(marc_file_list=updates_records)
+        missing_holdings, divided_records = divide_into_oclc_libraries(
+            marc_file_list=updates_records
+        )
+        task_instance.xcom_push(key="missing_holdings", value=missing_holdings)
+        return divided_records
 
     @task_group(group_id="multiple-oclc-numbers-group")
     def multiple_oclc_numbers_group(**kwargs):
         kwargs["reports"] = multiple_oclc_numbers_task(**kwargs)
         generate_multiple_oclc_identifiers_email(**kwargs)
+
+    @task_group(group_id="no-holdings-instances-group")
+    def no_holdings_for_instances_group(**kwargs):
+        kwargs["report"] = no_holdings_task(**kwargs)
+        generate_no_holdings_instances_email(**kwargs)
 
     @task
     def remove_original_marc_files(**kwargs):
@@ -165,6 +189,8 @@ with DAG(
 
     multiple_oclc_numbers = multiple_oclc_numbers_group()
 
+    no_holdings_instances = no_holdings_for_instances_group()
+
     remove_original_marc = remove_original_marc_files(marc_file_list=fetch_marc_records)
 
     finish_processing_marc = EmptyOperator(
@@ -187,6 +213,6 @@ check_record_ids >> save_ids_to_file >> fetch_marc_records
 
 (
     finish_division
-    >> [multiple_oclc_numbers, remove_original_marc, archive_csv]
+    >> [no_holdings_instances, multiple_oclc_numbers, remove_original_marc, archive_csv]
     >> finish_processing_marc
 )

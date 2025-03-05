@@ -92,6 +92,9 @@ def mock_folio_client():
                     {"permanentLocationId": "11111-2222-333-444-555555"}
                 ]
             }
+        # Missing Holdings
+        if args[0].endswith("2bf81793-d0df-4bf0-ba12-b09ca18fb1ec)"):
+            return {"holdingsRecords": []}
         # Raises 400 Error for missing instanceId
         if args[0].endswith("instanceId==)"):
             raise httpx.HTTPStatusError(
@@ -539,3 +542,26 @@ def test_filter_updates():
     assert new_record_ids['updates'] == []
     assert len(new_record_ids['deletes']) == 2
     assert len(new_record_ids['new']) == 2
+
+
+def test_instance_with_no_holdings(mocker, mock_folio_client, tmp_path):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='2bf81793-d0df-4bf0-ba12-b09ca18fb1ec')
+            ],
+        )
+    )
+
+    oclc_transformer = OCLCTransformer()
+    oclc_transformer.determine_campus_code(record)
+
+    assert oclc_transformer.no_holdings == ['2bf81793-d0df-4bf0-ba12-b09ca18fb1ec']

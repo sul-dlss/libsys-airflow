@@ -75,6 +75,20 @@ holdings_unset_template = """
 </table>
 """
 
+no_holdings_for_instances_template = """
+<h1>Instances missing Holdings on {{ date }}</h1>
+
+<p>
+ <a href="{{ dag_run_rul }}">DAG Run</a>
+</p>
+
+<ol>
+{% for uuid in instance_missing_holdings %}
+  <li><a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a></li>
+{% endfor %}
+</ol>
+"""
+
 multiple_oclc_numbers_template = """
  <h1>Multiple OCLC Numbers on {{ date }} for {{ library }}</h1>
 
@@ -179,6 +193,7 @@ jinja_env = Environment(
         {
             "holdings-set.html": holdings_set_template,
             "holdings-unset.html": holdings_unset_template,
+            "no-instances-holdings.html": no_holdings_for_instances_template,
             "multiple-oclc-numbers.html": multiple_oclc_numbers_template,
             "new-oclc-marc-errors.html": new_oclc_invalid_records,
             "oclc-payload-template.html": oclc_payload_template,
@@ -250,6 +265,31 @@ def _generate_holdings_unset_report(**kwargs) -> dict:
         reports=reports,
         date=date,
     )
+
+
+def _generate_missing_holdings_report(**kwargs) -> str:
+    date: datetime = kwargs.get('date', datetime.utcnow())
+    airflow: str = kwargs.get('airflow', '/opt/airflow')
+
+    airflow_path = Path(airflow)
+
+    if date not in kwargs:
+        kwargs["date"] = date
+
+    report_template = jinja_env.get_template("no-instances-holdings.html")
+
+    report = report_template.render(**kwargs)
+
+    missing_reports_path = (
+        airflow_path / "data-export-files/oclc/reports/missing_holdings/"
+    )
+    missing_reports_path.mkdir(parents=True, exist_ok=True)
+
+    report_path = missing_reports_path / f"{date.isoformat()}.html"
+
+    report_path.write_text(report)
+
+    return str(report_path)
 
 
 def _generate_multiple_oclc_numbers_report(**kwargs) -> dict:
@@ -427,3 +467,26 @@ def new_oclc_marc_errors_task(**kwargs):
     kwargs['folio_url'] = Variable.get("FOLIO_URL")
 
     return _generate_new_oclc_invalid_records_report(**kwargs)
+
+
+@task
+def no_holdings_task(**kwargs):
+    task_instance = kwargs['ti']
+
+    kwargs['folio_url'] = Variable.get("FOLIO_URL")
+    missing_holdings = []
+    missing_holdings_new = task_instance.xcom_pull(
+        task_ids="divide_new_records_by_library", key="missing_holdings"
+    )
+    missing_holdings.extend(missing_holdings_new)
+    missing_holdings_delete = task_instance.xcom_pull(
+        task_ids="divide_delete_records_by_library", key="missing_holdings"
+    )
+    missing_holdings.extend(missing_holdings_delete)
+    missing_holdings_update = task_instance.xcom_pull(
+        task_ids="divide_updates_records_by_library", key="missing_holdings"
+    )
+    missing_holdings.extend(missing_holdings_update)
+    kwargs['instance_missing_holdings'] = missing_holdings
+
+    return _generate_missing_holdings_report(**kwargs)
