@@ -184,11 +184,13 @@ def test_filter_files(tmp_path):
     assert new_reports == [{"file_name": "xxdl_ap_payment_10212023177160.csv"}]
 
 
-def test_find_reports():
+def test_find_reports(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.reports.is_production", return_value=True
+    )
     bash_operator = find_reports()
     assert isinstance(bash_operator, BashOperator)
     assert bash_operator.bash_command.startswith("ssh")
-    assert ap_server_options[1] in bash_operator.bash_command
     assert bash_operator.bash_command.endswith(
         "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv | tr '\n' ' '"
     )
@@ -257,15 +259,28 @@ def test_retrieve_duplicate_vouchers(mock_folio_client, mock_current_context, ca
     )
 
 
-def test_retrieve_reports():
+def test_retrieve_reports(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.reports.is_production", return_value=False
+    )
     partial_bash_operator = retrieve_reports()
     bash_command = partial_bash_operator.kwargs.get("bash_command")
     assert bash_command.startswith("scp -i")
-    assert ap_server_options[-1] in bash_command
     assert bash_command.endswith("/opt/airflow/orafin-files/reports/")
+    assert "intxfer-uat.stanford.edu" in bash_command
+    # Test production
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.reports.is_production", return_value=True
+    )
+    partial_bash_operator = retrieve_reports()
+    bash_command = partial_bash_operator.kwargs.get("bash_command")
+    assert "/home/of_aplib/OF1_PRD/outbound/data/$file_name" in bash_command
 
 
-def test_remove_reports():
+def test_remove_reports(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.reports.is_production", return_value=True
+    )
     partial_bash_operator = remove_reports()
     bash_command = partial_bash_operator.kwargs.get("bash_command")
     assert bash_command.startswith("ssh")
