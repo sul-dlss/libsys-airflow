@@ -16,15 +16,19 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 from folioclient import FolioClient
 
+from libsys_airflow.plugins.shared.utils import is_production
+
 logger = logging.getLogger(__name__)
 
 ap_server_options = [
-    "-i /opt/airflow/vendor-keys/apdrop.key",
-    "-o KexAlgorithms=diffie-hellman-group14-sha1",
-    "-o StrictHostKeyChecking=no",
-    "-o HostKeyAlgorithms=+ssh-rsa",
-    "-o PubkeyAcceptedAlgorithms=+ssh-rsa",
+    "-i /opt/airflow/vendor-keys/apserver.key",
 ]
+
+
+def get_orafin_server_info() -> str:
+    if is_production():
+        return "of_aplib@intxfer-prd.stanford.edu"
+    return "of_aplib@intxfer-uat.stanford.edu"
 
 
 def _retrieve_invoice(
@@ -124,7 +128,7 @@ def find_reports() -> BashOperator:
         ["ssh"]
         + ap_server_options
         + [
-            "of_aplib@extxfer.stanford.edu "
+            f"{get_orafin_server_info()} "
             "ls -m /home/of_aplib/OF1_PRD/outbound/data/*.csv | tr '\n' ' '"
         ]
     )
@@ -141,7 +145,7 @@ def remove_reports() -> OperatorPartial:
         ["ssh"]
         + ap_server_options
         + [
-            "of_aplib@extxfer.stanford.edu",
+            get_orafin_server_info(),
             "rm /home/of_aplib/OF1_PRD/outbound/data/$file_name",
         ]
     )
@@ -194,11 +198,15 @@ def retrieve_reports() -> OperatorPartial:
     """
     scp AP Reports from server
     """
+    server_info = get_orafin_server_info()
+    file_location = "/home/of_aplib/OF1_DEV/outbound/data/$file_name"
+    if is_production():
+        file_location = "/home/of_aplib/OF1_PRD/outbound/data/$file_name"
     command = (
         ["scp"]
         + ap_server_options
         + [
-            "of_aplib@extxfer.stanford.edu:/home/of_aplib/OF1_PRD/outbound/data/$file_name",
+            f"{server_info}:{file_location}",
             "/opt/airflow/orafin-files/reports/",
         ]
     )
