@@ -83,7 +83,7 @@ no_holdings_for_instances_template = """
 </p>
 
 <ol>
-{% for uuid in instances %}
+{% for uuid in instance_missing_holdings %}
   <li><a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a></li>
 {% endfor %}
 </ol>
@@ -283,9 +283,10 @@ def _generate_missing_holdings_report(**kwargs) -> str:
     missing_reports_path = (
         airflow_path / "data-export-files/oclc/reports/missing_holdings/"
     )
+    missing_reports_path.mkdir(parents=True, exist_ok=True)
+
     report_path = missing_reports_path / f"{date.isoformat()}.html"
 
-    report_path.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report)
 
     return str(report_path)
