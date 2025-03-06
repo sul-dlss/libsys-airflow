@@ -283,6 +283,6 @@ def generate_no_holdings_instances_email(**kwargs):
 
     send_email_with_server_name(
         to=email_addresses,
-        subject=["Instances without Holdings"],
+        subject="Instances without Holdings",
         html_content=_missing_holdings_for_instances(report),
     )

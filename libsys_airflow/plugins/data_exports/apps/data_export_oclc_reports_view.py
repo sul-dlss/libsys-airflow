@@ -78,6 +78,6 @@ class DataExportOCLCReportsView(AppBuilderBaseView):
 
         return self.render_template(
             "data-export-oclc-reports/report.html",
-            library_name="All",
+            library_name="All Libraries",
             contents=report_path.read_text(),
         )
