@@ -148,6 +148,7 @@ def transfer_to_orafin(feeder_file: str):
     command = [
         "scp",
         "-i /opt/airflow/vendor-keys/apserver.key",
+        "-o StrictHostKeyChecking=no",
         str(feeder_file),
         f"{server_info}/inbound/data/xxdl_ap_lib.dat",
     ]
