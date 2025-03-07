@@ -13,6 +13,7 @@ from airflow.decorators import task, task_group
 
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
     create_materialized_view,
+    create_campus_filter_view,
     fetch_number_of_records,
     fetch_full_dump_marc,
     reset_s3,
@@ -78,10 +79,19 @@ with DAG(
             type="boolean",
             description="Recreate the materialized view with the original FOLIO marc records to process.",
         ),
+        "include_campus": Param(
+            Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
+            type="string",
+            description="Comma-seperated list of campus coded to include in full dump selection.",
+        ),
     },
 ) as dag:
 
     start = EmptyOperator(task_id='start')
+
+    @task
+    def create_full_selection_campus_filter_view():
+        create_campus_filter_view()
 
     @task
     def create_full_selection_matrerialized_view():
@@ -194,6 +204,8 @@ with DAG(
         number_in_batch=batch_size,
     )
 
+    create_campus_filter = create_full_selection_campus_filter_view()
+
     create_view = create_full_selection_matrerialized_view()
 
     delete_s3_files = reset_s3_bucket()
@@ -210,5 +222,5 @@ with DAG(
         task_id="finish_marc",
     )
 
-    start >> create_view >> delete_s3_files >> total_records
+    start >> create_campus_filter >> create_view >> delete_s3_files >> total_records
     finish_transforms >> finish_processing_marc

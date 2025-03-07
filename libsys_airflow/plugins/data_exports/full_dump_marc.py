@@ -13,19 +13,45 @@ from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 logger = logging.getLogger(__name__)
 
 
+def create_campus_filter_view(**kwargs) -> Union[str, None]:
+    context = get_current_context()
+    params = context.get("params", {})  # type: ignore
+    recreate = params.get("recreate_view", False)
+    include_campus = params.get("campuses", "'SUL', 'LAW', 'GSB', 'HOOVER', 'MED'")
+
+    query = None
+
+    if recreate:
+        with open(filter_campus_sql_file()) as sqf:
+            query = sqf.read()
+
+        SQLExecuteQueryOperator(
+            task_id="postgres_full_count_query",
+            conn_id="postgres_folio",
+            database=kwargs.get("database", "okapi"),
+            sql=query,
+            parameters={"campuses": include_campus},
+        ).execute(context)
+    else:
+        logger.info("Skipping refresh of campus filter view")
+
+    return query
+
+
 def create_materialized_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
-    from_date = params.get("from_date")
+    from_date = params.get("from_date", '2023-08-23')
     to_date = params.get(
         "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
     )
 
     query = None
+
     if recreate:
-        with open(materialized_view_sql_file()) as sqf:
-            query = sqf.read()
+        with open(materialized_view_sql_file()) as sqv:
+            query = sqv.read()
 
         SQLExecuteQueryOperator(
             task_id="postgres_full_count_query",
@@ -47,6 +73,15 @@ def materialized_view_sql_file(**kwargs) -> Path:
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
         / "libsys_airflow/plugins/data_exports/sql/materialized_view.sql"
+    )
+
+    return sql_path
+
+
+def filter_campus_sql_file(**kwargs) -> Path:
+    sql_path = (
+        Path(kwargs.get("airflow", "/opt/airflow"))
+        / "libsys_airflow/plugins/data_exports/sql/filter_campus_ids.sql"
     )
 
     return sql_path
