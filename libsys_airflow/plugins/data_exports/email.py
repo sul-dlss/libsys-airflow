@@ -245,3 +245,44 @@ def failed_transmission_email(files: list, **kwargs):
         subject=f"Failed File Transmission for {dag_id} {dag_run_id}",
         html_content=html_content,
     )
+
+
+def _missing_holdings_for_instances(report: str) -> str:
+    report_path = pathlib.Path(report)
+    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
+
+    if not airflow_url.endswith("/"):
+        airflow_url = f"{airflow_url}/"
+
+    report_url = (
+        f"{airflow_url}data_export_oclc_reports/missing_holdings/{report_path.name}"
+    )
+
+    template = Template(
+        """
+        <h2>Instances with No Holdings Report</h2>
+        <a href="{{ report_url }}">{{ report_name }}</a>
+        """
+    )
+    return template.render(report_url=report_url, report_name=report_path.name)
+
+
+@task
+def generate_no_holdings_instances_email(**kwargs):
+    report = kwargs["report"]
+
+    if report is None or len(report) < 1:
+        logger.info("All instances have holdings records")
+        return
+
+    logger.info("Generating email for instances without holdings")
+    email_addresses = [Variable.get("EMAIL_DEVS")]
+
+    if is_production():
+        email_addresses.append(Variable.get("OCLC_EMAIL_SUL"))
+
+    send_email_with_server_name(
+        to=email_addresses,
+        subject="Instances without Holdings",
+        html_content=_missing_holdings_for_instances(report),
+    )

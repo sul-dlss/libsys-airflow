@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from airflow.models import Variable
 
 from libsys_airflow.plugins.data_exports.email import (
+    generate_no_holdings_instances_email,
     generate_multiple_oclc_identifiers_email,
     generate_oclc_new_marc_errors_email,
     failed_transmission_email,
@@ -54,6 +55,42 @@ def mock_dag_run(mocker):
     dag_run.dag.dag_id = "send_vendor_records"
 
     return dag_run
+
+
+def test_missing_holdings_instances_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.MagicMock()
+
+    mocker.patch.multiple(
+        "libsys_airflow.plugins.shared.utils",
+        send_email=mock_send_email,
+        is_production=lambda: False,
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=True,
+    )
+
+    generate_no_holdings_instances_email.function(
+        report="/opt/airflow/data-export-files/oclc/reports/missing_holdings/2025-03-04T23:15:35.345579.html"
+    )
+
+    assert mock_send_email.call_count == 1
+
+    report_body = BeautifulSoup(
+        mock_send_email.call_args_list[0][1]['html_content'], 'html.parser'
+    )
+
+    report_link = report_body.find("a")
+    assert report_link.text == "2025-03-04T23:15:35.345579.html"
+
+
+def test_no_missing_holdings_instances_email(mocker, mock_folio_variables, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    generate_no_holdings_instances_email.function(report=None)
+    assert "All instances have holdings records" in caplog.text
 
 
 def test_multiple_oclc_email(mocker, mock_folio_variables):
