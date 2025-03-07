@@ -13,19 +13,50 @@ from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 logger = logging.getLogger(__name__)
 
 
+def create_campus_filter_view(**kwargs) -> Union[str, None]:
+    context = get_current_context()
+    params = context.get("params", {})  # type: ignore
+    recreate = params.get("recreate_view", False)
+    include_campus = params.get("campuses", "SUL, LAW, GSB, HOOVER, MED")
+
+    query = None
+
+    if recreate:
+        campuses = add_quotes(include_campus)
+        logger.info(f"Refreshing view filter with campus codes {campuses}")
+        with open(filter_campus_sql_file()) as sqf:
+            query = sqf.read()
+
+        SQLExecuteQueryOperator(
+            task_id="postgres_full_count_query",
+            conn_id="postgres_folio",
+            database=kwargs.get("database", "okapi"),
+            sql=query,
+            parameters={"campuses": campuses},
+        ).execute(context)
+    else:
+        logger.info("Skipping refresh of campus filter view")
+
+    return query
+
+
 def create_materialized_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
-    from_date = params.get("from_date")
+    from_date = params.get("from_date", '2023-08-23')
     to_date = params.get(
         "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
     )
 
     query = None
+
     if recreate:
-        with open(materialized_view_sql_file()) as sqf:
-            query = sqf.read()
+        logger.info(
+            f"Refreshing materialized view with dates from: {from_date} to: {to_date}"
+        )
+        with open(materialized_view_sql_file()) as sqv:
+            query = sqv.read()
 
         SQLExecuteQueryOperator(
             task_id="postgres_full_count_query",
@@ -47,6 +78,15 @@ def materialized_view_sql_file(**kwargs) -> Path:
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
         / "libsys_airflow/plugins/data_exports/sql/materialized_view.sql"
+    )
+
+    return sql_path
+
+
+def filter_campus_sql_file(**kwargs) -> Path:
+    sql_path = (
+        Path(kwargs.get("airflow", "/opt/airflow"))
+        / "libsys_airflow/plugins/data_exports/sql/filter_campus_ids.sql"
     )
 
     return sql_path
@@ -105,3 +145,10 @@ def reset_s3(**kwargs) -> None:
         logger.info("Skipping deletion of existing marc files in S3 bucket")
 
     return None
+
+
+def add_quotes(csv_string):
+    """Adds single quotes around each comma-separated value in a string."""
+    values = csv_string.split(',')
+    quoted_values = ["'{}'".format(v.strip()) for v in values]
+    return ','.join(quoted_values)
