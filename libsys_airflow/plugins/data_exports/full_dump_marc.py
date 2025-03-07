@@ -17,11 +17,13 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
-    include_campus = params.get("campuses", "'SUL', 'LAW', 'GSB', 'HOOVER', 'MED'")
+    include_campus = params.get("campuses", "SUL, LAW, GSB, HOOVER, MED")
 
     query = None
 
     if recreate:
+        campuses = add_quotes(include_campus)
+        logger.info(f"Refreshing view filter with campus codes {campuses}")
         with open(filter_campus_sql_file()) as sqf:
             query = sqf.read()
 
@@ -30,7 +32,7 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
             conn_id="postgres_folio",
             database=kwargs.get("database", "okapi"),
             sql=query,
-            parameters={"campuses": include_campus},
+            parameters={"campuses": campuses},
         ).execute(context)
     else:
         logger.info("Skipping refresh of campus filter view")
@@ -50,6 +52,9 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     query = None
 
     if recreate:
+        logger.info(
+            f"Refreshing materialized view with dates from: {from_date} to: {to_date}"
+        )
         with open(materialized_view_sql_file()) as sqv:
             query = sqv.read()
 
@@ -140,3 +145,10 @@ def reset_s3(**kwargs) -> None:
         logger.info("Skipping deletion of existing marc files in S3 bucket")
 
     return None
+
+
+def add_quotes(csv_string):
+    """Adds single quotes around each comma-separated value in a string."""
+    values = csv_string.split(',')
+    quoted_values = ["'{}'".format(v.strip()) for v in values]
+    return ','.join(quoted_values)

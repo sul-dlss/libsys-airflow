@@ -9,7 +9,7 @@ from libsys_airflow.plugins.data_exports.marc import exporter
 class MockSQLExecuteQueryOperator(pydantic.BaseModel):
     recreate: bool = False
     from_date: str = "2023-09-01"
-    to_date: str = "2025-02-12"
+    to_date: str = "2025-02-01"
     include_campus: str = "SUL, LAW, HOOVER"
 
     def execute(self, sql):
@@ -186,6 +186,7 @@ def mock_get_current_context_recreate(monkeypatch, mocker):
             "recreate_view": True,
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
+            "campuses": "SUL, LAW, HOOVER",
         }
         return context
 
@@ -267,7 +268,10 @@ def test_recreate_materialized_view(
     query = full_dump_marc.create_materialized_view()
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
-    assert "Skipping refresh of materialized view" not in caplog.text
+    assert (
+        "Refreshing materialized view with dates from: 2023-09-01 to: 2025-02-01"
+        in caplog.text
+    )
 
 
 def test_recreate_campus_filter_view(
@@ -278,4 +282,6 @@ def test_recreate_campus_filter_view(
     query = full_dump_marc.create_campus_filter_view()
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS filter_campus_ids")
-    assert "Skipping refresh of campus filter view" not in caplog.text
+    assert (
+        "Refreshing view filter with campus codes 'SUL','LAW','HOOVER'" in caplog.text
+    )
