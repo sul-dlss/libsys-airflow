@@ -23,5 +23,7 @@ right join filter_instance_ids F
   on F.instanceid = I.id
 order by I.jsonb->'hrid'
 ;
+DROP INDEX IF EXISTS data_export_marc_ids;
+DROP INDEX IF EXISTS data_export_marc_hrids;
 CREATE UNIQUE INDEX data_export_marc_ids ON data_export_marc (id);
 CREATE UNIQUE INDEX data_export_marc_hrids ON data_export_marc (hrid);

@@ -9,4 +9,5 @@ where  permanentlocationid in (
         where jsonb->>'code' in (%(campuses)s)
     )
 );
+DROP INDEX IF EXISTS filter_full_dump_campus_idx; 
 CREATE UNIQUE INDEX filter_full_dump_campus_idx ON filter_campus_ids (instanceid);
