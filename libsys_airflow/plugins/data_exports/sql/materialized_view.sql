@@ -15,9 +15,15 @@ and (I.jsonb->>'statusId')::uuid in (
     where jsonb->>'name' = 'Cataloged'
   )
   and I.jsonb->>'catalogedDate' between %(from_date)s and %(to_date)s
-  and (I.jsonb->>'discoverySuppress')::boolean is false
+  and (I.jsonb->>'discoverySuppress')::boolean is NOT TRUE
   and I.jsonb->>'source' = 'MARC'
 join sul_mod_source_record_storage.marc_records_lb M
   on M.id = R.id
+right join filter_instance_ids F
+  on F.instanceid = I.id
 order by I.jsonb->'hrid'
 ;
+DROP INDEX IF EXISTS data_export_marc_ids;
+DROP INDEX IF EXISTS data_export_marc_hrids;
+CREATE UNIQUE INDEX data_export_marc_ids ON data_export_marc (id);
+CREATE UNIQUE INDEX data_export_marc_hrids ON data_export_marc (hrid);
