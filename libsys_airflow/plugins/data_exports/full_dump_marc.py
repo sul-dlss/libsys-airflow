@@ -17,22 +17,39 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
-    include_campus = params.get("campuses", "SUL, LAW, GSB, HOOVER, MED")
+    include_campus = params.get("include_campus", "SUL, LAW, GSB, HOOVER, MED")
 
-    query = None
+    campuses = add_quotes(include_campus)
+    # TODO: Use SQL param biding instead of inline query.
+    # query = None
+
+    query = (
+        "DROP MATERIALIZED VIEW IF EXISTS filter_campus_ids CASCADE; "  # noqa
+        "create materialized view filter_campus_ids as "
+        "select distinct(instanceid) from sul_mod_inventory_storage.holdings_record "
+        "where  permanentlocationid in ( "
+        "    select id from sul_mod_inventory_storage.location "
+        "    where campusid in ( "
+        "        select id from sul_mod_inventory_storage.loccampus "
+        f"        where jsonb->>'code' in ({campuses}) "
+        "    )"
+        ");"
+        "DROP INDEX IF EXISTS filter_full_dump_campus_idx; "
+        "CREATE UNIQUE INDEX filter_full_dump_campus_idx ON filter_campus_ids (instanceid);"
+    )
 
     if recreate:
-        campuses = add_quotes(include_campus)
         logger.info(f"Refreshing view filter with campus codes {campuses}")
-        with open(filter_campus_sql_file()) as sqf:
-            query = sqf.read()
+
+        # TODO: Use SQL param biding instead of inline query.
+        # with open(filter_campus_sql_file()) as sqv:
+        #     query = sqv.read()
 
         SQLExecuteQueryOperator(
             task_id="postgres_full_count_query",
             conn_id="postgres_folio",
             database=kwargs.get("database", "okapi"),
             sql=query,
-            parameters={"campuses": campuses},
         ).execute(context)
     else:
         logger.info("Skipping refresh of campus filter view")
