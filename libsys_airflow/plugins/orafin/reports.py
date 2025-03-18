@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 ap_server_options = [
     "-i /opt/airflow/vendor-keys/apserver.key",
-    "-o StrictHostKeyChecking=n",
+    "-o StrictHostKeyChecking=no",
 ]
 
 
