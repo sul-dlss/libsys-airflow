@@ -344,6 +344,14 @@ def test_expense_codes(mock_folio_client):
                 total=0.00,
                 poLine=archival,
             ),
+            InvoiceLine(
+                id=str(uuid.uuid4()),
+                adjustmentsTotal=0.00,
+                invoiceLineNumber="13",
+                subTotal=0.00,
+                total=0.00,
+                description="SHIPPING/NONTAXABLE OR HANDLING/TAXABLE",
+            ),
         ],
     )
 
@@ -362,6 +370,7 @@ def test_expense_codes(mock_folio_client):
     assert feeder_file.invoices[0].lines[9].expense_code == "53245"
     assert feeder_file.invoices[0].lines[10].expense_code == "53262"
     assert feeder_file.invoices[0].lines[11].expense_code == "53265"
+    assert feeder_file.invoices[0].lines[12].expense_code == "55320"
 
     feeder_file.invoices[0].lines[0].poLine = None
     feeder_file.add_expense_lines(mock_folio_client)
