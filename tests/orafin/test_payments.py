@@ -153,11 +153,13 @@ eresource_po_line = {
 acquisition_methods = [
     {"id": "df26d81b-9d63-4ff8-bf41-49bf75cfa70e", "value": "Purchase"},
     {"id": "e723e091-1d0a-48f4-9065-61427e723174", "value": "Subscription"},
+    {'id': '796596c4-62b5-4b64-a2ce-524c747afaa2', 'value': 'Approval Plan'},
 ]
 
 material_types = [
     {"id": "d9acad2f-2aac-4b48-9097-e6ab85906b25", "name": "text"},
     {"id": "615b8413-82d5-4203-aa6e-e37984cb5ac3", "name": "electronic resource"},
+    {'id': '1a54b431-2e4f-452d-9cae-9cee66c9a892', "name": "book"},
 ]
 
 ledgers = [
@@ -354,7 +356,7 @@ def test_init_feeder_file(mock_folio_client):
     assert feeder_file.number_of_invoices == 1
 
     feeder_file.add_expense_lines(mock_folio_client)
-    assert feeder_file.invoices[0].lines[0].expense_code == '53245'
+    assert feeder_file.invoices[0].lines[0].expense_code == '53250'
 
 
 @pytest.fixture

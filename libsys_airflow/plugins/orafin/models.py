@@ -98,6 +98,7 @@ class InvoiceLine:
     subTotal: float
     total: float
 
+    description: str = ''
     expense_code: Union[str, None] = None
     poLine: Union[PurchaseOrderLine, None] = None
     fundDistributions: list[fundDistribution] = []
@@ -327,7 +328,7 @@ class FeederFile:
 
     def _invoice_line_expense_line(self, invoice_line: InvoiceLine) -> None:
         """
-        The expense_code_df is in order match conditions from most specific to
+        The expense_code_df is in order of match conditions from most specific to
         the general case that matches any of the po line's values.
         """
         conditions = self.expense_codes_df.to_dict("records")  # type: ignore
@@ -339,16 +340,15 @@ class FeederFile:
             else:
                 invoice_line.expense_code = conditions[-1]['Expense code']
             return
-        for condition in conditions:
-            match_acq_method = (condition["acquisition method uuid"] is np.nan) or (
-                condition["acquisition method uuid"]
-                == invoice_line.poLine.acquisitionMethod
+        for row in conditions:
+            match_acq_method = (row["acquisition method uuid"] is np.nan) or (
+                row["acquisition method uuid"] == invoice_line.poLine.acquisitionMethod
             )
-            match_order_format = (condition["order format"] is np.nan) or (
-                condition["order format"] == invoice_line.poLine.orderFormat
+            match_order_format = (row["order format"] is np.nan) or (
+                row["order format"] == invoice_line.poLine.orderFormat
             )
-            match_mat_type = (condition["material type uuid"] is np.nan) or (
-                condition["material type uuid"] == invoice_line.poLine.materialType
+            match_mat_type = (row["material type uuid"] is np.nan) or (
+                row["material type uuid"] == invoice_line.poLine.materialType
             )
             if match_acq_method and match_order_format and match_mat_type:
                 invoice_line.expense_code = row['Expense code']
