@@ -41,18 +41,6 @@ see_other_lib_locs = {
 
 expense_codes = [
     {
-        'acquisition method': 'Purchase',
-        'order format': 'Electronic Resource',
-        'material type': 'database',
-        'Expense code': '53258',
-    },
-    {
-        'acquisition method': 'Subscription',
-        'order format': 'Electronic Resource',
-        'material type': 'database',
-        'Expense code': '53263',
-    },
-    {
         'acquisition method': 'Approval Plan',
         'order format': 'Electronic Resource',
         'material type': 'book',
@@ -89,10 +77,34 @@ expense_codes = [
         'Expense code': '53262',
     },
     {
+        'acquisition method': 'Purchase',
+        'order format': 'Electronic Resource',
+        'material type': 'database',
+        'Expense code': '53258',
+    },
+    {
+        'acquisition method': 'Subscription',
+        'order format': 'Electronic Resource',
+        'material type': 'database',
+        'Expense code': '53263',
+    },
+    {
         'acquisition method': 'Maintenance fee',
         'order format': 'Electronic Resource',
         'material type': nan,
         'Expense code': '53270',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'microform',
+        'Expense code': '53250',
+    },
+    {
+        'acquisition method': nan,
+        'order format': 'Physical Resource',
+        'material type': 'software',
+        'Expense code': '55410',
     },
     {
         'acquisition method': nan,
@@ -123,18 +135,6 @@ expense_codes = [
         'order format': nan,
         'material type': 'video recording',
         'Expense code': '53270',
-    },
-    {
-        'acquisition method': nan,
-        'order format': 'Physical Resource',
-        'material type': 'microform',
-        'Expense code': '53250',
-    },
-    {
-        'acquisition method': nan,
-        'order format': 'Physical Resource',
-        'material type': 'software',
-        'Expense code': '55410',
     },
     {
         'acquisition method': 'Shipping',

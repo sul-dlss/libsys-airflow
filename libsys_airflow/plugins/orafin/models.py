@@ -326,86 +326,33 @@ class FeederFile:
         return len(self.invoices)
 
     def _invoice_line_expense_line(self, invoice_line: InvoiceLine) -> None:
-        default_condition = (
-            self.expense_codes_df["acquisition method"].isnull()  # type: ignore
-            & self.expense_codes_df["material type"].isnull()  # type: ignore
-            & self.expense_codes_df["order format"].isnull()  # type: ignore
-        )
+        """
+        The expense_code_df is in order match conditions from most specific to
+        the general case that matches any of the po line's values.
+        """
+        conditions = self.expense_codes_df.to_dict("records")  # type: ignore
         if invoice_line.poLine is None:
-            result = self.expense_codes_df.loc[default_condition]  # type: ignore
-        else:
-            for row in [
-                # Attempts to match on all three conditions
-                (
-                    (
-                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
-                        == invoice_line.poLine.acquisitionMethod
-                    )
-                    & (
-                        self.expense_codes_df["material type uuid"]  # type: ignore
-                        == invoice_line.poLine.materialType
-                    )
-                    & (
-                        self.expense_codes_df["order format"]  # type: ignore
-                        == invoice_line.poLine.orderFormat
-                    )
-                ),
-                # Attempts match when acquisition method is None or doesn't matter
-                (
-                    (
-                        self.expense_codes_df["material type uuid"]  # type: ignore
-                        == invoice_line.poLine.acquisitionMethod
-                    )
-                    & (
-                        self.expense_codes_df["order format"]  # type: ignore
-                        == invoice_line.poLine.orderFormat
-                    )
-                ),
-                # Attempts match when material type is None
-                (
-                    (
-                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
-                        == invoice_line.poLine.acquisitionMethod
-                    )
-                    & (
-                        self.expense_codes_df["order format"]  # type: ignore
-                        == invoice_line.poLine.orderFormat
-                    )
-                ),
-                # Attempts match when acquisition method is None
-                (
-                    (
-                        self.expense_codes_df["material type uuid"]  # type: ignore
-                        == invoice_line.poLine.materialType
-                    )
-                    & (
-                        self.expense_codes_df["order format"]  # type: ignore
-                        == invoice_line.poLine.orderFormat
-                    )
-                ),
-                # Attempts match on material type
-                (
-                    self.expense_codes_df["material type uuid"]  # type: ignore
-                    == invoice_line.poLine.materialType
-                ),
-                # Attempts match for Shipping
-                (
-                    (
-                        self.expense_codes_df["acquisition method uuid"]  # type: ignore
-                        == invoice_line.poLine.acquisitionMethod
-                    )
-                    & (
-                        self.expense_codes_df["acquisition method"]  # type: ignore
-                        == "Shipping"
-                    )
-                ),
-                # Default if all three conditions are None
-                default_condition,
-            ]:
-                result = self.expense_codes_df.loc[row]  # type: ignore
-                if len(result) > 0:
-                    break
-        invoice_line.expense_code = result["Expense code"].values[0]  # type: ignore
+            if invoice_line.description.startswith(
+                "SHIPPING/NONTAXABLE OR HANDLING/TAXABLE"
+            ):
+                invoice_line.expense_code = "55320"
+            else:
+                invoice_line.expense_code = conditions[-1]['Expense code']
+            return
+        for condition in conditions:
+            match_acq_method = (condition["acquisition method uuid"] is np.nan) or (
+                condition["acquisition method uuid"]
+                == invoice_line.poLine.acquisitionMethod
+            )
+            match_order_format = (condition["order format"] is np.nan) or (
+                condition["order format"] == invoice_line.poLine.orderFormat
+            )
+            match_mat_type = (condition["material type uuid"] is np.nan) or (
+                condition["material type uuid"] == invoice_line.poLine.materialType
+            )
+            if match_acq_method and match_order_format and match_mat_type:
+                invoice_line.expense_code = row['Expense code']
+                return
 
     def _populate_expense_code_lookup(self, folio_client):
         acq_methods_lookup, mtypes_lookup = dict(), dict()
