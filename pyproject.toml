@@ -87,3 +87,6 @@ explicit_package_bases = true
 warn_unreachable = true
 pretty = true
 show_error_context = true
+exclude = [
+    "libsys_airflow/plugins/folio/encumbrances/fix_encumbrances_master\\.py$",
+]
