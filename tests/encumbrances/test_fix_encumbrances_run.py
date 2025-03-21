@@ -47,13 +47,13 @@ def test_fix_encumbrances_log_file_params(
     mocker, tmp_path, mock_task_instance, mock_folio_variables, monkeypatch
 ):
     mocker.patch(
-        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances.Variable.get',
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_master.Variable.get',
         return_value=mock_folio_variables,
     )
 
     async_mock = AsyncMock()
     mocker.patch(
-        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances.run_operation',
+        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_master.run_operation',
         side_effect=async_mock,
         return_value=None,
     )
