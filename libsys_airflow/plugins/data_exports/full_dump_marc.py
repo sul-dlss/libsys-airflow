@@ -50,6 +50,9 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
             conn_id="postgres_folio",
             database=kwargs.get("database", "okapi"),
             sql=query,
+            # param={
+            #     "campuses": campuses
+            # },
         ).execute(context)
     else:
         logger.info("Skipping refresh of campus filter view")
