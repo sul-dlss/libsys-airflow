@@ -186,7 +186,7 @@ def mock_get_current_context_recreate(monkeypatch, mocker):
             "recreate_view": True,
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
-            "campuses": "SUL, LAW, HOOVER",
+            "include_campus": "SUL, LAW, HOOVER",
         }
         return context
 
