@@ -23,13 +23,16 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
     query = None
 
     if recreate:
+        campuses = psycopg2.extensions.AsIs(f"({add_quotes(include_campus)})")
+
         logger.info(f"Refreshing view filter with campus codes {campuses}")
         with open(filter_campus_sql_file()) as sqv:
             query = sqv.read()
-        
-        campuses = psycopg2.extensions.AsIs(f"({add_quotes(include_campus)})")
+
         connection = Connection.get_connection_from_secrets("postgres_folio")
-        conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port}"
+        conn_string = (
+            f"dbname=okapi user=okapi host={connection.host} port={connection.port}"
+        )
         conn = psycopg2.connect(conn_string)
         cur = conn.cursor()
         cur.execute(query, campuses)
