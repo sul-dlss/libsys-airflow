@@ -1,12 +1,12 @@
 import logging
+import psycopg2
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from psycopg2.extensions import AsIs
 from s3path import S3Path
 from typing import Union
 
-from airflow.models import Variable
+from airflow.models import Variable, Connection
 from airflow.operators.python import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
@@ -20,24 +20,19 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
     recreate = params.get("recreate_view", False)
     include_campus = params.get("include_campus", "SUL, LAW, GSB, HOOVER, MED")
 
-    campuses = AsIs(f"({add_quotes(include_campus)})")
     query = None
 
     if recreate:
         logger.info(f"Refreshing view filter with campus codes {campuses}")
-
         with open(filter_campus_sql_file()) as sqv:
             query = sqv.read()
-
-        SQLExecuteQueryOperator(
-            task_id="postgres_full_count_query",
-            conn_id="postgres_folio",
-            database=kwargs.get("database", "okapi"),
-            sql=query,
-            param={
-                "campuses": campuses
-            },
-        ).execute(context)
+        
+        campuses = psycopg2.extensions.AsIs(f"({add_quotes(include_campus)})")
+        connection = Connection.get_connection_from_secrets("postgres_folio")
+        conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port}"
+        conn = psycopg2.connect(conn_string)
+        cur = conn.cursor()
+        cur.execute(query, campuses)
     else:
         logger.info("Skipping refresh of campus filter view")
 
