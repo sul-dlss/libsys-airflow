@@ -2,6 +2,7 @@ import logging
 
 from datetime import datetime, timedelta
 from pathlib import Path
+from psycopg2.extensions import AsIs
 from s3path import S3Path
 from typing import Union
 
@@ -19,40 +20,23 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
     recreate = params.get("recreate_view", False)
     include_campus = params.get("include_campus", "SUL, LAW, GSB, HOOVER, MED")
 
-    campuses = add_quotes(include_campus)
-    # TODO: Use SQL param biding instead of inline query.
-    # query = None
-
-    query = (
-        "DROP MATERIALIZED VIEW IF EXISTS filter_campus_ids CASCADE; "  # noqa
-        "create materialized view filter_campus_ids as "
-        "select distinct(instanceid) from sul_mod_inventory_storage.holdings_record "
-        "where  permanentlocationid in ( "
-        "    select id from sul_mod_inventory_storage.location "
-        "    where campusid in ( "
-        "        select id from sul_mod_inventory_storage.loccampus "
-        f"        where jsonb->>'code' in ({campuses}) "
-        "    )"
-        ");"
-        "DROP INDEX IF EXISTS filter_full_dump_campus_idx; "
-        "CREATE UNIQUE INDEX filter_full_dump_campus_idx ON filter_campus_ids (instanceid);"
-    )
+    campuses = AsIs(f"({add_quotes(include_campus)})")
+    query = None
 
     if recreate:
         logger.info(f"Refreshing view filter with campus codes {campuses}")
 
-        # TODO: Use SQL param biding instead of inline query.
-        # with open(filter_campus_sql_file()) as sqv:
-        #     query = sqv.read()
+        with open(filter_campus_sql_file()) as sqv:
+            query = sqv.read()
 
         SQLExecuteQueryOperator(
             task_id="postgres_full_count_query",
             conn_id="postgres_folio",
             database=kwargs.get("database", "okapi"),
             sql=query,
-            # param={
-            #     "campuses": campuses
-            # },
+            param={
+                "campuses": campuses
+            },
         ).execute(context)
     else:
         logger.info("Skipping refresh of campus filter view")
