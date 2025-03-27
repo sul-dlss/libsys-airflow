@@ -616,7 +616,7 @@ async def get_encumbrances_to_fix_order_status(order_id, fiscal_year_id) -> list
 
 async def fix_encumbrances_order_status(order_id, encumbrances):
     try:
-        print(f'\n  Fixing the following encumbrance(s) for order {order_id} :')
+        # print(f'\n  Fixing the following encumbrance(s) for order {order_id} :')
         logger.info(f'\n  Fixing the following encumbrance(s) for order {order_id} :')
         for encumbrance in encumbrances:
             print(f"    {encumbrance['id']}")
@@ -677,7 +677,7 @@ async def get_encumbrances_to_fix_properties(order, fiscal_year_id) -> list:
 
 async def fix_encumbrances_properties(order, encumbrances):
     try:
-        print(f"\n  Fixing the following encumbrance(s) for order {order['id']} :")
+        # print(f"\n  Fixing the following encumbrance(s) for order {order['id']} :")
         logger.info(f"\n  Fixing the following encumbrance(s) for order {order['id']} :")
         for encumbrance in encumbrances:
             print(f"    {encumbrance['id']}")
