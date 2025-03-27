@@ -6,4 +6,4 @@ where (jsonb->>'statusId')::uuid in (
   where jsonb->>'name' = 'Cataloged'
 )
 and jsonb->>'catalogedDate' between %(from_date)s and %(to_date)s
-and (jsonb->>'discoverySuppress')::boolean is false)
+and ((jsonb->>'discoverySuppress')::boolean is false or (jsonb->>'discoverySuppress') is null))
