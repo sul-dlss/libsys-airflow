@@ -148,7 +148,7 @@ def reset_s3(**kwargs) -> None:
     return None
 
 
-def add_quotes(csv_string):
+def add_quotes(csv_string) -> str:
     """Adds single quotes around each comma-separated value in a string."""
     values = csv_string.split(',')
     quoted_values = ["'{}'".format(v.strip()) for v in values]
