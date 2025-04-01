@@ -225,7 +225,13 @@ def setup_recreate_tests(mocker, mock_airflow_connection):
     )
 
 
-def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context_no_recreate, mock_airflow_connection, caplog):
+def test_fetch_full_dump(
+    tmp_path,
+    mocker,
+    mock_get_current_context_no_recreate,
+    mock_airflow_connection,
+    caplog,
+):
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mocker.patch(
