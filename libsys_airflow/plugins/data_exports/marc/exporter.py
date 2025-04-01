@@ -186,9 +186,9 @@ class Exporter(object):
         """
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
-        bucket_path = params.get("bucket", "marc-files")
+        marc_file_dir = params.get("marc_file_dir", "marc-files")
         marc_file_name = instance_file.stem
-        directory = marc_directory / bucket_path
+        directory = marc_directory / marc_file_dir
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
