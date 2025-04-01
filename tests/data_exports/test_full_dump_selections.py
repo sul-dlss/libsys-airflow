@@ -170,11 +170,16 @@ def mock_get_current_context_no_recreate(monkeypatch, mocker):
             "recreate_view": False,
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
+            "bucket": "marc-files",
         }
         return context
 
     monkeypatch.setattr(
         'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.marc.exporter.get_current_context',
         _context,
     )
 
@@ -220,7 +225,7 @@ def setup_recreate_tests(mocker, mock_airflow_connection):
     )
 
 
-def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
+def test_fetch_full_dump(tmp_path, mocker, mock_get_current_context_no_recreate, mock_airflow_connection, caplog):
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mocker.patch(
