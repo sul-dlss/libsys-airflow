@@ -88,6 +88,7 @@ with DAG(
             "marc-files",
             type="string",
             description="The S3 bucket to deposit the MARC records. CC0 or marc-files.",
+            enum=["marc-files", "CC0"],
         ),
     },
 ) as dag:
