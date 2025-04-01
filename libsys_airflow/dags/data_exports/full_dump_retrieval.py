@@ -63,7 +63,7 @@ with DAG(
             description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
         ),
         "from_date": Param(
-            Variable.get("FOLIO_EPOCH_DATE", "2023-08-23"),
+            Variable.get("EPOCH_DATE", "1885-11-11"),
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
