@@ -170,7 +170,7 @@ def mock_get_current_context_no_recreate(monkeypatch, mocker):
             "recreate_view": False,
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
-            "bucket": "marc-files",
+            "marc_file_dir": "marc-files",
         }
         return context
 

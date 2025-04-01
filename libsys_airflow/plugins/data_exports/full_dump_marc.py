@@ -134,11 +134,11 @@ def reset_s3(**kwargs) -> None:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     reset = params.get("reset_s3", True)
-    bucket = params.get("bucket", "marc-files")
+    marc_file_dir = params.get("marc_file_dir", "marc-files")
 
     if reset:
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
-        s3_dir = s3_bucket_path(bucket)
+        s3_dir = S3Path(f"/{bucket}/data-export-files/full-dump/{marc_file_dir}/")
         s3_files = s3_dir.glob("*.*")
         for file in s3_files:
             file.unlink()
@@ -153,10 +153,3 @@ def add_quotes(csv_string) -> str:
     values = csv_string.split(',')
     quoted_values = ["'{}'".format(v.strip()) for v in values]
     return ','.join(quoted_values)
-
-
-def s3_bucket_path(bucket) -> S3Path:
-    if bucket == "CC0":
-        return S3Path(f"/{bucket}/data-export-files/full-dump/CC0/")
-
-    return S3Path(f"/{bucket}/data-export-files/full-dump/marc-files/")

@@ -84,10 +84,10 @@ with DAG(
             type="string",
             description="Comma-seperated list of campus coded to include in full dump selection.",
         ),
-        "bucket": Param(
+        "marc_file_dir": Param(
             "marc-files",
             type="string",
-            description="The S3 bucket to deposit the MARC records. CC0 or marc-files.",
+            description="The S3 marc file path to deposit the MARC records. CC0 or marc-files.",
             enum=["marc-files", "CC0"],
         ),
     },
