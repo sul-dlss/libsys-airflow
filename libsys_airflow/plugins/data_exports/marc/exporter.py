@@ -9,6 +9,7 @@ from pymarc import (
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
 from s3path import S3Path
 from typing import Union
 
@@ -183,8 +184,11 @@ class Exporter(object):
         """
         Writes marc record to a file system (local or S3)
         """
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        bucket_path = params.get("bucket", "marc-files")
         marc_file_name = instance_file.stem
-        directory = marc_directory / "marc-files"
+        directory = marc_directory / bucket_path
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
