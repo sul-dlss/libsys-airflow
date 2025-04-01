@@ -96,9 +96,8 @@ class Exporter(object):
         self, instance_file: pathlib.Path, kind: str
     ) -> str:
         """
-        Called for each instanceid file in vendor or full-dump directory
-        For each ID row, writes and returns converted MARC from SRS
-        Writes to file system, or in case of full-dump to AWS bucket
+        Called for each instanceid file in vendor directory.
+        For each ID row, writes and returns converted MARC from SRS to file system
         """
         if not instance_file.exists():
             raise ValueError(
@@ -130,6 +129,10 @@ class Exporter(object):
         return marc_file
 
     def retrieve_marc_for_full_dump(self, marc_filename: str, instance_ids: str) -> str:
+        """
+        Called for each instanceid file in the full-dump directory
+        For each ID row, writes and returns converted MARC from SRS and writes to AWS bucket
+        """
         marc_file = ""
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
         full_dump_files = f"/{bucket}/data-export-files/full-dump"
