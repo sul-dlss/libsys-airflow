@@ -113,6 +113,21 @@ def mock_folio_404():
     return mock_404_client
 
 
+@pytest.fixture
+def mock_get_current_context(monkeypatch, mocker):
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {
+            "bucket": "marc-files",
+        }
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.marc.exporter.get_current_context',
+        _context,
+    )
+
+
 def setup_test_file_updates(tmp_path):
     instance_file = (
         tmp_path / "data-export-files/pod/instanceids/updates/202402271159.csv"
@@ -147,7 +162,9 @@ def setup_test_file_deletes(tmp_path):
     return instance_file
 
 
-def test_retrieve_marc_for_instances(mocker, mock_folio_client, tmp_path):
+def test_retrieve_marc_for_instances(
+    mocker, mock_folio_client, mock_get_current_context, tmp_path
+):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
         return_value=mock_folio_client,
@@ -184,7 +201,9 @@ def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog
     assert "response code 404" in caplog.text
 
 
-def test_marc_for_instances(mocker, tmp_path, mock_folio_client):
+def test_marc_for_instances(
+    mocker, tmp_path, mock_folio_client, mock_get_current_context
+):
     update_file_path = setup_test_file_updates(tmp_path)
     delete_file_path = setup_test_file_deletes(tmp_path)
 

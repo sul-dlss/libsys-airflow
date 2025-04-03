@@ -63,7 +63,7 @@ with DAG(
             description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
         ),
         "from_date": Param(
-            Variable.get("FOLIO_EPOCH_DATE", "2023-08-23"),
+            Variable.get("FOLIO_EPOCH_DATE", "1885-11-11"),
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
@@ -83,6 +83,12 @@ with DAG(
             Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
             type="string",
             description="Comma-seperated list of campus coded to include in full dump selection.",
+        ),
+        "marc_file_dir": Param(
+            "marc-files",
+            type="string",
+            description="The S3 marc file path to deposit the MARC records. CC0 or marc-files.",
+            enum=["marc-files", "CC0"],
         ),
     },
 ) as dag:

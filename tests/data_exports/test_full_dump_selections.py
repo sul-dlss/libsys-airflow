@@ -16,6 +16,20 @@ class MockSQLExecuteQueryOperator(pydantic.BaseModel):
         return None
 
 
+class MockPsycopg2Cursor(pydantic.BaseModel):
+    def fetchall(self):
+        return [()]
+
+    def execute(self, sql_stmt, params):
+        self
+
+
+class MockPsycopg2Connection(pydantic.BaseModel):
+
+    def cursor(self):
+        return MockPsycopg2Cursor()
+
+
 class MockCursor(pydantic.BaseModel):
     batch_size: int = 0
     offset: int = 0
@@ -32,19 +46,6 @@ class MockConnection(pydantic.BaseModel):
 
     def cursor(self):
         return MockCursor()
-
-
-class MockPool(pydantic.BaseModel):
-    connection: MockConnection = MockConnection()
-
-    def pool(self):
-        return self
-
-    def getconn(self):
-        return self.connection
-
-    def putconn(self, connection):
-        return None
 
 
 def mock_number_of_records(mock_result_set):
@@ -169,11 +170,16 @@ def mock_get_current_context_no_recreate(monkeypatch, mocker):
             "recreate_view": False,
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
+            "marc_file_dir": "marc-files",
         }
         return context
 
     monkeypatch.setattr(
         'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.marc.exporter.get_current_context',
         _context,
     )
 
@@ -206,6 +212,10 @@ def setup_recreate_tests(mocker, mock_airflow_connection):
         return_value=MockSQLExecuteQueryOperator(),
     )
     mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.psycopg2.connect',
+        return_value=MockPsycopg2Connection(),
+    )
+    mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
         return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
     )
@@ -215,7 +225,13 @@ def setup_recreate_tests(mocker, mock_airflow_connection):
     )
 
 
-def test_fetch_full_dump(tmp_path, mocker, mock_airflow_connection, caplog):
+def test_fetch_full_dump(
+    tmp_path,
+    mocker,
+    mock_get_current_context_no_recreate,
+    mock_airflow_connection,
+    caplog,
+):
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mocker.patch(
@@ -239,7 +255,9 @@ def test_no_recreate_filter_campus_ids(
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
 
-    query = full_dump_marc.create_campus_filter_view()
+    query = full_dump_marc.create_campus_filter_view(
+        connection=MockPsycopg2Connection()
+    )
 
     if query is None:
         assert True
@@ -279,9 +297,11 @@ def test_recreate_campus_filter_view(
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
 
-    query = full_dump_marc.create_campus_filter_view()
+    query = full_dump_marc.create_campus_filter_view(
+        connection=MockPsycopg2Connection()
+    )
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS filter_campus_ids")
     assert (
-        "Refreshing view filter with campus codes 'SUL','LAW','HOOVER'" in caplog.text
+        "Refreshing view filter with campus codes ('SUL','LAW','HOOVER')" in caplog.text
     )

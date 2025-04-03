@@ -9,6 +9,7 @@ from pymarc import (
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
 from s3path import S3Path
 from typing import Union
 
@@ -95,9 +96,8 @@ class Exporter(object):
         self, instance_file: pathlib.Path, kind: str
     ) -> str:
         """
-        Called for each instanceid file in vendor or full-dump directory
-        For each ID row, writes and returns converted MARC from SRS
-        Writes to file system, or in case of full-dump to AWS bucket
+        Called for each instanceid file in vendor directory.
+        For each ID row, writes and returns converted MARC from SRS to file system
         """
         if not instance_file.exists():
             raise ValueError(
@@ -129,6 +129,10 @@ class Exporter(object):
         return marc_file
 
     def retrieve_marc_for_full_dump(self, marc_filename: str, instance_ids: str) -> str:
+        """
+        Called for each instanceid file in the full-dump directory
+        For each ID row, writes and returns converted MARC from SRS and writes to AWS bucket
+        """
         marc_file = ""
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
         full_dump_files = f"/{bucket}/data-export-files/full-dump"
@@ -183,8 +187,11 @@ class Exporter(object):
         """
         Writes marc record to a file system (local or S3)
         """
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        marc_file_dir = params.get("marc_file_dir", "marc-files")
         marc_file_name = instance_file.stem
-        directory = marc_directory / "marc-files"
+        directory = marc_directory / marc_file_dir
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
