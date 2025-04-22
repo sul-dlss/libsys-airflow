@@ -7,10 +7,12 @@ import pymarc
 from pathlib import Path
 from s3path import S3Path
 from datetime import datetime
+from typing import Optional, Union
 
 from airflow.decorators import task
 from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
+from airflow.providers.sftp.hooks.sftp import SFTPHook
 
 from libsys_airflow.plugins.data_exports.oclc_api import (
     oclc_records_operation,
@@ -153,7 +155,11 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
     """
-    hook = FTPHook(ftp_conn_id=conn_id)
+    hook: Optional[Union[FTPHook, SFTPHook]] = None
+    if conn_id.startswith("sftp-"):
+        hook = SFTPHook(ftp_conn_id=conn_id)
+    else:
+        hook = FTPHook(ftp_conn_id=conn_id)
     connection = Connection.get_connection_from_secrets(conn_id)
     remote_path = connection.extra_dejson["remote_path"]
     success = []
