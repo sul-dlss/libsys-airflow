@@ -117,6 +117,17 @@ def _dedup_bookplates(bookplates: list) -> list:
     ]
 
 
+def _package_instances(poline_id: str) -> list:
+    "Returns a list of instance ids for a package po line"
+    folio_client = _folio_client()
+    package_titles = folio_client.folio_get("/orders/titles", key="titles", query_params={"query": f"""(poLineId=="{poline_id}")"""})
+    if len(package_titles) < 1:
+        logger.info("No titles linked to package but PO Line is marked as package.")
+    else:
+        # per JSON schema instanceId is not a required field for orders/titles
+        return [title.get("instanceId") for title in package_titles if title.get("instanceId") is not None]
+
+
 def _add_poline_bookplate(
     poline_id: str, bookplates_polines: dict, bookplate: dict
 ) -> list:
@@ -187,18 +198,31 @@ def instances_from_po_lines(**kwargs) -> dict:
     """
     folio_client = _folio_client()
     instances: dict = {}
+    instance_ids: list = []
     po_lines_funds = kwargs["po_lines_funds"]
     for poline_id, bookplates in po_lines_funds.items():
         order_line = folio_client.folio_get(f"/orders-storage/po-lines/{poline_id}")
-        instance_id = order_line.get("instanceId")
-        if instance_id is None:
-            logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
-            continue
-        bookplate_metadata = bookplates["bookplate_metadata"]
-        if instance_id in instances:
-            instances[instance_id].extend(bookplate_metadata)
+        is_package = order_line.get("isPackage")
+        # po line is for a Package
+        if is_package is True:
+            instance_ids.extend(_package_instances(poline_id))
+        # po line is not a Package
         else:
-            instances[instance_id] = bookplate_metadata
+            instance_id = order_line.get("instanceId")
+            breakpoint()
+            if instance_id is None:
+                logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
+                continue
+            else:
+                instance_ids.append(instance_id)
+
+        # TODO: test fails b/c bookplate metadata is getting written as empty to the instances dict. Needs debugging.
+        bookplate_metadata = bookplates["bookplate_metadata"]
+        for id in instance_ids:
+            if id in instances:
+                instances[id].extend(bookplate_metadata)
+            else:
+                instances[id] = bookplate_metadata
 
     for k, v in instances.items():
         instances[k] = _dedup_bookplates(v)
