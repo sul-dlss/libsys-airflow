@@ -171,8 +171,7 @@ def batch_task(download_path: str, filename: str) -> list[str]:
         logger.info(f"Skipping batching {filename}")
         return [filename]
     max_records = Variable.get("MAX_ENTITIES", 500)
-    if not isinstance(max_records, int):
-        max_records = int(max_records)
+    max_records = int(max_records)
     return batch(download_path, filename, max_records)
 
 
