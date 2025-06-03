@@ -242,6 +242,12 @@ field_590 = pymarc.Field(
     subfields=[pymarc.Subfield(code='a', value='MARCit brief record')],
 )
 
+field_590_full = pymarc.Field(
+    tag="590",
+    indicators=[' ', ' '],  # type: ignore
+    subfields=[pymarc.Subfield(code='a', value='MARCit')],
+)
+
 field_904 = pymarc.Field(
     tag='903',
     indicators=['1', '0'],  # type: ignore
@@ -277,8 +283,7 @@ def test_exclude_marc_by_vendor_backstage(mocker):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     exporter = Exporter()
     marc_record = pymarc.Record()
-    marc_record.add_field(field_590, field_915_authority)
-
+    marc_record.add_field(field_590, field_590_full, field_915_authority)
     assert exporter.exclude_marc_by_vendor(marc_record, 'backstage')
 
 

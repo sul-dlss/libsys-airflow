@@ -38,7 +38,7 @@ class Exporter(object):
     def check_590(self, field590s: list) -> bool:
         reject = False
         for field in field590s:
-            if any("MARCit brief record" in sf for sf in field.get_subfields("a")):
+            if any("MARCit" in sf for sf in field.get_subfields("a")):
                 reject = True
         return reject
 
@@ -89,7 +89,6 @@ class Exporter(object):
                         self.check_915_authority(marc_record.get_fields("915")),
                     ]
                 )
-
         return exclude
 
     def retrieve_marc_for_instances(
