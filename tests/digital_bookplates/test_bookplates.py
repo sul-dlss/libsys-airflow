@@ -14,6 +14,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_poll_for_979_dags_email,
     trigger_digital_bookplate_979_task,
     _new_bookplates,
+    _package_instances,
 )
 
 rows = Rows(
@@ -200,6 +201,15 @@ def mock_bookplate_funds_polines():
             ]
         },
         "9f7031df-d30b-40c2-955a-7d522c303a43": {},
+        "f313ff2b-1322-4f88-97ab-f86c80907393": {
+            "bookplate_metadata": [
+                {
+                    "druid": "fb282ty7883",
+                    "fund_name": "STEINBERG",
+                    "image_filename": "fb282ty7883_00_0001.jp2",
+                    "title": "The Geraldine and Goodwin Steinberg Book Fund",
+                },
+            ]
         },
     }
 
@@ -207,10 +217,14 @@ def mock_bookplate_funds_polines():
 @pytest.fixture
 def mock_folio_client():
     def mock_get(*args, **kwargs):
-        output = {}
         if str(args[0]).startswith("/orders-storage/po-lines"):
             poline_id = args[0].split("/")[-1]
-            output = mock_order_lines[poline_id]
+            output: dict = mock_order_lines[poline_id]
+        if str(args[0]).startswith("/orders/titles"):
+            if kwargs["query_params"]["query"].find("abc123") != -1:
+                output: list = []
+            else:
+                output: list = mock_package_instances
         return output
 
     mock_client = MagicMock()
@@ -220,13 +234,45 @@ def mock_folio_client():
 
 mock_order_lines = {
     "be0af62c-665e-4178-ae13-e3250d89bcc6": {
-        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93"
+        "isPackage": False,
+        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93",
     },
     "5513c3d7-7c6b-45ea-a875-09798b368873": {
-        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93"
+        "isPackage": False,
+        "instanceId": "e6803f0b-ed22-48d7-9895-60bea6826e93",
     },
     "9f7031df-d30b-40c2-955a-7d522c303a43": {},
+    "f313ff2b-1322-4f88-97ab-f86c80907393": {
+        "isPackage": True,
+    },
 }
+
+
+mock_package_instances = [
+    {
+        "id": "15fec5b1-7234-49f4-a4ce-f7cf5961847f",
+        "title": "Package : Journal of Public Administration: Research and Theory / Perspectives on Public Management and Governance",
+        "poLineId": "f313ff2b-1322-4f88-97ab-f86c80907393",
+        "instanceId": "6f87cf3b-87d1-5bca-b2f1-42336a5443ef",
+        "poLineNumber": "912638F06-1",
+    },
+    {
+        "id": "cd1b0d82-7807-4d9a-868d-0baaf2b53079",
+        "title": "Perspectives on public management and governance.",
+        "poLineId": "f313ff2b-1322-4f88-97ab-f86c80907393",
+        "instanceId": "eadedaeb-c3f9-571f-847c-e63cb56a3309",
+        "packageName": "Package : Journal of Public Administration: Research and Theory / Perspectives on Public Management and Governance",
+        "poLineNumber": "912638F06-1",
+    },
+    {
+        "id": "4a1aded0-d75a-4c1a-b690-b25affb3fd93",
+        "title": "Journal of public administration research and theory : J-PART.",
+        "poLineId": "f313ff2b-1322-4f88-97ab-f86c80907393",
+        "instanceId": "fd15e01d-f6bf-5adc-81e6-7d70d9b839b5",
+        "packageName": "Package : Journal of Public Administration: Research and Theory / Perspectives on Public Management and Governance",
+        "poLineNumber": "912638F06-1",
+    },
+]
 
 
 def test_bookplate_funds_polines(
@@ -330,6 +376,39 @@ def test_instances_from_po_lines(
         ]["bookplate_metadata"]
     }
     assert fund_names.intersection(mock_fund_names)
+
+
+def test_package_instances(mocker, mock_folio_client):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
+        return_value=mock_folio_client,
+    )
+
+    instances_poline = _package_instances("f313ff2b-1322-4f88-97ab-f86c80907393")
+    assert (
+        instances_poline["6f87cf3b-87d1-5bca-b2f1-42336a5443ef"]
+        == "f313ff2b-1322-4f88-97ab-f86c80907393"
+    )
+    assert isinstance(instances_poline, dict) is True
+    for _ in [
+        "6f87cf3b-87d1-5bca-b2f1-42336a5443ef",
+        "eadedaeb-c3f9-571f-847c-e63cb56a3309",
+        "fd15e01d-f6bf-5adc-81e6-7d70d9b839b5",
+    ]:
+        assert _ in instances_poline.keys()
+
+
+def test_package_instances_error(mocker, mock_folio_client, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
+        return_value=mock_folio_client,
+    )
+
+    _package_instances("abc123")
+    assert (
+        "No titles linked to package but PO Line abc123 is marked as package."
+        in caplog.text
+    )
 
 
 def test_instances_from_po_lines_no_instance(
