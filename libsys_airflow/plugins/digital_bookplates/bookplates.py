@@ -126,7 +126,9 @@ def _package_instances(poline_id: str) -> dict:
         query_params={"query": f"""(poLineId=="{poline_id}")"""},
     )
     if len(package_titles) < 1:
-        logger.info(f"No titles linked to package but PO Line {poline_id} is marked as package.")
+        logger.info(
+            f"No titles linked to package but PO Line {poline_id} is marked as package."
+        )
         return {}
     else:
         # per JSON schema instanceId is not a required field for orders/titles
