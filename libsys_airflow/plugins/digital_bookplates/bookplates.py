@@ -216,6 +216,7 @@ def instances_from_po_lines(**kwargs) -> dict:
         order_line = folio_client.folio_get(f"/orders-storage/po-lines/{poline_id}")
         is_package = order_line.get("isPackage")
         if is_package is True:
+            logger.info(f"PO Line {poline_id} is for a package.")
             instances_poline.update(_package_instances(poline_id))
         else:
             instance_id = order_line.get("instanceId")

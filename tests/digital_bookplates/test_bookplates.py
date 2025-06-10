@@ -353,7 +353,7 @@ def test_no_new_bookplate_funds_polines(mock_invoice_lines, mock_new_funds, capl
 
 
 def test_instances_from_po_lines(
-    mocker, mock_folio_client, mock_bookplate_funds_polines
+    mocker, mock_folio_client, mock_bookplate_funds_polines, caplog
 ):
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.bookplates._folio_client",
@@ -376,6 +376,9 @@ def test_instances_from_po_lines(
         ]["bookplate_metadata"]
     }
     assert fund_names.intersection(mock_fund_names)
+    assert (
+        "PO Line f313ff2b-1322-4f88-97ab-f86c80907393 is for a package." in caplog.text
+    )
 
 
 def test_package_instances(mocker, mock_folio_client):
