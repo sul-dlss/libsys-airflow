@@ -129,6 +129,7 @@ def _add_poline_bookplate(
 def bookplate_funds_polines(**kwargs) -> dict:
     """
     Checks if fund Id from invoice lines contains bookplate fund
+    If no bookplate fund was used, this task returns an empty dict {}
     This task gets digital bookplates data from the table or uses
     a list of new funds from params. Groups by po line Id
     """

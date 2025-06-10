@@ -199,13 +199,7 @@ def mock_bookplate_funds_polines():
                 },
             ]
         },
-        "9f7031df-d30b-40c2-955a-7d522c303a43": {
-            "bookplate_metadata": {
-                "druid": "",
-                "fund_name": "",
-                "image_filename": "",
-                "title": "",
-            },
+        "9f7031df-d30b-40c2-955a-7d522c303a43": {},
         },
     }
 
