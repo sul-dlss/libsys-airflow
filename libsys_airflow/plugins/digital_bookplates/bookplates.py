@@ -117,6 +117,28 @@ def _dedup_bookplates(bookplates: list) -> list:
     ]
 
 
+def _package_instances(poline_id: str) -> dict:
+    "Returns a dictionary of instance_id: poline_id"
+    folio_client = _folio_client()
+    package_titles = folio_client.folio_get(
+        "/orders/titles",
+        key="titles",
+        query_params={"query": f"""(poLineId=="{poline_id}")"""},
+    )
+    if len(package_titles) < 1:
+        logger.info(
+            f"No titles linked to package but PO Line {poline_id} is marked as package."
+        )
+        return {}
+    else:
+        # per JSON schema instanceId is not a required field for orders/titles
+        return {
+            title.get("instanceId"): poline_id
+            for title in package_titles
+            if title.get("instanceId") is not None
+        }
+
+
 def _add_poline_bookplate(
     poline_id: str, bookplates_polines: dict, bookplate: dict
 ) -> list:
@@ -129,6 +151,7 @@ def _add_poline_bookplate(
 def bookplate_funds_polines(**kwargs) -> dict:
     """
     Checks if fund Id from invoice lines contains bookplate fund
+    If no bookplate fund was used, this task returns an empty dict {}
     This task gets digital bookplates data from the table or uses
     a list of new funds from params. Groups by po line Id
     """
@@ -186,24 +209,36 @@ def instances_from_po_lines(**kwargs) -> dict:
     }
     """
     folio_client = _folio_client()
-    instances: dict = {}
+    instances_bookplates: dict = {}
+    instances_poline: dict = {}
     po_lines_funds = kwargs["po_lines_funds"]
-    for poline_id, bookplates in po_lines_funds.items():
+    for poline_id in po_lines_funds.keys():
         order_line = folio_client.folio_get(f"/orders-storage/po-lines/{poline_id}")
-        instance_id = order_line.get("instanceId")
-        if instance_id is None:
-            logger.info(f"PO Line {poline_id} not linked to a FOLIO Instance record")
-            continue
-        bookplate_metadata = bookplates["bookplate_metadata"]
-        if instance_id in instances:
-            instances[instance_id].extend(bookplate_metadata)
+        is_package = order_line.get("isPackage")
+        if is_package is True:
+            logger.info(f"PO Line {poline_id} is for a package.")
+            instances_poline.update(_package_instances(poline_id))
         else:
-            instances[instance_id] = bookplate_metadata
+            instance_id = order_line.get("instanceId")
+            if instance_id is None:
+                logger.info(
+                    f"PO Line {poline_id} not linked to a FOLIO Instance record"
+                )
+                continue
+            else:
+                instances_poline.update({instance_id: poline_id})
 
-    for k, v in instances.items():
-        instances[k] = _dedup_bookplates(v)
+    for instance_id, poline_id in instances_poline.items():
+        bookplate_metadata = po_lines_funds[poline_id]["bookplate_metadata"]
+        if instance_id in instances_bookplates:
+            instances_bookplates[instance_id].extend(bookplate_metadata)
+        else:
+            instances_bookplates[instance_id] = bookplate_metadata
 
-    return instances
+    for k, v in instances_bookplates.items():
+        instances_bookplates[k] = _dedup_bookplates(v)
+
+    return instances_bookplates
 
 
 @task
