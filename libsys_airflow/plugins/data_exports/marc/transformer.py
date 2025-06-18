@@ -18,6 +18,7 @@ class Transformer(object):
         self.locations = self.locations_lookup()
         self.materialtypes = self.materialtype_lookup()
         self.campus_lookup = self.campus_by_locations_lookup()
+        self.ill_policies = self.ill_policy_lookup()
         self.uuid_regex = self.uuid_compile()
         self.isbn_regex = self.isbn_compile()
         self.connection = kwargs.get("connection")
@@ -59,6 +60,15 @@ class Transformer(object):
             lookup[location['id']] = campus_lookup.get(location['campusId'])
         return lookup
 
+    def ill_policy_lookup(self) -> dict:
+        lookup = {}
+        ill_policies = self.folio_client.folio_get("ill-policies?limit=99")[
+            "illPolicies"
+        ]
+        for i in ill_policies:
+            lookup[i['id']] = i['name']
+        return lookup
+    
     def uuid_compile(self) -> re.Pattern:
         return re.compile(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
@@ -189,6 +199,10 @@ class Transformer(object):
             call_number_type = self.call_numbers.get(holding['callNumberTypeId'])
             if call_number_type:
                 field_999.add_subfield('w', call_number_type)
+        if len(holding.get("illPolicyId", "")) > 0:
+            ill_policy = self.ill_policies.get(holding['illPolicyId'])
+            if ill_policy:
+                field_999.add_subfield('r', ill_policy)
         if len(holding.get("callNumber", "")) > 0:
             field_999.add_subfield('a', holding['callNumber'], 0)
         return field_999
