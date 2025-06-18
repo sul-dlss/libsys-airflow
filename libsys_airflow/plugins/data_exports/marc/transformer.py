@@ -62,13 +62,13 @@ class Transformer(object):
 
     def ill_policy_lookup(self) -> dict:
         lookup = {}
-        ill_policies = self.folio_client.folio_get("ill-policies?limit=99")[
+        ill_policies = self.folio_client.folio_get("/ill-policies?limit=99")[
             "illPolicies"
         ]
         for i in ill_policies:
             lookup[i['id']] = i['name']
         return lookup
-    
+
     def uuid_compile(self) -> re.Pattern:
         return re.compile(
             r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
