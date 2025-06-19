@@ -7,7 +7,9 @@ select
     I.jsonb -> 'status' ->> 'name' as item_status,
     I.permanentLocationId as item_permanent_location,
     I.temporaryLocationId as item_temporary_location,
-    H.permanentLocationId as holdings_permanent_location
+    H.permanentLocationId as holdings_permanent_location,
+    I.temporaryLocationId as item_temporary_location,
+    I.discoverySuppress as item_suppressed
 from sul_mod_inventory_storage.holdings_record H
 full outer join sul_mod_inventory_storage.item I
 on H.id = I.holdingsrecordid

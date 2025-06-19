@@ -41,7 +41,20 @@ def sal3_items_sql_file(**kwargs) -> Path:
 def folio_items_to_csv(**kwargs) -> str:
     """
     returns tuples:
-    ((item_uuid, holding_id, barcode, call_number, item_status, permanentlocationid, effectivelocationid), (...))
+    (
+        (
+            item_uuid,
+            holding_id,
+            item_barcode,
+            item_status,
+            item_permanent_location,
+            item_temporary_location,
+            holdings_permanent_location,
+            item_temporary_location,
+            item_suppressed
+        ),
+        (...)
+    )
     """
     connection = kwargs.get("connection")
     cursor = connection.cursor()  # type: ignore
@@ -67,6 +80,8 @@ def folio_items_to_csv(**kwargs) -> str:
                 'item_permanent_location',
                 'item_temporary_location',
                 'holdings_permanent_location',
+                'item_temporary_location',
+                'item_suppressed',
             ]
         )
         writer.writerows(tuples)

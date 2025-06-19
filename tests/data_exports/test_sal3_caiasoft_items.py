@@ -39,35 +39,54 @@ def mock_airflow_connection():
 def mock_result_set():
     """
     returns tuples:
-    ((item_uuid, holding_id, barcode, call_number, item_status, permanentlocationid, effectivelocationid), (...))
+    (
+        (
+            item_uuid,
+            holding_id,
+            item_barcode,
+            item_status,
+            item_permanent_location,
+            item_temporary_location,
+            holdings_permanent_location,
+            item_temporary_location,
+            item_suppressed
+        ),
+        (...)
+    )
     """
     return [
         (
             '619a0be0-e8bf-40c1-b478-37596d60c8fb',
             '88f4c236-bf1d-4ccd-bd00-5910df08f6a2',
             '36105236439712',
-            'SE0001',
             'Available',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
+            'dd7b3371-09db-4f7a-9c50-2f9f727a0855',
+            '3bb64cbf-f853-4bd5-9b24-9bcb2b8cb678',
+            'false',
         ),
         (
             'cddf0be5-aad2-4d3d-9773-7366e970caa2',
             '88f4c236-bf1d-4ccd-bd00-5910df08f6a2',
             '36105236439571',
-            'SE0002',
             'Available',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
+            '3c389f2e-25ee-47b5-aa39-15ba0547ff0d',
+            '3c389f2e-25ee-47b5-aa39-15ba0547ff0d',
+            'false',
         ),
         (
             '8eeeb324-7dd4-4c22-a137-45754c52b9d2'
             '88f4c236-bf1d-4ccd-bd00-5910df08f6a2'
             '36105236439779'
-            'SE0003'
             'Available',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
+            'b991b4d2-db4f-40f5-a971-9cb3c61f0b5d',
+            '6e902db0-4a93-467d-86b5-f5616934facf',
+            'true',
         ),
     ]
 
@@ -123,4 +142,5 @@ def test_sal3_folio_items_and_csv(mocker, mock_airflow_connection, tmp_path):
     with open(csv_file, 'r') as file:
         lines = file.readlines()
 
+    assert len(lines[1].split(',')) == 9
     assert len(lines) == 4
