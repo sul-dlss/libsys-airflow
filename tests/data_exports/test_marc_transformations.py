@@ -148,6 +148,7 @@ single_holdings = [
             'callNumberTypeId': '95467209-6d7b-468b-94df-0f5d7ad2747d',
             'callNumber': 'PQ8098.3.E4 A7',
             'sourceId': 'f32d531e-df79-46b3-8932-cdd35f7a2264',
+            "illPolicyId": "9e49924b-f649-4b36-ab57-e66e639a9b0e",
         },
     ),
 ]
@@ -245,6 +246,12 @@ def mock_folio_client():
         ],
         "loccamps": [
             {"id": "c365047a-51f2-45ce-8601-e421ca3615c5", "code": "SUL"},
+        ],
+        "illPolicies": [
+            {
+                "id": "9e49924b-f649-4b36-ab57-e66e639a9b0e",
+                "name": "Limited lending policy",
+            },
         ],
     }
 
@@ -349,6 +356,7 @@ def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client)
     assert field_999s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
     assert field_999s[1].get_subfields('t')[0] == 'book'
     assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
+    assert field_999s[1].get_subfields('r')[0] == 'Limited lending policy'
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)

@@ -65,6 +65,12 @@ folio_result = {
         {"id": "b89563c5-cb66-4de7-b63c-ca4d82e9d856", "code": "GSB"},
         {"id": "c365047a-51f2-45ce-8601-e421ca3615c5", "code": "SUL"},
     ],
+    "illPolicies": [
+        {
+            "id": "9e49924b-f649-4b36-ab57-e66e639a9b0e",
+            "name": "Limited lending policy",
+        },
+    ],
 }
 
 
