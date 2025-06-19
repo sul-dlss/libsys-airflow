@@ -153,7 +153,7 @@ def mock_folio_client():
                         "id": "9e49924b-f649-4b36-ab57-e66e639a9b0e",
                         "name": "Limited lending policy",
                     },
-        ],
+                ],
             }
         # Campuses
         if args[0].startswith("/location-units/campuses"):
