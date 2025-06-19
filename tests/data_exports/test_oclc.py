@@ -145,6 +145,16 @@ def mock_folio_client():
                     {"id": "1a54b431-2e4f-452d-9cae-9cee66c9a892", "name": "book"},
                 ]
             }
+        # ILL Policies
+        if args[0].startswith("/ill-policies"):
+            return {
+                "illPolicies": [
+                    {
+                        "id": "9e49924b-f649-4b36-ab57-e66e639a9b0e",
+                        "name": "Limited lending policy",
+                    },
+        ],
+            }
         # Campuses
         if args[0].startswith("/location-units/campuses"):
             return {
