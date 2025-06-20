@@ -50,7 +50,6 @@ def folio_items_to_csv(**kwargs) -> str:
             item_permanent_location,
             item_temporary_location,
             holdings_permanent_location,
-            item_temporary_location,
             item_suppressed
         ),
         (...)
@@ -80,7 +79,6 @@ def folio_items_to_csv(**kwargs) -> str:
                 'item_permanent_location',
                 'item_temporary_location',
                 'holdings_permanent_location',
-                'item_temporary_location',
                 'item_suppressed',
             ]
         )

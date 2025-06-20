@@ -48,7 +48,6 @@ def mock_result_set():
             item_permanent_location,
             item_temporary_location,
             holdings_permanent_location,
-            item_temporary_location,
             item_suppressed
         ),
         (...)
@@ -63,7 +62,6 @@ def mock_result_set():
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             'dd7b3371-09db-4f7a-9c50-2f9f727a0855',
-            '3bb64cbf-f853-4bd5-9b24-9bcb2b8cb678',
             'false',
         ),
         (
@@ -74,7 +72,6 @@ def mock_result_set():
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '3c389f2e-25ee-47b5-aa39-15ba0547ff0d',
-            '3c389f2e-25ee-47b5-aa39-15ba0547ff0d',
             'false',
         ),
         (
@@ -84,7 +81,6 @@ def mock_result_set():
             'Available',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
             '4859ee2a-36cb-4b53-8b31-695894244f6e',
-            'b991b4d2-db4f-40f5-a971-9cb3c61f0b5d',
             '6e902db0-4a93-467d-86b5-f5616934facf',
             'true',
         ),
@@ -142,5 +138,5 @@ def test_sal3_folio_items_and_csv(mocker, mock_airflow_connection, tmp_path):
     with open(csv_file, 'r') as file:
         lines = file.readlines()
 
-    assert len(lines[1].split(',')) == 9
+    assert len(lines[1].split(',')) == 8
     assert len(lines) == 4
