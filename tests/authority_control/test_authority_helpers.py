@@ -36,9 +36,9 @@ def test_create_batches(tmp_path):
 
     batches = create_batches(str(authority_marc_file), airflow=str(tmp_path))
 
-    assert len(batches) == 2
-    assert (tmp_path / "authorities/batch_1.mrc").exists()
-    assert (tmp_path / "authorities/batch_2.mrc").exists()
+    assert len(batches) == 3
+    assert (tmp_path / "authorities/authority_1.mrc").exists()
+    assert (tmp_path / "authorities/authority_2.mrc").exists()
 
 
 def test_trigger_load_record_dag(mocker):
