@@ -3,6 +3,7 @@ import pathlib
 
 import pymarc
 
+from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 logger = logging.getLogger(__name__)
@@ -31,22 +32,23 @@ def create_batches(marc21_file: str, airflow: str = '/opt/airflow/') -> list:
     batch_dir = pathlib.Path(airflow) / "authorities"
     batch_dir.mkdir(parents=True, exist_ok=True)
 
+    batch_size = int(Variable.get("MAX_ENTITIES", 20_000))
     batches = []
     with open(marc21_file_path, "rb") as marc_file:
         reader = pymarc.MARCReader(marc_file)
-        batch = pymarc.MARCWriter(open(batch_dir / "batch_1.mrc", "wb"))
+        batch_file_name = f"{marc21_file_path.stem}_1.mrc"
+        batch = pymarc.MARCWriter(open(batch_dir / batch_file_name, "wb"))
         batch_count = 1
         for i, record in enumerate(reader):
             batch.write(record)
-            if not i % 50_000 and i > 0:
+            if not i % batch_size and i > 0:
                 batch.close()
-                batches.append(f"batch_{batch_count}.mrc")
+                batches.append(batch_file_name)
                 batch_count += 1
-                batch = pymarc.MARCWriter(
-                    open(batch_dir / f"batch_{batch_count}.mrc", "wb")
-                )
+                batch_file_name = f"{marc21_file_path.stem}_{batch_count}.mrc"
+                batch = pymarc.MARCWriter(open(batch_dir / batch_file_name, "wb"))
         batch.close()
-        batches.append(f"batch_{batch_count}.mrc")
+        batches.append(batch_file_name)
 
     logger.info(f"Created {len(batches)} batches from {marc21_file_path}")
     return batches

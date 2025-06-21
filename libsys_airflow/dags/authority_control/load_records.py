@@ -4,10 +4,10 @@ import logging
 from datetime import datetime
 
 from airflow.decorators import dag, task
+from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.authority_control import (
-    clean_up,
     email_report,
     run_folio_data_import,
 )
@@ -49,19 +49,14 @@ def load_marc_file(**kwargs):
     def email_load_report(**kwargs):
         return email_report(**kwargs)
 
-    @task
-    def clean_up_dag(*args, **kwargs):
-        task_instance = kwargs["ti"]
-        marc_file_path = task_instance.xcom_pull(key="file_path")
-        return clean_up(marc_file_path)
+    finished = EmptyOperator(task_id="finished-loading")
 
     dag_params = prepare_file_upload()
     bash_result = initiate_folio_data_import(
         dag_params["file_path"], dag_params["profile_name"]
     )
 
-    email_load_report(bash_result=bash_result)
-    bash_result >> clean_up_dag()
+    email_load_report(bash_result=bash_result) >> finished
 
 
 load_marc_file()
