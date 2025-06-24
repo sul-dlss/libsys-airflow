@@ -131,8 +131,14 @@ def mock_folio_add_marc_tags_failed(mocker, mock_httpx_failure):
 
 @pytest.fixture
 def mock_httpx_success():
+    mock_content = b'{"records": [{"parsedRecord": {"content": {"fields": [{"001": "L65816"}, {"008": "900717t19891989fr a          001 0 eng d"}, {"979": {"ind1": " ", "ind2": " ", "subfields": [{"f": "BAILEYT"}, {"b": "druid:tf882hn2198"}, {"c": "tf882hn2198_00_0001.jp2"}, {"d": "Annie Nelson Bailey Memorial Book Fund"}]}}]}}}]}'
     return httpx.Client(
-        transport=httpx.MockTransport(lambda request: httpx.Response(202))
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                202,
+                content=mock_content
+            )
+        )
     )
 
 
@@ -170,6 +176,7 @@ def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
         r"=979  \\$fABBOTT$bdruid:ws066yy0421$cws066yy0421_00_0001.jp2$dThe The Donald P. Abbott Fund for Marine Invertebrates tag is unique"
         in caplog.text
     )
+    assert "Making 1 retry of missing tag in saved marc record" in caplog.text
 
 
 def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, caplog):

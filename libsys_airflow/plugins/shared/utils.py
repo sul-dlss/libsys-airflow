@@ -86,6 +86,7 @@ class FolioAddMarcTags(object):
     def __init__(self, **kwargs):
         self.httpx_client = httpx.Client()
         self.folio_client = folio_client()
+        self.retry_count = 0
 
     def put_folio_records(self, marc_instance_tags: dict, instance_id: str) -> bool:
         try:
@@ -126,7 +127,37 @@ class FolioAddMarcTags(object):
             logger.info(
                 f"Successfully updated FOLIO Instance {instance_id} with SRS {srs_uuid}"
             )
+            logger.info("Verifying new tags in SRS record")
+            srs_update = self.httpx_client.get(
+                f"{self.folio_client.okapi_url}/source-storage/records?query=matchedId=={srs_uuid}",
+                headers=self.folio_client.okapi_headers,
+            ).json()
+            srs_fields = srs_update["records"][0]["parsedRecord"]["content"]["fields"]
+            if self.__check_retry_put__(srs_fields, marc_instance_tags):
+                if self.retry_count < 1:
+                    self.retry_count += 1
+                    logger.info(f"Making {self.retry_count} retry of missing tag in saved marc record")
+                    self.put_folio_records(marc_instance_tags, instance_id)
+
         return True
+
+    def __check_retry_put__(self, srs_fields, marc_instance_tags):
+        retry_put = False
+        tag_key = list(marc_instance_tags.keys())[0]
+        for tag_values in marc_instance_tags.values():
+            for tag_val in tag_values:
+                temp_tag_val = {tag_key: tag_val}
+                for key, value in temp_tag_val.items():
+                    for srs_dict in srs_fields:
+                        if key not in srs_dict:
+                            retry_put = True
+                        else:
+                            retry_put = False
+                            if srs_dict[key] != temp_tag_val[key]:
+                                retry_put = True
+                            break
+        
+        return retry_put
 
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
         source_storage_result = self.folio_client.folio_get(
