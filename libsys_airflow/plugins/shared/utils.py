@@ -149,7 +149,7 @@ class FolioAddMarcTags(object):
         for tag_values in marc_instance_tags.values():
             for tag_val in tag_values:
                 temp_tag_val = {tag_key: tag_val}
-                for key, value in temp_tag_val.items():
+                for key, value in temp_tag_val.items():  # noqa
                     for srs_dict in srs_fields:
                         if key not in srs_dict:
                             retry_put = True
