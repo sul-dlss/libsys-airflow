@@ -134,10 +134,7 @@ def mock_httpx_success():
     mock_content = b'{"records": [{"parsedRecord": {"content": {"fields": [{"001": "L65816"}, {"008": "900717t19891989fr a          001 0 eng d"}, {"979": {"ind1": " ", "ind2": " ", "subfields": [{"f": "BAILEYT"}, {"b": "druid:tf882hn2198"}, {"c": "tf882hn2198_00_0001.jp2"}, {"d": "Annie Nelson Bailey Memorial Book Fund"}]}}]}}}]}'
     return httpx.Client(
         transport=httpx.MockTransport(
-            lambda request: httpx.Response(
-                202,
-                content=mock_content
-            )
+            lambda request: httpx.Response(202, content=mock_content)
         )
     )
 
