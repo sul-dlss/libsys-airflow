@@ -240,7 +240,7 @@ async def get_ids_of_orders_with_status(status: str) -> list:
     query = f'workflowStatus=="{status}"'
     orders_ids = await get_order_ids_by_query(query)
     print(f'  {status} orders:', len(orders_ids))
-    logger.info(f'  {status} orders:', len(orders_ids))
+    logger.info(f'  {status} orders: {len(orders_ids)}')
     return orders_ids
 
 
