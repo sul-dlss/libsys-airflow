@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
     start_date=datetime(2025, 2, 7),
     catchup=False,
     tags=["authorities", "folio"],
+    max_active_runs=1,
 )
 def load_marc_file(**kwargs):
     """DAG loads an Authority or Bib File into FOLIO."""
