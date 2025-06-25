@@ -134,12 +134,16 @@ class FolioAddMarcTags(object):
             ).json()
             srs_fields = srs_update["records"][0]["parsedRecord"]["content"]["fields"]
             if self.__check_retry_put__(srs_fields, marc_instance_tags):
-                if self.retry_count < 1:
+                if self.retry_count < int(
+                    Variable.get("ADD_MARC_TAG_RETRY_COUNT", "1")
+                ):
                     self.retry_count += 1
                     logger.info(
                         f"Making {self.retry_count} retry of missing tag in saved marc record"
                     )
                     self.put_folio_records(marc_instance_tags, instance_id)
+                else:
+                    return False
 
         return True
 
