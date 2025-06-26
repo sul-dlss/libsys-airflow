@@ -29,7 +29,7 @@ with DAG(
     "fix_encumbrances_sul",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("fix_encumbrances_sul", "00 6 * * MON, WED"),
+        cron=Variable.get("fix_encumbrances_sul", "00 6 * * MON,WED"),
         timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 8, 29),
