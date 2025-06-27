@@ -229,18 +229,20 @@ def test_transform_courses():
 
 
 def test_generate_course_reserves_file(mocker, tmp_path):
-    file_data = {
-        "data": [
-            [
-                "F24-ARTHIST-123-01",
-                "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=ab9e0fd0-f835-4082-8b9b-f29d19228507",
-            ],
-            [
-                "F24-EMED-201",
-                "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=97667743-6b10-4ad8-9821-d3a2c89e4de0",
-            ],
-        ]
-    }
+    file_data = [
+        {
+            "data": [
+                [
+                    "F24-ARTHIST-123-01",
+                    "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=ab9e0fd0-f835-4082-8b9b-f29d19228507",
+                ],
+                [
+                    "F24-EMED-201",
+                    "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=97667743-6b10-4ad8-9821-d3a2c89e4de0",
+                ],
+            ]
+        }
+    ]
     mocker.patch("libsys_airflow.plugins.folio.courses.S3Path", return_value=tmp_path)
     save_path = generate_course_reserves_file.function(file_data)
     assert save_path == f"{tmp_path}/course-reserves.tsv"

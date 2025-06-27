@@ -1,7 +1,6 @@
 import logging
 
 from s3path import S3Path
-from datetime import datetime
 
 from airflow.decorators import task
 from airflow.models import Variable
@@ -162,15 +161,19 @@ def generate_course_reserves_file(course_data: dict) -> str:
     s3_dir = S3Path(f"/{bucket}/data-export-files/course-reserves")
     s3_dir.mkdir(exist_ok=True, parents=True)
     course_reserves_file = f"{s3_dir}/course-reserves.tsv"
+    file = open(course_reserves_file, "w")
+    file.close()
+    logger.info(f"Empty file {course_reserves_file} created.")
 
-    data = course_data.get("data", [])
-    if len(data) > 1:
-        logger.info(f"Course reserves file {course_reserves_file}")
-        with open(course_reserves_file, "w", newline="") as fo:
-            filewriter = csv.writer(fo, delimiter="|")
-            filewriter.writerows(data)
+    for row in course_data:
+        data = row.get("data", [])
+        if len(data) > 1:
+            logger.info(f"Course reserves file {course_reserves_file}")
+            with open(course_reserves_file, "a", newline="") as fo:
+                filewriter = csv.writer(fo, delimiter="|")
+                filewriter.writerows(data)
 
-        return course_reserves_file
-    else:
-        logger.warning("No new course data was written.")
-        return course_reserves_file
+        else:
+            logger.warning("No new course data was written.")
+
+    return course_reserves_file
