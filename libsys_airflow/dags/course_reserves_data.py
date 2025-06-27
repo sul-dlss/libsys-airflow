@@ -38,7 +38,7 @@ def course_reserves_data():
 
     course_data = generate_course_reserves_data.expand(term_id=retrieve_term_ids)
 
-    generate_course_reserves_file(list(course_data))
+    generate_course_reserves_file(course_data)
 
 
 course_reserves_data()
