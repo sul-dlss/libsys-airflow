@@ -1,6 +1,7 @@
 import pytest  # noqa
 import csv
 
+from datetime import datetime
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.folio.courses import (
@@ -115,7 +116,9 @@ courses = [sul_course_dict, lane_course_dict]
 def mock_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "scheduled__2024-10-23"
-    dag_run.logical_date = "2024-10-23T09:00:00+00:00"
+    dag_run.logical_date = datetime.strptime(
+        "2024-10-23T09:00:00+00:00", "%Y-%m-%dT%H:%M:%S%z"
+    )
 
     return dag_run
 
@@ -124,7 +127,9 @@ def mock_dag_run(mocker):
 def mock_failed_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "scheduled__2025-06-23"
-    dag_run.logical_date = "2025-06-23T09:00:00+00:00"
+    dag_run.logical_date = datetime.strptime(
+        "2025-06-23T09:00:00+00:00", "%Y-%m-%dT%H:%M:%S%z"
+    )
 
     return dag_run
 
@@ -157,7 +162,9 @@ def mock_folio_client():
 
 
 def test_term_names():
-    term_names = _term_names("2025-06-23T09:00:00+00:00")
+    term_names = _term_names(
+        datetime.strptime("2025-06-23T09:00:00+00:00", "%Y-%m-%dT%H:%M:%S%z")
+    )
     assert term_names[0] == "Spring 2025"
     assert term_names[1] == "Summer 2025"
 

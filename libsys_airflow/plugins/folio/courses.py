@@ -76,9 +76,8 @@ def _folio_client():
 
 
 def _term_names(logical_date) -> list:
-    date = datetime.strptime(logical_date, "%Y-%m-%dT%H:%M:%S%z")
-    month = date.month
-    year = date.year
+    month = logical_date.month
+    year = logical_date.year
     match month:
         case 1 | 2 | 3:
             return [f"Winter {year}", f"Spring {year}"]
