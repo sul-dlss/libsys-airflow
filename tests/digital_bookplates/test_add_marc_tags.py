@@ -111,6 +111,8 @@ def mock_folio_add_marc_tags(mocker, mock_httpx_success):
         return_value=mock_folio_client(mocker),
     )
 
+    mocker.patch.object(utils.FolioAddMarcTags, "SLEEP", 0)
+
     return mocker
 
 
@@ -131,11 +133,8 @@ def mock_folio_add_marc_tags_failed(mocker, mock_httpx_failure):
 
 @pytest.fixture
 def mock_httpx_success():
-    mock_content = b'{"records": [{"parsedRecord": {"content": {"fields": [{"001": "L65816"}, {"008": "900717t19891989fr a          001 0 eng d"}, {"979": {"ind1": " ", "ind2": " ", "subfields": [{"f": "BAILEYT"}, {"b": "druid:tf882hn2198"}, {"c": "tf882hn2198_00_0001.jp2"}, {"d": "Annie Nelson Bailey Memorial Book Fund"}]}}]}}}]}'
     return httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(202, content=mock_content)
-        )
+        transport=httpx.MockTransport(lambda request: httpx.Response(202))
     )
 
 
@@ -162,7 +161,12 @@ marc_instance_tags = {
 }
 
 
-def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
+def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.FolioAddMarcTags.__srs_record_updated__",
+        return_value=True,
+    )
+
     add_marc_tag = utils.FolioAddMarcTags()
     put_record_result = add_marc_tag.put_folio_records(
         marc_instance_tags, "64a5a15b-d89e-4bdd-bbd6-fcd215b367e4"
@@ -173,10 +177,13 @@ def test_put_folio_records_unique_tag(mock_folio_add_marc_tags, caplog):
         r"=979  \\$fABBOTT$bdruid:ws066yy0421$cws066yy0421_00_0001.jp2$dThe The Donald P. Abbott Fund for Marine Invertebrates tag is unique"
         in caplog.text
     )
-    assert "Making 1 retry of missing tag in saved marc record" in caplog.text
 
 
-def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, caplog):
+def test_put_folio_records_duplicate_tag(mock_folio_add_marc_tags, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.FolioAddMarcTags.__srs_record_updated__",
+        return_value=True,
+    )
     add_marc_tag = utils.FolioAddMarcTags()
     put_record_result = add_marc_tag.put_folio_records(
         marc_instance_tags, "242c6000-8485-5fcd-9b5e-adb60788ca59"
@@ -198,3 +205,56 @@ def test_put_folio_records_failed(mock_folio_add_marc_tags_failed, caplog):
         "Failed to update FOLIO for Instance 242c6000-8485-5fcd-9b5e-adb60788ca59 with SRS e5c1d877-5707-4bd7-8576-1e2e69d83e70"
         in caplog.text
     )
+
+
+def test_srs_record_updated_tag_matches(mock_folio_add_marc_tags):
+    add_marc_tag = utils.FolioAddMarcTags()
+    srs_fields = [
+        {
+            "979": {
+                'ind1': ' ',
+                'ind2': ' ',
+                'subfields': [
+                    {'f': 'ABBOTT'},
+                    {'b': 'druid:ws066yy0421'},
+                    {'c': 'ws066yy0421_00_0001.jp2'},
+                    {'d': 'The The Donald P. Abbott Fund for Marine Invertebrates'},
+                ],
+            }
+        }
+    ]
+    assert add_marc_tag.__srs_record_updated__(srs_fields, marc_instance_tags)
+
+
+def test_srs_record_updated_tag_not_added(mock_folio_add_marc_tags):
+    add_marc_tag = utils.FolioAddMarcTags()
+    srs_fields = [
+        {
+            "000": {
+                'ind1': ' ',
+                'ind2': ' ',
+                'subfields': [
+                    {'a': 'Test'},
+                ],
+            }
+        }
+    ]
+    assert not add_marc_tag.__srs_record_updated__(srs_fields, marc_instance_tags)
+
+
+def test_srs_record_updated_tag_not_matching(mock_folio_add_marc_tags):
+    add_marc_tag = utils.FolioAddMarcTags()
+    srs_fields = [
+        {
+            "979": {
+                'ind1': ' ',
+                'ind2': ' ',
+                'subfields': [
+                    {'f': 'COSTELLO'},
+                    {'b': 'druid:xyz2112'},
+                    {'c': 'xyz2112.jp2'},
+                ],
+            }
+        }
+    ]
+    assert not add_marc_tag.__srs_record_updated__(srs_fields, marc_instance_tags)

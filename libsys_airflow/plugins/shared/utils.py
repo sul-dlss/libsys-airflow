@@ -3,6 +3,7 @@ import json
 import logging
 import pymarc
 import re
+import time
 import urllib
 
 from typing import Union
@@ -83,10 +84,11 @@ def _subject_with_server_name(**kwargs):
 
 
 class FolioAddMarcTags(object):
+    SLEEP = 30
+
     def __init__(self, **kwargs):
         self.httpx_client = httpx.Client()
         self.folio_client = folio_client()
-        self.retry_count = 0
 
     def put_folio_records(self, marc_instance_tags: dict, instance_id: str) -> bool:
         try:
@@ -123,32 +125,20 @@ class FolioAddMarcTags(object):
                 f"Failed to update FOLIO for Instance {instance_id} with SRS {srs_uuid}"
             )
             return False
-        else:
-            logger.info(
-                f"Successfully updated FOLIO Instance {instance_id} with SRS {srs_uuid}"
-            )
-            logger.info("Verifying new tags in SRS record")
-            srs_update = self.httpx_client.get(
-                f"{self.folio_client.okapi_url}/source-storage/records?query=matchedId=={srs_uuid}",
-                headers=self.folio_client.okapi_headers,
-            ).json()
-            srs_fields = srs_update["records"][0]["parsedRecord"]["content"]["fields"]
-            if self.__check_retry_put__(srs_fields, marc_instance_tags):
-                if self.retry_count < int(
-                    Variable.get("ADD_MARC_TAG_RETRY_COUNT", "1")
-                ):
-                    self.retry_count += 1
-                    logger.info(
-                        f"Making {self.retry_count} retry of missing tag in saved marc record"
-                    )
-                    self.put_folio_records(marc_instance_tags, instance_id)
-                else:
-                    return False
 
-        return True
+        logger.info(
+            f"Request acknowledged to update FOLIO Instance {instance_id} with SRS {srs_uuid}"
+        )
+        logger.info("Verifying new tags in SRS record...")
+        time.sleep(self.SLEEP)
 
-    def __check_retry_put__(self, srs_fields, marc_instance_tags):
-        retry_put = False
+        srs_update = self.__get_srs_record__(instance_id)
+        srs_fields = srs_update["parsedRecord"]["content"]["fields"]  # type: ignore
+
+        return self.__srs_record_updated__(srs_fields, marc_instance_tags)
+
+    def __srs_record_updated__(self, srs_fields, marc_instance_tags) -> bool:
+        record_updated = True
         tag_key = list(marc_instance_tags.keys())[0]
         for tag_values in marc_instance_tags.values():
             for tag_val in tag_values:
@@ -156,14 +146,14 @@ class FolioAddMarcTags(object):
                 for key, value in temp_tag_val.items():  # noqa
                     for srs_dict in srs_fields:
                         if key not in srs_dict:
-                            retry_put = True
+                            record_updated = False
                         else:
-                            retry_put = False
+                            record_updated = True
                             if srs_dict[key] != temp_tag_val[key]:
-                                retry_put = True
+                                record_updated = False
                             break
 
-        return retry_put
+        return record_updated
 
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
         source_storage_result = self.folio_client.folio_get(
