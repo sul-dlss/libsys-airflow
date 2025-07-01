@@ -135,7 +135,9 @@ class FolioAddMarcTags(object):
         srs_update = self.__get_srs_record__(instance_id)
         srs_fields = srs_update["parsedRecord"]["content"]["fields"]  # type: ignore
 
-        return self.__srs_record_updated__(srs_fields, marc_instance_tags)
+        srs_updated = self.__srs_record_updated__(srs_fields, marc_instance_tags)
+        logger.info(f"SRS record updated: {srs_updated}")
+        return srs_updated
 
     def __srs_record_updated__(self, srs_fields, marc_instance_tags) -> bool:
         record_updated = True
