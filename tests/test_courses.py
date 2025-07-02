@@ -211,7 +211,7 @@ def test_generate_course_reserves_data(mocker, mock_folio_client):
         return_value=mock_folio_client,
     )
     course_data = generate_course_reserves_data.function(term_id="abc-123")
-    file_data = course_data["data"]
+    file_data = course_data["abc-123"]
     assert file_data[0][0] == "F24-ARTHIST-123-01"
     assert file_data[0][1].endswith("ab9e0fd0-f835-4082-8b9b-f29d19228507")
     assert file_data[1][0] == "F24-EMED-201"
@@ -229,10 +229,10 @@ def test_transform_courses():
     assert another_course_object.course_number == "EMED-201"
 
 
-def test_generate_course_reserves_file(mocker, tmp_path):
+def test_generate_course_reserves_file(mocker, tmp_path, caplog):
     file_data = [
         {
-            "data": [
+            "cd1256a7-c1c9-4296-8e04-808992109c76": [
                 [
                     "F24-ARTHIST-123-01",
                     "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=ab9e0fd0-f835-4082-8b9b-f29d19228507",
@@ -242,11 +242,14 @@ def test_generate_course_reserves_file(mocker, tmp_path):
                     "https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D=97667743-6b10-4ad8-9821-d3a2c89e4de0",
                 ],
             ]
-        }
+        },
+        {"abc-123": []},
     ]
     mocker.patch("libsys_airflow.plugins.folio.courses.S3Path", return_value=tmp_path)
     save_path = generate_course_reserves_file.function(file_data)
     assert save_path == f"{str(tmp_path)}/course-reserves.tsv"
+    assert f"Writing to course reserves file {save_path}" in caplog.text
+    assert "No new course data for term abc-123." in caplog.text
     saved_data = []
     with open(pathlib.Path(save_path), "r", newline="") as tsvfile:
         reader = csv.reader(tsvfile, delimiter="|")

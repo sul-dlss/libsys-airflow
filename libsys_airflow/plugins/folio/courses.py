@@ -152,7 +152,7 @@ def generate_course_reserves_data(term_id: str) -> dict:
         url = f"https://searchworks.stanford.edu/catalog?f%5Bcourses_folio_id_ssim%5D%5B%5D={id}"
         course_data.append([term_course_num, url])
 
-    return {"data": course_data}
+    return {term_id: course_data}
 
 
 @task
@@ -164,15 +164,18 @@ def generate_course_reserves_file(course_data: dict) -> str:
     course_reserves_file.touch()
     logger.info(f"Empty file {str(course_reserves_file)} created.")
 
+    logger.info(f"Processing {course_data}")
     for row in course_data:
-        data = row.get("data", [])
-        if len(data) > 1:
-            logger.info(f"Course reserves file {str(course_reserves_file)}")
-            with open(course_reserves_file, "a", newline="") as fo:
-                filewriter = csv.writer(fo, delimiter="|")
-                filewriter.writerows(data)
+        for term_id, data in row.items():
+            if len(data) > 1:
+                logger.info(
+                    f"Writing to course reserves file {str(course_reserves_file)}"
+                )
+                with open(course_reserves_file, "a", newline="") as fo:
+                    filewriter = csv.writer(fo, delimiter="|")
+                    filewriter.writerows(data)
 
-        else:
-            logger.warning("No new course data was written.")
+            else:
+                logger.warning(f"No new course data for term {term_id}.")
 
     return str(course_reserves_file)
