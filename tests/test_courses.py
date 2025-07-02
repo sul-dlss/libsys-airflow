@@ -1,5 +1,6 @@
 import pytest  # noqa
 import csv
+import pathlib
 
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -245,9 +246,9 @@ def test_generate_course_reserves_file(mocker, tmp_path):
     ]
     mocker.patch("libsys_airflow.plugins.folio.courses.S3Path", return_value=tmp_path)
     save_path = generate_course_reserves_file.function(file_data)
-    assert save_path == f"{tmp_path}/course-reserves.tsv"
+    assert save_path == f"{str(tmp_path)}/course-reserves.tsv"
     saved_data = []
-    with open(save_path, "r", newline="") as tsvfile:
+    with open(pathlib.Path(save_path), "r", newline="") as tsvfile:
         reader = csv.reader(tsvfile, delimiter="|")
 
         for row in reader:

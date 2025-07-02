@@ -160,15 +160,14 @@ def generate_course_reserves_file(course_data: dict) -> str:
     bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
     s3_dir = S3Path(f"/{bucket}/data-export-files/course-reserves")
     s3_dir.mkdir(exist_ok=True, parents=True)
-    course_reserves_file = f"{s3_dir}/course-reserves.tsv"
-    file = open(course_reserves_file, "w")
-    file.close()
-    logger.info(f"Empty file {course_reserves_file} created.")
+    course_reserves_file = s3_dir / "course-reserves.tsv"
+    course_reserves_file.touch()
+    logger.info(f"Empty file {str(course_reserves_file)} created.")
 
     for row in course_data:
         data = row.get("data", [])
         if len(data) > 1:
-            logger.info(f"Course reserves file {course_reserves_file}")
+            logger.info(f"Course reserves file {str(course_reserves_file)}")
             with open(course_reserves_file, "a", newline="") as fo:
                 filewriter = csv.writer(fo, delimiter="|")
                 filewriter.writerows(data)
@@ -176,4 +175,4 @@ def generate_course_reserves_file(course_data: dict) -> str:
         else:
             logger.warning("No new course data was written.")
 
-    return course_reserves_file
+    return str(course_reserves_file)
