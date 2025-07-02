@@ -3,6 +3,7 @@ import json
 import logging
 import pymarc
 import re
+import time
 import urllib
 
 from typing import Union
@@ -83,6 +84,8 @@ def _subject_with_server_name(**kwargs):
 
 
 class FolioAddMarcTags(object):
+    SLEEP = 30
+
     def __init__(self, **kwargs):
         self.httpx_client = httpx.Client()
         self.folio_client = folio_client()
@@ -122,11 +125,37 @@ class FolioAddMarcTags(object):
                 f"Failed to update FOLIO for Instance {instance_id} with SRS {srs_uuid}"
             )
             return False
-        else:
-            logger.info(
-                f"Successfully updated FOLIO Instance {instance_id} with SRS {srs_uuid}"
-            )
-        return True
+
+        logger.info(
+            f"Request acknowledged to update FOLIO Instance {instance_id} with SRS {srs_uuid}"
+        )
+        logger.info("Verifying new tags in SRS record...")
+        time.sleep(self.SLEEP)
+
+        srs_update = self.__get_srs_record__(instance_id)
+        srs_fields = srs_update["parsedRecord"]["content"]["fields"]  # type: ignore
+
+        srs_updated = self.__srs_record_updated__(srs_fields, marc_instance_tags)
+        logger.info(f"SRS record updated: {srs_updated}")
+        return srs_updated
+
+    def __srs_record_updated__(self, srs_fields, marc_instance_tags) -> bool:
+        record_updated = True
+        tag_key = list(marc_instance_tags.keys())[0]
+        for tag_values in marc_instance_tags.values():
+            for tag_val in tag_values:
+                temp_tag_val = {tag_key: tag_val}
+                for key, value in temp_tag_val.items():  # noqa
+                    for srs_dict in srs_fields:
+                        if key not in srs_dict:
+                            record_updated = False
+                        else:
+                            record_updated = True
+                            if srs_dict[key] != temp_tag_val[key]:
+                                record_updated = False
+                            break
+
+        return record_updated
 
     def __get_srs_record__(self, instance_uuid: str) -> Union[dict, None]:
         source_storage_result = self.folio_client.folio_get(
