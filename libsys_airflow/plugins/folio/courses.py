@@ -171,7 +171,7 @@ def generate_course_reserves_file(course_data: dict) -> str:
                 logger.info(
                     f"Writing to course reserves file {str(course_reserves_file)}"
                 )
-                with open(course_reserves_file, "a", newline="") as fo:
+                with course_reserves_file.open("a", newline="") as fo:
                     filewriter = csv.writer(fo, delimiter="|")
                     filewriter.writerows(data)
 
