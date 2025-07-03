@@ -162,8 +162,9 @@ def generate_course_reserves_file(course_data: dict, airflow="/opt/airflow") -> 
     course_reserves_dir = Path(airflow) / "data-export-files/course-reserves"
     course_reserves_dir.mkdir(exist_ok=True, parents=True)
     course_reserves_file = course_reserves_dir / "course-reserves.tsv"
-    course_reserves_file.touch()
-    logger.info(f"Empty file {str(course_reserves_file)} created.")
+    with course_reserves_file.open("w") as fo:
+        logger.info(f"Empty file {str(course_reserves_file)} created.")
+        fo.close()
 
     for row in course_data:
         for term_id, data in row.items():
