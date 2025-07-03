@@ -75,13 +75,24 @@ def mock_folio_client(mocker):
                 ]
 
     def mock_put(*args, **kwargs):
-        if args[0].endswith("b13c879f-7f5e-49e6-a522-abf04f66fa1b"):
+        if args[0].endswith("3cf0ebad-6e86-4374-a21d-daf2227b09cd"):
+            return httpx.Response(status_code=204)
+        elif args[0].endswith("b13c879f-7f5e-49e6-a522-abf04f66fa1b"):
             raise httpx.HTTPStatusError(
                 "Internal Server Error",
                 request=httpx.Request("PUT", "https://okapi.stanford.edu"),
                 response=httpx.Response(status_code=500),
             )
-        return None
+        elif args[0].startswith(
+            "/voucher/vouchers/e681116d-68ce-419e-aab6-3562759a7fab"
+        ):
+            return httpx.Response(status_code=204)
+        else:
+            raise httpx.HTTPStatusError(
+                "Internal Server Error",
+                request=httpx.Request("PUT", "https://okapi.stanford.edu"),
+                response=httpx.Response(status_code=500),
+            )
 
     mock_client = mocker.MagicMock()
     mock_client.folio_get = mock_get
@@ -332,3 +343,31 @@ def test_update_voucher(mocker, mock_folio_client, caplog):
     assert changed_voucher["disbursementDate"] == "2023-10-24T00:00:00"
     assert changed_voucher["disbursementNumber"] == "2983835"
     assert changed_voucher["status"] == "Paid"
+
+
+def test_update_voucher_failed(mocker, mock_folio_client, caplog):
+    def _xcom_pull(*args, **kwargs):
+        return [
+            {
+                "AmountPaid": "2499.01",
+                "PaymentAmount": "2498.63",
+                "PaymentDate": "10/24/2023",
+                "PaymentNumber": "2983835",
+            }
+        ]
+
+    mock_task_instance = mocker.MagicMock()
+    mock_task_instance.xcom_pull = _xcom_pull
+
+    voucher = {
+        "id": "992a30bc-c65b-4514-8d11-f8d325e2f10a",
+        "disbursementNumber": "Pending",
+        "disbursementAmount": 0,
+        "invoiceId": "06108f44-b03d-49c4-a2c6-1cfe3984a6d3",
+    }
+
+    update_voucher(voucher, mock_task_instance, mock_folio_client)
+
+    assert (
+        "Failed to update voucher 992a30bc-c65b-4514-8d11-f8d325e2f10a" in caplog.text
+    )
