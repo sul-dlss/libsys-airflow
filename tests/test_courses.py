@@ -4,6 +4,7 @@ import pathlib
 
 from datetime import datetime
 from unittest.mock import MagicMock
+from airflow.exceptions import AirflowException
 
 from libsys_airflow.plugins.folio.courses import (
     _term_names,
@@ -14,6 +15,7 @@ from libsys_airflow.plugins.folio.courses import (
     current_next_term_ids,
     generate_course_reserves_data,
     generate_course_reserves_file,
+    upload_to_s3,
 )
 
 
@@ -245,9 +247,13 @@ def test_generate_course_reserves_file(mocker, tmp_path, caplog):
         },
         {"abc-123": []},
     ]
-    mocker.patch("libsys_airflow.plugins.folio.courses.S3Path", return_value=tmp_path)
-    save_path = generate_course_reserves_file.function(file_data)
-    assert save_path == f"{str(tmp_path)}/course-reserves.tsv"
+    mocker.patch("libsys_airflow.plugins.folio.courses.Path", return_value=tmp_path)
+    save_path = generate_course_reserves_file.function(file_data, airflow=tmp_path)
+    assert (
+        save_path
+        == f"{str(tmp_path)}/data-export-files/course-reserves/course-reserves.tsv"
+    )
+    assert f"Empty file {save_path} created" in caplog.text
     assert f"Writing to course reserves file {save_path}" in caplog.text
     assert "No new course data for term abc-123." in caplog.text
     saved_data = []
@@ -257,7 +263,16 @@ def test_generate_course_reserves_file(mocker, tmp_path, caplog):
         for row in reader:
             saved_data.append(row)
 
+    assert len(saved_data) == 2
     assert saved_data[0][0] == "F24-ARTHIST-123-01"
     assert saved_data[0][1].endswith("ab9e0fd0-f835-4082-8b9b-f29d19228507")
     assert saved_data[1][0] == "F24-EMED-201"
     assert saved_data[1][1].endswith("97667743-6b10-4ad8-9821-d3a2c89e4de0")
+
+
+def test_upload_to_s3_failed(mocker, tmp_path):
+    mocker.patch("libsys_airflow.plugins.folio.courses.S3Path", return_value=tmp_path)
+    file_path = f"{str(tmp_path)}/data-export-files/course-reserves/course-reserves.tsv"
+    with pytest.raises(AirflowException) as exc_info:
+        upload_to_s3.function(file_path)
+    assert "Failed to upload file to S3 bucket." in str(exc_info.value)

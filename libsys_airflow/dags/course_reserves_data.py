@@ -9,6 +9,7 @@ from libsys_airflow.plugins.folio.courses import (
     current_next_term_ids,
     generate_course_reserves_data,
     generate_course_reserves_file,
+    upload_to_s3,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,9 @@ def course_reserves_data():
 
     course_data = generate_course_reserves_data.expand(term_id=retrieve_term_ids)
 
-    generate_course_reserves_file(course_data=course_data)
+    course_reserves_file = generate_course_reserves_file(course_data=course_data)
+
+    upload_to_s3(course_reserves_file)
 
 
 course_reserves_data()

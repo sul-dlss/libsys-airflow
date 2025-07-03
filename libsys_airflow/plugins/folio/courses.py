@@ -1,9 +1,11 @@
 import logging
 
 from s3path import S3Path
+from pathlib import Path
 
 from airflow.decorators import task
 from airflow.models import Variable
+from airflow.exceptions import AirflowException
 
 from attrs import define
 from cattrs import Converter
@@ -156,15 +158,13 @@ def generate_course_reserves_data(term_id: str) -> dict:
 
 
 @task
-def generate_course_reserves_file(course_data: dict) -> str:
-    bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
-    s3_dir = S3Path(f"/{bucket}/data-export-files/course-reserves")
-    s3_dir.mkdir(exist_ok=True, parents=True)
-    course_reserves_file = s3_dir / "course-reserves.tsv"
+def generate_course_reserves_file(course_data: dict, airflow="/opt/airflow") -> str:
+    course_reserves_dir = Path(airflow) / "data-export-files/course-reserves"
+    course_reserves_dir.mkdir(exist_ok=True, parents=True)
+    course_reserves_file = course_reserves_dir / "course-reserves.tsv"
     course_reserves_file.touch()
     logger.info(f"Empty file {str(course_reserves_file)} created.")
 
-    logger.info(f"Processing {course_data}")
     for row in course_data:
         for term_id, data in row.items():
             if len(data) > 1:
@@ -179,3 +179,18 @@ def generate_course_reserves_file(course_data: dict) -> str:
                 logger.warning(f"No new course data for term {term_id}.")
 
     return str(course_reserves_file)
+
+
+@task
+def upload_to_s3(file: str) -> bool:
+    bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
+    s3_dir = S3Path(f"/{bucket}/data-export-files/course-reserves")
+    s3_dir.mkdir(exist_ok=True, parents=True)
+    s3_file_path = s3_dir / "course-reserves.tsv"
+    local_path = Path(file)
+    try:
+        S3Path(s3_file_path).write_text(local_path.read_text())
+        return True
+    except Exception as e:
+        logger.warning(e)
+        raise AirflowException("Failed to upload file to S3 bucket.")
