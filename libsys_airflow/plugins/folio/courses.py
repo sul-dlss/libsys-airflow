@@ -164,20 +164,17 @@ def generate_course_reserves_file(course_data: dict, airflow="/opt/airflow") -> 
     course_reserves_file = course_reserves_dir / "course-reserves.tsv"
     with course_reserves_file.open("w") as fo:
         logger.info(f"Empty file {str(course_reserves_file)} created.")
-        fo.close()
-
-    for row in course_data:
-        for term_id, data in row.items():
-            if len(data) > 1:
-                logger.info(
-                    f"Writing to course reserves file {str(course_reserves_file)}"
-                )
-                with course_reserves_file.open("a", newline="") as fo:
-                    filewriter = csv.writer(fo, delimiter="|")
+        filewriter = csv.writer(fo, delimiter="|")
+        for row in course_data:
+            for term_id, data in row.items():
+                if len(data) > 1:
+                    logger.info(
+                        f"Writing to course reserves file {str(course_reserves_file)}"
+                    )
                     filewriter.writerows(data)
-
-            else:
-                logger.warning(f"No new course data for term {term_id}.")
+                else:
+                    logger.warning(f"No new course data for term {term_id}.")
+        fo.close()
 
     return str(course_reserves_file)
 
