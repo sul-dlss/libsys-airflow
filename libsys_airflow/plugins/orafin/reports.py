@@ -227,19 +227,25 @@ def update_invoice(invoice: dict, folio_client: FolioClient) -> Union[dict, bool
     return invoice
 
 
-def update_voucher(voucher: dict, task_instance, folio_client: FolioClient) -> dict:
+def update_voucher(
+    voucher: dict, task_instance, folio_client: FolioClient
+) -> Union[dict, bool]:
     """
     Updates Voucher based on row values
     """
     row = task_instance.xcom_pull(
         task_ids="retrieve_invoice_task", key=voucher["invoiceId"]
     )[0]
-    voucher["status"] = "Paid"
+    voucher["status"] = "Paid"  # should already be Paid when update_invoice task ran
     voucher["disbursementAmount"] = row["AmountPaid"]
     voucher["disbursementNumber"] = row["PaymentNumber"]
     disbursement_date = datetime.strptime(row["PaymentDate"], "%m/%d/%Y")
     voucher["disbursementDate"] = disbursement_date.isoformat()
-    folio_client.folio_put(f"/voucher-storage/vouchers/{voucher['id']}", voucher)
+    try:
+        folio_client.folio_put(f"/voucher/vouchers/{voucher['id']}", voucher)
+        logger.info(f"Updated {voucher['id']}")
+    except httpx.HTTPError:
+        logger.warning(f"Failed to update voucher {voucher['id']}")
+        return False
 
-    logger.info(f"Updated {voucher['id']}")
     return voucher
