@@ -32,7 +32,7 @@ def create_batches(marc21_file: str, airflow: str = '/opt/airflow/') -> list:
     batch_dir = pathlib.Path(airflow) / "authorities"
     batch_dir.mkdir(parents=True, exist_ok=True)
 
-    batch_size = int(Variable.get("MAX_ENTITIES", 20_000))
+    batch_size = int(Variable.get("AUTH_MAX_ENTITIES", 10_000))
     batches = []
     with open(marc21_file_path, "rb") as marc_file:
         reader = pymarc.MARCReader(marc_file)

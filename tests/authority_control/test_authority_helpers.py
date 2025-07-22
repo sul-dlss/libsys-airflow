@@ -36,7 +36,7 @@ def test_create_batches(tmp_path):
 
     batches = create_batches(str(authority_marc_file), airflow=str(tmp_path))
 
-    assert len(batches) == 3
+    assert len(batches) == 6
     assert (tmp_path / "authorities/authority_1.mrc").exists()
     assert (tmp_path / "authorities/authority_2.mrc").exists()
 
