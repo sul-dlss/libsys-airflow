@@ -253,6 +253,39 @@ def test_download_error(ftp_hook, download_path, pg_hook):
         )
 
 
+def test_empty_file_error(ftp_hook, download_path, pg_hook):
+    ftp_hook.list_directory.return_value = ["nkbooks20250727.mrc"]
+    ftp_hook.get_size.side_effect = [
+        None,
+    ]
+    ftp_hook.get_mod_time.side_effect = [
+        datetime.fromisoformat("2027-07-27T00:05:23"),
+        datetime.fromisoformat(
+            "2027-07-27T00:05:23"
+        ),  # Because get_mod_time is called twice in download
+    ]
+
+    download(
+        ftp_hook,
+        "",
+        download_path,
+        _regex_filter_strategy("nkbooks.*mrc", ""),
+        "43459f05-f98b-43c0-a79d-76a8855dba94",
+        "65d30c15-a560-4064-be92-f90e38eeb351",
+        datetime.fromisoformat("2025-07-28T00:05:23"),
+    )
+
+    with Session(pg_hook()) as session:
+        vendor_file = session.scalars(
+            select(VendorFile).where(
+                VendorFile.vendor_filename == "nkbooks20250727.mrc"
+            )
+        ).first()
+        assert vendor_file.vendor_interface_id == 1
+        assert vendor_file.filesize == 0
+        assert vendor_file.status == FileStatus.empty_file_error
+
+
 def test_download_gobi_order(ftp_hook, download_path, pg_hook):
     ftp_hook.list_directory.return_value = [
         "3820230411.ord",
