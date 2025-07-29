@@ -191,9 +191,23 @@ def download(
             raise
         else:
             filename = _filter_remote_path(filename, remote_path)
+            file_size = adapter.get_size(filename)
+            if file_size is None or int(file_size) < 1:
+                logger.error(f"File {filename} size is {file_size}")
+                file_size = 0  # Ensure that any None size is 0
+                _record_vendor_file(
+                    filename,
+                    file_size,
+                    "empty_file_error",
+                    vendor_uuid,
+                    vendor_interface_uuid,
+                    mod_time,
+                    engine,
+                )
+                continue
             _record_vendor_file(
                 filename,
-                adapter.get_size(filename),
+                file_size,
                 "fetched",
                 vendor_uuid,
                 vendor_interface_uuid,
