@@ -205,6 +205,7 @@ class FileStatus(enum.Enum):
     loaded = "loaded"
     purged = "purged"
     skipped = "skipped"  # Files on the FTP server that are not fetched because they are before the download window.
+    empty_file_error = "empty_file_error"
 
     def can_set_loaded(self):
         """Return a boolean indicating whether the FileStatus can be manually set to loaded by a user"""
