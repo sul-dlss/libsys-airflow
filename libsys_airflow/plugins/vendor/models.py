@@ -110,6 +110,7 @@ class VendorInterface(Model):  # type: ignore
                         FileStatus.processing,
                         FileStatus.processing_error,
                         FileStatus.processed,
+                        FileStatus.empty_file_error,
                     ]
                 )
             )
