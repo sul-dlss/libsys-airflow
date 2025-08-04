@@ -41,6 +41,9 @@ bookops-worldcat = "^1.0.1"
 # should remove when we upgrade Airflow
 wtforms = "3.0.1"
 folio-data-import = "^0.2.7"
+# Pinning to support Airflow SSH Hooks, should go away when upgrading
+# Airflow
+paramiko = "3.5.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
