@@ -2,8 +2,10 @@ from crontab import CronTab
 
 cron = CronTab(user=True)
 
+max_age_days = 10
+
 data_export_files = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +10 -delete'
+    command=f'find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +{max_age_days} -delete'
 )
 data_export_files.dow.on('SUN')
 data_export_files.hour.on(0)
@@ -17,7 +19,7 @@ data_export_dirs.hour.on(0)
 data_export_dirs.minute.on(15)
 
 digital_bookplates_files = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/digital-bookplates -type f -mtime +10 -delete'
+    command=f'find /home/libsys/libsys-airflow/shared/digital-bookplates -type f -mtime +{max_age_days} -delete'
 )
 digital_bookplates_files.dow.on('SUN')
 digital_bookplates_files.hour.on(0)
@@ -31,7 +33,7 @@ digital_bookplates_dirs.hour.on(0)
 digital_bookplates_dirs.minute.on(25)
 
 fix_encumbrances_files = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/fix-encumbrances -type f -mtime +10 -delete'
+    command=f'find /home/libsys/libsys-airflow/shared/fix-encumbrances -type f -mtime +{max_age_days} -delete'
 )
 fix_encumbrances_files.dow.on('SUN')
 fix_encumbrances_files.hour.on(0)
@@ -45,7 +47,7 @@ fix_encumbrances_dirs.hour.on(0)
 fix_encumbrances_dirs.minute.on(35)
 
 logs_files = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/logs -type f -mtime +10 -delete'
+    command=f'find /home/libsys/libsys-airflow/shared/logs -type f -mtime +{max_age_days} -delete'
 )
 logs_files.dow.on('SUN')
 logs_files.hour.on(0)
