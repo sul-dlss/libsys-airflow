@@ -33,7 +33,7 @@ digital_bookplates_dirs.hour.on(0)
 digital_bookplates_dirs.minute.on(25)
 
 fix_encumbrances_files = cron.new(
-    command=f'find /home/libsys/libsys-airflow/shared/fix-encumbrances -type f -mtime +{max_age_days} -delete'
+    command=f'find /home/libsys/libsys-airflow/shared/fix_encumbrances -type f -mtime +{max_age_days} -delete'
 )
 fix_encumbrances_files.dow.on('SUN')
 fix_encumbrances_files.hour.on(0)
