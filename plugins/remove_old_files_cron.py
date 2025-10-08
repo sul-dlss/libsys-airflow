@@ -2,7 +2,7 @@ from crontab import CronTab
 
 cron = CronTab(user=True)
 
-max_age_days = 10
+max_age_days = 365
 
 data_export_files = cron.new(
     command=f'find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +{max_age_days} -delete'
