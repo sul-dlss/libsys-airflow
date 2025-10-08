@@ -40,7 +40,7 @@ fix_encumbrances_files.hour.on(0)
 fix_encumbrances_files.minute.on(30)
 
 fix_encumbrances_dirs = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/fix-encumbrances -type d -empty -delete'
+    command='find /home/libsys/libsys-airflow/shared/fix_encumbrances -type d -empty -delete'
 )
 fix_encumbrances_dirs.dow.on('SUN')
 fix_encumbrances_dirs.hour.on(0)
