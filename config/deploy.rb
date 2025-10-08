@@ -22,7 +22,7 @@ set :deploy_to, "/home/libsys/#{fetch(:application)}"
 
 # Default value for linked_dirs is []
 # set :linked_dirs, %w[]
-set :linked_dirs, %w[.aws config vendor-data vendor-keys data-export-files digital-bookplates fix_encumbrances orafin-files logs authorities]
+set :linked_dirs, %w(.aws config vendor-data vendor-keys data-export-files digital-bookplates fix_encumbrances orafin-files logs authorities)
 
 # Default value for keep_releases is 5
 set :keep_releases, 2
@@ -38,6 +38,16 @@ task :fix_permissions do
     within releases_path do
       execute :sudo, :chown, '-R', "#{fetch(:user)}:#{fetch(:user)}", '*'
     end
+  end
+end
+
+desc 'Install the crontab that removes logs older than 1 year'
+task :write_crontab do
+  on roles(:app) do
+    execute "pip install python-crontab"
+    execute "crontab -r; true" # clear out any existing crontab
+    execute "python3 #{release_path}/plugins/remove_old_files_cron.py"
+    execute "crontab -l"
   end
 end
 
