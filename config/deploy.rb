@@ -41,16 +41,6 @@ task :fix_permissions do
   end
 end
 
-desc 'Install the crontab that removes logs older than 1 year'
-task :write_crontab do
-  on roles(:app) do
-    execute "pip install python-crontab"
-    execute "crontab -r; true" # clear out any existing crontab
-    execute "python3 #{release_path}/plugins/remove_old_files_cron.py"
-    execute "crontab -l"
-  end
-end
-
 namespace :deploy do
   desc 'deploy airflow when an instance is not currently running'
   task :install do
