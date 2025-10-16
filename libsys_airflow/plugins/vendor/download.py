@@ -44,6 +44,7 @@ class FTPAdapter:
 
     def get_size(self, filename: str) -> int | None:
         try:
+            self.hook.conn.sendcmd("TYPE I")  # type: ignore
             file_size = self.hook.get_size(filename)
         except ftplib.error_perm as e:
             logger.error(f"Failed to retrieve size for {filename}, {e}")
