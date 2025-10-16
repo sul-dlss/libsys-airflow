@@ -6,7 +6,7 @@ authors = ["Jeremy Nelson <jpnelson@stanford.edu>", "Joshua Greben <jgreben@stan
 license = "Apache 2.0"
 
 [tool.poetry.dependencies]
-python = ">=3.12.10,<3.13"
+python = ">=3.11.8,<3.13"
 argparse-prompt = "^0.0.5"
 jsonpath-ng = "^1.5.3"
 numpy = "^1.22.3"
