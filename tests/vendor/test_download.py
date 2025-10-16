@@ -123,15 +123,18 @@ def test_ftp_download(ftp_hook, download_path, pg_hook):
     )
 
     assert ftp_hook.list_directory.call_count == 1
-    assert ftp_hook.list_directory.called_with("oclc")
+    (ls_call_arg,) = ftp_hook.list_directory.call_args.args
+    assert ls_call_arg == "oclc"
     assert ftp_hook.get_size.call_count == 2
-    assert ftp_hook.get_size.called_with("3820230411.mrc")
+    (size_call_arg,) = ftp_hook.get_size.call_args.args
+    assert size_call_arg == "3820230411.mrc"
     assert ftp_hook.get_mod_time.call_count == 3
-    assert ftp_hook.get_mod_time.called_with("3820230411.mrc")
+    (mod_time_call_arg,) = ftp_hook.get_mod_time.call_args.args
+    assert mod_time_call_arg == "3820230411.mrc"
     assert ftp_hook.retrieve_file.call_count == 1
-    assert ftp_hook.retrieve_file.called_with(
-        "3820230411.mrc", f"{download_path}/3820230411.mrc"
-    )
+    (filename, download_filepath) = ftp_hook.retrieve_file.call_args.args
+    assert filename == "3820230411.mrc"
+    assert download_filepath == f"{download_path}/3820230411.mrc"
 
     with Session(pg_hook()) as session:
         vendor_file = session.scalars(
@@ -209,11 +212,12 @@ def test_sftp_download(sftp_hook, download_path, pg_hook):
     )
 
     assert sftp_hook.describe_directory.call_count == 1
-    assert sftp_hook.describe_directory.called_with("oclc")
+    (describe_dir_call_arg,) = sftp_hook.describe_directory.call_args.args
+    assert describe_dir_call_arg == "oclc"
     assert sftp_hook.retrieve_file.call_count == 1
-    assert sftp_hook.retrieve_file.called_with(
-        "oclc/3820230411.mrc", f"{download_path}/3820230411.mrc"
-    )
+    (filename, download_filepath) = sftp_hook.retrieve_file.call_args.args
+    assert filename == "oclc/3820230411.mrc"
+    assert download_filepath == f"{download_path}/3820230411.mrc"
 
     with Session(pg_hook()) as session:
         vendor_file = session.scalars(
@@ -305,15 +309,18 @@ def test_download_gobi_order(ftp_hook, download_path, pg_hook):
     )
 
     assert ftp_hook.list_directory.call_count == 1
-    assert ftp_hook.list_directory.called_with("orders")
+    (ls_call_arg,) = ftp_hook.list_directory.call_args.args
+    assert ls_call_arg == "orders"
     assert ftp_hook.get_size.call_count == 1
-    assert ftp_hook.get_size.called_with("3820230411.ord")
+    (size_call_arg,) = ftp_hook.get_size.call_args.args
+    assert size_call_arg == "3820230411.ord"
     assert ftp_hook.get_mod_time.call_count == 2
-    assert ftp_hook.get_mod_time.called_with("3820230411.ord")
+    (mod_time_call_arg,) = ftp_hook.get_mod_time.call_args.args
+    assert mod_time_call_arg == "3820230411.ord"
     assert ftp_hook.retrieve_file.call_count == 1
-    assert ftp_hook.retrieve_file.called_with(
-        "3820230411.ord", f"{download_path}/3820230411.ord"
-    )
+    (filename, download_filepath) = ftp_hook.retrieve_file.call_args.args
+    assert filename == "3820230411.ord"
+    assert download_filepath == f"{download_path}/3820230411.ord"
 
 
 def test_filter_remote_path():

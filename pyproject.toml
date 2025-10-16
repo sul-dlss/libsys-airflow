@@ -6,44 +6,39 @@ authors = ["Jeremy Nelson <jpnelson@stanford.edu>", "Joshua Greben <jgreben@stan
 license = "Apache 2.0"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
+python = ">=3.11.8,<3.13"
 argparse-prompt = "^0.0.5"
 jsonpath-ng = "^1.5.3"
 numpy = "^1.22.3"
 objectpath = "^0.6.1"
-pandas = "^1.4.1"
+pandas = "2.3.3"
 pydantic = "^1.9.0"
 pymarc = "^5.0.0"
 requests = "^2.31.0"
 pyyaml = "^6.0"
 python-dotenv = "^1.0.0"
 alembic = "^1.10.4"
-psycopg2-binary = "^2.9.6"
+psycopg2-binary = "^2.9.9"
 python-magic = "^0.4.27"
 honeybadger = "^0.15.2"
 # Needed according to HB docs.
 blinker = "^1.6.2"
 folio-migration-tools = "^1.8.1"
-werkzeug = "2.3.8"
-connexion = "2.14.1"
-# Pinning until Airflow updates this dependency
-pendulum = "2.1.2"
+werkzeug = "<3.0"
+connexion = "2.14.2"
+pendulum = ">=3.0.0,<4.0"
 # Pinning until ticket https://github.com/apache/airflow/issues/36897
 flask-session = "<0.6.0"
 markdown = "^3.6"
 cattrs = "^23.2.3"
-apache-airflow = {extras = ["amazon"], version = "^2.8.3"}
+apache-airflow = {extras = ["amazon"], version = "2.11.0"}
 s3path = "^0.5.2"
 boto3 = "^1.34.77"
 xmlsec = "1.3.14"
 bookops-worldcat = "^1.0.1"
-# Pinning wtforms because version 3.2.1 is breaking Flask AppBuilder
-# should remove when we upgrade Airflow
-wtforms = "3.0.1"
+wtforms = "3.2.1"
 folio-data-import = "^0.2.7"
-# Pinning to support Airflow SSH Hooks, should go away when upgrading
-# Airflow
-paramiko = "3.5.1"
+paramiko = "<4.0.0"
 # Pinning Flask-Limiter to keep in sync with Airflow
 flask-limiter = "3.12"
 
@@ -57,9 +52,9 @@ pytest-cov = "^4.0.0"
 pytest-mock = "^3.7.0"
 # these are needed for running tests outside of the airflow docker container
 # the airflow version here should be kept in sync with the docker image
-apache-airflow = "2.8.3"
-apache-airflow-providers-postgres = "5.13.0"
-apache-airflow-providers-sftp = "^4.2.4"
+apache-airflow = "2.11.0"
+apache-airflow-providers-postgres = "6.3.0"
+apache-airflow-providers-sftp = "5.4.0"
 requests-mock = "^1.10.0"
 pytest-mock-resources = "^2.6.12"
 beautifulsoup4 = "^4.12.2"
@@ -73,7 +68,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 88
-target-version = ['py310']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
   /(
@@ -86,7 +81,7 @@ skip-string-normalization = true
 color = true
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 ignore_missing_imports = true
 explicit_package_bases = true
 warn_unreachable = true
