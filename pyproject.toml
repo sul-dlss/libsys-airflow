@@ -41,6 +41,7 @@ folio-data-import = "^0.2.7"
 paramiko = "<4.0.0"
 # Pinning Flask-Limiter to keep in sync with Airflow
 flask-limiter = "3.12"
+ruff = "^0.14.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
