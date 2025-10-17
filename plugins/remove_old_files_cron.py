@@ -53,11 +53,4 @@ logs_files.dow.on('SUN')
 logs_files.hour.on(0)
 logs_files.minute.on(40)
 
-logs_dirs = cron.new(
-    command='find /home/libsys/libsys-airflow/shared/logs -type d -empty -delete'
-)
-logs_dirs.dow.on('SUN')
-logs_dirs.hour.on(0)
-logs_dirs.minute.on(45)
-
 cron.write()
