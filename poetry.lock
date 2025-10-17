@@ -4947,6 +4947,22 @@ redis = ["filelock", "python-on-whales (>=0.22.0)", "redis"]
 redshift = ["boto3", "filelock", "moto", "python-on-whales (>=0.22.0)", "sqlparse"]
 
 [[package]]
+name = "python-crontab"
+version = "3.3.0"
+description = "Python Crontab API"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "python_crontab-3.3.0-py3-none-any.whl", hash = "sha256:739a778b1a771379b75654e53fd4df58e5c63a9279a63b5dfe44c0fcc3ee7884"},
+    {file = "python_crontab-3.3.0.tar.gz", hash = "sha256:007c8aee68dddf3e04ec4dce0fac124b93bd68be7470fc95d2a9617a15de291b"},
+]
+
+[package.extras]
+cron-description = ["cron-descriptor"]
+cron-schedule = ["croniter"]
+
+[[package]]
 name = "python-daemon"
 version = "3.1.2"
 description = "Library to implement a well-behaved Unix daemon process."
@@ -6547,4 +6563,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11.8,<3.13"
-content-hash = "a816946bf8e42527f7bcc1ff73cbf96c55df5337587e1570d188206a03d3e4a3"
+content-hash = "7243973ec9fc13de157e43038b746fc415bc62ec5de887f63c0bb80a2fc95eab"
