@@ -41,9 +41,6 @@ paramiko = "<4.0.0"
 flask-limiter = "3.12"
 python-crontab = "^3.3.0"
 ruff = "^0.14.1"
-apache-airflow-providers-ftp = "^3.13.2"
-apache-airflow-providers-fab = "^3.2.0"
-
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
