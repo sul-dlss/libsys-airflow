@@ -42,6 +42,7 @@ paramiko = "<4.0.0"
 # Pinning Flask-Limiter to keep in sync with Airflow
 flask-limiter = "3.12"
 python-crontab = "^3.3.0"
+ruff = "^0.14.1"
 
 [tool.poetry.group.test.dependencies]
 black = "~24.3.0"
