@@ -302,3 +302,9 @@ SFTP connections may have a password or a key file. The key files should be name
 
 * Use the `filename_regex` value `CNT-ORD` for special Gobi file filtering (filter .ord files that don't have a corresponding .cnt file).
 * Set the `download_days_ago` airflow variable to limit downloads to a specific time period (default is 10 days).
+
+## Cleanup of Logs and Workfiles
+
+Edit `plugins/remove_old_files_cron.py` to set the days and times to execute the removal of old files. Set the `mtime` flag to the maximum number of days for file retention.
+
+On the deployment server run `cap {stage} deploy write_crontab` or on the airflow server, `source virtual-env/bin/activate`, then from within the current project directory run `crontab -r` and then `poetry run python plugins/remove_old_files_cron.py`. Do `crontab -l` to check the crontab.
