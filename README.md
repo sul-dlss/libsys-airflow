@@ -307,4 +307,4 @@ SFTP connections may have a password or a key file. The key files should be name
 
 Edit `plugins/remove_old_files_cron.py` to set the days and times to execute the removal of old files. Set the `mtime` flag to the maximum number of days for file retention.
 
-On the deployment server run `cap {stage} deploy write_crontab` or on the airflow server from within the current project directory run `crontab -r` and then `python plugins/remove_old_files_cron.py`.
+On the deployment server run `cap {stage} deploy write_crontab` or on the airflow server, `source virtual-env/bin/activate`, then from within the current project directory run `crontab -r` and then `poetry run python plugins/remove_old_files_cron.py`. Do `crontab -l` to check the crontab.
