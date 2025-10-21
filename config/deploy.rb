@@ -6,6 +6,7 @@ set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
 set :alembic_dbs, ['vma', 'digital_bookplates']
+set :ssh_options, { :forward_agent => true }
 
 def alembic_dbs
   ENV['ALEMBIC_DBS']&.gsub(/\s/, '')&.split(',') || fetch(:alembic_dbs)
