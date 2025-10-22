@@ -45,7 +45,6 @@
 #
 # Feel free to modify this file to suit your needs.
 ---
-version: '3'
 x-airflow-common:
   &airflow-common
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
@@ -63,12 +62,14 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-}
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    # deprecated in version 3, see https://airflow.apache.org/docs/apache-airflow/3.1.0/configurations-ref.html#api-auth
+    # AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
-    AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS: config.log_config.LOGGING_CONFIG
+    # logging_config_class is defined in airflow.cfg. Does this need to be here?
+    # AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS: config.log_config.LOGGING_CONFIG
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     AIRFLOW_VAR_FOLIO_URL: ${AIRFLOW_VAR_FOLIO_URL}
     AIRFLOW_VAR_FOLIO_USER: ${AIRFLOW_VAR_FOLIO_USER}
@@ -89,9 +90,10 @@ x-airflow-common:
     AIRFLOW__SMTP__SMTP_HOST: host.docker.internal
     AIRFLOW__SMTP__SMTP_STARTTLS: 'false'
     AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM:-folio-load-reports@lists.stanford.edu}
-    AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL}
-    AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
-    AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
+    # not in airflow 3
+    # AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL}
+    # AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
+    # AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AWS_DEFAULT_REGION: us-west-2
     AIRFLOW_VAR_VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
@@ -99,6 +101,7 @@ x-airflow-common:
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    AIRFLOW_CONFIG: '/opt/airflow/airflow.cfg'
     DATABASE_USERNAME: ${DATABASE_USERNAME}
     DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-20}
     # HB   library uses HONEYBADGER_ENVIRONMENT, which is different from Ruby library.
@@ -126,6 +129,10 @@ x-airflow-common:
 
 services:
   redis:
+    # Redis is limited to 7.2-bookworm due to licencing change
+    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
+    # Probably need to drop redis DB in order to downgrade from 7.4.1
+    # image: redis:7.2-bookworm
     image: redis:latest
     expose:
       - 6379
@@ -137,14 +144,14 @@ services:
       start_period: 30s
     restart: always
 
-  airflow-webserver:
+  airflow-apiserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server
     ports:
-      - 3000:8080
+      - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 10s
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
@@ -154,6 +161,23 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # airflow-webserver:
+  #   <<: *airflow-common
+  #   command: webserver
+  #   ports:
+  #     - 3000:8080
+  #   healthcheck:
+  #     test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: always
+  #   depends_on:
+  #     <<: *airflow-common-depends-on
+  #     airflow-init:
+  #       condition: service_completed_successfully
+
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
@@ -162,6 +186,21 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -186,6 +225,8 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
+      airflow-apiserver:
+        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
 
@@ -219,6 +260,7 @@ services:
           echo "For other operating systems you can get rid of the warning with manually created .env file:"
           echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
           echo
+          export AIRFLOW_UID=$$(id -u)
         fi
         one_meg=1048576
         mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
