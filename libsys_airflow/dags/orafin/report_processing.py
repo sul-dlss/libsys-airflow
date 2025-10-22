@@ -3,8 +3,6 @@ from datetime import datetime, timedelta
 from airflow.sdk import DAG, task_group
 from airflow.providers.standard.operators.empty import EmptyOperator
 
-from libsys_airflow.plugins.orafin.emails import generate_failed_dag_email
-
 from libsys_airflow.plugins.orafin.tasks import (
     email_errors_task,
     email_invoice_errors_task,
