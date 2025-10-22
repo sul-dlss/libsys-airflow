@@ -3,6 +3,7 @@ import logging
 
 from airflow.sdk import task, DAG
 
+from airflow.models.dagrun import DagRun
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session

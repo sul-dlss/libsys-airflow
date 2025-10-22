@@ -2,7 +2,6 @@ import pytest
 
 
 from airflow.sdk import Variable
-from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
 from libsys_airflow.plugins.authority_control.email import (
