@@ -9,7 +9,7 @@ import urllib
 from typing import Union
 
 from airflow.configuration import conf
-from airflow.models import Variable
+from airflow.sdk import Variable
 from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client

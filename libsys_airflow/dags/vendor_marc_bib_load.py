@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 import logging
 
-from airflow import DAG
+from airflow.sdk import DAG
 
-from airflow.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 logger = logging.getLogger(__name__)
 

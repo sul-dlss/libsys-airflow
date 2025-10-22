@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 import logging
 
-from airflow import DAG
-from airflow.decorators import task
-from airflow.models.param import Param
-from airflow.operators.python import get_current_context
+from airflow.sdk import (
+    DAG,
+    Param,
+    get_current_context,
+    task,
+)
 from libsys_airflow.plugins.vendor.sync import sync_data_task
 
 

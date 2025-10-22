@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import dag
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_979_marc_tags,

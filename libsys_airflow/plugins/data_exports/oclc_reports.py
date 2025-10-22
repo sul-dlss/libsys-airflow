@@ -3,8 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from jinja2 import DictLoader, Environment
 
 from libsys_airflow.plugins.shared.utils import dag_run_url

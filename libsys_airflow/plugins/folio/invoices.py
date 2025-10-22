@@ -2,8 +2,7 @@ import logging
 
 import httpx
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 
 from folioclient import FolioClient
 

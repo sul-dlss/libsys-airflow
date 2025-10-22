@@ -2,9 +2,9 @@ import logging
 
 from typing import Union
 
-from airflow.decorators import task
+from airflow.sdk import task, Variable
 from airflow.exceptions import AirflowException
-from airflow.models import DagBag, Variable
+from airflow.models import DagBag
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.utils import timezone
 from airflow.utils.state import State

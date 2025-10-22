@@ -7,7 +7,7 @@ import pydantic
 import pytest
 import requests
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from pytest_mock import MockerFixture
 
 

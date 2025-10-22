@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta
 
-from airflow import DAG
-from airflow.models import Variable
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import DAG, Param, Variable
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
-from airflow.operators.python import PythonOperator
-from airflow.models.param import Param
+from airflow.providers.standard.operators.python import PythonOperator
 
 from libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_run import (
     fix_encumbrances_run,

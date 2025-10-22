@@ -7,7 +7,7 @@ import pymarc
 from http import HTTPStatus
 from datetime import datetime
 
-from airflow.models import Connection
+from airflow.sdk import Connection
 
 import libsys_airflow.plugins.data_exports.transmission_tasks as transmission_tasks
 

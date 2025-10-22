@@ -6,7 +6,7 @@ import httpx
 from bs4 import BeautifulSoup
 from jinja2 import Template
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 import re
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from jinja2 import Template
 
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name

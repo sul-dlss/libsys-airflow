@@ -9,8 +9,7 @@ from s3path import S3Path
 from datetime import datetime
 from typing import Optional, Union
 
-from airflow.decorators import task
-from airflow.models.connection import Connection
+from airflow.sdk import task, Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 

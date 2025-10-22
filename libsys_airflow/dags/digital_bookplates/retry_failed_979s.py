@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from airflow.decorators import dag
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import dag
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
