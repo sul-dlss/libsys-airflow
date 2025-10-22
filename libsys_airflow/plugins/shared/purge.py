@@ -3,7 +3,7 @@ import logging
 import pathlib
 import shutil
 
-from airflow.decorators import task
+from airflow.sdk import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy import select

@@ -8,8 +8,7 @@ from pymarc import (
 )
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
-from airflow.models import Variable
-from airflow.operators.python import get_current_context
+from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
 from typing import Union
 

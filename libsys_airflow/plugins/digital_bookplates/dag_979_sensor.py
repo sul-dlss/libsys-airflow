@@ -1,7 +1,6 @@
 import logging
 
-from airflow.models import DAG, DagRun
-from airflow.sensors.base_sensor_operator import BaseSensorOperator
+from airflow.sdk import BaseSensorOperator, DAG, DagRun
 
 from libsys_airflow.plugins.shared.utils import dag_run_url
 

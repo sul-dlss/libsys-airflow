@@ -8,7 +8,7 @@ from typing import Union
 
 from jinja2 import Environment, Template
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from libsys_airflow.plugins.orafin.models import Invoice
 from libsys_airflow.plugins.orafin.payments import models_converter

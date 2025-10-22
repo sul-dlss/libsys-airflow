@@ -3,8 +3,7 @@ import logging
 from s3path import S3Path
 from pathlib import Path
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.exceptions import AirflowException
 
 from attrs import define

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from cattrs import Converter
 
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 
 from folioclient import FolioClient

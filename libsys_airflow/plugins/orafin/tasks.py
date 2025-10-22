@@ -1,10 +1,8 @@
 import logging
 import pathlib
 
-from airflow.decorators import task
-from airflow.models import Variable
-from airflow.operators.python import get_current_context
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sdk import get_current_context, task, Variable
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 from folioclient import FolioClient
 

@@ -1,10 +1,8 @@
 import logging
 from datetime import datetime
 
-from airflow.decorators import dag, task
-from airflow.models import Variable
-from airflow.operators.python import get_current_context
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import dag, get_current_context, task, Variable
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 from folioclient import FolioClient
 

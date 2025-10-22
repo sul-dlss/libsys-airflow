@@ -1,6 +1,6 @@
 import pytest
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from libsys_airflow.plugins.authority_control.data_import import run_folio_data_import
 
 

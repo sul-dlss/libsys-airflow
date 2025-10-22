@@ -10,9 +10,9 @@ from datetime import datetime
 from typing import Union
 
 from airflow.models.mappedoperator import OperatorPartial
-from airflow.operators.bash import BashOperator
-from airflow.operators.python import get_current_context
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.sdk import get_current_context
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 from folioclient import FolioClient
 

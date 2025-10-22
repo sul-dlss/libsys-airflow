@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import MagicMock
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
     failed_979_dags,
