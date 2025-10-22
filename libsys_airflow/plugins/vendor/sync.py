@@ -7,8 +7,7 @@ from sqlalchemy import select
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.models import Variable
-from airflow.decorators import task
+from airflow.sdk import task, Variable
 
 logger = logging.getLogger(__name__)
 
