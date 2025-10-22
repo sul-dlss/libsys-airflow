@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook

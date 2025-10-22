@@ -1,8 +1,8 @@
 import httpx
 import pytest  # noqa
 
-from airflow.operators.bash import BashOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 from mocks import MockTaskInstance
 

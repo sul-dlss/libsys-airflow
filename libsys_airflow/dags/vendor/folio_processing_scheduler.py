@@ -1,10 +1,10 @@
 from datetime import datetime
 import logging
 
-from airflow import DAG
-from airflow.decorators import task
+from airflow.sdk import task, DAG
+
 from airflow.models.dagrun import DagRun
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.utils.types import DagRunType
 from sqlalchemy.orm import Session

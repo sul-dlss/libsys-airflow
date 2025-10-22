@@ -1,7 +1,7 @@
 import pytest
 
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from pydantic import BaseModel
 
 from libsys_airflow.plugins.authority_control import email_report
