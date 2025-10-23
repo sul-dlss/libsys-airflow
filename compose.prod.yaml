@@ -161,23 +161,6 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
-  # airflow-webserver:
-  #   <<: *airflow-common
-  #   command: webserver
-  #   ports:
-  #     - 3000:8080
-  #   healthcheck:
-  #     test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-  #     interval: 10s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 30s
-  #   restart: always
-  #   depends_on:
-  #     <<: *airflow-common-depends-on
-  #     airflow-init:
-  #       condition: service_completed_successfully
-
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
