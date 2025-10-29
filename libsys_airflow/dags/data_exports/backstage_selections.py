@@ -33,7 +33,7 @@ with DAG(
     "select_backstage_records",
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("select_backstage", "30 22 * * FRI"),
+        cron=Variable.get("select_backstage", "0 19 * * FRI"),
         timezone="America/Los_Angeles",
     ),
     start_date=datetime(2024, 11, 18),
@@ -41,7 +41,7 @@ with DAG(
     tags=["data export", "backstage"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
