@@ -41,7 +41,7 @@ with DAG(
     tags=["data export", "backstage"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now() - timedelta(6)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
