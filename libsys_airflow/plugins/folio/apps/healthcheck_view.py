@@ -3,7 +3,7 @@ import logging
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from folioclient import FolioClient
-from airflow.models import Variable
+from airflow.sdk import Variable
 from flask import make_response
 
 logger = logging.getLogger(__name__)

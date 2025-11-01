@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, task
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import dag, task
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_sensor import DAG979Sensor
 from libsys_airflow.plugins.digital_bookplates.email import summary_add_979_dag_runs

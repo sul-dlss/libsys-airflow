@@ -4,8 +4,7 @@ import os
 import pathlib
 from typing import Optional
 
-from airflow.models import Variable
-from airflow.decorators import task
+from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from folioclient import FolioClient

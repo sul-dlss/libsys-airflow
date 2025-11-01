@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 from airflow.api.common.trigger_dag import trigger_dag
-from airflow.models import Variable
+from airflow.sdk import Variable
 from flask_appbuilder import expose, BaseView
 from flask import abort, request, redirect, url_for, flash, send_from_directory
 

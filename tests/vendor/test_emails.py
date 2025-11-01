@@ -9,7 +9,7 @@ import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
 from datetime import date, datetime
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.emails import (

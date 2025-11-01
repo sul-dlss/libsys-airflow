@@ -3,8 +3,7 @@ import logging
 import pathlib
 
 from airflow.configuration import conf
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session

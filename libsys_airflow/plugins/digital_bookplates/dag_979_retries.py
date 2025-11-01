@@ -1,7 +1,7 @@
 import logging
 
-from airflow.decorators import task
-from airflow.models import DagBag, DagRun, Variable
+from airflow.sdk import task, Variable
+from airflow.models import DagBag, DagRun
 from airflow.utils.state import DagRunState
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
