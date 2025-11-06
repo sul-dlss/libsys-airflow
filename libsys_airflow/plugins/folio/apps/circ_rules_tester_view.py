@@ -89,7 +89,7 @@ class CircRulesTester(AppBuilderBaseView):
             flash(f"Batch report DAG ID {dag_run} doesn't exist")
             return redirect(f"{CircRulesTester.route_base}")
         report = pd.read_json(batch_report_path, encoding="utf-8-sig")
-        timestamp = datetime.datetime.now(datetime.UTC)
+        timestamp = datetime.now(timezone.utc).toordinal()
         return Response(
             report.to_csv(),
             mimetype="text/csv",

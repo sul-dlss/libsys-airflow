@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from airflow.sdk import dag
+from airflow.sdk import dag, get_current_context, task
 from airflow.providers.standard.operators.empty import EmptyOperator
-from airflow.timetables.interval import CronDataIntervalTimetable
+from airflow.timetables.trigger import CronTriggerTimetable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
     failed_979_dags,
@@ -24,7 +24,9 @@ default_args = {
 @dag(
     default_args=default_args,
     start_date=datetime(2024, 10, 15),
-    schedule=CronTriggerTimetable(cron="45 20 7 * *", timezone="America/Los_Angeles"),
+    schedule=CronTriggerTimetable(
+        cron="45 20 7 * *", timezone="America/Los_Angeles"
+    ),
     catchup=False,
     tags=["digital bookplates"],
 )
