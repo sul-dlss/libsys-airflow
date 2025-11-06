@@ -4,7 +4,7 @@ from s3path import S3Path
 from pathlib import Path
 
 from airflow.sdk import task, Variable
-from airflow.exceptions import AirflowException
+from airflow.providers.standard.exceptions import AirflowException
 
 from attrs import define
 from cattrs import Converter
