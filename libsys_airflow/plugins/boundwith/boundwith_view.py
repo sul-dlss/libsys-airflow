@@ -2,12 +2,10 @@ from typing import Union
 
 import pandas as pd
 
-from airflow.models import DagBag
-
 from flask import flash, request
 
-from airflow.utils import timezone
-from airflow.utils.state import State
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from libsys_airflow.plugins.shared.utils import execution_date
 
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
@@ -15,23 +13,21 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 def trigger_bw_dag(
     bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None], file_name: str
 ) -> tuple:
-    dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag("add_bw_relationships")
-    execution_date = timezone.utcnow()
-    run_id = f"manual__{execution_date.isoformat()}"
-    dag.create_dagrun(
-        run_id=run_id,
-        execution_date=execution_date,
-        state=State.RUNNING,
+    logical_date = execution_date()
+    run_id = f"manual__{logical_date}"
+    TriggerDagRunOperator(
+        task_id="trigger_bw_dag",
+        trigger_dag_id="add_bw_relationships",
+        trigger_run_id=run_id,
+        logical_date=logical_date,
         conf={
             "relationships": bw_df.to_dict(orient='records'),
             "email": user_email,
             "sunid": sunid,
             "file_name": file_name,
-        },
-        external_trigger=True,
+        }
     )
-    return run_id, execution_date
+    return run_id, logical_date
 
 
 class BoundWithView(AppBuilderBaseView):
