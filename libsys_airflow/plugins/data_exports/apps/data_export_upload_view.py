@@ -3,9 +3,8 @@ import pandas as pd
 import pathlib
 import re
 
-from airflow.models import DagBag
-from airflow.utils import timezone
-from airflow.utils.state import State
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from libsys_airflow.plugins.shared.utils import execution_date
 
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
@@ -69,7 +68,6 @@ class DataExportUploadView(AppBuilderBaseView):
                 "number_of_ids": number_of_ids,
                 "uploaded_filename": filename,
             },
-            external_trigger=True,
         )
         return run_id
 

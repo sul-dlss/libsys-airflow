@@ -1,15 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from airflow.sdk import task, DAG
 
-from airflow.models.dagrun import DagRun
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils.types import DagRunType
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import VendorFile, FileStatus
+from libsys_airflow.plugins.shared.utils import execution_date
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +44,16 @@ with DAG(
                 vendor_interface = vendor_file.vendor_interface
                 vendor = vendor_interface.vendor
 
-                execution_date = datetime.utcnow()
-                dag_run_id = f"{DagRun.generate_run_id(DagRunType.MANUAL, execution_date)}-{vendor_file.vendor_filename}"
+                logical_date = execution_date()
+                dag_run_id = f"manual__{logical_date}-{vendor_file.vendor_filename}"
 
                 vendor_file.dag_run_id = dag_run_id
                 vendor_file.dag_execution_date = execution_date
-                vendor_file.updated = datetime.utcnow()
+                vendor_file.updated = datetime.now(timezone.utc).isoformat()
                 vendor_file.status = FileStatus.loading
 
                 logger.info(
-                    f"updated vendor_file {vendor_file}: dag_run_id={dag_run_id} execution_date={execution_date}"
+                    f"updated vendor_file {vendor_file}: dag_run_id={dag_run_id} logical_date={logical_date}"
                 )
 
                 confs.append(
@@ -62,7 +61,7 @@ with DAG(
                         "trigger_dag_id": vendor_interface.processing_dag
                         or "default_data_processor",
                         "trigger_run_id": dag_run_id,
-                        "execution_date": execution_date.isoformat(),
+                        "logical_date": logical_date,
                         "conf": {
                             "vendor_uuid": vendor.folio_organization_uuid,
                             "vendor_interface_uuid": vendor_interface.folio_interface_uuid,
