@@ -3,8 +3,8 @@ import logging
 from typing import Union
 
 from airflow.sdk import task, Variable
-from airflow.exceptions import AirflowException
-from airflow.models import DagBag
+from airflow.providers.standard.exceptions import AirflowException
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
