@@ -13,7 +13,7 @@ import httpx
 import requests
 
 import logging
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 logger = logging.getLogger(__name__)
 

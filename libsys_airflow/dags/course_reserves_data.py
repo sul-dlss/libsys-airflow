@@ -2,7 +2,7 @@ import logging
 
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.sdk import dag
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.folio.courses import (

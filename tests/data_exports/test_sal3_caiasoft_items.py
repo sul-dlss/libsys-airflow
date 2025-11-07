@@ -2,7 +2,7 @@ import pydantic
 import pytest
 
 from pathlib import Path
-from airflow.models import Connection
+from airflow.sdk import Connection
 from libsys_airflow.plugins.data_exports import sal3_items
 
 
