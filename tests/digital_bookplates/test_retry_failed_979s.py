@@ -1,8 +1,5 @@
 import pytest
 
-from datetime import datetime
-from unittest.mock import MagicMock
-
 from airflow.sdk import Variable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
@@ -56,7 +53,7 @@ def test_find_failed_979_dags(mocker, mock_dag_list_runs):
         return_value=mock_dag_list_runs,
     )
 
-    failed_dags = failed_979_dags()
+    failed_dags = failed_979_dags.function()
     assert len(failed_dags) == 2
 
 
