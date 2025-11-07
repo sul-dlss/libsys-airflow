@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 import logging
 import pathlib
 
@@ -25,7 +25,7 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     Saves uploaded file to digital-bookplates/{year}/{day} location
     and if file name already exists, increments until unique
     """
-    current_time = datetime.datetime.utcnow()
+    current_time = datetime.now(timezone.utc)
     report_base = (
         pathlib.Path(files_base)
         / f"{current_time.year}/{current_time.month}/{current_time.day}"

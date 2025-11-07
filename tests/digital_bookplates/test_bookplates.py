@@ -63,13 +63,8 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 @pytest.fixture
-def mock_dag_bag(mocker):
-    def mock_get_dag(dag_id: str):
-        return mocker.MagicMock()
-
-    dag_bag = mocker.MagicMock()
-    dag_bag.get_dag = mock_get_dag
-    return dag_bag
+def mock_trigger_dag_run(mocker):
+    return mocker.MagicMock()
 
 
 @pytest.fixture
@@ -462,36 +457,36 @@ def test_add_979_marc_tags():
     assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
 
 
-def test_launch_digital_bookplate_979_dag(mocker, mock_dag_bag, caplog):
-    dag_bag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+def test_launch_digital_bookplate_979_dag(mocker, mock_trigger_dag_run, caplog):
+    dag_run = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator",
+        return_value=mock_trigger_dag_run,
     )
 
     launch_digital_bookplate_979_dag(
         instance_uuid="01ae59b3-d7c6-4bf6-8097-02f9227932fa", funds=[{}]
     )
 
-    assert dag_bag.called
+    assert dag_run.called
     assert "Triggers 979 DAG with dag_id" in caplog.text
 
 
-def test_launch_poll_for_979_dags(mocker, mock_dag_bag, caplog):
-    dag_bag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+def test_launch_poll_for_979_dags(mocker, mock_trigger_dag_run, caplog):
+    dag_run = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator",
+        return_value=mock_trigger_dag_run,
     )
 
     launch_poll_for_979_dags_email(dag_runs=['manual__2024-10-24:00:00:00'])
 
-    assert dag_bag.called
+    assert dag_run.called
     assert "Triggers polling DAG for 979 DAG runs" in caplog.text
 
 
-def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
+def test_trigger_digital_bookplate_979_task(mocker, mock_trigger_dag_run, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+        "libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator",
+        return_value=mock_trigger_dag_run,
     )
     incoming_instances = [
         {},
@@ -515,7 +510,7 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
     assert len(dag_run_ids) == 1
 
 
-def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_dag_bag, caplog):
+def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_trigger_dag_run, caplog):
     incoming_instances = []
     dag_run_ids = trigger_digital_bookplate_979_task.function(
         instances=incoming_instances

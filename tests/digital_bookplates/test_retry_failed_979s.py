@@ -1,64 +1,42 @@
 import pytest
 
-from datetime import datetime
-from unittest.mock import MagicMock
-
 from airflow.sdk import Variable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
     failed_979_dags,
-    run_failed_979_dags,
+    run_ids,
+    clear_failed_add_marc_tags_to_record,
+    poll_for_979s_dags,
 )
 
 
-def month():
-    return datetime.now().month
-
-
-def uuids():
+@pytest.fixture
+def mock_dag_list_runs():
     return [
-        "47bf71da-5ca4-496d-a34e-fbc121cd3f1b",
-        "ddb75fc0-1018-4508-bb17-18a1eea57ccf",
-        "399c38dd-51f2-4d96-82b1-82a0e5da7de0",
-        "a483d67a-aae5-48d6-a9cc-e9a061010560",
-        "d062b41a-6809-4f1b-830f-48a3f95df98e",
+        {
+            "dag_id": "digital_bookplate_979",
+            "run_id": "manual__2025-11-06T09:40:00+00:00",
+            "state": "failed",
+            "run_after": "2025-11-06T19:40:00+00:00",
+            "logical_date": "2025-11-06T09:40:00+00:00",
+            "start_date": "2025-11-06T21:47:50.247185+00:00",
+            "end_date": "2025-11-06T21:47:51.278468+00:00",
+        },
+        {
+            "dag_id": "digital_bookplate_979",
+            "run_id": "manual__2025-11-06T00:40:00+00:00",
+            "state": "failed",
+            "run_after": "2025-11-06T09:40:00+00:00",
+            "logical_date": "2025-11-06T00:40:00+00:00",
+            "start_date": "2025-11-06T21:47:48.169719+00:00",
+            "end_date": "2025-11-06T21:47:49.227595+00:00",
+        },
     ]
 
 
-def mock_dag_runs():
-    mock_dag_runs = []
-
-    def mock_get_state():
-        return 'failed'
-
-    def mock_get_task_instance(*args):
-        task_instance = MagicMock()
-        task_instance.xcom_pull = mock_xcom_pull
-        return task_instance
-
-    for id, idx in enumerate(uuids()):
-        mock_dag_run = MagicMock()
-        mock_dag_run.get_state = mock_get_state
-        mock_dag_run.run_id = f"scheduled__2024-{month()}-{idx}"
-        mock_dag_run.dag.dag_id = "digital_bookplate_979"
-        mock_dag_run.conf = {"druids_for_instance_id": {id: {}}}
-        mock_dag_run.get_task_instance = mock_get_task_instance
-        mock_dag_runs.append(mock_dag_run)
-
-    return mock_dag_runs
-
-
-def mock_xcom_pull(*args, **kwargs):
-    return {
-        uuids()[-1]: [
-            {
-                'fund_name': 'KLEINH',
-                'druid': 'vy482pt7540',
-                'image_filename': 'vy482pt7540_00_0001.jp2',
-                'title': 'The Herbert A. Klein Book Fund',
-            }
-        ]
-    }
+@pytest.fixture
+def mock_run_ids():
+    return ["manual__2025-11-06T09:40:00+00:00", "manual__2025-11-06T00:40:00+00:00"]
 
 
 @pytest.fixture
@@ -69,55 +47,37 @@ def mock_variable(monkeypatch):
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
-@pytest.fixture
-def mock_dag_bag(mocker):
-    def mock_get_dag(dag_id: str):
-        return mocker.MagicMock()
-
-    dag_bag = mocker.MagicMock()
-    dag_bag.get_dag = mock_get_dag
-    return dag_bag
-
-
-@pytest.fixture
-def mock_dag(mocker):
-    def mock_clear_dags(dags: list):
-        return mocker.MagicMock()
-
-    dag = mocker.MagicMock()
-    dag.clear_dags = mock_clear_dags
-    return dag
-
-
-def test_find_failed_979_dags(mocker, caplog):
+def test_find_failed_979_dags(mocker, mock_dag_list_runs):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.find",
-        return_value=mock_dag_runs(),
+        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.BashOperator",
+        return_value=mock_dag_list_runs,
     )
 
     failed_dags = failed_979_dags.function()
-    assert len(failed_dags["digital_bookplate_979s"]) == 5
-    assert f"Found: scheduled__2024-{month()}-4" in caplog.text
+    assert len(failed_dags) == 2
 
 
-def test_run_failed_979_dags(mocker, mock_variable, mock_dag_bag, mock_dag, caplog):
+def test_run_ids(mock_dag_list_runs, caplog):
+    failed_dag_run_ids = run_ids.function(mock_dag_list_runs)
+    assert isinstance(failed_dag_run_ids, list)
+    assert failed_dag_run_ids.pop() == "manual__2025-11-06T00:40:00+00:00"
+    assert "Found: manual__2025-11-06T09:40:00+00:00" in caplog.text
+
+
+def test_clear_failed_add_marc_tags_to_record(caplog):
+    clear_failed_add_marc_tags_to_record.function()
+    assert (
+        "Clearing failed add_marc_tags_to_record tasks for digital_bookplate_979 DAG runs."
+        in caplog.text
+    )
+
+
+def test_poll_for_979s_dags(mocker, mock_run_ids, mock_variable, caplog):
+    poll_for_979s_dags.function(mock_run_ids)
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagRun.get_dag",
-        return_value=mock_dag,
+        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.Variable.get",
+        return_value=mock_variable,
     )
-    dag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag,
+    assert (
+        f"{len(mock_run_ids)} failed 979 DAG runs queued: {mock_run_ids}" in caplog.text
     )
-    dag_bag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.DagBag",
-        return_value=mock_dag_bag,
-    )
-
-    dag_runs = {"digital_bookplate_979s": mock_dag_runs()}
-    assert len(dag_runs) > 0
-    run_failed_979_dags.function(dag_runs=dag_runs)
-
-    assert dag_bag.called
-    assert dag.called
-    assert "Clearing 5 failed 979 DAG runs" in caplog.text
