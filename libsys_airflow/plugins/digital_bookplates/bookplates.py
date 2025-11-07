@@ -3,11 +3,9 @@ import logging
 from typing import Union
 
 from airflow.sdk import task, Variable
-from airflow.exceptions import AirflowException
-from airflow.models import DagBag
+from airflow.providers.standard.exceptions import AirflowException
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils import timezone
-from airflow.utils.state import State
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.shared import utils
@@ -54,21 +52,19 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     funds: list = kwargs["funds"]
     dag_run_id: Union[str, None] = kwargs.get("run_id")
     dag_payload = {instance_uuid: funds}
-
-    dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag("digital_bookplate_979")
+    execution_date = utils.execution_date()
 
     if dag_run_id is None:
-        execution_date = timezone.utcnow()
-        dag_run_id = f"manual__{execution_date.isoformat()}"
+        dag_run_id = f"manual__{execution_date}"
 
-    dag.create_dagrun(
-        run_id=dag_run_id,
-        execution_date=execution_date,
-        state=State.QUEUED,
+    TriggerDagRunOperator(
+        task_id="launch_digital_bookplate_979_dag",
+        trigger_dag_id="digital_bookplate_979",
+        trigger_run_id=dag_run_id,
+        logical_date=execution_date,
         conf={"druids_for_instance_id": dag_payload},
-        external_trigger=True,
     )
+
     logger.info(f"Triggers 979 DAG with dag_id {dag_run_id}")
     return dag_run_id
 
@@ -80,16 +76,15 @@ def launch_poll_for_979_dags_email(**kwargs):
     dag_runs: list = kwargs["dag_runs"]
     email: Union[str, None] = kwargs.get("email")
 
-    dagbag = DagBag("/opt/airflow/dags")
-    dag = dagbag.get_dag('poll_for_digital_bookplate_979s_email')
-    execution_date = timezone.utcnow()
-    run_id = f"manual__{execution_date.isoformat()}"
-    dag.create_dagrun(
-        run_id=run_id,
-        execution_date=execution_date,
-        state=State.QUEUED,
+    execution_date = utils.execution_date()
+    run_id = f"manual__{execution_date}"
+
+    TriggerDagRunOperator(
+        task_id="launch_poll_for_979_dags_email",
+        trigger_dag_id="poll_for_digital_bookplate_979s_email",
+        trigger_run_id=run_id,
+        logical_date=execution_date,
         conf={"dag_runs": dag_runs, "email": email},
-        external_trigger=True,
     )
     logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
 

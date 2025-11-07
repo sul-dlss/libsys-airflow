@@ -3,9 +3,8 @@ import pandas as pd
 import pathlib
 import re
 
-from airflow.models import DagBag
-from airflow.utils import timezone
-from airflow.utils.state import State
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from libsys_airflow.plugins.shared.utils import execution_date
 
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
@@ -54,19 +53,18 @@ class DataExportUploadView(AppBuilderBaseView):
     route_base = "/data_export_upload"
 
     def _trigger_dag_run(self, vendor, kind):
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag(f"select_{vendor}_records")
-        execution_date = timezone.utcnow()
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
+        logical_date = execution_date()
+        dag_id = f"select_{vendor}_records"
+        run_id = f"manual__{logical_date}"
+        TriggerDagRunOperator(
+            task_id="_trigger_dag_run",
+            trigger_dag_id=dag_id,
+            trigger_run_id=run_id,
+            logical_date=logical_date,
             conf={
                 "fetch_folio_record_ids": False,
                 "saved_record_ids_kind": kind,
             },
-            external_trigger=True,
         )
         return run_id
 
