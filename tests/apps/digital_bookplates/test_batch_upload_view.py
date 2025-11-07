@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 import io
 
 import pandas as pd
@@ -120,7 +120,7 @@ def test_get_fund(mocker, mock_db, tmp_path):
 
 
 def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
-    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
+    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator")
 
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
@@ -146,7 +146,7 @@ def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
 
 
 def test_existing_upload_file(tmp_path):
-    current_timestamp = datetime.datetime.utcnow()
+    current_timestamp = datetime.now(timezone.utc)
     upload_path = (
         tmp_path
         / f"{current_timestamp.year}/{current_timestamp.month}/{current_timestamp.day}"
@@ -166,7 +166,7 @@ def test_existing_upload_file(tmp_path):
 
 
 def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
-    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
+    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator")
 
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
@@ -182,7 +182,7 @@ def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
         },
     )
 
-    current_timestamp = datetime.datetime.utcnow()
+    current_timestamp = datetime.now(timezone.utc)
     upload_path = (
         tmp_path
         / f"{current_timestamp.year}/{current_timestamp.month}/{current_timestamp.day}"
