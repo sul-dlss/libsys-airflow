@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import uuid
 
 import pandas as pd
 
@@ -52,6 +53,39 @@ def check_update_item(
     return {}
 
 
+def concat_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files") -> str:
+    existing_missing_files = [f for f in missing_barcodes if f is not None]
+
+    if not existing_missing_files:
+        logger.info("No missing barcode files")
+        return ""
+
+    all_missing_barcodes = []
+    for missing_barcode_file in existing_missing_files:
+        file_path = pathlib.Path(missing_barcode_file)
+        if not file_path.exists():
+            logger.info(f"{missing_barcode_file} does not exist")
+            continue
+        with file_path.open() as fo:
+            missing_barcodes = [s for s in fo.readlines() if s]
+        all_missing_barcodes.extend(missing_barcodes)
+        delete_barcode_csv(missing_barcode_file)
+        logger.info(f"Deleted {missing_barcode_file}")
+
+    timestamp = datetime.datetime.now(datetime.UTC)
+    reports_dir = pathlib.Path(sdr_dir) / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    combined_missing_barcodes_file = reports_dir / f"missing-barcodes-{timestamp}.csv"
+
+    with combined_missing_barcodes_file.open("w+") as fo:
+        fo.write("barcode\n")
+        fo.writelines([f"{barcode}\n" for barcode in all_missing_barcodes])
+
+    logging.info(f"Missing barcodes file {combined_missing_barcodes_file}")
+    return str(combined_missing_barcodes_file)
+
+
 def delete_barcode_csv(csv_file: str):
     """
     Deletes barcode csv file if present.
@@ -84,6 +118,17 @@ def extract_barcodes(csv_file: str) -> list:
         barcode_batches.append(barcode_batch)
 
     return barcode_batches
+
+
+def save_missing_barcodes(missing_barcodes: list, sdr_path: str) -> str:
+    """
+    Saves missing barcodes to a temp file
+    """
+    missing_files_path = pathlib.Path(sdr_path) / f"{uuid.uuid4()}.csv"
+    with missing_files_path.open("w+") as fo:
+        fo.write("barcode\n")
+        fo.writelines([f"{barcode}\n" for barcode in missing_barcodes])
+    return str(missing_files_path)
 
 
 def stat_codes_lookup(folio_client: FolioClient) -> dict:
