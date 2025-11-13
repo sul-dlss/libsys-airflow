@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import uuid
 
 import pandas as pd
 
@@ -52,6 +53,14 @@ def check_update_item(
     return {}
 
 
+def concat_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files"):
+    for file in missing_barcodes:
+        file_path = pathlib.Path(file)
+        if not file_path.exists():
+            logger.error(f"Could not find {file}")
+        
+
+
 def delete_barcode_csv(csv_file: str):
     """
     Deletes barcode csv file if present.
@@ -84,6 +93,17 @@ def extract_barcodes(csv_file: str) -> list:
         barcode_batches.append(barcode_batch)
 
     return barcode_batches
+
+
+def save_missing_barcodes(missing_barcodes: list, sdr_path: str) -> str:
+    """
+    Saves missing barcodes to a temp file
+    """
+    missing_files_path = pathlib.Path(sdr_path) / f"{uuid.uuid4()}.csv"
+    with missing_files_path.open("w+") as fo:
+        fo.write("barcode\n")
+        fo.writelines([f"{barcode}\n" for barcode in missing_barcodes])
+    return str(missing_files_path)
 
 
 def stat_codes_lookup(folio_client: FolioClient) -> dict:

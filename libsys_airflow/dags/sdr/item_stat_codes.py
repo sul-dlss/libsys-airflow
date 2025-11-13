@@ -15,8 +15,10 @@ from airflow.utils.trigger_rule import TriggerRule
 
 from libsys_airflow.plugins.sdr.helpers import (
     check_update_item,
+    concat_missing_barcodes,
     delete_barcode_csv,
     extract_barcodes,
+    save_missing_barcodes,
     stat_codes_lookup,
 )
 
@@ -72,23 +74,36 @@ def manage_sdr_stat_codes(**kwargs):
     def get_stat_code_lookup(**kwargs):
         return stat_codes_lookup(_folio_client())
 
-    @task(max_active_tis_per_dag=5)
+    @task(max_active_tis_per_dag=3)
     def process_barcode_batch(**kwargs):
         barcode_batch = kwargs["batch"]
         task_instance = kwargs["ti"]
         stat_code_lookup = task_instance.xcom_pull(task_ids="stat_code_lookup")
         folio_client = _folio_client()
         total_records, errors = len(barcode_batch), 0
+        missing_barcodes = []
         logger.info(f"Starting processing of {total_records:,} barcodes")
         for i, barcode in enumerate(barcode_batch):
             if i > 0 and not i % 100:
                 logger.info(f"Barcode count {i:,}")
             result = check_update_item(barcode, folio_client, stat_code_lookup)
             if "error" in result:
+                if result['error'].startswith("not found barcode"):
+                    missing_barcodes.append(barcode)
                 logging.error(f"{i}: {barcode} error: {result['error']}")
                 # Error count, in the future we could expand reporting out
                 errors += 1
+        if len(missing_barcodes) > 0:
+            missing_barcode_file_path = save_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files")
+            task_instance.xcom_push(key="missing_barcode_file", value=missing_barcode_file_path)
+            logger.info(f"Saved {len(missing_barcodes):,} to file {missing_barcode_file_path}")
         logger.info(f"Finished loading {total_records:,} number of errors: {errors:,}")
+
+    @task
+    def combine_missing_barcode_files(processed_batches):
+        concat_missing_barcodes(processed_batches)
+
+
 
     @task
     def remove_csv_file(**kwargs):
@@ -110,14 +125,12 @@ def manage_sdr_stat_codes(**kwargs):
         task_id="finished-sdr-tag-management",
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     )
+    batches_processed = process_barcode_batch.expand(batch=barcode_batches)
+    consolidate_missing_barcodes = combine_missing_barcode_files(batches_processed.output)
     setup = setup_dag()
 
     setup >> [barcode_batches, sdr_barcodes]
-    (
-        stat_code_lookup
-        >> process_barcode_batch.expand(batch=barcode_batches)
-        >> remove_barcode_csv
-    )
+    consolidate_missing_barcodes >> remove_barcode_csv
     remove_barcode_csv >> finished
     sdr_barcodes >> finished
 
