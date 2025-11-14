@@ -94,18 +94,28 @@ def manage_sdr_stat_codes(**kwargs):
                 # Error count, in the future we could expand reporting out
                 errors += 1
         if len(missing_barcodes) > 0:
-            missing_barcode_file_path = save_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files")
-            task_instance.xcom_push(key="missing_barcode_file", value=missing_barcode_file_path)
-            logger.info(f"Saved {len(missing_barcodes):,} to file {missing_barcode_file_path}")
+            missing_barcode_file_path = save_missing_barcodes(missing_barcodes)
+            task_instance.xcom_push(
+                key="missing_barcode_file", value=missing_barcode_file_path
+            )
+            logger.info(
+                f"Saved {len(missing_barcodes):,} to file {missing_barcode_file_path}"
+            )
         logger.info(f"Finished loading {total_records:,} number of errors: {errors:,}")
 
-    @task
-    def combine_missing_barcode_files(processed_batches):
-        concat_missing_barcodes(processed_batches)
+    @task(trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS)
+    def combine_missing_barcode_files(**kwargs):
+        task_instance = kwargs["ti"]
 
+        missing_barcode_files = task_instance.xcom_pull(
+            task_ids="process_barcode_batch",
+            key="missing_barcode_file",
+            map_indexes=None,
+        )
 
+        concat_missing_barcodes(missing_barcode_files)
 
-    @task
+    @task(trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS)
     def remove_csv_file(**kwargs):
         task_instance = kwargs["ti"]
         csv_file = task_instance.xcom_pull(
@@ -125,11 +135,13 @@ def manage_sdr_stat_codes(**kwargs):
         task_id="finished-sdr-tag-management",
         trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS,
     )
+
     batches_processed = process_barcode_batch.expand(batch=barcode_batches)
-    consolidate_missing_barcodes = combine_missing_barcode_files(batches_processed.output)
+    consolidate_missing_barcodes = combine_missing_barcode_files()
     setup = setup_dag()
 
     setup >> [barcode_batches, sdr_barcodes]
+    stat_code_lookup >> batches_processed >> consolidate_missing_barcodes
     consolidate_missing_barcodes >> remove_barcode_csv
     remove_barcode_csv >> finished
     sdr_barcodes >> finished

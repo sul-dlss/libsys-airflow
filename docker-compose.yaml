@@ -95,7 +95,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/fix_encumbrances:/opt/airflow/fix_encumbrances
     - ${AIRFLOW_PROJ_DIR:-.}/orafin-files:/opt/airflow/orafin-files
     - ${AIRFLOW_PROJ_DIR:-.}/authorities:/opt/airflow/authorities
-    - ${AIRFLOW_PROJ_DIR:-.}/sdr-files:/opt/airflow/sdr-file
+    - ${AIRFLOW_PROJ_DIR:-.}/sdr-files:/opt/airflow/sdr-files
     - ${AIRFLOW_PROJ_DIR:-.}/.aws:/home/airflow/.aws
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
