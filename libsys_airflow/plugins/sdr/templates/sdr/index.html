@@ -1,0 +1,33 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+  <h1>SDR Reports</h1>
+  <h2>Missing Barcodes Reports</h2>
+  <table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Filename</th>
+            <th>Date</th>
+            <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in missing_barcodes_files %}
+
+        <tr>
+            <td>
+                <a href="{{ url_for('SdrMissingBarcodesView.download', type_of='data', file_name=report.name) }}" download>{{ report.name }}</a>
+            </td>
+            <td>
+                {{ report.date_created }}
+            </td>
+            <td>
+                {{ report.size }}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
