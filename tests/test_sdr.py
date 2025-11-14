@@ -1,3 +1,5 @@
+import uuid
+
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -5,6 +7,7 @@ import pytest
 
 from libsys_airflow.plugins.sdr.helpers import (
     check_update_item,
+    concat_missing_barcodes,
     delete_barcode_csv,
     extract_barcodes,
     stat_codes_lookup,
@@ -137,6 +140,31 @@ def test_check_update_item_folio_put_exception(mocker):
     result = check_update_item("12345", mock_client, STAT_CODE_LOOKUP)
 
     assert result == {"error": "Update failed for barcode: 12345"}
+
+
+def test_concat_missing_barcodes(tmp_path, caplog):
+    """Test concating barcodes files"""
+    barcode_dynamic_task_csv_1 = tmp_path / f"{uuid.uuid4()}.csv"
+    with barcode_dynamic_task_csv_1.open("w+") as fo:
+        for barcode in ["36105113066968", "36105041848388", "36105038166885"]:
+            fo.write(f"{barcode}\n")
+    barcode_dynamic_task_csv_2 = tmp_path / f"{uuid.uuid4()}.csv"
+    with barcode_dynamic_task_csv_2.open("w+") as fo:
+        for barcode in ["36105210628322", "36105082365144", "36105070775429"]:
+            fo.write(f"{barcode}\n")
+    missing_barcode_filename = concat_missing_barcodes(
+        [str(barcode_dynamic_task_csv_1), str(barcode_dynamic_task_csv_2)], tmp_path
+    )
+
+    assert barcode_dynamic_task_csv_1.exists() is False
+    assert barcode_dynamic_task_csv_2.exists() is False
+
+    assert f"Deleted {barcode_dynamic_task_csv_1}" in caplog.text
+    with open(missing_barcode_filename) as fo:
+        missing_barcodes = fo.read().splitlines("\n")
+
+    assert "36105210628322" in missing_barcodes
+    assert "36105113066968" in missing_barcodes
 
 
 def test_delete_barcode_csv_existing_file(tmp_path):
