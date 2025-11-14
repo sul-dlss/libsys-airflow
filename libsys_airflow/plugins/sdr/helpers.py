@@ -54,7 +54,7 @@ def check_update_item(
     return {}
 
 
-def concat_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files"):
+def concat_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files") -> str:
     existing_missing_files = [f for f in missing_barcodes if f is not None]
 
     if not existing_missing_files:
@@ -84,6 +84,7 @@ def concat_missing_barcodes(missing_barcodes, sdr_dir="/opt/airflow/sdr-files"):
         fo.writelines([f"{barcode}\n" for barcode in all_missing_barcodes])
 
     logging.info(f"Missing barcodes file {combined_missing_barcodes_file}")
+    return str(combined_missing_barcodes_file)
 
 
 def delete_barcode_csv(csv_file: str):
