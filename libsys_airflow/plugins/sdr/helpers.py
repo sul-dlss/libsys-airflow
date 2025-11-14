@@ -1,3 +1,4 @@
+import datetime
 import logging
 import pathlib
 import uuid
@@ -120,13 +121,14 @@ def extract_barcodes(csv_file: str) -> list:
     return barcode_batches
 
 
-def save_missing_barcodes(missing_barcodes: list, sdr_path: str) -> str:
+def save_missing_barcodes(
+    missing_barcodes: list, sdr_path: str = "/opt/airflow/sdr-files"
+) -> str:
     """
     Saves missing barcodes to a temp file
     """
     missing_files_path = pathlib.Path(sdr_path) / f"{uuid.uuid4()}.csv"
     with missing_files_path.open("w+") as fo:
-        fo.write("barcode\n")
         fo.writelines([f"{barcode}\n" for barcode in missing_barcodes])
     return str(missing_files_path)
 
