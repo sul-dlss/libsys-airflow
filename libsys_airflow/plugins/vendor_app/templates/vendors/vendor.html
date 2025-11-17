@@ -35,10 +35,39 @@
      })
  }
 
- if (document.readyState !== 'loading') {
+ const vendorStatusHandler = () => {
+    const folioAPIUrl = "{{ okapi_url }}/organizations/organizations/{{ vendor.folio_organization_uuid }}";
+    fetch(folioAPIUrl, {
+      method: 'GET',
+      headers: {
+        'x-okapi-token': '{{ okapi_token }}',
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.info(response)
+      if (!response.ok) {
+        console.warn(response)
+        const statusElement = document.getElementById('vendor-status');
+        statusElement.textContent = 'Vendor record is no longer in FOLIO';
+        statusElement.classList.add('text-danger');
+        return
+      }
+      return response.json()
+    }).then(data => {
+      if (!data) {
+        return
+      }
+    }).catch(error => {
+      console.dir(error)
+    })
+  }
+ 
+  if (document.readyState !== 'loading') {
+   vendorStatusHandler()
    vendorActivityHandler()
  } else {
    document.addEventListener('DOMContentLoaded', vendorActivityHandler)
+   document.addEventListener('DOMContentLoaded', vendorStatusHandler)
  }
 </script>
 
@@ -62,6 +91,7 @@
   <section>
     <div class="row">
       <div class="col-md-4">
+        <div id="vendor-status" class="vendor-status" \>
         <dl class="dl-horizontal">
             <dt>Organization ID</dt>
             <dd>{{ vendor.folio_organization_uuid }}</dd>

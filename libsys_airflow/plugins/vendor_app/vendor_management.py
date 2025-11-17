@@ -7,6 +7,7 @@ from airflow.api.common.trigger_dag import trigger_dag
 from airflow.models import Variable
 from flask_appbuilder import expose, BaseView
 from flask import abort, request, redirect, url_for, flash, send_from_directory
+from folioclient import FolioClient
 
 from libsys_airflow.plugins.vendor.job_profiles import (
     job_profiles,
@@ -32,6 +33,14 @@ logger = logging.getLogger(__name__)
 class VendorManagementView(BaseView):
     default_view = "dashboard"
     route_base = "/vendor_management"
+
+    def _folio_client(self):
+        return FolioClient(
+            Variable.get("OKAPI_URL"),
+            "sul",
+            Variable.get("FOLIO_USER"),
+            Variable.get("FOLIO_PASSWORD"),
+        )
 
     @expose("/")
     def dashboard(self):
@@ -92,7 +101,11 @@ class VendorManagementView(BaseView):
         if vendor is None:
             abort(404)
         return self.render_template(
-            "vendors/vendor.html", vendor=vendor, folio_name=folio_name()
+            "vendors/vendor.html",
+            vendor=vendor,
+            folio_name=folio_name(),
+            okapi_url=self._folio_client().okapi_url,
+            okapi_token=self._folio_client().okapi_token,
         )
 
     @expose("/vendors/<int:vendor_id>/interfaces", methods=["POST"])

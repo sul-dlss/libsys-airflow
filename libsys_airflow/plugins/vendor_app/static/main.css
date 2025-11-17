@@ -40,3 +40,9 @@ dl.dl-wide > dd {
 .glyphicon-save {
   color: #017cee;
 }
+
+div#vendor-status {
+  font-size: 1.5em;
+  float: inline-start;
+  padding-right: inherit;
+}
