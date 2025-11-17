@@ -164,8 +164,8 @@
         <th>Filename</th>
         <th>File Size</th>
         <th>File Timestamp</th>
-        <th>Status</th>
         <th>Loaded</th>
+        <th>Status</th>
         <th data-sortable="false">Actions</th>
       </thead>
       <tbody>
@@ -177,8 +177,8 @@
           <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
           <td>{{ file.filesize }}</td>
           <td>{{ file.vendor_timestamp }}</td>
-          <td>{{ file.status.value }}</td>
           <td>{{ file.loaded_timestamp }}</td>
+          <td>{{ file.status.value }}</td>
           <td>
             {% if interface.assigned_in_folio or interface.upload_only %}
             <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
