@@ -161,7 +161,7 @@ def test_concat_missing_barcodes(tmp_path, caplog):
 
     assert f"Deleted {barcode_dynamic_task_csv_1}" in caplog.text
     with open(missing_barcode_filename) as fo:
-        missing_barcodes = fo.read().splitlines("\n")
+        missing_barcodes = fo.read().split("\n")
 
     assert "36105210628322" in missing_barcodes
     assert "36105113066968" in missing_barcodes
