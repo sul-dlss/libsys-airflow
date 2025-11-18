@@ -37,6 +37,8 @@
       <dd><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></dd>
       <dt>Interface ID</dt>
       <dd>{{ interface.folio_interface_uuid or 'Upload only' }}</dd>
+      <dt>Interface Display Name</dt>
+      <dd>{{ interface.display_name }}</dd>
       <dt>Import Profile</dt>
       {% if interface.folio_data_import_profile_uuid %}
         <dd>{{ interface.folio_data_import_processing_name }} ({{ interface.folio_data_import_profile_uuid }})</dd>

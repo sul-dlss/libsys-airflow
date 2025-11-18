@@ -40,6 +40,7 @@ rows = Rows(
         processing_delay_in_days=3,
         active=True,
     ),
+    VendorInterface(id=2, display_name="Acme Upload Only", vendor_id=1, active=True),
     # a file was fetched 10 days ago, and was loaded 9 days ago
     VendorFile(
         id=1,
@@ -233,6 +234,25 @@ def test_interface_edit_view(
         )
         response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
         assert response.status_code == 200
+
+
+def test_interface_edit_upload_only_view(
+    test_airflow_client, mock_db, mocker, mock_variable, job_profiles  # noqa: F811
+):
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.job_profiles',
+            return_value=[],
+        )
+        response = test_airflow_client.get("/vendor_management/interfaces/2/edit")
+        assert response.status_code == 200
+        display_name_input = response.html.find(id="folio-data-import-display-name")
+        assert display_name_input.name == "input"
+        assert display_name_input.attrs['value'] == "Acme Upload Only"
 
 
 def test_reload_file(test_airflow_client, mock_db, mock_dag_run, mocker):  # noqa: F811
