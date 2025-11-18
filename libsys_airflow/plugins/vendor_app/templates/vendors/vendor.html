@@ -44,18 +44,21 @@
         'Content-Type': 'application/json'
       }
     }).then(response => {
+      console.dir(response)
+      const statusElement = document.getElementById('vendor-status');
+      statusElement.classList.add('text-danger');
+      statusElement.style.fontSize = '1.5em';
+      statusElement.style.float = 'inline-start';
+      statusElement.style.paddingRight = 'inherit';
+      
       if (!response.ok) {
-        const statusElement = document.getElementById('vendor-status');
+        statusElement.textContent = 'Could not verify vendor record in FOLIO';
+      }
+      if (response.status == '404') {
         statusElement.textContent = 'Vendor record is no longer in FOLIO';
-        statusElement.classList.add('text-danger');
-        statusElement.style.fontSize = '1.5em';
-        statusElement.style.float = 'inline-start';
-        statusElement.style.paddingRight = 'inherit';
         const refreshButton = document.getElementById('refresh-button');
         refreshButton.style.visibility = 'hidden';
-        return
       }
-      return response.json()
     }).catch(error => {
       console.dir(error)
     })
@@ -90,7 +93,9 @@
   <section>
     <div class="row">
       <div class="col-md-4">
-        <dl id="vendor-status" class="vendor-status"></dl>
+        <div id="vendor-status"></div>
+      </div>
+      <div class="col-md-4">
         <dl class="dl-horizontal">
             <dt>Organization ID</dt>
             <dd>{{ vendor.folio_organization_uuid }}</dd>
