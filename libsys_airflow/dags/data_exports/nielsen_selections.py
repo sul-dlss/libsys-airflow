@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airflow import DAG
 from airflow.models.param import Param
@@ -32,6 +33,7 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
 
 with DAG(
     "select_nielsen_records",
@@ -44,13 +46,13 @@ with DAG(
     tags=["data export", "nielsen"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",

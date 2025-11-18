@@ -1,6 +1,7 @@
 import pathlib
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airflow import DAG
 from airflow.models.param import Param
@@ -37,6 +38,9 @@ default_args = {
 }
 
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
+
+
 def compress_marc_files(marc_file_list: dict):
     marc_files = (
         marc_file_list['new'] + marc_file_list['updates'] + marc_file_list['deletes']
@@ -58,13 +62,13 @@ with DAG(
     tags=["data export", "pod"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
