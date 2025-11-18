@@ -40,9 +40,13 @@
     <div class="form-group">
       <label for="interface" class="col-sm-2 col-form-label">Interface</label>
       <div class="col-sm-8" id="interface">
+        {% if interface.upload_only %}
+         <input type="text"  class="form-control" id="folio-data-import-display-name" name="folio-data-import-display-name" value="{{ interface.display_name }}">
+        {% else %}
         <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
           {{ interface.display_name }}
         </a>
+        {% endif %}
       </div>
     </div>
     <div class="form-group">
