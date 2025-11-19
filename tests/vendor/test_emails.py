@@ -47,6 +47,20 @@ rows = Rows(
         processing_delay_in_days=3,
         active=True,
     ),
+    VendorInterface(
+        id=2,
+        display_name="Acme FTP Additional Emails",
+        vendor_id=1,
+        folio_interface_uuid="C803F1CD-9D6C-4074-A8D9-2C23D4B85B07",
+        folio_data_import_processing_name="Acme Profile 2",
+        folio_data_import_profile_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
+        file_pattern="*.mrc",
+        remote_path="stanford/outgoing/data",
+        processing_dag="acme-pull",
+        processing_delay_in_days=3,
+        active=True,
+        additional_email_recipients="additional1@stanford.edu, additional2@stanford.edu",
+    ),
 )
 
 engine = create_sqlite_fixture(rows)
@@ -382,19 +396,19 @@ def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
 
     send_file_not_loaded_email(
         vendor_uuid='375C6E33-2468-40BD-A5F2-73F82FE56DB0',
-        vendor_interface_name='Acme FTP',
+        vendor_interface_name='Acme FTP Additional Emails',
         vendor_code='ACME',
-        vendor_interface_uuid='140530EB-EE54-4302-81EE-D83B9DAC9B6E',
-        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1",
+        vendor_interface_uuid='C803F1CD-9D6C-4074-A8D9-2C23D4B85B07',
+        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2",
         filename='123456.mrc',
         environment='development',
     )
 
     mock_send_email.assert_called_once_with(
-        to='test@stanford.edu',
-        subject="Acme FTP (ACME) - (123456.mrc) - File Processed [development]",
+        to='test@stanford.edu,additional1@stanford.edu,additional2@stanford.edu',
+        subject="Acme FTP Additional Emails (ACME) - (123456.mrc) - File Processed [development]",
         html_content=f"""
-        <h5>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
+        <h5>Acme FTP Additional Emails (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2">C803F1CD-9D6C-4074-A8D9-2C23D4B85B07</a></h5>
 
         <p>
             File processed, but not loaded: 123456.mrc
