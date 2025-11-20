@@ -54,31 +54,34 @@ class VendorLoader:
                 "YANKEE-SUL",
             ]
             cql_query = f"?query=({' or '.join(f'(code={vendor})' for vendor in vendors)})"
-            vendor_result = self._folio_client.folio_get_all(
+            vendor_result = self._folio_client.folio_get(
                 "/organizations-storage/organizations",
                 "organizations",
-                cql_query,
-                10,
+                query=cql_query,
             )
         else:
             vendor_result = self._folio_client.organizations
+        
+        print(f"Found {len(list(vendor_result))} vendors from FOLIO")
         return vendor_result
 
     def get_vendor_interface(self, vendor_interface_id):
-        vendor_interface_result = requests.get(
-            f"{self._folio_client.okapi_url}/organizations-storage/interfaces/{vendor_interface_id}",
-            headers=self._folio_client.okapi_headers,
-        )
-        vendor_interface_result.raise_for_status()
-        return vendor_interface_result.json()
-    
+        try:
+            return self._folio_client.folio_get(
+                f"/organizations-storage/interfaces/{vendor_interface_id}"
+            )
+        except Exception as e:
+            print(f"Error fetching vendor interface {vendor_interface_id}: {e}")
+            return None
+
     def get_acquisitions_unit_name(self, acq_id):
-        acq_name_result = requests.get(
-            f"{self._folio_client.okapi_url}/acquisitions-units/units/{acq_id}",
-            headers=self._folio_client.okapi_headers,
-        )
-        acq_name_result.raise_for_status()
-        return acq_name_result.json()["name"]
+        try:
+            return self._folio_client.folio_get(
+                f"/acquisitions-units/units/{acq_id}"
+            )["name"]
+        except Exception as e:
+            print(f"Error fetching acquisitions unit {acq_id}: {e}")
+            return None
 
 
 def main(opts):
@@ -95,6 +98,8 @@ def main(opts):
         os.getenv('AIRFLOW_VAR_FOLIO_USER'),
         os.getenv('AIRFLOW_VAR_FOLIO_PASSWORD'),
     )
+    print(f"Seeding {len(list(vendor_load.vendors))} vendors into the database")
+    
     acq_uuids = set([org["acqUnitIds"][0] for org in vendor_load.vendors if org["acqUnitIds"] ])
     acq_data = {}
     for uuid in acq_uuids:
@@ -106,6 +111,7 @@ def main(opts):
             .filter(Vendor.folio_organization_uuid == organization["id"])
             .first()
         )
+        print(f"Vendor: {vendor}")
         if vendor is None:
             vendor = Vendor(
                 display_name=organization["name"],
@@ -115,6 +121,7 @@ def main(opts):
                 acquisitions_unit_name_from_folio=acq_data[organization["acqUnitIds"][0]] if organization["acqUnitIds"] else None,
                 last_folio_update=datetime.utcnow(),
             )
+            print(f"Adding vendor: {vendor.display_name}")
             session.add(vendor)
 
         for vendor_interface_uuid in organization["interfaces"]:
