@@ -81,6 +81,10 @@ with DAG(
 
         return params
 
+    @task
+    def downloaded_files(file_statuses: dict) -> list:
+        return [f[0] for f in file_statuses["fetched"]]
+
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
 
@@ -117,13 +121,13 @@ with DAG(
         file_statuses, params["vendor_uuid"], params["vendor_interface_uuid"]
     )
 
-    downloaded_files = [f[0] for f in file_statuses["fetched"]]
+    files_to_archive = downloaded_files(file_statuses)
 
     archive_task(
-        downloaded_files,
+        files_to_archive,
         params["download_path"],
         params["vendor_uuid"],
         params["vendor_interface_uuid"],
     )
 
-    files_fetched_email_task(downloaded_files, params)
+    files_fetched_email_task(files_to_archive, params)
