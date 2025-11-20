@@ -47,6 +47,7 @@
       console.dir(response)
       const statusElement = document.getElementById('vendor-status');
       statusElement.classList.add('text-danger');
+      statusElement.style.display = 'inline';
       statusElement.style.fontSize = '1.5em';
       statusElement.style.float = 'inline-start';
       statusElement.style.paddingRight = 'inherit';
@@ -92,9 +93,7 @@
 <main>
   <section>
     <div class="row">
-      <div class="col-md-4">
-        <div id="vendor-status"></div>
-      </div>
+      <div id="vendor-status" style="display: none;" class="col-md-4"></div>
       <div class="col-md-4">
         <dl class="dl-horizontal">
             <dt>Organization ID</dt>

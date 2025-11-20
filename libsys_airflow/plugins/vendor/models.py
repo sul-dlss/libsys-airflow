@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    Text,
     select,
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
@@ -83,6 +84,7 @@ class VendorInterface(Model):  # type: ignore
     folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_processing_name = Column(String(250), unique=False, nullable=True)
     file_pattern = Column(String(250), unique=False, nullable=True)
+    note = Column(Text(), unique=False, nullable=True)
     remote_path = Column(String(250), unique=False, nullable=True)
     processing_dag = Column(String(50), unique=False, nullable=True)
     processing_options = Column(JSON, nullable=True)

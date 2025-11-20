@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airflow import DAG
 from airflow.models.param import Param
@@ -31,6 +32,8 @@ default_args = {
 }
 
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
+
 with DAG(
     "select_gobi_records",
     default_args=default_args,
@@ -43,13 +46,13 @@ with DAG(
     tags=["data export", "gobi"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(8)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone) - timedelta(8)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",

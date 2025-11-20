@@ -35,6 +35,7 @@ rows = Rows(
         folio_data_import_processing_name="Acme Profile 1",
         folio_data_import_profile_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
         file_pattern="*.mrc",
+        note="A note about Acme FTP Interface",
         remote_path="stanford/outgoing/data",
         processing_dag="acme-pull",
         processing_delay_in_days=3,
@@ -234,6 +235,8 @@ def test_interface_edit_view(
         )
         response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
         assert response.status_code == 200
+        note = response.html.find("textarea")
+        assert note.text == "A note about Acme FTP Interface"
 
 
 def test_interface_edit_upload_only_view(
@@ -250,7 +253,7 @@ def test_interface_edit_upload_only_view(
         )
         response = test_airflow_client.get("/vendor_management/interfaces/2/edit")
         assert response.status_code == 200
-        display_name_input = response.html.find(id="folio-data-import-display-name")
+        display_name_input = response.html.find(id="display-name")
         assert display_name_input.name == "input"
         assert display_name_input.attrs['value'] == "Acme Upload Only"
 

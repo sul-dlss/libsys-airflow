@@ -41,7 +41,7 @@
       <label for="interface" class="col-sm-2 col-form-label">Interface</label>
       <div class="col-sm-8" id="interface">
         {% if interface.upload_only %}
-         <input type="text"  class="form-control" id="folio-data-import-display-name" name="folio-data-import-display-name" value="{{ interface.display_name }}">
+         <input type="text"  class="form-control" id="display-name" name="display-name" value="{{ interface.display_name }}">
         {% else %}
         <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
           {{ interface.display_name }}
@@ -102,6 +102,12 @@
       <label for="additional-email-recipients" class="col-sm-2 col-form-label">Additional Email Recipients</label>
       <div class="col-sm-8">
         <input type="text" class="form-control" id="additional-email-recipients" name="additional-email-recipients" value="{{ interface.additional_email_recipients if interface.additional_email_recipients }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="note" class="col-sm-2 col-form-label">Note</label>
+      <div class="col-sm-8">
+        <textarea cols="20" rows="4" name="note" id="note" class="form-control">{% if interface.note %}{{ interface.note }}{% endif %}</textarea>
       </div>
     </div>
 
