@@ -10,7 +10,6 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from sqlalchemy.orm import Session
 from jinja2 import Template
 
-# from libsys_airflow.plugins.vendor_app.database import Session
 from libsys_airflow.plugins.vendor.models import VendorInterface
 from libsys_airflow.plugins.vendor.marc import (
     is_marc,
