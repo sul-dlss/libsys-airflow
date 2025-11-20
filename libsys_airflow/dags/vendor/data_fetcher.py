@@ -8,7 +8,13 @@ from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.airflow.connections import create_connection_task
-from libsys_airflow.plugins.vendor.download import ftp_download_task
+from libsys_airflow.plugins.vendor.download import (
+    filter_by_strategy,
+    filter_already_downloaded,
+    filter_by_mod_date,
+    download_task,
+    update_vendor_files_table,
+)
 from libsys_airflow.plugins.vendor.archive import archive_task
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.vendor.emails import files_fetched_email_task
@@ -78,14 +84,40 @@ with DAG(
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
 
-    downloaded_files = ftp_download_task(
+    file_list_by_strategy = filter_by_strategy(
+        conn_id,
+        params["remote_path"],
+        params["filename_regex"],
+    )
+
+    files_not_yet_downloaded = filter_already_downloaded(
+        params["remote_path"],
+        params["vendor_uuid"],
+        params["vendor_interface_uuid"],
+        file_list_by_strategy,
+    )
+
+    files_to_download = filter_by_mod_date(
+        conn_id,
+        params["remote_path"],
+        params["vendor_uuid"],
+        params["vendor_interface_uuid"],
+        files_not_yet_downloaded,
+    )
+
+    file_statuses = download_task(
         conn_id,
         params["remote_path"],
         params["download_path"],
-        params["filename_regex"],
-        params["vendor_uuid"],
-        params["vendor_interface_uuid"],
+        params["vendor_interface_name"],
+        files_to_download,
     )
+
+    update_vendor_files_table(
+        file_statuses, params["vendor_uuid"], params["vendor_interface_uuid"]
+    )
+
+    downloaded_files = [f[0] for f in file_statuses["fetched"]]
 
     archive_task(
         downloaded_files,
