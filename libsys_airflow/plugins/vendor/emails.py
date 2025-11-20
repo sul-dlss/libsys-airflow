@@ -80,9 +80,7 @@ def _email_recipients(recipients) -> str:
 def _additional_email_recipients(vendor_interface_uuid) -> list:
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        interface = VendorInterface.load(
-            vendor_interface_uuid, session
-        )
+        interface = VendorInterface.load(vendor_interface_uuid, session)
 
     recipients = interface.additional_email_recipients
     if recipients is None:
