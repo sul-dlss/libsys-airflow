@@ -33,7 +33,7 @@ def files_fetched_email_task(downloaded_files: list, kwargs: dict):
         kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
     )
     kwargs["interface_additional_emails"] = _additional_email_recipients(
-        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+        kwargs["vendor_interface_uuid"]
     )
 
     send_files_fetched_email(**kwargs)
@@ -77,11 +77,11 @@ def _email_recipients(recipients) -> str:
     return ','.join(email_recipients)
 
 
-def _additional_email_recipients(vendor_uuid, vendor_interface_uuid) -> list:
+def _additional_email_recipients(vendor_interface_uuid) -> list:
     pg_hook = PostgresHook("vendor_loads")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        interface = VendorInterface.load_with_vendor(
-            vendor_uuid, vendor_interface_uuid, session
+        interface = VendorInterface.load(
+            vendor_interface_uuid, session
         )
 
     recipients = interface.additional_email_recipients
@@ -130,7 +130,7 @@ def send_file_loaded_email(**kwargs):
         html_content = _file_loaded_edi_html_content(**kwargs)
 
     kwargs["interface_additional_emails"] = _additional_email_recipients(
-        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+        kwargs["vendor_interface_uuid"]
     )
     subject = Template(
         "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]"
@@ -226,7 +226,7 @@ def file_not_loaded_email_task(**kwargs):
 
 def send_file_not_loaded_email(**kwargs):
     kwargs["interface_additional_emails"] = _additional_email_recipients(
-        kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
+        kwargs["vendor_interface_uuid"]
     )
     send_email_with_server_name(
         to=_email_recipients(kwargs.get('interface_additional_emails', None)),
