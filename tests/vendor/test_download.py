@@ -208,6 +208,9 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.create_hook", return_value=mock_hook
     )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
+    )
     files_not_yet_downloaded = ["3820230411.mrc", "3820230413.mrc"]
     mod_date_after = datetime.now(timezone.utc) - timedelta(days=int(10))
     filtered_by_timestamp = filter_by_mod_date.function(
