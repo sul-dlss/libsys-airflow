@@ -180,8 +180,11 @@ class VendorManagementView(BaseView):
                     form['folio-data-import-profile-uuid']
                 )
 
-        if 'folio-data-import-display-name' in form.keys():
-            interface.display_name = form['folio-data-import-display-name']
+        if 'display-name' in form.keys():
+            interface.display_name = form['display-name']
+
+        if 'note' in form.keys() and len(form['note'].strip()) > 1:
+            interface.note = form['note']
 
         if 'processing-delay-in-days' in form.keys():
             interface.processing_delay_in_days = int(
