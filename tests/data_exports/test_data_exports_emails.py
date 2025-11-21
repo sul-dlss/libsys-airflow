@@ -8,6 +8,7 @@ from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
     generate_oclc_new_marc_errors_email,
     failed_transmission_email,
+    send_confirmation_email,
 )
 
 
@@ -283,3 +284,33 @@ def test_failed_full_dump_transmission_email(
         html_body.find("a").attrs["href"]
         == "http://localhost:8080/dags/send_all_records/grid?dag_run_id=manual_2022-03-05"
     )
+
+
+def test_upload_confirmation_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email.function(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename="backstage_ids_2024-12-01.csv",
+        user_email="backstage@example.com",
+    )
+
+    assert mock_send_email.called
+    assert (
+        mock_send_email.call_args[1]["subject"] == "Upload Confirmation for Data Export"
+    )
+    assert (
+        mock_send_email.call_args[1]["to"] == "test@stanford.edu,backstage@example.com"
+    )
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+    assert (
+        html_body.find("p").text
+        == "Your file backstage_ids_2024-12-01.csv was successfully submitted for export to backstage as new."
+    )
+    assert html_body.findAll("p")[1].text == "Number of IDs submitted: 150"

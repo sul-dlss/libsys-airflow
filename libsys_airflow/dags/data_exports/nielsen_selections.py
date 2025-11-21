@@ -15,6 +15,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
+from libsys_airflow.plugins.data_exports.email import send_confirmation_email
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
@@ -59,6 +60,9 @@ with DAG(
         ),
         "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
+        "user_email": Param(None, type=["null", "string"]),
+        "number_of_ids": Param(None, type=["null", "integer"]),
+        "uploaded_filename": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
 ) as dag:
@@ -80,6 +84,18 @@ with DAG(
         op_kwargs={
             "vendor": "nielson",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
+        },
+    )
+
+    email_user = PythonOperator(
+        task_id="email_user",
+        python_callable=send_confirmation_email,
+        op_kwargs={
+            "vendor": "nielsen",
+            "user_email": "{{ params.user_email }}",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+            "number_of_ids": "{{ params.number_of_ids }}",
+            "uploaded_filename": "{{ params.uploaded_filename }}",
         },
     )
 
@@ -116,6 +132,7 @@ with DAG(
 check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records
+save_ids_to_file >> email_user
 
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
 transform_marc_fields >> finish_processing_marc

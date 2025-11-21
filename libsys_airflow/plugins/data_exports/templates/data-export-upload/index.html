@@ -6,25 +6,25 @@
 function toggleRecordTypes() {
   const vendorSelect = document.getElementById("vendor");
   const vendor = vendorSelect.value;
-
   const radioButtons = document.querySelectorAll('input[type="radio"][name="kind"]');
 
   switch(vendor) {
     case "gobi":
     case "backstage":
       radioButtons.forEach(radio => {
-        if (radio.value !== "new") {
+        if (radio.value == "updates" || radio.value == "deletes") {
           radio.disabled = true;
           radio.checked = false;
         } else {
           radio.disabled = false;
+          radio.checked = true;
         }
       });
       break;
 
     case "oclc":
       radioButtons.forEach(radio => {
-        if (radio.value === "updates") {
+        if (radio.value == "updates") {
           radio.disabled = true;
           radio.checked = false;
         } else {
@@ -58,26 +58,38 @@ function toggleRecordTypes() {
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="form-group">
-        <p class="help-block">
-          Select Export Vendor (required)
-        </p>
-        <select class="form-control" onchange="toggleRecordTypes()" id="vendor" name="vendor">
-          <option value="">--Choose vendor--</option>
-          {%for v in vendors%}
-            <option value="{{v}}">{{v}}</option>
-          {%endfor%}
-        </select>
-        <p class="help-block">Select for New records, Updates or Deletes:</p>
-        <fieldset id="kind">
-            <input type="radio" name="kind" id="new" value="new" checked />
-            <label for="new">New records</label>
-            <input type="radio" name="kind" id="updates" value="updates" />
-            <label for="updates">Updates</label>
-            <input type="radio" name="kind" id="deletes" value="deletes" />
-            <label for="deletes">Deletes</label>
-        </fieldset>
+    <div class="row">
+      <div class="col-md-3">
+        <div class="form-group">
+          <p class="help-block">
+            Select Export Vendor (required)
+          </p>
+          <select class="form-control" onchange="toggleRecordTypes()" id="vendor" name="vendor">
+            <option value="">--Choose vendor--</option>
+            {%for v in vendors%}
+              <option value="{{v}}">{{v}}</option>
+            {%endfor%}
+          </select>
+          <p class="help-block">Select for New records, Updates or Deletes:</p>
+          <fieldset id="kind">
+              <input type="radio" name="kind" id="new" value="new" />
+              <label for="new">New records</label>
+              <input type="radio" name="kind" id="updates" value="updates" />
+              <label for="updates">Updates</label>
+              <input type="radio" name="kind" id="deletes" value="deletes" />
+              <label for="deletes">Deletes</label>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-3">
+        <div class="form-group">
+          <p class="help-block">
+            Enter an email to receive upload confirmation:
+          </p>
+          <input type="email" class="form-control" id="user_email" name="user_email">
+        </div>
       </div>
     </div>
     <div class="row">
