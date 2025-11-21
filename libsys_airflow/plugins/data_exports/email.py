@@ -267,6 +267,26 @@ def _missing_holdings_for_instances(report: str) -> str:
     return template.render(report_url=report_url, report_name=report_path.name)
 
 
+def _upload_confirmation_email_body(
+    vendor: str, record_id_kind: str, number_of_ids: int, uploaded_filename: str
+) -> str:
+    template = Template(
+        """
+        <h2>Data Export Upload Confirmation</h2>
+        <p>Your file {{ uploaded_filename }} was successfully submitted for export to {{ vendor }} as {{ record_id_kind }}.</p>
+        <p>Number of IDs submitted: {{ number_of_ids }}</p>
+        <p>The records will be processed during the next scheduled data export.</p>
+    """
+    )
+
+    return template.render(
+        vendor=vendor,
+        record_id_kind=record_id_kind,
+        number_of_ids=number_of_ids,
+        uploaded_filename=uploaded_filename,
+    )
+
+
 @task
 def generate_no_holdings_instances_email(**kwargs):
     report = kwargs["report"]
@@ -285,4 +305,28 @@ def generate_no_holdings_instances_email(**kwargs):
         to=email_addresses,
         subject="Instances without Holdings",
         html_content=_missing_holdings_for_instances(report),
+    )
+
+
+@task
+def send_confirmation_email(**kwargs):
+    vendor = kwargs["vendor"]
+    user_email = kwargs["user_email"]
+    record_id_kind = kwargs["record_id_kind"]
+    number_of_ids = kwargs["number_of_ids"]
+    uploaded_filename = kwargs["uploaded_filename"]
+
+    logger.info("Generating upload confirmation email")
+    email_addresses = [Variable.get("EMAIL_DEVS")]
+    email_addresses.append(user_email)
+
+    send_email_with_server_name(
+        to=','.join(email_addresses),
+        subject="Upload Confirmation for Data Export",
+        html_content=_upload_confirmation_email_body(
+            vendor,
+            record_id_kind,
+            number_of_ids,
+            uploaded_filename,
+        ),
     )

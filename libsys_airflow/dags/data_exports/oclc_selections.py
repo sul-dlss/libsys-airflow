@@ -13,6 +13,8 @@ from airflow.operators.python import PythonOperator
 
 from airflow.timetables.interval import CronDataIntervalTimetable
 
+from libsys_airflow.plugins.data_exports.email import send_confirmation_email
+
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
     fetch_record_ids,
@@ -78,6 +80,9 @@ with DAG(
         ),
         "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
+        "user_email": Param(None, type=["null", "string"]),
+        "number_of_ids": Param(None, type=["null", "integer"]),
+        "uploaded_filename": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
     start_date=datetime(2025, 1, 14),
@@ -110,6 +115,18 @@ with DAG(
             "vendor": "oclc",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
             "upstream_task_id": "filters_updates_ids",
+        },
+    )
+
+    email_user = PythonOperator(
+        task_id="email_user",
+        python_callable=send_confirmation_email,
+        op_kwargs={
+            "vendor": "oclc",
+            "user_email": "{{ params.user_email }}",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+            "number_of_ids": "{{ params.number_of_ids }}",
+            "uploaded_filename": "{{ params.uploaded_filename }}",
         },
     )
 
@@ -202,6 +219,7 @@ with DAG(
 
 
 check_record_ids >> fetch_folio_record_ids >> filter_out_updates_ids >> save_ids_to_file
+save_ids_to_file >> email_user
 check_record_ids >> save_ids_to_file >> fetch_marc_records
 
 (

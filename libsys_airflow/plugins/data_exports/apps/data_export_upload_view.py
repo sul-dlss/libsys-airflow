@@ -53,7 +53,7 @@ class DataExportUploadView(AppBuilderBaseView):
     default_view = "data_export_upload_home"
     route_base = "/data_export_upload"
 
-    def _trigger_dag_run(self, vendor, kind):
+    def _trigger_dag_run(self, vendor, kind, user_email, number_of_ids, filename):
         dagbag = DagBag("/opt/airflow/dags")
         dag = dagbag.get_dag(f"select_{vendor}_records")
         execution_date = timezone.utcnow()
@@ -65,6 +65,9 @@ class DataExportUploadView(AppBuilderBaseView):
             conf={
                 "fetch_folio_record_ids": False,
                 "saved_record_ids_kind": kind,
+                "email": user_email,
+                "number_of_ids": number_of_ids,
+                "filename": filename,
             },
             external_trigger=True,
         )
@@ -83,17 +86,26 @@ class DataExportUploadView(AppBuilderBaseView):
                 ids_df = pd.read_csv(raw_csv, header=None)
                 if not vendor:
                     raise Exception("You must choose a vendor!")
+                elif not kind:
+                    raise Exception(
+                        "You must select an option for New records, Updates or Deletes!"
+                    )
                 else:
-                    upload_data_export_ids(ids_df, vendor, kind)
-                    flash("Sucessfully uploaded ID file.")
-                    dag_run_id = self._trigger_dag_run(vendor, kind)
+                    filename = raw_csv.filename
+                    number_of_ids = upload_data_export_ids(ids_df, vendor, kind)
+                    flash(f"Sucessfully uploaded ID file with {number_of_ids} IDs.")
+                    user_email = request.form.get("user_email")
+                    dag_run_id = self._trigger_dag_run(
+                        vendor, kind, user_email, number_of_ids, filename
+                    )
                     flash(f"Starting {vendor} DAG run {dag_run_id}.")
             except pd.errors.EmptyDataError:
                 flash("Warning! Empty UUID file.")
             except Exception as e:
                 flash(f"Error: {e}")
             finally:
-                return default_rendered_page(self)  # noqa
+                page = default_rendered_page(self)  # noqa
+            return page
 
     @expose("/")
     def data_export_upload_home(self):
