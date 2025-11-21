@@ -200,6 +200,9 @@ class VendorManagementView(BaseView):
         if 'active' in form.keys():
             interface.active = form['active'] == 'true'
 
+        if 'additional-email-recipients' in form.keys():
+            interface.additional_email_recipients = form['additional-email-recipients']
+
         if 'package-name' in form.keys():
             processing_options = {}
             processing_options['package_name'] = form['package-name']

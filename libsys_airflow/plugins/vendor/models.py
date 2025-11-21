@@ -93,6 +93,7 @@ class VendorInterface(Model):  # type: ignore
     # Vendor interface is currently assigned to organization within FOLIO. Upload-only are False
     assigned_in_folio = Column(Boolean, nullable=False, default=True)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
+    additional_email_recipients = Column(String(250), unique=False, nullable=True)
 
     @property
     def pending_files(self):
