@@ -39,7 +39,8 @@ class FTPAdapter:
         try:
             mod_time = self.hook.get_mod_time(filename)
         except ftplib.error_perm as e:
-            logger.error(f"Failed to retrieve modified time for {filename}, {e}")
+            logger.warning(f"Failed to retrieve modified time for {filename}, {e}.")
+            logger.info(f"Getting modified time for {self.remote_path}/{filename}")
             mod_time = self.hook.get_mod_time(f"{self.remote_path}/{filename}")
         return mod_time.isoformat()
 
@@ -47,7 +48,8 @@ class FTPAdapter:
         try:
             file_size = self.hook.get_size(filename)
         except ftplib.error_perm as e:
-            logger.error(f"Failed to retrieve size for {filename}, {e}")
+            logger.warning(f"Failed to retrieve size for {filename}, {e}")
+            logger.info(f"Getting size for {self.remote_path}/{filename}")
             file_size = self.hook.get_size(f"{self.remote_path}/{filename}")
 
         if file_size is None:
@@ -59,7 +61,8 @@ class FTPAdapter:
         try:
             self.hook.retrieve_file(filename, download_filepath)
         except ftplib.error_perm as e:
-            logger.error(f"Failed to retrieve {filename}, {e}")
+            logger.warning(f"Failed to retrieve {filename}, {e}")
+            logger.info(f"Retrieving file {self.remote_path}/{filename}")
             self.hook.retrieve_file(f"{self.remote_path}/{filename}", download_filepath)
 
 
@@ -207,8 +210,8 @@ def download_task(
     )
 
     for filename in files_to_download_list:
-        download_filepath = _download_filepath(
-            download_path, _filter_remote_path(filename, remote_path)
+        download_filepath = (
+            f"{download_path}/{_filter_remote_path(filename, remote_path)}"
         )
         mod_time = adapter.get_mod_time(filename)
         file_size = adapter.get_size(filename)
@@ -257,10 +260,6 @@ def update_vendor_files_table(
                 datetime.fromisoformat(mod_time),
                 engine,
             )
-
-
-def _download_filepath(download_path: str, filename: str) -> str:
-    return str(pathlib.Path(download_path) / filename)
 
 
 def _filter_remote_path(filename: str, remote_path: str) -> str:
