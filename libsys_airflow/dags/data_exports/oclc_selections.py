@@ -207,7 +207,7 @@ with DAG(
     )
 
     email_marc_not_found = generate_missing_marc_email(
-        missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True
+        missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True  # type: ignore
     )
 
     finish_division = EmptyOperator(task_id="finish_division")
