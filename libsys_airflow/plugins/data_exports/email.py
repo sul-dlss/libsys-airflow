@@ -318,7 +318,8 @@ def send_confirmation_email(**kwargs):
 
     logger.info("Generating upload confirmation email")
     email_addresses = [Variable.get("EMAIL_DEVS")]
-    email_addresses.append(user_email)
+    if user_email is not None:
+        email_addresses.append(user_email)
 
     send_email_with_server_name(
         to=','.join(email_addresses),

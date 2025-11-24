@@ -314,3 +314,22 @@ def test_upload_confirmation_email(mocker, mock_folio_variables):
         == "Your file backstage_ids_2024-12-01.csv was successfully submitted for export to backstage as new."
     )
     assert html_body.findAll("p")[1].text == "Number of IDs submitted: 150"
+
+
+def test_upload_no_confirmation_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email.function(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename="backstage_ids_2024-12-01.csv",
+        user_email=None,
+    )
+
+    assert mock_send_email.called
+
+    assert (
+        mock_send_email.call_args[1]["to"] == "test@stanford.edu"
+    )
