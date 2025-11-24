@@ -370,7 +370,7 @@ def generate_missing_marc_email(**kwargs):
     is_oclc = kwargs.get("is_oclc", False)
 
     if len(instance_uuids) < 1:
-        logger.info(f"No missing MARC records")
+        logger.info("No missing MARC records")
         return
 
     dag_run = kwargs["dag_run"]

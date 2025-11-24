@@ -17,7 +17,11 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
-from libsys_airflow.plugins.data_exports.email import send_confirmation_email
+from libsys_airflow.plugins.data_exports.email import (
+    generate_missing_marc_email,
+    send_confirmation_email,
+)
+
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
@@ -40,6 +44,12 @@ default_args = {
 
 
 pacific_timezone = ZoneInfo("America/Los_Angeles")
+
+
+def missing_marc_records_email(fetched_marc_records: dict):
+    generate_missing_marc_email.function(
+        missing_marc_instances=fetched_marc_records["not_found"]
+    )
 
 
 def compress_marc_files(marc_file_list: dict):
@@ -123,6 +133,14 @@ with DAG(
         },
     )
 
+    email_marc_not_found = PythonOperator(
+        task_id="email_missing_marc",
+        python_callable=missing_marc_records_email,
+        op_kwargs={
+            "fetched_marc_records": "{{ ti.xcom_pull('fetch_marc_records_from_folio')}}"
+        },
+    )
+
     transform_marc_record = PythonOperator(
         task_id="transform_folio_marc_record",
         python_callable=add_holdings_items_to_marc_files,
@@ -165,6 +183,7 @@ check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> email_user
+save_ids_to_file >> fetch_marc_records >> email_marc_not_found
 
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
 transform_marc_fields >> transform_leader_fields >> transform_compress_marc_files
