@@ -330,6 +330,4 @@ def test_upload_no_confirmation_email(mocker, mock_folio_variables):
 
     assert mock_send_email.called
 
-    assert (
-        mock_send_email.call_args[1]["to"] == "test@stanford.edu"
-    )
+    assert mock_send_email.call_args[1]["to"] == "test@stanford.edu"
