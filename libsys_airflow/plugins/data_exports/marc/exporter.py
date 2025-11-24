@@ -1,6 +1,9 @@
 import csv
 import logging
 import pathlib
+
+import httpx
+
 from pymarc import (
     JSONHandler as marcJson,
     MARCWriter as marcWriter,
@@ -93,7 +96,7 @@ class Exporter(object):
 
     def retrieve_marc_for_instances(
         self, instance_file: pathlib.Path, kind: str
-    ) -> str:
+    ) -> tuple:
         """
         Called for each instanceid file in vendor directory.
         For each ID row, writes and returns converted MARC from SRS to file system
@@ -106,12 +109,17 @@ class Exporter(object):
         vendor_name = instance_file.parent.parent.parent.name
 
         marc_file = ""
+        not_found_srs_records = []
         with instance_file.open() as fo:
             instance_reader = csv.reader(fo)
             for row in instance_reader:
                 uuid = row[0]
                 try:
                     marc_record = self.marc21(uuid)
+                except httpx.HTTPStatusError as exc:
+                    if str(exc).startswith("Client error '404"):
+                        not_found_srs_records.append(uuid)
+                    raise exc
                 except Exception as e:
                     logger.warning(e)
                     continue
@@ -125,7 +133,7 @@ class Exporter(object):
                     instance_file, marc_directory, marc_record, kind
                 )
 
-        return marc_file
+        return marc_file, not_found_srs_records
 
     def retrieve_marc_for_full_dump(self, marc_filename: str, instance_ids: str) -> str:
         """

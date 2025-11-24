@@ -14,7 +14,12 @@ def marc_for_instances(**kwargs) -> dict:
     if isinstance(instance_files, str):
         instance_files = ast.literal_eval(instance_files)
 
-    new_updates_deletes = {"new": [], "updates": [], "deletes": []}  # type: dict
+    new_updates_deletes = {
+        "new": [],
+        "updates": [],
+        "deletes": [],
+        "not_found": [],
+    }  # type: dict
 
     exporter = Exporter()
 
@@ -23,9 +28,11 @@ def marc_for_instances(**kwargs) -> dict:
             continue
         file_path = pathlib.Path(file_datename)
         kind = file_path.parent.stem
-        marc_file = exporter.retrieve_marc_for_instances(
+        marc_file, not_found_marc = exporter.retrieve_marc_for_instances(
             instance_file=file_path, kind=kind
         )
+        if len(not_found_marc) > 0:
+            new_updates_deletes["not_found"].extend(not_found_marc)
         marc_file_str = str(marc_file)
 
         if len(marc_file_str) < 1:
