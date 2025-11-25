@@ -119,7 +119,9 @@ class Exporter(object):
                 except httpx.HTTPStatusError as exc:
                     if str(exc).startswith("Client error '404"):
                         not_found_srs_records.append(uuid)
-                    raise exc
+                    else:
+                        logger.warning(exc)
+                    continue
                 except Exception as e:
                     logger.warning(e)
                     continue
