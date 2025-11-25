@@ -318,6 +318,33 @@ def _missing_marc_for_instances(**kwargs) -> str:
     )
 
 
+def send_confirmation_email(**kwargs):
+    vendor = kwargs["vendor"]
+    user_email = kwargs["user_email"]
+    record_id_kind = kwargs["record_id_kind"]
+    number_of_ids = kwargs["number_of_ids"]
+    uploaded_filename = kwargs["uploaded_filename"]
+
+    if uploaded_filename is not None:
+        logger.info("Generating upload confirmation email")
+        email_addresses = [Variable.get("EMAIL_DEVS")]
+        if user_email is not None:
+            email_addresses.append(user_email)
+
+        send_email_with_server_name(
+            to=','.join(email_addresses),
+            subject="Upload Confirmation for Data Export",
+            html_content=_upload_confirmation_email_body(
+                vendor,
+                record_id_kind,
+                number_of_ids,
+                uploaded_filename,
+            ),
+        )
+
+    return None
+
+
 @task
 def generate_no_holdings_instances_email(**kwargs):
     report = kwargs["report"]
@@ -336,31 +363,6 @@ def generate_no_holdings_instances_email(**kwargs):
         to=email_addresses,
         subject="Instances without Holdings",
         html_content=_missing_holdings_for_instances(report),
-    )
-
-
-@task
-def send_confirmation_email(**kwargs):
-    vendor = kwargs["vendor"]
-    user_email = kwargs["user_email"]
-    record_id_kind = kwargs["record_id_kind"]
-    number_of_ids = kwargs["number_of_ids"]
-    uploaded_filename = kwargs["uploaded_filename"]
-
-    logger.info("Generating upload confirmation email")
-    email_addresses = [Variable.get("EMAIL_DEVS")]
-    if user_email is not None:
-        email_addresses.append(user_email)
-
-    send_email_with_server_name(
-        to=','.join(email_addresses),
-        subject="Upload Confirmation for Data Export",
-        html_content=_upload_confirmation_email_body(
-            vendor,
-            record_id_kind,
-            number_of_ids,
-            uploaded_filename,
-        ),
     )
 
 

@@ -363,7 +363,7 @@ def test_upload_confirmation_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
-    send_confirmation_email.function(
+    send_confirmation_email(
         vendor="backstage",
         record_id_kind="new",
         number_of_ids=150,
@@ -393,7 +393,7 @@ def test_upload_no_confirmation_email(mocker, mock_folio_variables):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
-    send_confirmation_email.function(
+    send_confirmation_email(
         vendor="backstage",
         record_id_kind="new",
         number_of_ids=150,
@@ -404,3 +404,18 @@ def test_upload_no_confirmation_email(mocker, mock_folio_variables):
     assert mock_send_email.called
 
     assert mock_send_email.call_args[1]["to"] == "test@stanford.edu"
+
+
+def test_upload_no_uploaded_filename(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename=None,
+        user_email=None,
+    )
+
+    assert not mock_send_email.called
