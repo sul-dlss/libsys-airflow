@@ -9,7 +9,6 @@ from airflow.utils.state import State
 
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
-from typing import Union
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 
