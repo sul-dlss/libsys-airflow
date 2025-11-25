@@ -11,7 +11,7 @@ from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
-
+from typing import Union
 
 parent = pathlib.Path(__file__).resolve().parent
 vendor_file = open(parent / "vendors.json")
@@ -24,7 +24,7 @@ uuid_regex = re.compile(
 
 def upload_data_export_ids(
     ids_df: pd.DataFrame, vendor: str, kind: str
-) -> list[str, int]:
+) -> list[Union[str, int, None]]:
     if len(ids_df.columns) > 1:
         raise ValueError("ID file has more than one column.")
     tuples = list(ids_df.itertuples(index=False, name=None))
