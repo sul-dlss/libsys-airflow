@@ -62,7 +62,7 @@ with DAG(
         "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
         "user_email": Param(None, type=["null", "string"]),
-        "number_of_ids": Param(None, type=["null", "integer"]),
+        "number_of_ids": Param(0, type="integer", minimum=0),
         "uploaded_filename": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
