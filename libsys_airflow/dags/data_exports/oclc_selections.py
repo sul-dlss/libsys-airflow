@@ -35,6 +35,7 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
     generate_no_holdings_instances_email,
+    generate_missing_marc_email,
 )
 
 from libsys_airflow.plugins.data_exports.oclc_reports import (
@@ -205,6 +206,10 @@ with DAG(
         updates_records=fetch_marc_records["updates"]  # type: ignore
     )
 
+    email_marc_not_found = generate_missing_marc_email(
+        missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True  # type: ignore
+    )
+
     finish_division = EmptyOperator(task_id="finish_division")
 
     multiple_oclc_numbers = multiple_oclc_numbers_group()
@@ -228,6 +233,7 @@ check_record_ids >> save_ids_to_file >> fetch_marc_records
         new_records_by_library,
         delete_records_by_library,
         updates_records_by_library,
+        email_marc_not_found,
     ]
     >> finish_division
 )

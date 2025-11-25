@@ -15,7 +15,11 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
-from libsys_airflow.plugins.data_exports.email import send_confirmation_email
+from libsys_airflow.plugins.data_exports.email import (
+    generate_missing_marc_email,
+    send_confirmation_email,
+)
+
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 
 devs_to_email_addr = Variable.get("EMAIL_DEVS")
@@ -31,6 +35,13 @@ default_args = {
 }
 
 pacific_timezone = ZoneInfo("America/Los_Angeles")
+
+
+def missing_marc_records_email(fetched_marc_records: dict):
+    generate_missing_marc_email.function(
+        missing_marc_instances=fetched_marc_records["not_found"]
+    )
+
 
 with DAG(
     "select_backstage_records",
@@ -105,6 +116,14 @@ with DAG(
         },
     )
 
+    email_marc_not_found = PythonOperator(
+        task_id="email_missing_marc",
+        python_callable=missing_marc_records_email,
+        op_kwargs={
+            "fetched_marc_records": "{{ ti.xcom_pull('fetch_marc_records_from_folio')}}"
+        },
+    )
+
     finish_processing_marc = EmptyOperator(
         task_id="finish_marc",
     )
@@ -114,3 +133,5 @@ check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records >> finish_processing_marc
 save_ids_to_file >> email_user
+save_ids_to_file >> fetch_marc_records >> email_marc_not_found
+email_marc_not_found >> finish_processing_marc
