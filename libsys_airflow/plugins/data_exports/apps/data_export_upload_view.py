@@ -65,7 +65,7 @@ class DataExportUploadView(AppBuilderBaseView):
             conf={
                 "fetch_folio_record_ids": False,
                 "saved_record_ids_kind": kind,
-                "email": user_email,
+                "user_email": user_email,
                 "number_of_ids": number_of_ids,
                 "uploaded_filename": filename,
             },
