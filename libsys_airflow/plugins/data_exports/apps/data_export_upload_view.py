@@ -25,7 +25,7 @@ uuid_regex = re.compile(
 
 def upload_data_export_ids(
     ids_df: pd.DataFrame, vendor: str, kind: str
-) -> Union[str, None]:
+) -> list[str, int]:
     if len(ids_df.columns) > 1:
         raise ValueError("ID file has more than one column.")
     tuples = list(ids_df.itertuples(index=False, name=None))
@@ -36,11 +36,12 @@ def upload_data_export_ids(
             raise ValueError(f"{id} is not a UUID.")
         instance_uuids.append(id)
 
+    number_of_ids = len(instance_uuids)
     ids_path = save_ids(
         airflow="/opt/airflow", vendor=vendor, data=instance_uuids, kind=kind
     )
 
-    return ids_path
+    return [ids_path, number_of_ids]
 
 
 def default_rendered_page(self):
@@ -92,7 +93,7 @@ class DataExportUploadView(AppBuilderBaseView):
                     )
                 else:
                     filename = raw_csv.filename
-                    number_of_ids = upload_data_export_ids(ids_df, vendor, kind)
+                    number_of_ids = upload_data_export_ids(ids_df, vendor, kind).pop()
                     flash(f"Sucessfully uploaded ID file with {number_of_ids} IDs.")
                     user_email = request.form.get("user_email")
                     dag_run_id = self._trigger_dag_run(
