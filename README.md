@@ -203,6 +203,12 @@ If you prefer not to use `poetry shell` you can use `poetry run` along with `dot
 
 To fix multiple heads: `poetry run alembic --name vma merge heads -m "merge <revision 1> and <revision 2>"`
 
+#### Clearing out VendorFiles for Development
+Assuming you have populated VendorFiles table and want to re-fetch vendor files, clear out the database table with:
+```
+poetry run bin/truncate_vendor_files
+```
+
 #### Seeding Vendors
 
 Assuming that you have put Folio related environment variables in your `.env` file you can load all organizations (over 3,000) with:
