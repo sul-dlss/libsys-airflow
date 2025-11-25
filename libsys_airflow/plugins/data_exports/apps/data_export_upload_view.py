@@ -67,7 +67,7 @@ class DataExportUploadView(AppBuilderBaseView):
                 "saved_record_ids_kind": kind,
                 "email": user_email,
                 "number_of_ids": number_of_ids,
-                "upload_filename": filename,
+                "uploaded_filename": filename,
             },
             external_trigger=True,
         )
