@@ -50,6 +50,8 @@ def send_pod_records():
 
     no_files_found_email = no_files_email()
 
+    continue_op = EmptyOperator(task_id="continue_transmit_data")
+
     transmit_data = transmit_data_http_task(
         gather_files,
         params={"vendor": "pod"},
@@ -60,9 +62,9 @@ def send_pod_records():
 
     email_failures = failed_transmission_email(transmit_data["failures"])
 
-    start >> gather_files >> check_file_list >> [transmit_data, no_files_found_email]
+    start >> gather_files >> check_file_list >> [continue_op, no_files_found_email]
     no_files_found_email >> end
-    transmit_data >> [archive_data, email_failures] >> end
+    continue_op >> transmit_data >> [archive_data, email_failures] >> end
 
 
 send_pod_records()

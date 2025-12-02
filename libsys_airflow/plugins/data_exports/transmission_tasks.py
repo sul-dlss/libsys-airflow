@@ -58,7 +58,7 @@ def check_file_list_task(file_list: list):
     if len(file_list) < 1:
         return "no_files_email"
     else:
-        return "transmit_data_ftp_task"
+        return "continue_transmit_data"
 
 
 @task

@@ -186,7 +186,7 @@ def test_check_no_file_list_task():
 def test_check_file_list_task():
     marcfile_list = ["airflow/data-export-files/some-vendor/updates/123.mrc"]
     branch = check_file_list_task.function(marcfile_list)
-    assert branch == "transmit_data_ftp_task"
+    assert branch == "continue_transmit_data"
 
 
 def test_retry_failed_files_task(mock_marc_files, caplog):
