@@ -8,14 +8,12 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
-    check_file_list_task,
     transmit_data_http_task,
     archive_transmitted_data_task,
 )
 
 from libsys_airflow.plugins.data_exports.email import (
     failed_transmission_email,
-    no_files_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,10 +44,6 @@ def send_pod_records():
 
     gather_files = gather_files_task(vendor="pod")
 
-    check_file_list = check_file_list_task(gather_files["file_list"])
-
-    no_files_found_email = no_files_email()
-
     transmit_data = transmit_data_http_task(
         gather_files,
         params={"vendor": "pod"},
@@ -60,9 +54,7 @@ def send_pod_records():
 
     email_failures = failed_transmission_email(transmit_data["failures"])
 
-    start >> gather_files >> check_file_list >> [transmit_data, no_files_found_email]
-    no_files_found_email >> end
-    transmit_data >> [archive_data, email_failures] >> end
+    start >> gather_files >> transmit_data >> [archive_data, email_failures] >> end
 
 
 send_pod_records()

@@ -180,48 +180,6 @@ def generate_multiple_oclc_identifiers_email(**kwargs):
         )
 
 
-def _no_files_email_body(dag_id: str, dag_run_id: str, dag_run_url: str):
-    template = Template(
-        """
-        <h2>No Files Found to Transmit for {{ dag_id }}</h2>
-        <p><a href="{{ dag_run_url }}">{{ dag_run_id }}</a>
-    """
-    )
-
-    return template.render(
-        dag_id=dag_id,
-        dag_run_id=dag_run_id,
-        dag_run_url=dag_run_url,
-    )
-
-
-@task
-def no_files_email(**kwargs):
-    """
-    Generates email for failing to find vendor files to export
-    """
-    dag_run = kwargs["dag_run"]
-    dag_run_id = dag_run.run_id
-    dag_id = dag_run.dag.dag_id
-
-    run_url = dag_run_url(dag_run=dag_run)
-    logger.info("Generating email of no files found to transmit")
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    html_content = _no_files_email_body(
-        dag_id,
-        dag_run_id,
-        run_url,
-    )
-
-    send_email_with_server_name(
-        to=[
-            devs_to_email_addr,
-        ],
-        subject=f"No Files Found to Transmit for {dag_id}",
-        html_content=html_content,
-    )
-
-
 def _failed_transmission_email_body(
     files: list, vendor: str, dag_id: str, dag_run_id: str, dag_run_url: str
 ):

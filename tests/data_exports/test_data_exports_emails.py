@@ -8,7 +8,6 @@ from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
     generate_oclc_new_marc_errors_email,
     generate_missing_marc_email,
-    no_files_email,
     failed_transmission_email,
     send_confirmation_email,
 )
@@ -171,33 +170,6 @@ def test_prod_oclc_email(mocker, mock_folio_variables):
         "hoover@example.com",
         "test@stanford.edu",
     ]
-
-
-def test_no_files_email(mocker, mock_dag_run, mock_folio_variables, caplog):
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
-    )
-
-    no_files_email.function(dag_run=mock_dag_run)
-    assert "Generating email of no files found to transmit" in caplog.text
-    assert mock_send_email.called
-    assert (
-        mock_send_email.call_args[1]["subject"]
-        == "No Files Found to Transmit for send_vendor_records"
-    )
-
-    html_body = BeautifulSoup(
-        mock_send_email.call_args[1]["html_content"], "html.parser"
-    )
-    assert (
-        html_body.find("h2").text
-        == "No Files Found to Transmit for send_vendor_records"
-    )
-    assert html_body.find("a").text == "manual_2022-03-05"
-    assert (
-        html_body.find("a").attrs["href"]
-        == "http://localhost:8080/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
-    )
 
 
 def test_no_failed_transmission_email(mock_dag_run, caplog):
