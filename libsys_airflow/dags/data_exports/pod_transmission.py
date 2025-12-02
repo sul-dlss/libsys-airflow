@@ -42,7 +42,7 @@ default_args = {
 def send_pod_records():
     start = EmptyOperator(task_id="start")
 
-    end = EmptyOperator(task_id="end")
+    end = EmptyOperator(task_id="end", trigger_rule="all_done")
 
     gather_files = gather_files_task(vendor="pod")
 
