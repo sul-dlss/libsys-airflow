@@ -53,6 +53,14 @@ def gather_files_task(**kwargs) -> dict:
     }
 
 
+@task.branch(task_id="check_file_list")
+def check_file_list_task(file_list: list):
+    if len(file_list) < 1:
+        return "no_files_email"
+    else:
+        return "continue_transmit_data"
+
+
 @task
 def retry_failed_files_task(**kwargs) -> dict:
     """
