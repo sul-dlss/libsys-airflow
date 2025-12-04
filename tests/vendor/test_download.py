@@ -161,7 +161,7 @@ def test_filter_by_strategy_regex(mock_hook, mocker, caplog):
     file_list_by_strategy = filter_by_strategy.function(
         "ftp-example.com-user", "oclc", r"^\d+\.mrc$"
     )
-    assert len(file_list_by_strategy) == 3
+    assert len(file_list_by_strategy["filtered_files"]) == 3
     assert "Filtered filenames by regex strategy" in caplog.text
 
 
@@ -173,7 +173,8 @@ def test_filter_by_strategy_none(mock_hook, mocker, caplog):
     file_list_by_strategy = filter_by_strategy.function(
         "ftp-example.com-user", "oclc", ""
     )
-    assert len(file_list_by_strategy) == 4
+    assert len(file_list_by_strategy["all_files"]) == 4
+    assert len(file_list_by_strategy["filtered_files"]) == 4
     assert "Filenames not filtered" in caplog.text
 
 
@@ -187,7 +188,8 @@ def test_filter_by_strategy_gobi(mock_hook, mocker, caplog):
         "orders",
         "CNT-ORD",
     )
-    assert len(files) == 2
+    assert len(files["all_files"]) == 5
+    assert len(files["filtered_files"]) == 2
     assert "Filtered filenames by gobi order strategy" in caplog.text
 
 
@@ -216,29 +218,19 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
     filtered_by_timestamp = filter_by_mod_date.function(
         "ftp-example.com-user",
         "oclc",
-        "43459f05-f98b-43c0-a79d-76a8855dba94",
-        "65d30c15-a560-4064-be92-f90e38eeb351",
         files_not_yet_downloaded,
     )
     assert (
         f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
         in caplog.text
     )
-    assert f"Filtered by mod filenames: {filtered_by_timestamp}" in caplog.text
-    assert len(filtered_by_timestamp) == 1
-    assert (
-        "Adding to VendorFile status: skipped, filename: 3820230413.mrc, file size: 678, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
-        in caplog.text
+    assert len(filtered_by_timestamp["filtered_files"]) == 1
+    assert len(filtered_by_timestamp["skipped"]) == 1
+    assert filtered_by_timestamp["skipped"].pop() == (
+        "3820230413.mrc",
+        678,
+        datetime.fromisoformat("2013-01-01T00:05:23"),
     )
-    with Session(pg_hook()) as session:
-        skipped_vendor_file = session.scalars(
-            select(VendorFile).where(VendorFile.vendor_filename == "3820230413.mrc")
-        ).first()
-        assert skipped_vendor_file.filesize == 678
-        assert skipped_vendor_file.vendor_timestamp == datetime.fromisoformat(
-            "2013-01-01T00:05:23"
-        )
-        assert skipped_vendor_file.status == FileStatus.skipped
 
 
 @pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
@@ -264,7 +256,7 @@ def test_download_task(mock_hook, download_path, mocker, caplog):
     assert file_statuses["fetched"] == [("3820230411.mrc", 123, mod_time)]
 
 
-def test_update_vendor_files_table(pg_hook):
+def test_update_vendor_files_table(pg_hook, caplog):
     mod_time = (
         (datetime.now(timezone.utc) - timedelta(days=int(5)))
         .replace(tzinfo=None)
@@ -277,13 +269,42 @@ def test_update_vendor_files_table(pg_hook):
         ],
         "fetching_error": [("blah", 0, "2023-01-01T00:05:23")],
         "empty_file_error": [("empty_file.mrc", 0, "2025-01-01T00:05:23")],
+        "skipped": [("3820230413.mrc", 678, "2013-01-01T00:05:23")],
     }
     update_vendor_files_table.function(
         file_statuses,
         "43459f05-f98b-43c0-a79d-76a8855dba94",
         "65d30c15-a560-4064-be92-f90e38eeb351",
     )
+    assert (
+        "Adding to VendorFile status: skipped, filename: 3820230413.mrc, file size: 678, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
+        in caplog.text
+    )
+    assert (
+        "Adding to VendorFile status: fetched, filename: 3820230411.mrc, file size: 123, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
+        in caplog.text
+    )
+    assert (
+        "Adding to VendorFile status: fetched, filename: filenameB, file size: 1.3, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
+        in caplog.text
+    )
+    assert (
+        "Adding to VendorFile status: fetching_error, filename: blah, file size: 0, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
+        in caplog.text
+    )
+    assert (
+        "Adding to VendorFile status: empty_file_error, filename: empty_file.mrc, file size: 0, vendor uuid: 43459f05-f98b-43c0-a79d-76a8855dba94"
+        in caplog.text
+    )
     with Session(pg_hook()) as session:
+        skipped_vendor_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "3820230413.mrc")
+        ).first()
+        assert skipped_vendor_file.filesize == 678
+        assert skipped_vendor_file.vendor_timestamp == datetime.fromisoformat(
+            "2013-01-01T00:05:23"
+        )
+        assert skipped_vendor_file.status == FileStatus.skipped
         vendor_file = session.scalars(
             select(VendorFile).where(VendorFile.vendor_filename == "3820230411.mrc")
         ).first()

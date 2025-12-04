@@ -82,8 +82,13 @@ with DAG(
         return params
 
     @task
-    def downloaded_files(file_statuses: dict) -> list:
+    def archive_downloaded_files(file_statuses: dict) -> list:
         return [f[0] for f in file_statuses["fetched"]]
+
+    @task
+    def add_skipped_file_statuses(file_statuses: dict, skipped_files: list) -> dict:
+        file_statuses.update({"skipped": skipped_files})
+        return file_statuses
 
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
@@ -98,14 +103,12 @@ with DAG(
         params["remote_path"],
         params["vendor_uuid"],
         params["vendor_interface_uuid"],
-        file_list_by_strategy,
+        file_list_by_strategy["filtered_files"],
     )
 
-    files_to_download = filter_by_mod_date(
+    files_by_mod_date = filter_by_mod_date(
         conn_id,
         params["remote_path"],
-        params["vendor_uuid"],
-        params["vendor_interface_uuid"],
         files_not_yet_downloaded,
     )
 
@@ -114,14 +117,18 @@ with DAG(
         params["remote_path"],
         params["download_path"],
         params["vendor_interface_name"],
-        files_to_download,
+        files_by_mod_date["filtered_files"],
+    )
+
+    vendor_files_entries = add_skipped_file_statuses(
+        file_statuses, files_by_mod_date["skipped"]
     )
 
     update_vendor_files_table(
-        file_statuses, params["vendor_uuid"], params["vendor_interface_uuid"]
+        vendor_files_entries, params["vendor_uuid"], params["vendor_interface_uuid"]
     )
 
-    files_to_archive = downloaded_files(file_statuses)
+    files_to_archive = archive_downloaded_files(file_statuses)
 
     archive_task(
         files_to_archive,
