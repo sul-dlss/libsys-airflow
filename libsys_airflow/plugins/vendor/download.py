@@ -111,23 +111,32 @@ def filter_by_strategy(
     conn_id: str,
     remote_path: str,
     filename_regex: str,
-) -> list:
+) -> dict:
     """
-    Returns a list of files from vendor site per filter strategy
+    Returns a dict of all files from vendor site and files from vendor per filter strategy
+    {
+        "all_files": [],
+        "filtered_files": []
+    }
     """
     hook = create_hook(conn_id)
     adapter = _create_adapter(hook, remote_path)
+    result: dict = {"all_files": [], "filtered_files": []}
     all_filenames = adapter.list_directory()
-    logger.info(f"All filenames: {all_filenames}")
+    result["all_files"] = all_filenames
     if filename_regex == "CNT-ORD":
         logger.info("Filtered filenames by gobi order strategy")
-        return _gobi_order_filter_strategy(all_filenames)
+        result["filtered_files"] = _gobi_order_filter_strategy(all_filenames)
     elif filename_regex:
         logger.info("Filtered filenames by regex strategy")
-        return _regex_filter_strategy(filename_regex, remote_path, all_filenames)
+        result["filtered_files"] = _regex_filter_strategy(
+            filename_regex, remote_path, all_filenames
+        )
     else:
         logger.info("Filenames not filtered")
-        return all_filenames
+        result["filtered_files"] = all_filenames
+
+    return result
 
 
 @task
@@ -154,36 +163,38 @@ def filter_already_downloaded(
 def filter_by_mod_date(
     conn_id: str,
     remote_path: str,
-    vendor_uuid: str,
-    vendor_interface_uuid: str,
     file_list: list,
-) -> list:
+) -> dict:
     """
-    Returns a list of files inside download window: default is 10 days ago
-    Adds a skipped file row in VendorFile table for outside download window
+    Returns a dict of two lists: files inside download window (default 10 days ago)
+    and a list of files to be skipped {"skipped": [], "filtered_files": []}
     """
+    result: dict = {"skipped": [], "filtered_files": []}
     download_days_ago = Variable.get("download_days_ago", 10)
-    mod_date_after = None
+    mod_date_after = datetime.now(timezone.utc)
     if download_days_ago:
-        mod_date_after = datetime.now(timezone.utc) - timedelta(
-            days=int(download_days_ago)
-        )
+        mod_date_after = mod_date_after - timedelta(days=int(download_days_ago))
+
+    logger.info(
+        f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
+    )
 
     hook = create_hook(conn_id)
     adapter = _create_adapter(hook, remote_path)
-    engine = PostgresHook("vendor_loads").get_sqlalchemy_engine()
 
-    # Also creates skipped VendorFile for files that are outside download window.
-    filtered_by_timestamp = _filter_mod_date(
-        file_list,
-        adapter,
-        mod_date_after,
-        vendor_uuid,
-        vendor_interface_uuid,
-        engine,
-    )
-    logger.info(f"Filtered by mod filenames: {filtered_by_timestamp}")
-    return filtered_by_timestamp
+    for filename in file_list:
+        # can't compare offset-naive and offset-aware datetimes; make all timezone-naive just in case
+        mod_time = datetime.fromisoformat((adapter.get_mod_time(filename))).replace(
+            tzinfo=None
+        )
+        mod_date_after = mod_date_after.replace(tzinfo=None)
+        if mod_time > mod_date_after:
+            result["filtered_files"].append(filename)
+        else:
+            file_size = adapter.get_size(filename)
+            result["skipped"].append((filename, file_size, mod_time))
+
+    return result
 
 
 @task(max_active_tis_per_dag=Variable.get("max_active_download_tis", default_var=2))
@@ -236,19 +247,20 @@ def download_task(
 
 @task
 def update_vendor_files_table(
-    file_statuses: dict, vendor_uuid: str, vendor_interface_uuid: str
+    vendor_files_entries: dict, vendor_uuid: str, vendor_interface_uuid: str
 ):
     """
-    Updates VendorFiles table with info about files downloaded, errored, etc.
+    Updates VendorFiles table with info about files downloaded, errored, skipped, etc.
     Input:
     {
         "fetched": [("filename", "filesize", "datetimeisoformat"), (), ...],
         "fetching_error": [("filename", "filesize", "datetimeisoformat"), (), ...],
         "empty_file_error": [("filename", "filesize", "datetimeisoformat"), (), ...]
+        "skipped": [("filename", "filesize", "datetimeisoformat"), (), ...]
     }
     """
     engine = PostgresHook("vendor_loads").get_sqlalchemy_engine()
-    for status, file_list in file_statuses.items():
+    for status, file_list in vendor_files_entries.items():
         for _ in file_list:
             (filename, file_size, mod_time) = _
             _record_vendor_file(
@@ -398,40 +410,3 @@ def _filter_already_downloaded(
         "already_downloaded": already_downloaded,
         "not_yet_downloaded": not_yet_downloaded,
     }
-
-
-def _filter_mod_date(
-    filenames: list[str],
-    adapter: Union[FTPAdapter, SFTPAdapter],
-    mod_date_after: Optional[datetime],
-    vendor_uuid: str,
-    vendor_interface_uuid: str,
-    engine: Engine,
-) -> list[str]:
-    if mod_date_after is None:
-        return filenames
-    logger.info(
-        f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
-    )
-    filtered_filenames = []
-    for filename in filenames:
-        # can't compare offset-naive and offset-aware datetimes; make all timezone-naive just in case
-        mod_time = datetime.fromisoformat((adapter.get_mod_time(filename))).replace(
-            tzinfo=None
-        )
-        mod_date_after = mod_date_after.replace(tzinfo=None)
-        if mod_time > mod_date_after:
-            filtered_filenames.append(filename)
-        else:
-            # Create skipped VendorFile for files that are outside download window
-            file_size = adapter.get_size(filename)
-            _record_vendor_file(
-                filename,
-                file_size,
-                "skipped",
-                vendor_uuid,
-                vendor_interface_uuid,
-                mod_time,
-                engine,
-            )
-    return filtered_filenames
