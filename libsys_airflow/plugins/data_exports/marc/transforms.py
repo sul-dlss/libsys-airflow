@@ -82,6 +82,8 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 
 def clean_and_serialize_marc_files(marc_file_list: dict):
     for kind, file_list in marc_file_list.items():
+        if kind.startswith("not_found"):
+            continue
         for filepath in file_list:
             marc_clean_serialize(filepath, False, True)
             logger.info(

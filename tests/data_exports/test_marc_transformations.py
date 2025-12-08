@@ -442,7 +442,10 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
 def test_clean_and_serialize_marc_files(mock_marc_dir, caplog):
     marc_file = mock_marc_dir / "20240228.mrc"
     marc_file.touch()
-    marc_file_list = {"updates": [str(marc_file)]}
+    marc_file_list = {
+        "updates": [str(marc_file)],
+        "not_found": ["7b7b8be7-d949-4908-9d6f-358ad507738c"],
+    }
     clean_and_serialize_marc_files(marc_file_list)
     assert f"Removed MARC fields and serialized records for updates files: {str(marc_file)}"
 
