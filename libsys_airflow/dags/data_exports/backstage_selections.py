@@ -40,7 +40,7 @@ pacific_timezone = ZoneInfo("America/Los_Angeles")
 def missing_marc_records_email(**kwargs):
     fetched_marc_records: dict = kwargs.get("fetched_marc_records", {})
     generate_missing_marc_email.function(
-        dag_urn=kwargs["dag_run"],
+        dag_run=kwargs["dag_run"],
         missing_marc_instances=fetched_marc_records["not_found"],
     )
 
