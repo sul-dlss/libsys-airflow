@@ -193,7 +193,7 @@ def filter_by_mod_date(
             result["filtered_files"].append(filename)
         else:
             file_size = adapter.get_size(filename)
-            result["skipped"].append((filename, file_size, mod_time))
+            result["skipped"].append((filename, file_size, mod_time.isoformat()))
 
     return result
 

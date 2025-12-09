@@ -229,7 +229,7 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
     assert filtered_by_timestamp["skipped"].pop() == (
         "3820230413.mrc",
         678,
-        datetime.fromisoformat("2013-01-01T00:05:23"),
+        "2013-01-01T00:05:23",
     )
 
 
