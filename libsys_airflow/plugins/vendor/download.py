@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 class FTPAdapter:
     def __init__(self, hook: FTPHook, remote_path: str):
         self.hook = hook
-        self.hook.conn.sendcmd("TYPE I")  # type: ignore
         self.remote_path = remote_path
         self._filenames = hook.list_directory(remote_path)
 
@@ -46,10 +45,12 @@ class FTPAdapter:
 
     def get_size(self, filename: str) -> int:
         try:
+            self.hook.conn.sendcmd("TYPE I")  # type: ignore
             file_size = self.hook.get_size(filename)
         except ftplib.error_perm as e:
             logger.warning(f"Failed to retrieve size for {filename}, {e}")
             logger.info(f"Getting size for {self.remote_path}/{filename}")
+            self.hook.conn.sendcmd("TYPE I")  # type: ignore
             file_size = self.hook.get_size(f"{self.remote_path}/{filename}")
 
         if file_size is None:
