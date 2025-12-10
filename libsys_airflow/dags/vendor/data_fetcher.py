@@ -56,7 +56,7 @@ with DAG(
         "dataload_profile_uuid": Param(
             None, type=["null", "string"]
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
-        "remote_path": Param(None, type=["null", "string"]),  # 'oclc'
+        "remote_path": Param("", type="string"),  # 'oclc'
         "filename_regex": Param(
             None, type=["null", "string"]
         ),  # '^\d+\.mrc$' or CNT-ORD for special Gobi file filtering.
