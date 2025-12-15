@@ -482,19 +482,19 @@ zendesk = ["apache-airflow-providers-zendesk"]
 
 [[package]]
 name = "apache-airflow-providers-amazon"
-version = "9.18.0"
+version = "9.18.1"
 description = "Provider package apache-airflow-providers-amazon for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "apache_airflow_providers_amazon-9.18.0-py3-none-any.whl", hash = "sha256:9485f40e26cf2a7ff71848cde32ab47977973b51c1966499e77cf300294c8aac"},
-    {file = "apache_airflow_providers_amazon-9.18.0.tar.gz", hash = "sha256:c851eeeb6f7350a0a9ea506bce53348dc798a73c6b6449a5793a950451b87b68"},
+    {file = "apache_airflow_providers_amazon-9.18.1-py3-none-any.whl", hash = "sha256:5e9a7939e38f0bd80dd02a01957f1957a89c811dccc082923586c0d151ee6768"},
+    {file = "apache_airflow_providers_amazon-9.18.1.tar.gz", hash = "sha256:e71eb4b53c90f001bfcc4cdadb5203672cc66f019f1d123b9981dd5de50b2873"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.10.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 apache-airflow-providers-common-sql = ">=1.27.0"
 apache-airflow-providers-http = "*"
 asgiref = ">=2.3.0"
@@ -522,6 +522,7 @@ imap = ["apache-airflow-providers-imap"]
 microsoft-azure = ["apache-airflow-providers-microsoft-azure"]
 mongo = ["apache-airflow-providers-mongo"]
 openlineage = ["apache-airflow-providers-openlineage (>=2.3.0)"]
+pandas = ["pandas (>=2.1.2) ; python_version < \"3.13\"", "pandas (>=2.2.3) ; python_version >= \"3.13\""]
 python3-saml = ["lxml (>=6.0.0) ; python_version < \"3.13\"", "python3-saml (>=1.16.0) ; python_version < \"3.13\"", "xmlsec (>=1.3.14) ; python_version < \"3.13\""]
 s3fs = ["s3fs (>=2023.10.0)"]
 salesforce = ["apache-airflow-providers-salesforce"]
@@ -530,14 +531,14 @@ standard = ["apache-airflow-providers-standard"]
 
 [[package]]
 name = "apache-airflow-providers-common-compat"
-version = "1.10.0"
+version = "1.10.1"
 description = "Provider package apache-airflow-providers-common-compat for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "apache_airflow_providers_common_compat-1.10.0-py3-none-any.whl", hash = "sha256:7161e6d779b9dcc68b213e0eceac8c069f435233efb7a0e9d9bfaee3d933d080"},
-    {file = "apache_airflow_providers_common_compat-1.10.0.tar.gz", hash = "sha256:941fbcf163557780c596a30b216e731463440b56d3ec66d6d6beb17ecfa77ebb"},
+    {file = "apache_airflow_providers_common_compat-1.10.1-py3-none-any.whl", hash = "sha256:3a22c63441e597aa473ffd0dc7302171feab41981b0e09806f07f6d77301befc"},
+    {file = "apache_airflow_providers_common_compat-1.10.1.tar.gz", hash = "sha256:04715659b9ef6912dd9508af15d852dca97b7283816fd0fc2b2772d503ae271b"},
 ]
 
 [package.dependencies]
@@ -569,19 +570,19 @@ openlineage = ["apache-airflow-providers-openlineage"]
 
 [[package]]
 name = "apache-airflow-providers-common-sql"
-version = "1.30.0"
+version = "1.30.1"
 description = "Provider package apache-airflow-providers-common-sql for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "apache_airflow_providers_common_sql-1.30.0-py3-none-any.whl", hash = "sha256:9a344b5944fc7eb9015fce43192cbe4b80cc97e493b82a07dcf48a1b3f76d26a"},
-    {file = "apache_airflow_providers_common_sql-1.30.0.tar.gz", hash = "sha256:2dafbc82d9ed0999aac55694a4e0ddb46d7f25dd86f9bb9f86c2f61738d7f8f1"},
+    {file = "apache_airflow_providers_common_sql-1.30.1-py3-none-any.whl", hash = "sha256:9010c65159223cef8e44feb640ce532a0584b277074d8566523ad49de938ddd1"},
+    {file = "apache_airflow_providers_common_sql-1.30.1.tar.gz", hash = "sha256:4d0167387754bcdab2bd875646176f190cf69bb0644dca0f230c6007a6259ed2"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.10.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 methodtools = ">=0.4.7"
 more-itertools = ">=9.0.0"
 sqlparse = ">=0.5.1"
@@ -637,20 +638,20 @@ openlineage = ["apache-airflow-providers-openlineage"]
 
 [[package]]
 name = "apache-airflow-providers-http"
-version = "5.6.0"
+version = "5.6.1"
 description = "Provider package apache-airflow-providers-http for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "apache_airflow_providers_http-5.6.0-py3-none-any.whl", hash = "sha256:94b74d28df4484560f52779dce941111110fdb5e1cb7414efa375afb1f3c562b"},
-    {file = "apache_airflow_providers_http-5.6.0.tar.gz", hash = "sha256:9188ac7c896cfed2178bb5a04aab52ad1468e06d1b89b29b47d7c24a7700b428"},
+    {file = "apache_airflow_providers_http-5.6.1-py3-none-any.whl", hash = "sha256:bd843567c2d8dcf72150f29aba23f07846ffbc1b01743ad8fc0493492b23e7ed"},
+    {file = "apache_airflow_providers_http-5.6.1.tar.gz", hash = "sha256:70957752971c32a20cf7832ab8ef15a19bb69d772f40c1b8f385f0ab676daaa5"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.12.14"
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.8.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 asgiref = ">=2.3.0"
 requests = ">=2.32.0,<3"
 requests-toolbelt = ">=1.0.0"
@@ -660,19 +661,19 @@ common-compat = ["apache-airflow-providers-common-compat"]
 
 [[package]]
 name = "apache-airflow-providers-imap"
-version = "3.10.0"
+version = "3.10.1"
 description = "Provider package apache-airflow-providers-imap for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "apache_airflow_providers_imap-3.10.0-py3-none-any.whl", hash = "sha256:ea88cf234bb4eb95b4ac6b93f13f76a8110e1819431b165b6614a11e0850a975"},
-    {file = "apache_airflow_providers_imap-3.10.0.tar.gz", hash = "sha256:97ad8ee5a7d3af61b642b01c101d679e8ba534db54fb1470ab8f15411432de0e"},
+    {file = "apache_airflow_providers_imap-3.10.1-py3-none-any.whl", hash = "sha256:cb6bc0b2e369374ff55fa5e9ca4887f2bd6e72ae1bb7080ae4e200015a2eec29"},
+    {file = "apache_airflow_providers_imap-3.10.1.tar.gz", hash = "sha256:4c7698e648e85dec3af9f51c607f64b19827c8fe5575c7855a9a0bc7ec042004"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.8.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 
 [[package]]
 name = "apache-airflow-providers-postgres"
@@ -723,20 +724,20 @@ openlineage = ["apache-airflow-providers-openlineage"]
 
 [[package]]
 name = "apache-airflow-providers-smtp"
-version = "2.4.0"
+version = "2.4.1"
 description = "Provider package apache-airflow-providers-smtp for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "apache_airflow_providers_smtp-2.4.0-py3-none-any.whl", hash = "sha256:a22bfd9d34ddc27e8d7ff38ed07a2c1765612676a5ae579f0289ca557f0c773a"},
-    {file = "apache_airflow_providers_smtp-2.4.0.tar.gz", hash = "sha256:7398014f20846167260494de58027f5429994c773a92441ff0145d7b7768d4d6"},
+    {file = "apache_airflow_providers_smtp-2.4.1-py3-none-any.whl", hash = "sha256:65db08c9b30159d0fdca6df3a78ff6a98b0478b26cd242115822d995a851fcb4"},
+    {file = "apache_airflow_providers_smtp-2.4.1.tar.gz", hash = "sha256:f28cd23e006fd384fca74d0b22ac5b9267265ee3152f12c7b6aa1165356a53f9"},
 ]
 
 [package.dependencies]
 aiosmtplib = ">=0.1.6"
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.8.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 
 [[package]]
 name = "apache-airflow-providers-sqlite"
@@ -756,19 +757,19 @@ apache-airflow-providers-common-sql = ">=1.26.0"
 
 [[package]]
 name = "apache-airflow-providers-ssh"
-version = "4.2.0"
+version = "4.2.1"
 description = "Provider package apache-airflow-providers-ssh for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["test"]
 files = [
-    {file = "apache_airflow_providers_ssh-4.2.0-py3-none-any.whl", hash = "sha256:012dc0d61a8ebff4c13a829bb78428101f98164d8970058a39360b01995a8cea"},
-    {file = "apache_airflow_providers_ssh-4.2.0.tar.gz", hash = "sha256:b4f758cfedeeb8bde1ba46715922048acb8d628fadb85cb08deb26ac36e274ab"},
+    {file = "apache_airflow_providers_ssh-4.2.1-py3-none-any.whl", hash = "sha256:d944658ad06f82e3b4d4c059f58af92d74354c2cfa281a0c6a21606b0793121c"},
+    {file = "apache_airflow_providers_ssh-4.2.1.tar.gz", hash = "sha256:96aaf866323dd59ce901627fd18602603dc1bdd9742581c63058e47cc68edd98"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=2.11.0"
-apache-airflow-providers-common-compat = ">=1.10.0"
+apache-airflow-providers-common-compat = ">=1.10.1"
 paramiko = ">=2.9.0,<4.0.0"
 sshtunnel = ">=0.3.2"
 
@@ -1226,18 +1227,18 @@ types-requests = ">=2.31.0.20240125,<3.0.0.0"
 
 [[package]]
 name = "boto3"
-version = "1.42.4"
+version = "1.42.9"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.42.4-py3-none-any.whl", hash = "sha256:0f4089e230d55f981d67376e48cefd41c3d58c7f694480f13288e6ff7b1fefbc"},
-    {file = "boto3-1.42.4.tar.gz", hash = "sha256:65f0d98a3786ec729ba9b5f70448895b2d1d1f27949aa7af5cb4f39da341bbc4"},
+    {file = "boto3-1.42.9-py3-none-any.whl", hash = "sha256:d21d22af9aeb1bad8e9b670a221d6534c0120f7e7baf523dafaca83f1f5c3f90"},
+    {file = "boto3-1.42.9.tar.gz", hash = "sha256:cdd4cc3e5bb08ed8a0c5cc77eca78f98f0239521de0991f14e44b788b0c639b2"},
 ]
 
 [package.dependencies]
-botocore = ">=1.42.4,<1.43.0"
+botocore = ">=1.42.9,<1.43.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.16.0,<0.17.0"
 
@@ -1246,14 +1247,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.42.4"
+version = "1.42.9"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.42.4-py3-none-any.whl", hash = "sha256:c3b091fd33809f187824b6434e518b889514ded5164cb379358367c18e8b0d7d"},
-    {file = "botocore-1.42.4.tar.gz", hash = "sha256:d4816023492b987a804f693c2d76fb751fdc8755d49933106d69e2489c4c0f98"},
+    {file = "botocore-1.42.9-py3-none-any.whl", hash = "sha256:f99ba2ca34e24c4ebec150376c815646970753c032eb84f230874b2975a185a8"},
+    {file = "botocore-1.42.9.tar.gz", hash = "sha256:74f69bfd116cc7c8215481284957eecdb48580e071dd50cb8c64356a866abd8c"},
 ]
 
 [package.dependencies]
@@ -4047,14 +4048,14 @@ files = [
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Python API"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_api-1.39.0-py3-none-any.whl", hash = "sha256:3c3b3ca5c5687b1b5b37e5c5027ff68eacea8675241b29f13110a8ffbb8f0459"},
-    {file = "opentelemetry_api-1.39.0.tar.gz", hash = "sha256:6130644268c5ac6bdffaf660ce878f10906b3e789f7e2daa5e169b047a2933b9"},
+    {file = "opentelemetry_api-1.39.1-py3-none-any.whl", hash = "sha256:2edd8463432a7f8443edce90972169b195e7d6a05500cd29e6d13898187c9950"},
+    {file = "opentelemetry_api-1.39.1.tar.gz", hash = "sha256:fbde8c80e1b937a2c61f20347e91c0c18a1940cecf012d62e65a7caf08967c9c"},
 ]
 
 [package.dependencies]
@@ -4063,54 +4064,54 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "opentelemetry-exporter-otlp"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Collector Exporters"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_exporter_otlp-1.39.0-py3-none-any.whl", hash = "sha256:fe155d6968d581b325574ad6dc267c8de299397b18d11feeda2206d0a47928a9"},
-    {file = "opentelemetry_exporter_otlp-1.39.0.tar.gz", hash = "sha256:b405da0287b895fe4e2450dedb2a5b072debba1dfcfed5bdb3d1d183d8daa296"},
+    {file = "opentelemetry_exporter_otlp-1.39.1-py3-none-any.whl", hash = "sha256:68ae69775291f04f000eb4b698ff16ff685fdebe5cb52871bc4e87938a7b00fe"},
+    {file = "opentelemetry_exporter_otlp-1.39.1.tar.gz", hash = "sha256:7cf7470e9fd0060c8a38a23e4f695ac686c06a48ad97f8d4867bc9b420180b9c"},
 ]
 
 [package.dependencies]
-opentelemetry-exporter-otlp-proto-grpc = "1.39.0"
-opentelemetry-exporter-otlp-proto-http = "1.39.0"
+opentelemetry-exporter-otlp-proto-grpc = "1.39.1"
+opentelemetry-exporter-otlp-proto-http = "1.39.1"
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-common"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Protobuf encoding"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_exporter_otlp_proto_common-1.39.0-py3-none-any.whl", hash = "sha256:3d77be7c4bdf90f1a76666c934368b8abed730b5c6f0547a2ec57feb115849ac"},
-    {file = "opentelemetry_exporter_otlp_proto_common-1.39.0.tar.gz", hash = "sha256:a135fceed1a6d767f75be65bd2845da344dd8b9258eeed6bc48509d02b184409"},
+    {file = "opentelemetry_exporter_otlp_proto_common-1.39.1-py3-none-any.whl", hash = "sha256:08f8a5862d64cc3435105686d0216c1365dc5701f86844a8cd56597d0c764fde"},
+    {file = "opentelemetry_exporter_otlp_proto_common-1.39.1.tar.gz", hash = "sha256:763370d4737a59741c89a67b50f9e39271639ee4afc999dadfe768541c027464"},
 ]
 
 [package.dependencies]
-opentelemetry-proto = "1.39.0"
+opentelemetry-proto = "1.39.1"
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-grpc"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Collector Protobuf over gRPC Exporter"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_exporter_otlp_proto_grpc-1.39.0-py3-none-any.whl", hash = "sha256:758641278050de9bb895738f35ff8840e4a47685b7e6ef4a201fe83196ba7a05"},
-    {file = "opentelemetry_exporter_otlp_proto_grpc-1.39.0.tar.gz", hash = "sha256:7e7bb3f436006836c0e0a42ac619097746ad5553ad7128a5bd4d3e727f37fc06"},
+    {file = "opentelemetry_exporter_otlp_proto_grpc-1.39.1-py3-none-any.whl", hash = "sha256:fa1c136a05c7e9b4c09f739469cbdb927ea20b34088ab1d959a849b5cc589c18"},
+    {file = "opentelemetry_exporter_otlp_proto_grpc-1.39.1.tar.gz", hash = "sha256:772eb1c9287485d625e4dbe9c879898e5253fea111d9181140f51291b5fec3ad"},
 ]
 
 [package.dependencies]
 googleapis-common-protos = ">=1.57,<2.0"
 grpcio = {version = ">=1.63.2,<2.0.0", markers = "python_version < \"3.13\""}
 opentelemetry-api = ">=1.15,<2.0"
-opentelemetry-exporter-otlp-proto-common = "1.39.0"
-opentelemetry-proto = "1.39.0"
-opentelemetry-sdk = ">=1.39.0,<1.40.0"
+opentelemetry-exporter-otlp-proto-common = "1.39.1"
+opentelemetry-proto = "1.39.1"
+opentelemetry-sdk = ">=1.39.1,<1.40.0"
 typing-extensions = ">=4.6.0"
 
 [package.extras]
@@ -4118,22 +4119,22 @@ gcp-auth = ["opentelemetry-exporter-credential-provider-gcp (>=0.59b0)"]
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-http"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Collector Protobuf over HTTP Exporter"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_exporter_otlp_proto_http-1.39.0-py3-none-any.whl", hash = "sha256:5789cb1375a8b82653328c0ce13a054d285f774099faf9d068032a49de4c7862"},
-    {file = "opentelemetry_exporter_otlp_proto_http-1.39.0.tar.gz", hash = "sha256:28d78fc0eb82d5a71ae552263d5012fa3ebad18dfd189bf8d8095ba0e65ee1ed"},
+    {file = "opentelemetry_exporter_otlp_proto_http-1.39.1-py3-none-any.whl", hash = "sha256:d9f5207183dd752a412c4cd564ca8875ececba13be6e9c6c370ffb752fd59985"},
+    {file = "opentelemetry_exporter_otlp_proto_http-1.39.1.tar.gz", hash = "sha256:31bdab9745c709ce90a49a0624c2bd445d31a28ba34275951a6a362d16a0b9cb"},
 ]
 
 [package.dependencies]
 googleapis-common-protos = ">=1.52,<2.0"
 opentelemetry-api = ">=1.15,<2.0"
-opentelemetry-exporter-otlp-proto-common = "1.39.0"
-opentelemetry-proto = "1.39.0"
-opentelemetry-sdk = ">=1.39.0,<1.40.0"
+opentelemetry-exporter-otlp-proto-common = "1.39.1"
+opentelemetry-proto = "1.39.1"
+opentelemetry-sdk = ">=1.39.1,<1.40.0"
 requests = ">=2.7,<3.0"
 typing-extensions = ">=4.5.0"
 
@@ -4142,14 +4143,14 @@ gcp-auth = ["opentelemetry-exporter-credential-provider-gcp (>=0.59b0)"]
 
 [[package]]
 name = "opentelemetry-proto"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Python Proto"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_proto-1.39.0-py3-none-any.whl", hash = "sha256:1e086552ac79acb501485ff0ce75533f70f3382d43d0a30728eeee594f7bf818"},
-    {file = "opentelemetry_proto-1.39.0.tar.gz", hash = "sha256:c1fa48678ad1a1624258698e59be73f990b7fc1f39e73e16a9d08eef65dd838c"},
+    {file = "opentelemetry_proto-1.39.1-py3-none-any.whl", hash = "sha256:22cdc78efd3b3765d09e68bfbd010d4fc254c9818afd0b6b423387d9dee46007"},
+    {file = "opentelemetry_proto-1.39.1.tar.gz", hash = "sha256:6c8e05144fc0d3ed4d22c2289c6b126e03bcd0e6a7da0f16cedd2e1c2772e2c8"},
 ]
 
 [package.dependencies]
@@ -4157,35 +4158,35 @@ protobuf = ">=5.0,<7.0"
 
 [[package]]
 name = "opentelemetry-sdk"
-version = "1.39.0"
+version = "1.39.1"
 description = "OpenTelemetry Python SDK"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_sdk-1.39.0-py3-none-any.whl", hash = "sha256:90cfb07600dfc0d2de26120cebc0c8f27e69bf77cd80ef96645232372709a514"},
-    {file = "opentelemetry_sdk-1.39.0.tar.gz", hash = "sha256:c22204f12a0529e07aa4d985f1bca9d6b0e7b29fe7f03e923548ae52e0e15dde"},
+    {file = "opentelemetry_sdk-1.39.1-py3-none-any.whl", hash = "sha256:4d5482c478513ecb0a5d938dcc61394e647066e0cc2676bee9f3af3f3f45f01c"},
+    {file = "opentelemetry_sdk-1.39.1.tar.gz", hash = "sha256:cf4d4563caf7bff906c9f7967e2be22d0d6b349b908be0d90fb21c8e9c995cc6"},
 ]
 
 [package.dependencies]
-opentelemetry-api = "1.39.0"
-opentelemetry-semantic-conventions = "0.60b0"
+opentelemetry-api = "1.39.1"
+opentelemetry-semantic-conventions = "0.60b1"
 typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "opentelemetry-semantic-conventions"
-version = "0.60b0"
+version = "0.60b1"
 description = "OpenTelemetry Semantic Conventions"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "opentelemetry_semantic_conventions-0.60b0-py3-none-any.whl", hash = "sha256:069530852691136018087b52688857d97bba61cd641d0f8628d2d92788c4f78a"},
-    {file = "opentelemetry_semantic_conventions-0.60b0.tar.gz", hash = "sha256:227d7aa73cbb8a2e418029d6b6465553aa01cf7e78ec9d0bc3255c7b3ac5bf8f"},
+    {file = "opentelemetry_semantic_conventions-0.60b1-py3-none-any.whl", hash = "sha256:9fa8c8b0c110da289809292b0591220d3a7b53c1526a23021e977d68597893fb"},
+    {file = "opentelemetry_semantic_conventions-0.60b1.tar.gz", hash = "sha256:87c228b5a0669b748c76d76df6c364c369c28f1c465e50f661e39737e84bc953"},
 ]
 
 [package.dependencies]
-opentelemetry-api = "1.39.0"
+opentelemetry-api = "1.39.1"
 typing-extensions = ">=4.5.0"
 
 [[package]]
@@ -6014,14 +6015,14 @@ sqlalchemy = "*"
 
 [[package]]
 name = "sqlalchemy-utils"
-version = "0.42.0"
+version = "0.42.1"
 description = "Various utility functions for SQLAlchemy."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "sqlalchemy_utils-0.42.0-py3-none-any.whl", hash = "sha256:c8c0b7f00f4734f6f20e9a4d06b39d79d58c8629cba50924fcaeb20e28eb4f48"},
-    {file = "sqlalchemy_utils-0.42.0.tar.gz", hash = "sha256:6d1ecd3eed8b941f0faf8a531f5d5cee7cffa2598fcf8163de8c31c7a417a5e0"},
+    {file = "sqlalchemy_utils-0.42.1-py3-none-any.whl", hash = "sha256:243cfe1b3a1dae3c74118ae633f1d1e0ed8c787387bc33e556e37c990594ac80"},
+    {file = "sqlalchemy_utils-0.42.1.tar.gz", hash = "sha256:881f9cd9e5044dc8f827bccb0425ce2e55490ce44fc0bb848c55cc8ee44cc02e"},
 ]
 
 [package.dependencies]
@@ -6263,14 +6264,14 @@ files = [
 
 [[package]]
 name = "tzdata"
-version = "2025.2"
+version = "2025.3"
 description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
 groups = ["main", "test"]
 files = [
-    {file = "tzdata-2025.2-py2.py3-none-any.whl", hash = "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8"},
-    {file = "tzdata-2025.2.tar.gz", hash = "sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9"},
+    {file = "tzdata-2025.3-py2.py3-none-any.whl", hash = "sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1"},
+    {file = "tzdata-2025.3.tar.gz", hash = "sha256:de39c2ca5dc7b0344f2eba86f49d614019d29f060fc4ebc8a417896a620b56a7"},
 ]
 
 [[package]]
@@ -6312,14 +6313,14 @@ typechecking = ["mypy (>=1.10.0)", "pytest-mypy-plugins (>=3.1.2)"]
 
 [[package]]
 name = "urllib3"
-version = "2.6.0"
+version = "2.6.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "urllib3-2.6.0-py3-none-any.whl", hash = "sha256:c90f7a39f716c572c4e3e58509581ebd83f9b59cced005b7db7ad2d22b0db99f"},
-    {file = "urllib3-2.6.0.tar.gz", hash = "sha256:cb9bcef5a4b345d5da5d145dc3e30834f58e8018828cbc724d30b4cb7d4d49f1"},
+    {file = "urllib3-2.6.2-py3-none-any.whl", hash = "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"},
+    {file = "urllib3-2.6.2.tar.gz", hash = "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797"},
 ]
 
 [package.extras]
