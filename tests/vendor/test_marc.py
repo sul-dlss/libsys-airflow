@@ -114,7 +114,11 @@ def test_add_fields(tmp_path, marc_path):
             {
                 "tag": "910",
                 "indicator2": 'x',
-                "subfields": [{"code": "a", "value": "MarcIt"}],
+                "subfields": [
+                    {"code": "a", "value": "MarcIt"},
+                    {"code": "b", "value": "Brief record."},
+                    {"code": "a", "value": "This subfield is repeatable."},
+                ],
             }
         ]
     )
@@ -126,7 +130,10 @@ def test_add_fields(tmp_path, marc_path):
             field = record["910"]
             assert field
             assert field.indicators == pymarc.Indicators(first=' ', second='x')
-            assert field["a"] == "MarcIt"
+            subfields = field.subfields_as_dict()
+            assert "MarcIt" in subfields["a"]
+            assert "This subfield is repeatable." in subfields["a"]
+            assert field["b"] == "Brief record."
 
 
 def test_add_fields_with_unless(tmp_path, marcit_path):
