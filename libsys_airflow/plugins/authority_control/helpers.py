@@ -1,12 +1,44 @@
 import logging
 import pathlib
 
+import pandas as pd
 import pymarc
 
 from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_001(field: str) -> str:
+    for row in ["\\", " "]:
+        field = field.replace(row, "")
+    return field
+
+
+def clean_csv_file(**kwargs) -> str:
+    """
+    Takes a csv_file of 001s, cleans 001s, and saves to new file
+    and returns the new file's location
+    """
+    airflow_dir: str = kwargs.get("airflow", "/opt/airflow")
+    csv_file: str = kwargs.get("file")
+
+    airflow_path = pathlib.Path(airflow_dir)
+    authority_uploads_path = airflow_path / "authorities/uploads"
+    authority_uploads_path.mkdir(parents=True, exist_ok=True)
+
+    csv_path = authority_uploads_path / csv_file
+    if not csv_path.exists():
+        raise ValueError(f"{csv_file} doesn't exist")
+
+    csv_df = pd.read_csv(csv_path)
+    csv_df["001"] = csv_df["001"].apply(_normalize_001)
+
+    updated_csv = authority_uploads_path / f"updated-{csv_file}"
+    csv_df.to_csv(updated_csv, index=False)
+
+    return str(updated_csv.absolute())
 
 
 def clean_up(marc_file: str, airflow: str = '/opt/airflow') -> bool:
