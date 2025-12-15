@@ -208,8 +208,10 @@ class VendorManagementView(BaseView):
             processing_options['package_name'] = form['package-name']
             processing_options['change_marc'] = []
             processing_options['delete_marc'] = []
-            if form['archive-regex'] != '':
-                processing_options['archive_regex'] = form['archive-regex']
+            if form.get("archive-regex") is None:
+                processing_options["archive_regex"] = ""
+            else:
+                processing_options["archive_regex"] = form["archive-regex"]
 
             for name, value in form.items():
                 if name.startswith('remove-field'):
