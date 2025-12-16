@@ -5,6 +5,7 @@ import pytest
 
 
 from libsys_airflow.plugins.authority_control.helpers import (
+    archive_csv_files,
     batch_csv,
     clean_csv_file,
     clean_up,
@@ -50,6 +51,35 @@ def mock_folio_client(mocker):
     mock_client.folio_get = mock_get
     mock_client.folio_delete = mock_delete
     return mock_client
+
+
+def test_archive_csv_files(tmp_path, caplog):
+    authorities_uploads_path = tmp_path / "authorities/uploads/"
+    authorities_uploads_path.mkdir(parents=True)
+
+    original_csv = authorities_uploads_path / "test.csv"
+    original_csv.touch()
+    updated_csv = authorities_uploads_path / "update-1765926805.csv"
+    updated_csv.touch()
+    batch1_csv = authorities_uploads_path / "update-1765926805-01.csv"
+    batch1_csv.touch()
+    batch2_csv = authorities_uploads_path / "update-1765926805-02.csv"
+    archive_csv_files(
+        airflow=tmp_path,
+        csv_files=[
+            str(original_csv),
+            str(updated_csv),
+            str(batch1_csv),
+            str(batch2_csv),
+        ],
+    )
+    assert original_csv.exists() is False
+    assert updated_csv.exists() is False
+    assert batch1_csv.exists() is False
+    assert f"{batch2_csv} does not exist, cannot archive" in caplog.text
+
+    archive_updated_csv = tmp_path / "authorities/archive/uploads/update-1765926805.csv"
+    assert archive_updated_csv.exists()
 
 
 def test_batch_csv(tmp_path):

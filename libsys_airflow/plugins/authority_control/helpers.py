@@ -19,6 +19,26 @@ def _normalize_001(field: str) -> str:
     return field
 
 
+def archive_csv_files(**kwargs):
+    """
+    Archives CSV files of 001s
+    """
+    csv_files = kwargs.get("csv_files", [])
+    airflow = kwargs.get("airflow", "/opt/airflow")
+    airflow_path = pathlib.Path(airflow)
+
+    archive_path = airflow_path / "authorities/archive/uploads"
+    archive_path.mkdir(parents=True, exist_ok=True)
+    for csv_file in csv_files:
+        csv_file_path = pathlib.Path(csv_file)
+        if not csv_file_path.exists():
+            logger.error(f"{csv_file} does not exist, cannot archive")
+            continue
+        csv_archive_path = archive_path / csv_file_path.name
+        csv_file_path.rename(csv_archive_path)
+        logger.info(f"Archived {csv_file_path.name} to {csv_archive_path}")
+
+
 def batch_csv(**kwargs) -> list:
     """
     Takes a csv_file of 001s and generates a list of batch files
