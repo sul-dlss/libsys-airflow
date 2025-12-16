@@ -9,6 +9,7 @@ from libsys_airflow.plugins.authority_control.helpers import (
     clean_csv_file,
     clean_up,
     create_batches,
+    delete_authorities,
     find_authority_by_001,
     trigger_load_record_dag,
 )
@@ -16,6 +17,12 @@ from libsys_airflow.plugins.authority_control.helpers import (
 
 @pytest.fixture
 def mock_folio_client(mocker):
+    def mock_delete(*args, **kwargs):
+        result = {}
+        if args[0].endswith("05f594c41bb6"):
+            raise ValueError("404: Not Found")
+        return result
+
     def mock_get(*args, **kwargs):
         query = kwargs.get("query")
         natural_id = query.split("==")[-1]
@@ -41,6 +48,7 @@ def mock_folio_client(mocker):
 
     mock_client = mocker.MagicMock()
     mock_client.folio_get = mock_get
+    mock_client.folio_delete = mock_delete
     return mock_client
 
 
@@ -118,6 +126,16 @@ def test_create_batches(tmp_path):
     assert len(batches) == 6
     assert (tmp_path / "authorities/authority_1.mrc").exists()
     assert (tmp_path / "authorities/authority_2.mrc").exists()
+
+
+def test_delete_authorities(mock_folio_client):
+    deletes = [
+        "2e8dd0b8-075e-4e86-b2bd-ef804870e5e0",
+        "e7329957-40d5-4f9c-b705-05f594c41bb6",
+    ]
+    output = delete_authorities(deletes=deletes, client=mock_folio_client)
+    assert output["deleted"] == 1
+    assert output["errors"][0].startswith("e7329957-40d5-4f9c-b705-05f594c41bb6: 404")
 
 
 def test_find_authority_by_001(tmp_path, mock_folio_client):

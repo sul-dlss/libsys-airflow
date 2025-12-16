@@ -7,6 +7,7 @@ from airflow.operators.python import get_current_context
 from libsys_airflow.plugins.authority_control.helpers import (
     batch_csv,
     clean_csv_file,
+    delete_authorities,
     find_authority_by_001,
 )
 
@@ -58,7 +59,9 @@ def delete_authority_records(*args, **kwargs):
 
         @task
         def delete_authority_records(**kwargs):
-            pass
+            delete_uuids = kwargs.get("deletes", [])
+            results = delete_authorities(deletes=delete_uuids)
+            return results
 
         find_results = retrieve_authority_records()
         delete_authority_records(deletes=find_results.get("deletes", []))
