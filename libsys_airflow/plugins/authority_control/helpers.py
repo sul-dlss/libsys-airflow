@@ -113,6 +113,28 @@ def create_batches(marc21_file: str, airflow: str = '/opt/airflow/') -> list:
     return batches
 
 
+def delete_authorities(**kwargs) -> dict:
+    """
+    Deletes FOLIO authority record by UUID, returns count of total deleted and
+    any errors
+    """
+    delete_uuids = kwargs.get("deletes", [])
+    client = folio_client(**kwargs)
+    output = {"deleted": 0, "errors": []}
+    logger.info(f"Starting deletion of {len(delete_uuids):,}")
+    for uuid in delete_uuids:
+        try:
+            client.folio_delete(f"/authority-storage/authorities/{uuid}")
+            output["deleted"] += 1
+        except Exception as e:
+            output['errors'].append(f"{uuid}: {e}")
+            logger.error(output['errors'][-1])
+    logger.info(
+        f"Deleted: {output['deleted']:,}, total errors: {len(output['errors'])}"
+    )
+    return output
+
+
 def find_authority_by_001(**kwargs) -> dict:
     """
     Searches authority FOLIO records by 001 via naturalid property. Tracks if
@@ -122,6 +144,7 @@ def find_authority_by_001(**kwargs) -> dict:
     csv_file = kwargs.get("file")
     client = folio_client(**kwargs)
     csv_df = pd.read_csv(csv_file)
+    logger.info(f"Finding FOLIO authority records for {len(csv_df):,}")
     for field001 in csv_df["001s"]:
         try:
             auth_records = client.folio_get(
@@ -142,6 +165,9 @@ def find_authority_by_001(**kwargs) -> dict:
                     output["multiples"].append(f"{field001}: {multiple_auth_uuids}")
         except Exception as e:
             output["errors"].append(f"{field001}: {e}")
+    logger.info(
+        f"{len(output['deletes']):,} deletes, {len(output['missing']):,} missing, {len(output['errors']):,} errors, {len(output['multiples']):,} multiples"
+    )
     return output
 
 
