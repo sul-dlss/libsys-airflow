@@ -5,11 +5,32 @@ import pytest  # noqa
 
 
 from libsys_airflow.plugins.authority_control.helpers import (
+    batch_csv,
     clean_csv_file,
     clean_up,
     create_batches,
     trigger_load_record_dag,
 )
+
+
+def test_batch_csv(tmp_path):
+
+    test_file = tmp_path / "update-739601-test.csv"
+    with test_file.open("w+") as fo:
+        fo.write("001s\n")
+        for i in range(2_078):
+            fo.write(f"n{i:08d}\n")
+
+    batches = batch_csv(file=str(test_file.absolute()))
+    assert len(batches) == 5
+    second_batch_df = pd.read_csv(batches[1])
+    assert len(second_batch_df) == 500
+    assert second_batch_df['001s'].iloc[0] == "n00000500"
+    assert second_batch_df['001s'].iloc[-1] == "n00000999"
+    last_batch_df = pd.read_csv(batches[-1])
+    assert len(last_batch_df) == 78
+    assert last_batch_df['001s'].iloc[0] == "n00002000"
+    assert last_batch_df['001s'].iloc[-1] == "n00002077"
 
 
 def test_clean_csv_file(tmp_path):
@@ -26,7 +47,7 @@ def test_clean_csv_file(tmp_path):
 
     updated_csv_file = clean_csv_file(airflow=tmp_path, file="test.csv")
 
-    assert updated_csv_file.endswith("updated-test.csv")
+    assert updated_csv_file.endswith("-test.csv")
 
     updated_001s_df = pd.read_csv(updated_csv_file)
 

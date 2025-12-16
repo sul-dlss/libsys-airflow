@@ -1,3 +1,4 @@
+import datetime
 import logging
 import pathlib
 
@@ -14,6 +15,28 @@ def _normalize_001(field: str) -> str:
     for row in ["\\", " "]:
         field = field.replace(row, "")
     return field
+
+
+def batch_csv(**kwargs) -> list:
+    """
+    Takes a csv_file of 001s and generates a list of batch files
+    """
+    csv_absolute_file: str = kwargs.get("file")
+    batch_size = int(Variable.get("AUTH_MAX_ENTITIES", 500))
+    csv_path = pathlib.Path(csv_absolute_file)
+
+    uploads_path = csv_path.parent
+
+    csv_df = pd.read_csv(csv_path)
+    batches_paths = []
+    count = 1
+    for i in range(0, len(csv_df), batch_size):
+        batch_001s = csv_df.iloc[i : i + batch_size]
+        batch_path = uploads_path / f"{csv_path.stem}-{count:02d}.csv"
+        batch_001s.to_csv(batch_path, index=False)
+        batches_paths.append(str(batch_path.absolute()))
+        count += 1
+    return batches_paths
 
 
 def clean_csv_file(**kwargs) -> str:
@@ -34,8 +57,8 @@ def clean_csv_file(**kwargs) -> str:
 
     csv_df = pd.read_csv(csv_path)
     csv_df["001"] = csv_df["001"].apply(_normalize_001)
-
-    updated_csv = authority_uploads_path / f"updated-{csv_file}"
+    timestamp = datetime.datetime.now(datetime.UTC)
+    updated_csv = authority_uploads_path / f"updated-{timestamp.toordinal()}-{csv_file}"
     csv_df.to_csv(updated_csv, index=False)
 
     return str(updated_csv.absolute())
@@ -58,7 +81,7 @@ def clean_up(marc_file: str, airflow: str = '/opt/airflow') -> bool:
 
 def create_batches(marc21_file: str, airflow: str = '/opt/airflow/') -> list:
     """
-    Creates 1 or more 50k batch files
+    Creates 1 or more batch files
     """
     marc21_file_path = pathlib.Path(marc21_file)
     batch_dir = pathlib.Path(airflow) / "authorities"
