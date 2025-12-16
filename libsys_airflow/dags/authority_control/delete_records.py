@@ -5,6 +5,7 @@ from airflow.decorators import dag, task, task_group
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.authority_control.helpers import (
+    batch_csv,
     clean_csv_file,
 )
 
@@ -41,7 +42,9 @@ def delete_authority_records(*args, **kwargs):
 
     @task
     def batch_001s(**kwargs):
-        pass
+        updated_csv_file = kwargs.get("file")
+        batches = batch_csv(file=updated_csv_file)
+        return batches
 
     @task_group(group_id="retrieve-delete-group")
     def retrieve_and_delete_auth_records(**kwargs):
@@ -60,9 +63,10 @@ def delete_authority_records(*args, **kwargs):
     def email_report(**kwargs):
         pass
 
-    batches_001s = batch_001s()
+    updated_csv = read_csv_parse_001s()
+    batches_001s = batch_001s(file=updated_csv)
 
-    setup_dag() >> read_csv_parse_001s() >> batches_001s
+    setup_dag() >> updated_csv
 
     retrieve_and_delete_auth_records.expand(batch=batches_001s) >> email_report()
 
