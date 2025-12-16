@@ -5,6 +5,7 @@ from airflow.decorators import dag, task, task_group
 from airflow.operators.python import get_current_context
 
 from libsys_airflow.plugins.authority_control.helpers import (
+    archive_csv_files,
     batch_csv,
     clean_csv_file,
     delete_authorities,
@@ -59,12 +60,24 @@ def delete_authority_records(*args, **kwargs):
 
         @task
         def delete_authority_records(**kwargs):
-            delete_uuids = kwargs.get("deletes", [])
+            delete_uuids = kwargs["deletes"]
             results = delete_authorities(deletes=delete_uuids)
             return results
 
         find_results = retrieve_authority_records()
-        delete_authority_records(deletes=find_results.get("deletes", []))
+        delete_authority_records(deletes=find_results["deletes"])
+
+    @task
+    def move_csv_files(**kwargs):
+        task_instance = kwargs["ti"]
+        all_csv_files = []
+        original_csv = task_instance.xcom_pull(task_ids="setup_dag", key="file")
+        all_csv_files.append(original_csv)
+        updated_csv = task_instance.xcom_pull(task_ids="read_csv_parse_001")
+        all_csv_files.append(updated_csv)
+        batch_csvs = task_instance.xcom_pull(task_ids="batch_001s")
+        all_csv_files.extend(batch_csvs)
+        archive_csv_files(all_csv_files)
 
     @task
     def email_report(**kwargs):
@@ -75,7 +88,10 @@ def delete_authority_records(*args, **kwargs):
 
     setup_dag() >> updated_csv
 
-    retrieve_and_delete_auth_records.expand(batch=batches_001s) >> email_report()
+    retrieve_and_delete_auth_records.expand(batch=batches_001s) >> [
+        move_csv_files(),
+        email_report(),
+    ]
 
 
 delete_authority_records()
