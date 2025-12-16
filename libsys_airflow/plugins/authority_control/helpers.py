@@ -8,6 +8,8 @@ import pymarc
 from airflow.models import Variable
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
+from libsys_airflow.plugins.shared.folio_client import folio_client
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,7 +60,9 @@ def clean_csv_file(**kwargs) -> str:
     csv_df = pd.read_csv(csv_path)
     csv_df["001"] = csv_df["001"].apply(_normalize_001)
     timestamp = datetime.datetime.now(datetime.UTC)
-    updated_csv = authority_uploads_path / f"updated-{timestamp.toordinal()}-{csv_file}"
+    updated_csv = (
+        authority_uploads_path / f"updated-{int(timestamp.timestamp())}-{csv_file}"
+    )
     csv_df.to_csv(updated_csv, index=False)
 
     return str(updated_csv.absolute())
@@ -107,6 +111,38 @@ def create_batches(marc21_file: str, airflow: str = '/opt/airflow/') -> list:
 
     logger.info(f"Created {len(batches)} batches from {marc21_file_path}")
     return batches
+
+
+def find_authority_by_001(**kwargs) -> dict:
+    """
+    Searches authority FOLIO records by 001 via naturalid property. Tracks if
+    search returns more than one matching record or if no records are found.
+    """
+    output = {"deletes": [], "errors": [], "missing": [], "multiples": []}
+    csv_file = kwargs.get("file")
+    client = folio_client(**kwargs)
+    csv_df = pd.read_csv(csv_file)
+    for field001 in csv_df["001s"]:
+        try:
+            auth_records = client.folio_get(
+                "/authority-storage/authorities",
+                key="authorities",
+                query=f"naturalId=={field001}",
+            )
+            match len(auth_records):
+
+                case 0:
+                    output["missing"].append(field001)
+
+                case 1:
+                    output["deletes"].append(auth_records[0]['id'])
+
+                case _:
+                    multiple_auth_uuids = ",".join([r['id'] for r in auth_records])
+                    output["multiples"].append(f"{field001}: {multiple_auth_uuids}")
+        except Exception as e:
+            output["errors"].append(f"{field001}: {e}")
+    return output
 
 
 def trigger_load_record_dag(file_path: str, profile_name: str) -> TriggerDagRunOperator:

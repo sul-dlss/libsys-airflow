@@ -7,6 +7,7 @@ from airflow.operators.python import get_current_context
 from libsys_airflow.plugins.authority_control.helpers import (
     batch_csv,
     clean_csv_file,
+    find_authority_by_001,
 )
 
 
@@ -51,13 +52,16 @@ def delete_authority_records(*args, **kwargs):
 
         @task
         def retrieve_authority_records(**kwargs):
-            pass
+            csv_batch_file = kwargs.get("file")
+            results = find_authority_by_001(file=csv_batch_file)
+            return results
 
         @task
         def delete_authority_records(**kwargs):
             pass
 
-        retrieve_authority_records() >> delete_authority_records()
+        find_results = retrieve_authority_records()
+        delete_authority_records(deletes=find_results.get("deletes", []))
 
     @task
     def email_report(**kwargs):
