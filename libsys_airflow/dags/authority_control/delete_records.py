@@ -4,6 +4,7 @@ from datetime import datetime
 from airflow.decorators import dag, task, task_group
 from airflow.operators.python import get_current_context
 
+from libsys_airflow.plugins.authority_control.email import email_deletes_report
 from libsys_airflow.plugins.authority_control.helpers import (
     archive_csv_files,
     batch_csv,
@@ -81,7 +82,30 @@ def delete_authority_records(*args, **kwargs):
 
     @task
     def email_report(**kwargs):
-        pass
+        task_instance = kwargs["ti"]
+        missing = task_instance.xcom_pull(
+            task_ids="retrieve-delete-group.retrieve_authority_records", key="missing"
+        )
+        multiples = task_instance.xcom_pull(
+            task_ids="retrieve-delete-group.retrieve_authority_records", key="multiples"
+        )
+        retrieve_errors = task_instance.xcom_pull(
+            task_ids="retrieve-delete-group.retrieve_authority_records", key="errors"
+        )
+        deleted = task_instance.xcom_pull(
+            task_ids="retrieve-delete-group.delete_authority_records", key="deleted"
+        )
+        delete_errors = task_instance.xcom_pull(
+            task_ids="retrieve-delete-group.delete_authority_records", key="errors"
+        )
+        all_errors = retrieve_errors + delete_errors
+        email_deletes_report(
+            missing=missing,
+            multiples=multiples,
+            deleted=int(deleted),
+            errors=all_errors,
+            **kwargs,
+        )
 
     updated_csv = read_csv_parse_001s()
     batches_001s = batch_001s(file=updated_csv)
