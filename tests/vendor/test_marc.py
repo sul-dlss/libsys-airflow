@@ -48,7 +48,7 @@ def marc_record():
 
 
 def test_filter_fields(tmp_path, marc_path):
-    new_marc_filename = process_marc(marc_path, ["981", "983"])["filename"]
+    new_marc_filename = process_marc(marc_path, remove_fields=["981", "983"])["filename"]
     assert new_marc_filename == "3820230411_processed.mrc"
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
