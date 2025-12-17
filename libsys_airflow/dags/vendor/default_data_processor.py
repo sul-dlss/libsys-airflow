@@ -107,17 +107,6 @@ with DAG(
                         "subfields": [{"code": "a", "value": package_name}],
                     }
                 )
-            if vendor_interface.vendor.vendor_code_from_folio == "sfx":
-                add_fields.append(
-                    {
-                        "tag": "590",
-                        "subfields": [{"code": "a", "value": "MARCit brief record."}],
-                        "unless": {
-                            "tag": "035",
-                            "subfields": [{"code": "a", "value": "OCoLC"}],
-                        },
-                    }
-                )
 
             params["add_fields"] = add_fields or None
 
