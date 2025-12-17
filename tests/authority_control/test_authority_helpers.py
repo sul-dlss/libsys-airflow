@@ -104,7 +104,7 @@ def test_batch_csv(tmp_path):
 
 def test_clean_csv_file(tmp_path):
     test_001s_df = pd.DataFrame(
-        [{"001": "n\\79000500\\"}, {"001": "n 79045242"}, {"001": "n79044348"}]
+        [{"001s": "n\\79000500\\"}, {"001s": "n 79045242"}, {"001s": "n79044348"}]
     )
 
     uploads_path = tmp_path / "authorities/uploads"
@@ -114,7 +114,9 @@ def test_clean_csv_file(tmp_path):
 
     test_001s_df.to_csv(test_csv_path)
 
-    updated_csv_file = clean_csv_file(airflow=tmp_path, file="test.csv")
+    updated_csv_file = clean_csv_file(
+        airflow=tmp_path, file=str(test_csv_path.absolute())
+    )
     assert updated_csv_file.endswith("-test.csv")
 
     updated_001s_df = pd.read_csv(updated_csv_file)
@@ -122,8 +124,8 @@ def test_clean_csv_file(tmp_path):
     updated_001s = updated_001s_df.to_dict(orient='records')
 
     assert len(updated_001s) == 3
-    assert updated_001s[0]['001'] == "n79000500"
-    assert updated_001s[1]['001'] == "n79045242"
+    assert updated_001s[0]['001s'] == "n79000500"
+    assert updated_001s[1]['001s'] == "n79045242"
 
 
 def test_clean_up(mocker, tmp_path):

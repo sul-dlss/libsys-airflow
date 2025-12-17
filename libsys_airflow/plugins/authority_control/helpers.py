@@ -24,6 +24,7 @@ def archive_csv_files(**kwargs):
     Archives CSV files of 001s
     """
     csv_files = kwargs.get("csv_files", [])
+    logger.info(f"CSV files: {csv_files}")
     airflow = kwargs.get("airflow", "/opt/airflow")
     airflow_path = pathlib.Path(airflow)
 
@@ -52,6 +53,7 @@ def batch_csv(**kwargs) -> list:
     csv_df = pd.read_csv(csv_path)
     batches_paths = []
     count = 1
+    logger.info(f"""Uploads path: {uploads_path} size: {batch_size}""")
     for i in range(0, len(csv_df), batch_size):
         batch_001s = csv_df.iloc[i : i + batch_size]
         batch_path = uploads_path / f"{csv_path.stem}-{count:02d}.csv"
@@ -66,22 +68,17 @@ def clean_csv_file(**kwargs) -> str:
     Takes a csv_file of 001s, cleans 001s, and saves to new file
     and returns the new file's location
     """
-    airflow_dir: str = kwargs.get("airflow", "/opt/airflow")
     csv_file: str = kwargs["file"]
 
-    airflow_path = pathlib.Path(airflow_dir)
-    authority_uploads_path = airflow_path / "authorities/uploads"
-    authority_uploads_path.mkdir(parents=True, exist_ok=True)
-
-    csv_path = authority_uploads_path / csv_file
+    csv_path = pathlib.Path(csv_file)
     if not csv_path.exists():
         raise ValueError(f"{csv_file} doesn't exist")
 
     csv_df = pd.read_csv(csv_path)
-    csv_df["001"] = csv_df["001"].apply(_normalize_001)
+    csv_df["001s"] = csv_df["001s"].apply(_normalize_001)
     timestamp = datetime.datetime.now(datetime.UTC)
     updated_csv = (
-        authority_uploads_path / f"updated-{int(timestamp.timestamp())}-{csv_file}"
+        csv_path.parent / f"updated-{int(timestamp.timestamp())}-{csv_path.name}"
     )
     csv_df.to_csv(updated_csv, index=False)
 
