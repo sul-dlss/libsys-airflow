@@ -206,6 +206,7 @@ class VendorManagementView(BaseView):
         if 'package-name' in form.keys():
             processing_options = {}
             processing_options['package_name'] = form['package-name']
+            processing_options['prepend_001'] = {"tag": "001", "data": form['prepend-001']}
             processing_options['change_marc'] = []
             processing_options['delete_marc'] = []
             if form.get("archive-regex") is None:

@@ -38,6 +38,25 @@ rows = Rows(
         note="A note about Acme FTP Interface",
         remote_path="stanford/outgoing/data",
         processing_dag="acme-pull",
+        processing_options={
+            "package_name": "Acme ebooks package",
+            "prepend_001": {"tag": "001", "data": "eb4"},
+            "delete_marc": ["666", "667"],
+            "change_marc": [
+                {
+                    "from": {
+                        "tag": "856",
+                        "indicator1": "4",
+                        "indicator2": "1",
+                    },
+                    "to": {
+                        "tag": "856",
+                        "indicator1": "4",
+                        "indicator2": "0",
+                    },
+                },
+            ],
+        },
         processing_delay_in_days=3,
         active=True,
     ),
@@ -206,6 +225,11 @@ def test_interface_view(
         loaded = response.html.find(id='loaded-files')
         assert loaded
         assert len(loaded.find_all('tr')) == 2
+        docdefs = response.html.find_all("dd", "processing_options")
+        assert docdefs[0].text == "Acme ebooks package"
+        assert docdefs[1].text == "666, 667"
+        assert docdefs[2].text == "eb4"
+        assert docdefs[3].text.strip() == '856 (indicator1: "4", indicator2: "1") double_arrow 856 (indicator1: "4", indicator2: "0")'
 
 
 def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from libsys_airflow.plugins.vendor.marc import (
     process_marc,
     batch,
+    _to_prepend_controlfield_model,
     _to_change_fields_models,
     _to_add_fields_models,
     _has_matching_field,
@@ -163,6 +164,48 @@ def test_add_fields_with_unless(tmp_path, marcit_path):
                 assert field590s
             if field590s:
                 assert field590s[0]["a"] == "MARCit brief record."
+
+
+def test_prepend_001(tmp_path, marc_path):
+    prepend_001 = _to_prepend_controlfield_model(
+        {
+            "tag": "001",
+            "data": "eb4",
+        }
+    )
+    new_marc_filename = process_marc(marc_path, prepend_controlfield_model=prepend_001)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record["001"]
+            assert field
+            assert field.data.startswith("eb4gls")
+
+def test_prepend_and_move_fields(tmp_path, marc_path):
+    change_list = _to_change_fields_models(
+        [
+            {"from": {"tag": "001"}, "to": {"tag": "035", "indicator2": "9"}},
+        ]
+    )
+    prepend_001 = _to_prepend_controlfield_model(
+        {
+            "tag": "001",
+            "data": "eb4",
+        }
+    )
+    new_marc_filename = process_marc(marc_path, prepend_controlfield_model=prepend_001, change_fields=change_list)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            if record.title == "The loneliest whale blues /":
+                field = record.get_fields("001")
+                field = record.get_fields("035")[0]
+                assert field
+                assert field.indicator1 == " "
+                assert field.indicator2 == "9"
+                assert field["a"] == "eb4gls17928831"
 
 
 def test_bad_check_fields():

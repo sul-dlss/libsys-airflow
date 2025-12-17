@@ -42,6 +42,11 @@ class ChangeField(BaseModel):
     to: MarcField
 
 
+class PrependControlField(BaseModel):
+    tag: str
+    data: str
+
+
 def record_processed_filename(context):
     vendor_uuid = context["params"]["vendor_uuid"]
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
@@ -78,6 +83,7 @@ def record_processed(context):
 def process_marc_task(
     download_path: str,
     filename: str,
+    prepend_001: Optional[dict] = None,
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[dict]] = None,
     add_fields: Optional[list[dict]] = None,
@@ -93,11 +99,16 @@ def process_marc_task(
             { tag: "910", indicator1: '2', subfields: [{code: "a", value: "MARCit"}] },
             { tag: "590", subfields: [{code: "a", value: "MARCit brief record."}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
         ]
+    prepend_001 example: { tag: "001", data: "eb4" }
     """
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
         logger.info(f"Skipping filtering fields from {marc_path}")
         return {"records_count": 0, "filename": filename}
+    prepend_controlfield_model = None
+    # current use-case is for 001; fixed-length control fields are out-of-scope for now
+    if prepend_001:
+        prepend_controlfield_model = _to_prepend_controlfield_model(prepend_001)
     change_fields_models = None
     if change_fields:
         change_fields_models = _to_change_fields_models(change_fields)
@@ -105,12 +116,13 @@ def process_marc_task(
     if add_fields:
         add_fields_models = _to_add_fields_models(add_fields)
     return process_marc(
-        pathlib.Path(marc_path), remove_fields, change_fields_models, add_fields_models
+        pathlib.Path(marc_path), prepend_controlfield_model, remove_fields, change_fields_models, add_fields_models
     )
 
 
 def process_marc(
     marc_path: pathlib.Path,
+    prepend_controlfield_model: Optional[PrependControlField] = None,
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[ChangeField]] = None,
     add_fields: Optional[list[AddField]] = None,
@@ -127,6 +139,8 @@ def process_marc(
             else:
                 if remove_fields:
                     record.remove_fields(*remove_fields)
+                if prepend_controlfield_model: # do this before any change_fields are processed bc change field might be 001 to 035
+                    _prepend_controlfield(record, prepend_controlfield_model)
                 if change_fields:
                     _change_fields(record, change_fields)
                 if add_fields:
@@ -222,12 +236,31 @@ def _write_records(records, marc_path) -> None:
             marc_writer.write(record)
 
 
+def _to_prepend_controlfield_model(prepend_001) -> PrependControlField:
+    return PrependControlField(**prepend_001)
+
+
 def _to_change_fields_models(change_fields) -> list[ChangeField]:
     return [ChangeField(**change) for change in change_fields]
 
 
 def _to_add_fields_models(add_fields):
     return [AddField(**add) for add in add_fields]
+
+
+def _prepend_controlfield(record, prepend_controlfield_model):
+    field = record.get_fields(prepend_controlfield_model.tag)[0]
+    tag = field.tag
+    data = field.data
+    prefix = prepend_controlfield_model.data
+    new_data = f"{prefix}{data}"
+    record.add_ordered_field(
+        pymarc.Field(
+            tag=tag,
+            data=new_data,
+        )
+    )
+    record.remove_field(field)
 
 
 def _change_fields(record, change_fields):

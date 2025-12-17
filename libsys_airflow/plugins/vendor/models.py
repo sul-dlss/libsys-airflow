@@ -150,6 +150,10 @@ class VendorInterface(Model):  # type: ignore
     @property
     def package_name(self):
         return self.processing_option('package_name')
+    
+    @property
+    def prepend_001(self):
+        return self.processing_option('prepend_001')
 
     @property
     def delete_marc(self):

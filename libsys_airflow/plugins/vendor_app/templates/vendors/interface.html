@@ -63,11 +63,13 @@
       <dd>{{ interface.note }}</dd>
       {% if interface.processing_options %}
         <dt>Package Name</dt>
-        <dd>{{ interface.processing_options['package_name'] }}</dd>
+        <dd class="processing_options">{{ interface.processing_options['package_name'] }}</dd>
         <dt>Fields to Remove</dt>
-        <dd>{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dd class="processing_options">{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dt>Prepend Field 001 Data</dt>
+        <dd class="processing_options">{{ interface.processing_options['prepend_001']['data'] }}</dd>
         <dt>Fields to Move</dt>
-        <dd>
+        <dd class="processing_options">
           {% for rule in interface.processing_options['change_marc'] %}
             {{ rule['from']['tag'] }} (indicator1: "{{ rule['from']['indicator1'] }}", indicator2: "{{ rule['from']['indicator2'] }}") <span class="material-icons">double_arrow</span> {{ rule['to']['tag'] }} (indicator1: "{{ rule['to']['indicator1'] }}", indicator2: "{{ rule['to']['indicator2'] }}")<br>
           {% endfor %}
