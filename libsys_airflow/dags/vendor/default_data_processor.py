@@ -121,7 +121,6 @@ with DAG(
 
             params["add_fields"] = add_fields or None
 
-            # Not yet supported in UI.
             params["archive_regex"] = processing_options.get("archive_regex")
 
         logger.info(f"Params are {params}")
