@@ -43,7 +43,7 @@ def batch_csv(**kwargs) -> list:
     """
     Takes a csv_file of 001s and generates a list of batch files
     """
-    csv_absolute_file: str = kwargs.get("file")
+    csv_absolute_file: str = kwargs["file"]
     batch_size = int(Variable.get("AUTH_MAX_ENTITIES", 500))
     csv_path = pathlib.Path(csv_absolute_file)
 
@@ -67,7 +67,7 @@ def clean_csv_file(**kwargs) -> str:
     and returns the new file's location
     """
     airflow_dir: str = kwargs.get("airflow", "/opt/airflow")
-    csv_file: str = kwargs.get("file")
+    csv_file: str = kwargs["file"]
 
     airflow_path = pathlib.Path(airflow_dir)
     authority_uploads_path = airflow_path / "authorities/uploads"
@@ -140,7 +140,7 @@ def delete_authorities(**kwargs) -> dict:
     """
     delete_uuids = kwargs.get("deletes", [])
     client = folio_client(**kwargs)
-    output = {"deleted": 0, "errors": []}
+    output: dict = {"deleted": 0, "errors": []}
     logger.info(f"Starting deletion of {len(delete_uuids):,}")
     for uuid in delete_uuids:
         try:
@@ -160,7 +160,7 @@ def find_authority_by_001(**kwargs) -> dict:
     Searches authority FOLIO records by 001 via naturalid property. Tracks if
     search returns more than one matching record or if no records are found.
     """
-    output = {"deletes": [], "errors": [], "missing": [], "multiples": []}
+    output: dict = {"deletes": [], "errors": [], "missing": [], "multiples": []}
     csv_file = kwargs.get("file")
     client = folio_client(**kwargs)
     csv_df = pd.read_csv(csv_file)
