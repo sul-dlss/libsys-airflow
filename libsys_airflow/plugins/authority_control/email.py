@@ -45,7 +45,7 @@ def email_deletes_report(**kwargs):
     staff_email = kwargs.get("email")
     devs_email = Variable.get("EMAIL_DEVS")
     to_emails = [staff_email, devs_email]
-
+    logger.info(f"To_emails: {to_emails}")
     if is_production():
         sul_email = Variable.get("OCLC_EMAIL_SUL")
         to_emails.append(sul_email)
