@@ -12,6 +12,7 @@ from libsys_airflow.plugins.vendor.marc import (
     _to_prepend_controlfield_model,
     _to_change_fields_models,
     _to_add_fields_models,
+    _to_add_subfields_models,
     _has_matching_field,
     _marc8_to_unicode,
     MarcField,
@@ -48,7 +49,9 @@ def marc_record():
 
 
 def test_filter_fields(tmp_path, marc_path):
-    new_marc_filename = process_marc(marc_path, remove_fields=["981", "983"])["filename"]
+    new_marc_filename = process_marc(marc_path, remove_fields=["981", "983"])[
+        "filename"
+    ]
     assert new_marc_filename == "3820230411_processed.mrc"
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
@@ -173,7 +176,9 @@ def test_prepend_001(tmp_path, marc_path):
             "data": "eb4",
         }
     )
-    new_marc_filename = process_marc(marc_path, prepend_controlfield_model=prepend_001)["filename"]
+    new_marc_filename = process_marc(marc_path, prepend_controlfield_model=prepend_001)[
+        "filename"
+    ]
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -181,6 +186,7 @@ def test_prepend_001(tmp_path, marc_path):
             field = record["001"]
             assert field
             assert field.data.startswith("eb4gls")
+
 
 def test_prepend_and_move_fields(tmp_path, marc_path):
     change_list = _to_change_fields_models(
@@ -194,7 +200,9 @@ def test_prepend_and_move_fields(tmp_path, marc_path):
             "data": "eb4",
         }
     )
-    new_marc_filename = process_marc(marc_path, prepend_controlfield_model=prepend_001, change_fields=change_list)["filename"]
+    new_marc_filename = process_marc(
+        marc_path, prepend_controlfield_model=prepend_001, change_fields=change_list
+    )["filename"]
 
     with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
         marc_reader = pymarc.MARCReader(fo)
@@ -206,6 +214,104 @@ def test_prepend_and_move_fields(tmp_path, marc_path):
                 assert field.indicator1 == " "
                 assert field.indicator2 == "9"
                 assert field["a"] == "eb4gls17928831"
+
+
+def test_add_subfields(tmp_path, marc_path):
+    add_subfields = _to_add_subfields_models(
+        [
+            {
+                "tag": "983",
+                "eval_subfield": "a",
+                "pattern": "^36105\\d+",
+                "subfields": [
+                    {"code": "b", "value": "item barcode"},
+                ],
+            }
+        ]
+    )
+    import re
+
+    barcode_regex = re.compile("^36105\\d+")
+    new_marc_filename = process_marc(marc_path, add_subfields=add_subfields)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record["983"]
+            assert field
+            assert field.indicators == pymarc.Indicators(first=" ", second=" ")
+            subfields = field.subfields_as_dict()
+            for subf in subfields.get("a"):
+                assert re.match(barcode_regex, subf)
+
+            for subf in subfields.get("b"):
+                assert subf == "item barcode"
+
+
+def test_add_subfields_no_eval_subf_no_pattern(tmp_path, marc_path):
+    add_subfields = _to_add_subfields_models(
+        [
+            {
+                "tag": "040",
+                "eval_subfield": "",
+                "pattern": "",
+                "subfields": [{"code": "d", "value": "CSt"}],
+            }
+        ]
+    )
+    new_marc_filename = process_marc(marc_path, add_subfields=add_subfields)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record["040"]
+            assert field
+            assert field.indicators == pymarc.Indicators(first=" ", second=" ")
+            subfields = field.subfields_as_dict()
+            assert "CSt" in subfields.get("d")
+
+
+def test_add_subfields_no_pattern(tmp_path, marc_path):
+    add_subfields = _to_add_subfields_models(
+        [
+            {
+                "tag": "040",
+                "eval_subfield": "a",
+                "pattern": "",
+                "subfields": [{"code": "d", "value": "CSt"}],
+            }
+        ]
+    )
+    new_marc_filename = process_marc(marc_path, add_subfields=add_subfields)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record["040"]
+            assert field
+            assert field.indicators == pymarc.Indicators(first=" ", second=" ")
+            subfields = field.subfields_as_dict()
+            assert "CSt" in subfields.get("d")
+
+
+def test_add_subfield_nonexistent_field(tmp_path, marc_path):
+    add_subfields = _to_add_subfields_models(
+        [
+            {
+                "tag": "856",
+                "eval_subfield": "u",
+                "pattern": "",
+                "subfields": [{"code": "x", "value": "Acme ebooks package"}],
+            }
+        ]
+    )
+    new_marc_filename = process_marc(marc_path, add_subfields=add_subfields)["filename"]
+
+    with (pathlib.Path(tmp_path) / new_marc_filename).open("rb") as fo:
+        marc_reader = pymarc.MARCReader(fo)
+        for record in marc_reader:
+            field = record.get("856")
+            assert field is None
 
 
 def test_bad_check_fields():

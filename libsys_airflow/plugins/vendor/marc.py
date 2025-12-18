@@ -6,6 +6,7 @@ from io import StringIO
 from typing import Optional
 
 import pymarc
+import re
 import magic
 from pydantic import BaseModel, Field
 
@@ -45,6 +46,11 @@ class ChangeField(BaseModel):
 class PrependControlField(BaseModel):
     tag: str
     data: str
+
+
+class AddSubField(MarcField):
+    eval_subfield: str = ""
+    pattern: str = ""
 
 
 def record_processed_filename(context):
@@ -87,6 +93,7 @@ def process_marc_task(
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[dict]] = None,
     add_fields: Optional[list[dict]] = None,
+    add_subfields: Optional[list[dict]] = None,
 ) -> dict:
     """
     Applies changes to MARC records.
@@ -100,6 +107,10 @@ def process_marc_task(
             { tag: "590", subfields: [{code: "a", value: "MARCit brief record."}], unless: { tag: "035", subfields: [{code: "a", value: "OCoLC"}]} },
         ]
     prepend_001 example: { tag: "001", data: "eb4" }
+    add_subfields example: [
+            { tag: "856", eval_subfield: "u", pattern: "regex", subfields: [{code: "x", value: "eb4"}] },
+            { tag: "856", eval_subfield: "", pattern: "", subfields: [{code: "x", value: "subscribed"}]}
+        ]
     """
     marc_path = pathlib.Path(download_path) / filename
     if not is_marc(marc_path):
@@ -115,8 +126,16 @@ def process_marc_task(
     add_fields_models = None
     if add_fields:
         add_fields_models = _to_add_fields_models(add_fields)
+    add_subfields_models = None
+    if add_subfields:
+        add_subfields_models = _to_add_subfields_models(add_subfields)
     return process_marc(
-        pathlib.Path(marc_path), prepend_controlfield_model, remove_fields, change_fields_models, add_fields_models
+        pathlib.Path(marc_path),
+        prepend_controlfield_model,
+        remove_fields,
+        change_fields_models,
+        add_fields_models,
+        add_subfields_models,
     )
 
 
@@ -126,6 +145,7 @@ def process_marc(
     remove_fields: Optional[list[str]] = None,
     change_fields: Optional[list[ChangeField]] = None,
     add_fields: Optional[list[AddField]] = None,
+    add_subfields: Optional[list[AddSubField]] = None,
 ) -> dict:
     logger.info(f"Processing from {marc_path}")
     records = []
@@ -139,12 +159,15 @@ def process_marc(
             else:
                 if remove_fields:
                     record.remove_fields(*remove_fields)
-                if prepend_controlfield_model: # do this before any change_fields are processed bc change field might be 001 to 035
+                # do this before any change_fields are processed bc change field might be 001 to 035
+                if prepend_controlfield_model:
                     _prepend_controlfield(record, prepend_controlfield_model)
                 if change_fields:
                     _change_fields(record, change_fields)
                 if add_fields:
                     _add_fields(record, add_fields)
+                if add_subfields:
+                    _add_subfields(record, add_subfields)
                 records.append(record)
 
     new_marc_path = marc_path.with_stem(f"{marc_path.stem}_processed")
@@ -248,6 +271,10 @@ def _to_add_fields_models(add_fields):
     return [AddField(**add) for add in add_fields]
 
 
+def _to_add_subfields_models(add_subfields):
+    return [AddSubField(**add) for add in add_subfields]
+
+
 def _prepend_controlfield(record, prepend_controlfield_model):
     field = record.get_fields(prepend_controlfield_model.tag)[0]
     tag = field.tag
@@ -311,6 +338,31 @@ def _change_field_match(field: pymarc.field.Field, match_field: MarcField):
     ):
         return False
     return True
+
+
+def _add_subfields(record: pymarc.Record, add_subfields: list[AddSubField]):
+    for add_subf in add_subfields:
+        for field in record.get_fields(add_subf.tag):
+            subfields_dict = field.subfields_as_dict()
+            evaluate_subfields = subfields_dict.get(add_subf.eval_subfield)
+            # pattern needs to be set to something
+            if evaluate_subfields is not None and add_subf.pattern != "":
+                for eval_subf in evaluate_subfields:
+                    if _add_subfield_regex_match(eval_subf, add_subf.pattern):
+                        code = add_subf.subfields[0].code
+                        value = add_subf.subfields[0].value
+                        field.add_subfield(code, value)
+            # no pattern, add subfield to all specified tags
+            else:
+                code = add_subf.subfields[0].code
+                value = add_subf.subfields[0].value
+                field.add_subfield(code, value)
+
+
+def _add_subfield_regex_match(subfield: str, pattern: str) -> bool:
+    regex = re.compile(pattern)
+    match = bool(re.search(regex, subfield))
+    return match
 
 
 def _add_fields(record, add_fields):

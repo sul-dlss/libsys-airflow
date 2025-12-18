@@ -42,6 +42,14 @@ rows = Rows(
             "package_name": "Acme ebooks package",
             "prepend_001": {"tag": "001", "data": "eb4"},
             "delete_marc": ["666", "667"],
+            "add_subfield": [
+                {
+                    "tag": "856",
+                    "eval_subfield": "u",
+                    "pattern": "^http:\\/\\/ebooks\\.acme\\.com.+",
+                    "subfields": [{"code": "x", "value": "eb4"}],
+                }
+            ],
             "change_marc": [
                 {
                     "from": {
@@ -229,7 +237,14 @@ def test_interface_view(
         assert docdefs[0].text == "Acme ebooks package"
         assert docdefs[1].text == "666, 667"
         assert docdefs[2].text == "eb4"
-        assert docdefs[3].text.strip() == '856 (indicator1: "4", indicator2: "1") double_arrow 856 (indicator1: "4", indicator2: "0")'
+        assert (
+            docdefs[3].text.strip()
+            == '856 subfield u contains pattern "^http:\\/\\/ebooks\\.acme\\.com.+" double_arrow subfield code: x, subfield value: eb4'
+        )
+        assert (
+            docdefs[4].text.strip()
+            == '856 (indicator1: "4", indicator2: "1") double_arrow 856 (indicator1: "4", indicator2: "0")'
+        )
 
 
 def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
@@ -261,6 +276,8 @@ def test_interface_edit_view(
         assert response.status_code == 200
         note = response.html.find("textarea")
         assert note.text == "A note about Acme FTP Interface"
+        templates = response.html.select("section > template")
+        assert len(templates) == 3
 
 
 def test_interface_edit_upload_only_view(

@@ -53,7 +53,7 @@ def mock_db(mocker, engine):
 
 
 def test_update_vendor_interface_form(
-    test_airflow_client, mock_db, mocker # noqa: F811
+    test_airflow_client, mock_db, mocker  # noqa: F811
 ):
     with Session(mock_db()) as session:
         mocker.patch(
@@ -67,6 +67,11 @@ def test_update_vendor_interface_form(
                 "prepend-001": "eb4",
                 "remove-field-1": "666",
                 "remove-field-2": "667",
+                "add-subfield-tag-1": "856",
+                "add-subfield-eval-1": "u",
+                "add-subfield-pattern-1": "^http:\\/\\/ebooks\\.acme\\.com.+",
+                "add-subfield-code-1": "x",
+                "add-subfield-value-1": "eb4",
                 "move-field-from-1": "655",
                 "move-indicator1-from-1": "",
                 "move-indicator2-from-1": "",
@@ -82,10 +87,67 @@ def test_update_vendor_interface_form(
         assert interface.processing_options["package_name"] == "Acme ebooks package"
         assert interface.processing_options["prepend_001"]["data"] == "eb4"
         assert interface.processing_options["delete_marc"] == ["666", "667"]
+        assert interface.processing_options["add_subfield"][0]["tag"] == "856"
+        assert interface.processing_options["add_subfield"][0]["eval_subfield"] == "u"
+        assert (
+            interface.processing_options["add_subfield"][0]["pattern"]
+            == "^http:\\/\\/ebooks\\.acme\\.com.+"
+        )
+        assert (
+            interface.processing_options["add_subfield"][0]["subfields"][0]["code"]
+            == "x"
+        )
+        assert (
+            interface.processing_options["add_subfield"][0]["subfields"][0]["value"]
+            == "eb4"
+        )
         assert interface.processing_options["change_marc"][0]["from"]["tag"] == "655"
-        assert interface.processing_options["change_marc"][0]["from"]["indicator1"] == ""
-        assert interface.processing_options["change_marc"][0]["from"]["indicator2"] == ""
+        assert (
+            interface.processing_options["change_marc"][0]["from"]["indicator1"] == ""
+        )
+        assert (
+            interface.processing_options["change_marc"][0]["from"]["indicator2"] == ""
+        )
         assert interface.processing_options["change_marc"][0]["to"]["tag"] == "650"
         assert interface.processing_options["change_marc"][0]["to"]["indicator1"] == ""
         assert interface.processing_options["change_marc"][0]["to"]["indicator2"] == "7"
 
+
+def test_update_vendor_interface_empty_form_values(
+    test_airflow_client, mock_db, mocker  # noqa: F811
+):
+    with Session(mock_db()) as session:
+        mocker.patch(
+            "libsys_airflow.plugins.vendor_app.vendor_management.Session",
+            return_value=session,
+        )
+        response = test_airflow_client.post(
+            "/vendor_management/interfaces/1/edit",
+            data={
+                "package-name": "",
+                "prepend-001": "eb4",
+                "remove-field-1": "666",
+                "remove-field-2": "667",
+                "add-subfield-tag-1": "856",
+                "add-subfield-eval-1": "",
+                "add-subfield-pattern-1": "",
+                "add-subfield-code-1": "x",
+                "add-subfield-value-1": "eb4",
+            },
+        )
+        assert response.status_code == 302
+        interface = session.query(VendorInterface).get(1)
+        assert interface.processing_options["package_name"] == ""
+        assert interface.processing_options["prepend_001"]["data"] == "eb4"
+        assert interface.processing_options["delete_marc"] == ["666", "667"]
+        assert interface.processing_options["add_subfield"][0]["tag"] == "856"
+        assert interface.processing_options["add_subfield"][0]["eval_subfield"] == ""
+        assert interface.processing_options["add_subfield"][0]["pattern"] == ""
+        assert (
+            interface.processing_options["add_subfield"][0]["subfields"][0]["code"]
+            == "x"
+        )
+        assert (
+            interface.processing_options["add_subfield"][0]["subfields"][0]["value"]
+            == "eb4"
+        )

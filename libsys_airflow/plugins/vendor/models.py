@@ -150,7 +150,7 @@ class VendorInterface(Model):  # type: ignore
     @property
     def package_name(self):
         return self.processing_option('package_name')
-    
+
     @property
     def prepend_001(self):
         return self.processing_option('prepend_001')
@@ -158,6 +158,10 @@ class VendorInterface(Model):  # type: ignore
     @property
     def delete_marc(self):
         return self.processing_option('delete_marc', [])
+
+    @property
+    def add_subfield(self):
+        return self.processing_option('add_subfield', [])
 
     @property
     def change_marc(self):
