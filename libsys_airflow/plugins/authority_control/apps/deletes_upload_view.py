@@ -47,20 +47,12 @@ class AuthorityRecordsDeleteUploadView(AppBuilderBaseView):
             rendered_template = self.render_template("deletes-csv-upload/index.html")
         try:
             raw_csv = request.files["upload-deletes"]
-            deletes_csv_df = pd.read_csv(raw_csv)
-            if "001s" not in list(deletes_csv_df.columns):
-                flash("CSV file missing 001s column")
-                rendered_template = self.render_template(
-                    "deletes-csv-upload/index.html"
-                )
-            else:
-                deletes_csv_file = self._save_deletes_csv(
-                    deletes_csv_df, raw_csv.filename
-                )
-                run_id = self._trigger_dag_run(deletes_csv_file, email)
-                rendered_template = self.render_template(
-                    "deletes-csv-upload/index.html", run_id=run_id, email=email
-                )
+            deletes_csv_df = pd.read_csv(raw_csv, names=["001s"])
+            deletes_csv_file = self._save_deletes_csv(deletes_csv_df, raw_csv.filename)
+            run_id = self._trigger_dag_run(deletes_csv_file, email)
+            rendered_template = self.render_template(
+                "deletes-csv-upload/index.html", run_id=run_id, email=email
+            )
         except pd.errors.EmptyDataError:
             flash("Upload csv file is empty")
             rendered_template = self.render_template("deletes-csv-upload/index.html")

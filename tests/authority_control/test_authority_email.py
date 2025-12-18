@@ -77,11 +77,12 @@ def test_email_deletes_report(mocker, mock_folio_variables):
     title = report_body.find("h2")
     assert title.text.startswith("FOLIO Authority Record Deletion")
     all_paragraphs = report_body.find_all("p")
-    assert all_paragraphs[1].text.startswith("Successfully deleted 10")
+    assert all_paragraphs[0].text.startswith("DAG Run")
     all_subtitles = report_body.find_all("h3")
-    assert all_subtitles[0].text.startswith("Missing 1")
-    assert all_subtitles[1].text.startswith("0 Multiple")
-    assert all_subtitles[2].text.startswith("2 Errors")
+    assert all_subtitles[0].text.startswith("Successfully deleted 10")
+    assert all_subtitles[1].text.startswith("Missing 1")
+    assert all_subtitles[2].text.startswith("0 Multiple")
+    assert all_subtitles[3].text.startswith("2 Errors")
 
 
 def test_email_report(mocker, mock_folio_variables):
