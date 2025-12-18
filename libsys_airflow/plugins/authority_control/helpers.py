@@ -74,7 +74,7 @@ def clean_csv_file(**kwargs) -> str:
     if not csv_path.exists():
         raise ValueError(f"{csv_file} doesn't exist")
 
-    csv_df = pd.read_csv(csv_path)
+    csv_df = pd.read_csv(csv_path, names=["001s"])
     csv_df["001s"] = csv_df["001s"].apply(_normalize_001)
     timestamp = datetime.datetime.now(datetime.UTC)
     updated_csv = (

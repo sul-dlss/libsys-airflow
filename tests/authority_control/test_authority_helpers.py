@@ -103,16 +103,14 @@ def test_batch_csv(tmp_path):
 
 
 def test_clean_csv_file(tmp_path):
-    test_001s_df = pd.DataFrame(
-        [{"001s": "n\\79000500\\"}, {"001s": "n 79045242"}, {"001s": "n79044348"}]
-    )
-
     uploads_path = tmp_path / "authorities/uploads"
     uploads_path.mkdir(parents=True)
 
     test_csv_path = uploads_path / "test.csv"
 
-    test_001s_df.to_csv(test_csv_path)
+    with test_csv_path.open("w+") as fo:
+        for field001_value in ["n\\79000500\\", "n 79045242", "n79044348"]:
+            fo.write(f"{field001_value}\n")
 
     updated_csv_file = clean_csv_file(
         airflow=tmp_path, file=str(test_csv_path.absolute())

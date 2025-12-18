@@ -2,7 +2,7 @@
 
 {% block content %}
 <div>
-    <h2>Authority FOLIO Records Deletes</h2>
+    <h2> FOLIO Authority Deletes Upload</h2>
     {% if run_id %}
         <p>
             DAG <strong>delete_authority_records</strong> triggered with
@@ -13,8 +13,8 @@
         {% endif %}
     {% else %}
     <p>
-        To delete FOLIO Authority JSON records, create a csv file with a column <em>001s</em> and 
-        with each 001 value per row, and upload the csv file.
+        To delete FOLIO Authority records, create a csv file with a single column 
+        of record IDs from the MARC 001 field and upload the csv file.
     </p>
     <form enctype="multipart/form-data" method="POST" action="{{ url_for('AuthorityRecordsDeleteUploadView.upload_csv') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -22,7 +22,7 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <p class="help-block">
-                        Upload csv file with MARC field 001 values with a column of <em>001s</em>
+                       Upload a csv file with a single column of MARC 001 values
                     </p>
                     <input type="file" class="form-control" id="upload-deletes" name="upload-deletes">
                 </div>
