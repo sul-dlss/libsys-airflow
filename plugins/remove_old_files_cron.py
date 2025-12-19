@@ -4,6 +4,7 @@ cron = CronTab(user=True)
 
 max_age_days = 365
 
+
 data_export_files = cron.new(
     command=f'find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +{max_age_days} -delete'
 )
@@ -52,5 +53,12 @@ logs_files = cron.new(
 logs_files.dow.on('SUN')
 logs_files.hour.on(0)
 logs_files.minute.on(40)
+
+authority_files = cron.new(
+    command=f"find /home/libsys/libsys-airflow/shared/authorities -type f -mtime +{max_age_days} -delete"
+)
+authority_files.dow.on('SUN')
+authority_files.hour.on(0)
+authority_files.minute.on(45)
 
 cron.write()
