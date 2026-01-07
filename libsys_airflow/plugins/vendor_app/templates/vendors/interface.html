@@ -63,11 +63,27 @@
       <dd>{{ interface.note }}</dd>
       {% if interface.processing_options %}
         <dt>Package Name</dt>
-        <dd>{{ interface.processing_options['package_name'] }}</dd>
+        <dd class="processing_options">{{ interface.processing_options['package_name'] }}</dd>
         <dt>Fields to Remove</dt>
-        <dd>{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dd class="processing_options">{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dt>Prepend Field 001 Data</dt>
+        {% if interface.processing_options['prepend_001'] %}
+        <dd class="processing_options">{{ interface.processing_options['prepend_001']['data'] }}</dd>
+        {% else %}
+        <dd class="processing_options"></dd>
+        {% endif %}
+        <dt>Subfields to Add</dt>
+        <dd class="processing_options">
+          {% for rule in interface.processing_options['add_subfield'] %}
+            {% if rule['eval_subfield'] == "" and rule['pattern'] == "" %}
+              {{ rule['tag'] }} <span class="material-icons">double_arrow</span> subfield code: {{ rule['subfields'][0]['code'] }}, subfield value: {{ rule['subfields'][0]['value'] }}<br>
+            {% else %}
+              {{ rule['tag'] }} subfield {{ rule['eval_subfield'] }} contains pattern "{{ rule['pattern'] }}" <span class="material-icons">double_arrow</span> subfield code: {{ rule['subfields'][0]['code'] }}, subfield value: {{ rule['subfields'][0]['value'] }}<br>
+            {% endif %}
+          {% endfor %}
+        </dd>
         <dt>Fields to Move</dt>
-        <dd>
+        <dd class="processing_options">
           {% for rule in interface.processing_options['change_marc'] %}
             {{ rule['from']['tag'] }} (indicator1: "{{ rule['from']['indicator1'] }}", indicator2: "{{ rule['from']['indicator2'] }}") <span class="material-icons">double_arrow</span> {{ rule['to']['tag'] }} (indicator1: "{{ rule['to']['indicator1'] }}", indicator2: "{{ rule['to']['indicator2'] }}")<br>
           {% endfor %}

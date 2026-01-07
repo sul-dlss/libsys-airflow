@@ -38,10 +38,54 @@ rows = Rows(
         note="A note about Acme FTP Interface",
         remote_path="stanford/outgoing/data",
         processing_dag="acme-pull",
+        processing_options={
+            "package_name": "Acme ebooks package",
+            "prepend_001": {"tag": "001", "data": "eb4"},
+            "delete_marc": ["666", "667"],
+            "add_subfield": [
+                {
+                    "tag": "856",
+                    "eval_subfield": "u",
+                    "pattern": "^http:\\/\\/ebooks\\.acme\\.com.+",
+                    "subfields": [{"code": "x", "value": "eb4"}],
+                }
+            ],
+            "change_marc": [
+                {
+                    "from": {
+                        "tag": "856",
+                        "indicator1": "4",
+                        "indicator2": "1",
+                    },
+                    "to": {
+                        "tag": "856",
+                        "indicator1": "4",
+                        "indicator2": "0",
+                    },
+                },
+            ],
+        },
         processing_delay_in_days=3,
         active=True,
     ),
     VendorInterface(id=2, display_name="Acme Upload Only", vendor_id=1, active=True),
+    VendorInterface(
+        id=3,
+        display_name="Acme FTP no processing options",
+        vendor_id=1,
+        folio_interface_uuid="140530EB-EE54-4302-81EE-D83B9DAC9B6E",
+        folio_data_import_processing_name="Acme Profile 1",
+        folio_data_import_profile_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
+        file_pattern="^\\d*.mrc",
+        remote_path="stanford/outgoing/data",
+        processing_dag="acme-pull",
+        processing_options={
+            "package_name": "Acme ebooks package",
+            "delete_marc": ["666", "667"],
+        },
+        processing_delay_in_days=10,
+        active=True,
+    ),
     # a file was fetched 10 days ago, and was loaded 9 days ago
     VendorFile(
         id=1,
@@ -206,6 +250,35 @@ def test_interface_view(
         loaded = response.html.find(id='loaded-files')
         assert loaded
         assert len(loaded.find_all('tr')) == 2
+        docdefs = response.html.find_all("dd", "processing_options")
+        assert docdefs[0].text == "Acme ebooks package"
+        assert docdefs[1].text == "666, 667"
+        assert docdefs[2].text == "eb4"
+        assert (
+            docdefs[3].text.strip()
+            == '856 subfield u contains pattern "^http:\\/\\/ebooks\\.acme\\.com.+" double_arrow subfield code: x, subfield value: eb4'
+        )
+        assert (
+            docdefs[4].text.strip()
+            == '856 (indicator1: "4", indicator2: "1") double_arrow 856 (indicator1: "4", indicator2: "0")'
+        )
+
+
+def test_interface_view_no_prepend001(
+    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
+):
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        response = test_airflow_client.get('/vendor_management/interfaces/3')
+        assert response.status_code == 200
+        docdefs = response.html.find_all("dd", "processing_options")
+        assert len(docdefs) == 5
+        assert docdefs[0].text == "Acme ebooks package"
+        assert docdefs[1].text == "666, 667"
 
 
 def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
@@ -237,6 +310,8 @@ def test_interface_edit_view(
         assert response.status_code == 200
         note = response.html.find("textarea")
         assert note.text == "A note about Acme FTP Interface"
+        templates = response.html.select("section > template")
+        assert len(templates) == 3
 
 
 def test_interface_edit_upload_only_view(
