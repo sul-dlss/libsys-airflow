@@ -4,6 +4,7 @@ import uuid
 
 from attrs import define
 from datetime import datetime, timedelta
+from itertools import batched
 from pathlib import Path
 from typing import Union
 
@@ -101,6 +102,13 @@ def formatted_date(from_date: Union[str, None]) -> str:
     return formatted_date
 
 
+@task(multiple_outputs=True)
+def calculate_start_stop(div, job):
+    output = {"start": int(div * job), "stop": int((job + 1) * div)}
+    logger.info(f"Output in calculate_start_stop {output}")
+    return output
+
+
 @task
 def retrieve_users_for_reading_room_access() -> list:
     """Retrieve users with reading room access from FOLIO"""
@@ -115,67 +123,70 @@ def retrieve_users_for_reading_room_access() -> list:
         query=f'updatedDate>"{formatted_date(from_date)}"',
         limit=99999,
     )
-    return [row for row in users]
+    return list(batched(users, 1000))
 
 
 @task
 def generate_reading_room_access(
-    user: dict, reading_rooms_data: ReadingRoomsData
-) -> dict:
+    users: list, reading_rooms_data: ReadingRoomsData
+) -> list:
     """Generate reading room access data for users in FOLIO"""
     rooms = reading_rooms_data.reading_rooms
+    reading_room_patron_permissions = []
 
-    logger.info(f"Generating reading room access for folio user {user['id']}")
-    folio_user = FolioUser(
-        id=user["id"],
-        patronGroup=user["patronGroup"],
-        customFields=user.get("customFields", {}),
-        readingRoomsData=reading_rooms_data,
-    )
+    logger.info(f"Generating reading room access for folio {len(users)} users")
+    for user in users:
+        folio_user = FolioUser(
+            id=user["id"],
+            patronGroup=user["patronGroup"],
+            customFields=user.get("customFields", {}),
+            readingRoomsData=reading_rooms_data,
+        )
 
-    permissions = []
-    existing_access = []
-    existing_perms = folio_client().folio_get(
-        f"reading-room-patron-permission/{folio_user.id}"
-    )
-    for existing_perm in existing_perms:
-        perm_id = existing_perm.get('id', str(uuid.uuid4()))
-        existing_perm['id'] = perm_id
-        del existing_perm['metadata']
-        existing_access.append(existing_perm)
+        permissions = []
+        existing_access = []
+        existing_perms = folio_client().folio_get(
+            f"reading-room-patron-permission/{folio_user.id}"
+        )
+        for existing_perm in existing_perms:
+            perm_id = existing_perm.get('id', str(uuid.uuid4()))
+            existing_perm['id'] = perm_id
+            del existing_perm['metadata']
+            existing_access.append(existing_perm)
 
-    for k, v in reading_rooms_config.items():
-        access = "NOT_ALLOWED"
-        for x in v['allowed'].keys():
-            if folio_user.patron_group_name in v['allowed'][x]:
-                access = "ALLOWED"
-        for x in v['disallowed'].keys():
-            if folio_user.usergroup_name in v['disallowed'][x]:
-                access = "NOT_ALLOWED"
+        for k, v in reading_rooms_config.items():
+            access = "NOT_ALLOWED"
+            for x in v['allowed'].keys():
+                if folio_user.patron_group_name in v['allowed'][x]:
+                    access = "ALLOWED"
+            for x in v['disallowed'].keys():
+                if folio_user.usergroup_name in v['disallowed'][x]:
+                    access = "NOT_ALLOWED"
 
-        for ea in existing_access:
-            if ea['readingRoomName'] == k:
-                ea['access'] = access
-        """
-        All users should have an existing entry for each reading room when the
-        reading room is created in FOLIO. However, to be safe, we check here and
-        only add a new entry if one does not already exist.
-        """
-        if not any(ea.get('readingRoomName') == k for ea in existing_access):
-            permissions.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "userId": folio_user.id,
-                    "readingRoomId": rooms.get(k),
-                    "readingRoomName": k,
-                    "access": access,
-                }
-            )
+            for ea in existing_access:
+                if ea['readingRoomName'] == k:
+                    ea['access'] = access
+            """
+            All users should have an existing entry for each reading room when the
+            reading room is created in FOLIO. However, to be safe, we check here and
+            only add a new entry if one does not already exist.
+            """
+            if not any(ea.get('readingRoomName') == k for ea in existing_access):
+                permissions.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "userId": folio_user.id,
+                        "readingRoomId": rooms.get(k),
+                        "readingRoomName": k,
+                        "access": access,
+                    }
+                )
 
-        permissions.extend(existing_access)
-        patron_permissions = {"userId": folio_user.id, "permissions": permissions}
+            permissions.extend(existing_access)
+            patron_permissions = {"userId": folio_user.id, "permissions": permissions}
+            reading_room_patron_permissions.append(patron_permissions)
 
-    return patron_permissions
+    return reading_room_patron_permissions
 
 
 @task

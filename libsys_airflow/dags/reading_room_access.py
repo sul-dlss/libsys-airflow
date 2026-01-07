@@ -45,11 +45,11 @@ default_args = {
     },
 )
 def reading_room_access():
-    retrieve_users = retrieve_users_for_reading_room_access()
     reading_rooms_data = ReadingRoomsData()
+    retrieved_users = retrieve_users_for_reading_room_access()
     generate_access = generate_reading_room_access.partial(
         reading_rooms_data=reading_rooms_data
-    ).expand(user=retrieve_users)
+    ).expand(users=retrieved_users)
     update_reading_room_permissions(generate_access)
 
 
