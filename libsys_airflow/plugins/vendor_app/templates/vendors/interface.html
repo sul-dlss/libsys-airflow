@@ -67,7 +67,11 @@
         <dt>Fields to Remove</dt>
         <dd class="processing_options">{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
         <dt>Prepend Field 001 Data</dt>
+        {% if interface.processing_options['prepend_001'] %}
         <dd class="processing_options">{{ interface.processing_options['prepend_001']['data'] }}</dd>
+        {% else %}
+        <dd class="processing_options"></dd>
+        {% endif %}
         <dt>Subfields to Add</dt>
         <dd class="processing_options">
           {% for rule in interface.processing_options['add_subfield'] %}

@@ -69,6 +69,23 @@ rows = Rows(
         active=True,
     ),
     VendorInterface(id=2, display_name="Acme Upload Only", vendor_id=1, active=True),
+    VendorInterface(
+        id=3,
+        display_name="Acme FTP no processing options",
+        vendor_id=1,
+        folio_interface_uuid="140530EB-EE54-4302-81EE-D83B9DAC9B6E",
+        folio_data_import_processing_name="Acme Profile 1",
+        folio_data_import_profile_uuid="A8635200-F876-46E0-ACF0-8E0EFA542A3F",
+        file_pattern="^\\d*.mrc",
+        remote_path="stanford/outgoing/data",
+        processing_dag="acme-pull",
+        processing_options={
+            "package_name": "Acme ebooks package",
+            "delete_marc": ["666", "667"],
+        },
+        processing_delay_in_days=10,
+        active=True,
+    ),
     # a file was fetched 10 days ago, and was loaded 9 days ago
     VendorFile(
         id=1,
@@ -245,6 +262,23 @@ def test_interface_view(
             docdefs[4].text.strip()
             == '856 (indicator1: "4", indicator2: "1") double_arrow 856 (indicator1: "4", indicator2: "0")'
         )
+
+
+def test_interface_view_no_prepend001(
+    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
+):
+    with Session(mock_db()) as session:
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.Session',
+            return_value=session,
+        )
+
+        response = test_airflow_client.get('/vendor_management/interfaces/3')
+        assert response.status_code == 200
+        docdefs = response.html.find_all("dd", "processing_options")
+        assert len(docdefs) == 5
+        assert docdefs[0].text == "Acme ebooks package"
+        assert docdefs[1].text == "666, 667"
 
 
 def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
