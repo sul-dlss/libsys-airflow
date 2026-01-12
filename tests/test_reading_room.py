@@ -100,39 +100,29 @@ def mock_folio_client():
 
 
 @pytest.fixture
-def user1():
-    return {
-        "id": "user_1",  # NOT_ALLOWED based on usergroup
-        "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-        "customFields": {"usergroup": "opt_1"},  # sul - borrowdirect brown
-    }
-
-
-@pytest.fixture
-def user2():
-    return {
-        "id": "user_2",  # NOT_ALLOWED based on usergroup
-        "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",  # courtesy
-        "customFields": {"usergroup": "opt_2"},  # sul - university librarian guest
-    }
-
-
-@pytest.fixture
-def user3():
-    return {
-        "id": "user_3",  # ALLOWED
-        "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",  # graduate
-        "customFields": {"usergroup": "opt_99"},  # best friend
-    }
-
-
-@pytest.fixture
-def user4():
-    return {
-        "id": "user_4",  # NOT_ALLOWED based on patron group
-        "patronGroup": "e4f10c81-01c1-4b97-9362-6d412df42f55",  # pseudopatron
-        "customFields": {"usergroup": "opt_99"},  # best friend
-    }
+def users():
+    return [
+        {
+            "id": "user_1",  # NOT_ALLOWED based on usergroup
+            "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+            "customFields": {"usergroup": "opt_1"},  # sul - borrowdirect brown
+        },
+        {
+            "id": "user_2",  # NOT_ALLOWED based on usergroup
+            "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",  # courtesy
+            "customFields": {"usergroup": "opt_2"},  # sul - university librarian guest
+        },
+        {
+            "id": "user_3",  # ALLOWED
+            "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",  # graduate
+            "customFields": {"usergroup": "opt_99"},  # best friend
+        },
+        {
+            "id": "user_4",  # NOT_ALLOWED based on patron group
+            "patronGroup": "e4f10c81-01c1-4b97-9362-6d412df42f55",  # pseudopatron
+            "customFields": {"usergroup": "opt_99"},  # best friend
+        },
+    ]
 
 
 @pytest.fixture
@@ -175,10 +165,9 @@ def mock_reading_rooms_config(monkeypatch):
     )
 
 
-def test_reading_room_user_permissions_usergroup_not_allowed(
+def test_reading_room_user_permissions(
     mocker,
-    user1,
-    user2,
+    users,
     mock_folio_client,
     mock_reading_rooms_config,
     mock_airflow_connection,
@@ -187,49 +176,15 @@ def test_reading_room_user_permissions_usergroup_not_allowed(
         "libsys_airflow.plugins.folio.reading_room.folio_client",
         return_value=mock_folio_client,
     )
-
-    reading_room_access = generate_reading_room_access.function(
-        user1, MockReadingRoomsData()
-    )
-    assert reading_room_access["permissions"][0]["access"] == "NOT_ALLOWED"  # user_1
-
-    reading_room_access = generate_reading_room_access.function(
-        user2, MockReadingRoomsData()
-    )
-    assert reading_room_access["permissions"][0]["access"] == "NOT_ALLOWED"  # user_2
-
-
-def test_reading_room_user_permissions_allowed(
-    mocker,
-    user3,
-    mock_folio_client,
-    mock_reading_rooms_config,
-    mock_airflow_connection,
-):
     mocker.patch(
-        "libsys_airflow.plugins.folio.reading_room.folio_client",
-        return_value=mock_folio_client,
+        "libsys_airflow.plugins.folio.reading_room.ReadingRoomsData",
+        return_value=MockReadingRoomsData(),
     )
 
     reading_room_access = generate_reading_room_access.function(
-        user3, MockReadingRoomsData()
+        users, MockReadingRoomsData()
     )
-    assert reading_room_access["permissions"][0]["access"] == "ALLOWED"  # user_3
-
-
-def test_reading_room_user_permissions_patron_group_not_allowed(
-    mocker,
-    user4,
-    mock_folio_client,
-    mock_reading_rooms_config,
-    mock_airflow_connection,
-):
-    mocker.patch(
-        "libsys_airflow.plugins.folio.reading_room.folio_client",
-        return_value=mock_folio_client,
-    )
-
-    reading_room_access = generate_reading_room_access.function(
-        user4, MockReadingRoomsData()
-    )
-    assert reading_room_access["permissions"][1]["access"] == "NOT_ALLOWED"  # user_4
+    assert reading_room_access[0]["permissions"][0]["access"] == "NOT_ALLOWED"  # user_1
+    assert reading_room_access[1]["permissions"][0]["access"] == "NOT_ALLOWED"  # user_2
+    assert reading_room_access[2]["permissions"][0]["access"] == "ALLOWED"  # user_3
+    assert reading_room_access[3]["permissions"][1]["access"] == "NOT_ALLOWED"  # user_4

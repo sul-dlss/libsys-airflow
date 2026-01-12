@@ -4,7 +4,6 @@ import uuid
 
 from attrs import define
 from datetime import datetime, timedelta
-from itertools import batched
 from pathlib import Path
 from typing import Union
 
@@ -110,7 +109,7 @@ def calculate_start_stop(div, job):
 
 
 @task
-def retrieve_users_for_reading_room_access() -> list:
+def retrieve_users_batch_for_reading_room_access() -> list:
     """Retrieve users with reading room access from FOLIO"""
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
@@ -123,7 +122,8 @@ def retrieve_users_for_reading_room_access() -> list:
         query=f'updatedDate>"{formatted_date(from_date)}"',
         limit=99999,
     )
-    return list(batched(users, 1000))
+    # return list(batched(users, 1000))
+    return [row for row in users]
 
 
 @task
@@ -163,6 +163,9 @@ def generate_reading_room_access(
                 if folio_user.usergroup_name in v['disallowed'][x]:
                     access = "NOT_ALLOWED"
 
+            """
+            # Update existing access entry if one exists
+            """
             for ea in existing_access:
                 if ea['readingRoomName'] == k:
                     ea['access'] = access
@@ -183,8 +186,9 @@ def generate_reading_room_access(
                 )
 
             permissions.extend(existing_access)
-            patron_permissions = {"userId": folio_user.id, "permissions": permissions}
-            reading_room_patron_permissions.append(patron_permissions)
+
+        patron_permissions = {"userId": folio_user.id, "permissions": permissions}
+        reading_room_patron_permissions.append(patron_permissions)
 
     return reading_room_patron_permissions
 

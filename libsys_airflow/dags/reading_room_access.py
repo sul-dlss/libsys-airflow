@@ -7,7 +7,7 @@ from airflow.models.param import Param
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.folio.reading_room import (
-    retrieve_users_for_reading_room_access,
+    retrieve_users_batch_for_reading_room_access,
     generate_reading_room_access,
     update_reading_room_permissions,
     ReadingRoomsData,
@@ -46,10 +46,10 @@ default_args = {
 )
 def reading_room_access():
     reading_rooms_data = ReadingRoomsData()
-    retrieved_users = retrieve_users_for_reading_room_access()
-    generate_access = generate_reading_room_access.partial(
-        reading_rooms_data=reading_rooms_data
-    ).expand(users=retrieved_users)
+    retrieved_users = retrieve_users_batch_for_reading_room_access()
+    generate_access = generate_reading_room_access(
+        users=retrieved_users, reading_rooms_data=reading_rooms_data
+    )
     update_reading_room_permissions(generate_access)
 
 
