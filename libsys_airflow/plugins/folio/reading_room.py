@@ -135,17 +135,18 @@ def generate_reading_room_access(
     reading_room_patron_permissions = []
 
     logger.info(f"Generating reading room access for folio {len(users)} users")
+    client = folio_client()
     for user in users:
         folio_user = FolioUser(
             id=user["id"],
-            patronGroup=user["patronGroup"],
+            patronGroup=user.get("patronGroup", ""),
             customFields=user.get("customFields", {}),
             readingRoomsData=reading_rooms_data,
         )
 
         permissions = []
         existing_access = []
-        existing_perms = folio_client().folio_get(
+        existing_perms = client.folio_get(
             f"reading-room-patron-permission/{folio_user.id}"
         )
         for existing_perm in existing_perms:
