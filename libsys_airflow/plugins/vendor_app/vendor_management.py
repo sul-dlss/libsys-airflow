@@ -203,17 +203,42 @@ class VendorManagementView(BaseView):
         if 'additional-email-recipients' in form.keys():
             interface.additional_email_recipients = form['additional-email-recipients']
 
+        # form passes package-name as empty string (if not filled in)
         if 'package-name' in form.keys():
             processing_options = {}
             processing_options['package_name'] = form['package-name']
+            processing_options['prepend_001'] = {
+                "tag": "001",
+                "data": form['prepend-001'],
+            }
             processing_options['change_marc'] = []
             processing_options['delete_marc'] = []
-            if form['archive-regex'] != '':
-                processing_options['archive_regex'] = form['archive-regex']
+            processing_options['add_subfield'] = []
+            if form.get("archive-regex") is None:
+                processing_options["archive_regex"] = ""
+            else:
+                processing_options["archive_regex"] = form["archive-regex"]
 
             for name, value in form.items():
                 if name.startswith('remove-field'):
                     processing_options['delete_marc'].append(value)
+                if m := re.match(r'^add-subfield-tag-(\d+)', name):
+                    tag = form.get(f"add-subfield-tag-{m.group(1)}")
+                    eval_subfield = form.get(f"add-subfield-eval-{m.group(1)}")
+                    pattern = form.get(f"add-subfield-pattern-{m.group(1)}")
+                    subfield_code = form.get(f"add-subfield-code-{m.group(1)}")
+                    subfield_value = form.get(f"add-subfield-value-{m.group(1)}")
+                    if tag:
+                        processing_options["add_subfield"].append(
+                            {
+                                "tag": tag,
+                                "eval_subfield": eval_subfield,
+                                "pattern": pattern,
+                                "subfields": [
+                                    {"code": subfield_code, "value": subfield_value}
+                                ],
+                            }
+                        )
                 if m := re.match(r'^move-field-from-(\d+)', name):
                     # use the identifier on the "from" form name to determine the
                     # corresponding name for the "to" form name
