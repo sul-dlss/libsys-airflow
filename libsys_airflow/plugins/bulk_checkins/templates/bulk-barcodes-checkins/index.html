@@ -10,7 +10,7 @@
         </div>
      </div>
     {% else %}
-    <a href="{{ url_for('BulkCheckinsUploadView.bulk_checkins_home') }}?sso" class="btn btn-primary">Log in via SSO</a>
+    <a href="{{ url_for('SamlView.saml_home') }}?sso&bp=bulk_checkin" class="btn btn-primary">Log in via SSO</a>
     {% endif %}
 </div>
 {% endblock %}
