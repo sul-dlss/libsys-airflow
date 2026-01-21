@@ -124,7 +124,7 @@ class SamlView(AppBuilderBaseView):
                 attributes = session["samlUserdata"].items()
 
         return self.render_template(
-            "saml/index.html",
+            "saml-sso/index.html",
             user_attributes=attributes,
             is_authenticated=auth.is_authenticated(),
         )
