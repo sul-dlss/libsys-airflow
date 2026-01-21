@@ -1,0 +1,16 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>FOLIO Single Sign-on</h2>
+    {% if is_authenticated %}
+     <div class="row">
+        <div class="col">
+            <p>Service Points</p>
+        </div>
+     </div>
+    {% else %}
+    <a href="{{ url_for('SamlView.saml_home') }}?sso" class="btn btn-primary">Log in via SSO</a>
+    {% endif %}
+</div>
+{% endblock %}
