@@ -3,14 +3,34 @@
 {% block content %}
 <div>
     <h2>FOLIO Single Sign-on</h2>
-    {% if is_authenticated %}
-     <div class="row">
-        <div class="col">
-            <p>Service Points</p>
-        </div>
-     </div>
-    {% else %}
-    <a href="{{ url_for('SamlView.saml_home') }}?sso" class="btn btn-primary">Log in via SSO</a>
-    {% endif %}
+
+    <a href="#" onclick="folioSaml(event)" class="btn btn-primary">Log in via SSO</a>
 </div>
+<script type="text/javascript">
+  async function folioSaml(event) {
+    if (event) {
+        event.preventDerault();
+    }
+    try {
+        const loginResponse = await fetch(
+            "{{ gateway_url}}/saml/login",
+            {
+                method: "POST",
+                headers: {
+                    'x-okapi-tenant': 'sul',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "stripesUrl": "{{ url_for('SamlView.saml_result') }}"
+                }),
+                redirect: 'manual'
+            });
+        const location = loginResponse.headers.get('Location');
+        window.location = location;
+    } catch (error) {
+        console.error("SAML login error:", error);
+        throw error;
+    }
+  }
+</script>
 {% endblock %}
