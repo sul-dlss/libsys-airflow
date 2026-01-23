@@ -27,9 +27,6 @@ class AuthorityRecordsDeleteUploadView(AppBuilderBaseView):
         dag = dagbag.get_dag("delete_authority_records")
         execution_date = datetime.datetime.now(datetime.UTC)
         run_id = f"manual__{execution_date.isoformat()}"
-        # config = { "file": deletes_csv_file}
-        # if email:
-        #     config["email"] = email
         dag.create_dagrun(
             run_id=run_id,
             execution_date=execution_date,
