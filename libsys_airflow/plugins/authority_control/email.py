@@ -46,9 +46,6 @@ def email_deletes_report(**kwargs):
     devs_email = Variable.get("EMAIL_DEVS")
     to_emails = [staff_email, devs_email]
     logger.info(f"To_emails: {to_emails}")
-    if is_production():
-        sul_email = Variable.get("OCLC_EMAIL_SUL")
-        to_emails.append(sul_email)
 
     url_dag_run = dag_run_url(**kwargs)
     body = _generate_delete_report(dag_run_url=url_dag_run, **kwargs)
