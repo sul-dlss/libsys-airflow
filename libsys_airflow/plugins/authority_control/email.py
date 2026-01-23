@@ -71,13 +71,13 @@ def _generate_delete_report(**kwargs):
     html = f"""<h2>FOLIO Authority Record Deletion</h2>
     <p>DAG Run <a href="{dag_run_url}">{dag_run_url}</a></p>
     <h3>Successfully deleted {deleted:,}</h3>"""
-    html += f"<h3>Missing {len(missing):,} FOLIO Authority Records for 001s</h3>\n<ol>"
+    html += f"<h3>No Match Found {len(missing):,}</h3>\n<ol>"
     for row in missing:
         html += f"<li>{row}</li>\n"
-    html += f"</ol>\n<h3>{len(multiples):,} Multiple FOLIO Authority Records</h3><ol>"
+    html += f"</ol>\n<h3>Multiple Matches Found {len(multiples):,}</h3><ol>"
     for row in multiples:
         html += f"<li>{row}</li>\n"
-    html += f"</ol><h3>{len(errors):,} Errors</h3><ol>"
+    html += f"</ol><h3>Errors {len(errors):,}</h3><ol>"
     for row in errors:
         html += f"<li>{row}</li>\n"
     html += "</ol>"
