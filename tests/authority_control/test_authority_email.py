@@ -80,9 +80,9 @@ def test_email_deletes_report(mocker, mock_folio_variables):
     assert all_paragraphs[0].text.startswith("DAG Run")
     all_subtitles = report_body.find_all("h3")
     assert all_subtitles[0].text.startswith("Successfully deleted 10")
-    assert all_subtitles[1].text.startswith("Missing 1")
-    assert all_subtitles[2].text.startswith("0 Multiple")
-    assert all_subtitles[3].text.startswith("2 Errors")
+    assert all_subtitles[1].text.startswith("No Match Found 1")
+    assert all_subtitles[2].text.startswith("Multiple Matches Found 0")
+    assert all_subtitles[3].text.startswith("Errors 2")
 
 
 def test_email_report(mocker, mock_folio_variables):

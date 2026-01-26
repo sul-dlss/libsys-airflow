@@ -46,9 +46,6 @@ def email_deletes_report(**kwargs):
     devs_email = Variable.get("EMAIL_DEVS")
     to_emails = [staff_email, devs_email]
     logger.info(f"To_emails: {to_emails}")
-    if is_production():
-        sul_email = Variable.get("OCLC_EMAIL_SUL")
-        to_emails.append(sul_email)
 
     url_dag_run = dag_run_url(**kwargs)
     body = _generate_delete_report(dag_run_url=url_dag_run, **kwargs)
@@ -74,13 +71,13 @@ def _generate_delete_report(**kwargs):
     html = f"""<h2>FOLIO Authority Record Deletion</h2>
     <p>DAG Run <a href="{dag_run_url}">{dag_run_url}</a></p>
     <h3>Successfully deleted {deleted:,}</h3>"""
-    html += f"<h3>Missing {len(missing):,} FOLIO Authority Records for 001s</h3>\n<ol>"
+    html += f"<h3>No Match Found {len(missing):,}</h3>\n<ol>"
     for row in missing:
         html += f"<li>{row}</li>\n"
-    html += f"</ol>\n<h3>{len(multiples):,} Multiple FOLIO Authority Records</h3><ol>"
+    html += f"</ol>\n<h3>Multiple Matches Found {len(multiples):,}</h3><ol>"
     for row in multiples:
         html += f"<li>{row}</li>\n"
-    html += f"</ol><h3>{len(errors):,} Errors</h3><ol>"
+    html += f"</ol><h3>Errors {len(errors):,}</h3><ol>"
     for row in errors:
         html += f"<li>{row}</li>\n"
     html += "</ol>"
