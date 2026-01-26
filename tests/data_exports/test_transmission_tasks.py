@@ -544,7 +544,9 @@ def test_delete_from_oclc_task(mocker, mock_oclc_connection):
 
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
-        return_value={"CASUM": {"username": "lane-user", "password": "8de1a51e"}},
+        return_value={
+            "CASUM": {"username": "lane-user", "password": "8de1a51e"}  # noqa: S105
+        },  # noqa: S105
     )
 
     mocker.patch(
@@ -686,7 +688,9 @@ def test_filter_new_marc_records_task_no_records(mocker, tmp_path):
 def test_match_oclc_task(mocker, mock_oclc_connection):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
-        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+        return_value={
+            "STF": {"username": "sul-user", "password": "8de1a51e"}  # noqa: S105
+        },
     )
 
     mocker.patch(
@@ -726,7 +730,9 @@ def test_match_oclc_task(mocker, mock_oclc_connection):
 def test_new_to_oclc_task(mocker, mock_oclc_connection):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
-        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+        return_value={
+            "STF": {"username": "sul-user", "password": "8de1a51e"}  # noqa: S105
+        },
     )
 
     mocker.patch(
@@ -766,7 +772,9 @@ def test_new_to_oclc_task(mocker, mock_oclc_connection):
 def test_set_holdings_oclc_task(mocker, mock_oclc_connection):
     mocker.patch(
         "libsys_airflow.plugins.data_exports.transmission_tasks.oclc_connections",
-        return_value={"STF": {"username": "sul-user", "password": "8de1a51e"}},
+        return_value={
+            "STF": {"username": "sul-user", "password": "8de1a51e"}  # noqa: S105
+        },
     )
 
     mocker.patch(

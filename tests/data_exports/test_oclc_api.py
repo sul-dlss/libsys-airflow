@@ -1026,7 +1026,7 @@ def test_oclc_records_operation_no_records(mocker, mock_oclc_api, caplog):
         return_value=True,
     )
 
-    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}  # noqa: S105
     test_records_dict = {"STF": []}
 
     result = oclc_api.oclc_records_operation(
@@ -1060,7 +1060,7 @@ def test_oclc_records_operation(mocker, mock_oclc_api, tmp_path):
         return_value=True,
     )
 
-    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}  # noqa: S105
 
     marc_file = tmp_path / "2024070113-STF.mrc"
 
@@ -1085,7 +1085,7 @@ def test_oclc_records_operation_not_prod(mocker, mock_oclc_api, tmp_path, caplog
         return_value=False,
     )
 
-    connections = {"STF": {"username": "sul-admin", "password": "123245"}}
+    connections = {"STF": {"username": "sul-admin", "password": "123245"}}  # noqa: S105
 
     marc_file = tmp_path / "2024070113-STF.mrc"
 
