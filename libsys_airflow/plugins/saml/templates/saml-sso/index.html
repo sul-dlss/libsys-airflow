@@ -4,26 +4,26 @@
 <div>
     <h2>FOLIO Single Sign-on</h2>
 
-    <a href="#" onclick="folioSaml(event)" class="btn btn-primary">Log in via SSO</a>
+    <a href="https://keycloak-folio-test.stanford.edu/realms/sul/protocol/openid-connect/auth?client_id=sul-application&response_type=code&redirect_uri=http://localhost:8080" class="btn btn-primary">Log in via SSO</a>
 </div>
 <script type="text/javascript">
   async function folioSaml(event) {
     if (event) {
-        event.preventDerault();
+        event.preventDefault();
     }
     try {
         const loginResponse = await fetch(
-            "{{ gateway_url}}/saml/login",
+            "https://keycloak-folio-test.stanford.edu/realms/sul/protocol/openid-connect/auth?client_id=sul-application&response_type=code&redirect_uri=http://localhost:8080",
             {
                 method: "POST",
-                headers: {
-                    'x-okapi-tenant': 'sul',
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    "stripesUrl": "{{ url_for('SamlView.saml_result') }}"
-                }),
-                redirect: 'manual'
+                // headers: {
+                //     'x-okapi-tenant': 'sul',
+                //     'content-type': 'application/json'
+                // },
+                // body: JSON.stringify({
+                //     "stripesUrl": "{{ url_for('SamlView.saml_result') }}"
+                // }),
+                // redirect: 'manual'
             });
         const location = loginResponse.headers.get('Location');
         window.location = location;
