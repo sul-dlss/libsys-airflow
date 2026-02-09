@@ -6,7 +6,7 @@ from typing import Optional
 
 import magic
 
-from airflow.decorators import task
+from airflow.sdk import task
 
 from libsys_airflow.plugins.vendor.models import FileStatus
 from libsys_airflow.plugins.vendor.file_status import record_status_from_context

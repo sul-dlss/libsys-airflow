@@ -1,7 +1,7 @@
 import pytest  # noqa
 
 from bs4 import BeautifulSoup
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from libsys_airflow.plugins.data_exports.email import (
     generate_no_holdings_instances_email,

@@ -3,8 +3,8 @@ from urllib.parse import urlparse
 from typing import Optional
 import json
 
-from airflow.models import Connection
-from airflow.decorators import task
+from airflow.sdk import Connection
+from airflow.sdk import task
 from sqlalchemy.orm.session import Session
 from airflow.utils.session import NEW_SESSION, provide_session
 

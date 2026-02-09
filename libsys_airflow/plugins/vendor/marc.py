@@ -10,8 +10,7 @@ import re
 import magic
 from pydantic import BaseModel, Field
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus

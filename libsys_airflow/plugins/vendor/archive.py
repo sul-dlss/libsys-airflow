@@ -4,7 +4,7 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from airflow.decorators import task
+from airflow.sdk import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session

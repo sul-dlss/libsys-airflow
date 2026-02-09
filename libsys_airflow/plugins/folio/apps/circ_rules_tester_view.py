@@ -1,12 +1,11 @@
-import datetime
+from datetime import datetime, timezone
 import json
 import pathlib
 
 import pandas as pd
 
-from airflow.models import DagBag
-from airflow.utils import timezone
-from airflow.utils.state import State
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from libsys_airflow.plugins.shared.utils import execution_date
 
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
@@ -20,17 +19,15 @@ class CircRulesTester(AppBuilderBaseView):
     route_base = "/circ_rule_tester"
 
     def _trigger_dag_run(self, scenerio_file):
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("circ_rules_batch_tests")
         scenerio_df = pd.read_csv(scenerio_file)
-        execution_date = timezone.utcnow()
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
+        logical_date = execution_date()
+        run_id = f"manual__{logical_date}"
+        TriggerDagRunOperator(
+            task_id="_trigger_dag_run",
+            trigger_dag_id="circ_rules_batch_tests",
+            trigger_run_id=run_id,
+            logical_date=logical_date,
             conf={"scenarios": scenerio_df.to_json()},
-            external_trigger=True,
         )
         return run_id
 
@@ -55,21 +52,19 @@ class CircRulesTester(AppBuilderBaseView):
 
     @expose("/test", methods=["POST"])
     def run_test(self):
-        execution_date = timezone.utcnow()
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("circ_rules_scenario_tests")
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
+        logical_date = execution_date()
+        run_id = f"manual__{logical_date}"
+        TriggerDagRunOperator(
+            task_id="run_test",
+            trigger_dag_id="circ_rules_scenario_tests",
+            trigger_run_id=run_id,
+            logical_date=logical_date,
             conf=dict(
                 patron_group_id=request.form["patron_group_id"],
                 material_type_id=request.form["material_type_id"],
                 loan_type_id=request.form["loan_type_id"],
                 location_id=request.form["location_id"],
             ),
-            external_trigger=True,
         )
         return redirect(f"{CircRulesTester.route_base}/report/{run_id}")
 
@@ -92,12 +87,12 @@ class CircRulesTester(AppBuilderBaseView):
             flash(f"Batch report DAG ID {dag_run} doesn't exist")
             return redirect(f"{CircRulesTester.route_base}")
         report = pd.read_json(batch_report_path, encoding="utf-8-sig")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = datetime.now(timezone.utc).toordinal()
         return Response(
             report.to_csv(),
             mimetype="text/csv",
             headers={
-                "Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"
+                "Content-Disposition": f"attachment;filename=batch_report_{timestamp}.csv"
             },
         )
 

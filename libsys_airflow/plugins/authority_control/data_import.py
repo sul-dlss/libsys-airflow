@@ -1,7 +1,7 @@
 import logging
 
-from airflow.models import Variable
-from airflow.operators.bash import BashOperator
+from airflow.sdk import Variable
+from airflow.providers.standard.operators.bash import BashOperator
 
 logger = logging.getLogger(__name__)
 
