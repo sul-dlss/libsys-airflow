@@ -1,6 +1,6 @@
 import pytest
 
-from airflow.sdk import Connection
+from airflow.models.connection import Connection
 from airflow.utils.db import merge_conn
 from airflow import settings
 

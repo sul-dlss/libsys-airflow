@@ -16,7 +16,7 @@ def failed_979_dags():
     """
     dag_runs = BashOperator(
         task_id="failed_dag_runs",
-        bash_command="airflow dags list-runs digital_bookplate_979s --state=failed --output=json"
+        bash_command="airflow dags list-runs digital_bookplate_979s --state=failed --output=json",
     )
     return dag_runs
 
@@ -43,7 +43,9 @@ def clear_failed_add_marc_tags_to_record() -> str:
     airflow tasks clear digital_bookplate_979 -t add_marc_tags_to_record --only-failed --downstream --yes
     --yes = Do not prompt to confirm
     """
-    logger.info("Clearing failed add_marc_tags_to_record tasks for digital_bookplate_979 DAG runs.")
+    logger.info(
+        "Clearing failed add_marc_tags_to_record tasks for digital_bookplate_979 DAG runs."
+    )
     return "airflow tasks clear digital_bookplate_979 -t add_marc_tags_to_record --only-failed --downstream --yes"
 
 
