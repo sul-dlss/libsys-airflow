@@ -1,7 +1,7 @@
 import pytest
 
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 

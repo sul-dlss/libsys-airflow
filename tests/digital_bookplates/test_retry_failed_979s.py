@@ -53,7 +53,7 @@ def test_find_failed_979_dags(mocker, mock_dag_list_runs):
         return_value=mock_dag_list_runs,
     )
 
-    failed_dags = failed_979_dags.function()
+    failed_dags = failed_979_dags()
     assert len(failed_dags) == 2
 
 

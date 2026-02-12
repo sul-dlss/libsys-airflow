@@ -1,4 +1,5 @@
-from airflow.www import app as application
+from airflow.providers.fab.www import app as application
+
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
 import pytest
@@ -16,15 +17,20 @@ def test_airflow_client():
     )
     files_base = f"{root_directory}/tests/apps/digital_bookplates/digital_bookplates_file_fixtures"
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
     app.config['WTF_CSRF_ENABLED'] = False
     setattr(DigitalBookplatesDownloadView, "files_base", files_base)  # noqa
-    app.appbuilder.add_view(
-        DigitalBookplatesDownloadView,
-        "DigitalBookplates",
-        category="Digital bookplates",
-    )
-    app.blueprints['DigitalBookplatesDownloadView'].template_folder = templates_folder
+
+    with app.app_context():
+        app.appbuilder.add_view(
+            DigitalBookplatesDownloadView,
+            "DigitalBookplates",
+            category="Digital bookplates",
+        )
+        app.blueprints['DigitalBookplatesDownloadView'].template_folder = (
+            templates_folder
+        )
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:

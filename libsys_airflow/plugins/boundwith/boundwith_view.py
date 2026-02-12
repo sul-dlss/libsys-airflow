@@ -25,7 +25,7 @@ def trigger_bw_dag(
             "email": user_email,
             "sunid": sunid,
             "file_name": file_name,
-        }
+        },
     )
     return run_id, logical_date
 

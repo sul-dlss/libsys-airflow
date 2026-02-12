@@ -9,7 +9,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Union
 
-from airflow.models.mappedoperator import OperatorPartial
+from airflow.sdk.bases.operator import OperatorPartial
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import get_current_context
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator

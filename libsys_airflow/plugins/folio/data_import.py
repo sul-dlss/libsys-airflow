@@ -44,7 +44,7 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     on_execute_callback=record_loading,
     on_success_callback=record_loaded,
     on_failure_callback=record_loading_error,
-    max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
+    max_active_tis_per_dag=Variable.get("max_active_data_import_tis", 1),
     multiple_outputs=True,
 )
 def data_import_task(

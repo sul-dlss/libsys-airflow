@@ -1,4 +1,4 @@
-from airflow.www import app as application
+from airflow.providers.fab.www import app as application
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
 import pytest
@@ -16,14 +16,17 @@ def test_airflow_client():
         f"{root_directory}/libsys_airflow/plugins/authority_control/templates"
     )
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
     app.config['WTF_CSRF_ENABLED'] = False
-    app.appbuilder.add_view(
-        AuthorityRecordsDeleteUploadView, "DataExport", category="Data export"
-    )
-    app.blueprints['AuthorityRecordsDeleteUploadView'].template_folder = (
-        templates_folder
-    )
+
+    with app.app_context():
+        app.appbuilder.add_view(
+            AuthorityRecordsDeleteUploadView, "DataExport", category="Data export"
+        )
+        app.blueprints['AuthorityRecordsDeleteUploadView'].template_folder = (
+            templates_folder
+        )
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:

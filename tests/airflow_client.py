@@ -1,4 +1,4 @@
-from airflow.www import app as application
+from airflow.providers.fab.www import app as application
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
 import pytest
@@ -15,12 +15,15 @@ def test_airflow_client():
     """
     templates_folder = f"{root_directory}/libsys_airflow/plugins/vendor_app/templates"
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
     app.config['WTF_CSRF_ENABLED'] = False
-    app.appbuilder.add_view(
-        VendorManagementView, "Vendors", category="Vendor Management"
-    )
-    app.blueprints['VendorManagementView'].template_folder = templates_folder
+
+    with app.app_context():
+        app.appbuilder.add_view(
+            VendorManagementView, "Vendors", category="Vendor Management"
+        )
+        app.blueprints['VendorManagementView'].template_folder = templates_folder
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:
