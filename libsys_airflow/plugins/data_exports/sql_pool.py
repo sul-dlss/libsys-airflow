@@ -1,4 +1,5 @@
-from airflow.sdk import Connection, Variable
+from airflow.models.connection import Connection
+from airflow.sdk import Variable
 from psycopg2.pool import SimpleConnectionPool
 
 
