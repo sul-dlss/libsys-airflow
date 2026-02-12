@@ -510,7 +510,9 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_trigger_dag_run, caplog
     assert len(dag_run_ids) == 1
 
 
-def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_trigger_dag_run, caplog):
+def test_trigger_digital_bookplate_979_task_no_instances(
+    mocker, mock_trigger_dag_run, caplog
+):
     incoming_instances = []
     dag_run_ids = trigger_digital_bookplate_979_task.function(
         instances=incoming_instances

@@ -197,7 +197,7 @@ def filter_by_mod_date(
     return result
 
 
-@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", default_var=2))
+@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", 2))
 def download_task(
     conn_id: str,
     remote_path: str,
