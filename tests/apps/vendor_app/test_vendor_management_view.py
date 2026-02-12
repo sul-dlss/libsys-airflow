@@ -4,7 +4,6 @@ import pytest
 
 from unittest.mock import MagicMock
 from pytest_mock_resources import create_sqlite_fixture, Rows
-from airflow.models import Variable
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile
@@ -101,11 +100,11 @@ def mock_folio_client():
 
 
 @pytest.fixture
-def mock_okapi_url_variable(monkeypatch):
-    def mock_get(key):
-        return "https://okapi-test.stanford.edu"
-
-    monkeypatch.setattr(Variable, "get", mock_get)
+def mock_okapi_url_variable(mocker):
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.Variable.get',
+        return_value="https://okapi-test.stanford.edu",
+    )
 
 
 @pytest.fixture

@@ -151,9 +151,7 @@ def invoice_lines_paid_on_fund(**kwargs) -> list:
     list of paid invoice lines dictionaries in limit-sized chunks
     """
     folio_client = _folio_client()
-    invoice_line_limit = Variable(
-        description="Number of invoice lines for each list"
-    ).get("INVOICE_LINE_LIMIT", 100)
+    invoice_line_limit = Variable.get("INVOICE_LINE_LIMIT", 100)
     all_invoice_lines = []
     params = kwargs.get("params", {})
     funds = params.get("funds", [])

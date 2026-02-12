@@ -34,7 +34,7 @@ class MarcField(BaseModel):
 
 
 class AddField(MarcField):
-    unless: Optional[MarcField]
+    unless: Optional[MarcField] = None
 
 
 class ChangeField(BaseModel):

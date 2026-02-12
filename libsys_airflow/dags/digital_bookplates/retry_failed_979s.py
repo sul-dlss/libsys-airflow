@@ -24,9 +24,7 @@ default_args = {
 @dag(
     default_args=default_args,
     start_date=datetime(2024, 10, 15),
-    schedule=CronTriggerTimetable(
-        cron="45 20 7 * *", timezone="America/Los_Angeles"
-    ),
+    schedule=CronTriggerTimetable(cron="45 20 7 * *", timezone="America/Los_Angeles"),
     catchup=False,
     tags=["digital bookplates"],
 )
