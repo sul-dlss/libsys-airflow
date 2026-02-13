@@ -1,0 +1,21 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div>
+    <h2>{{ title }}</h2>
+{% if not reference_df.empty %}
+   <p>
+   <a class="btn btn-primary" 
+      href="{{ url_for('CircRulesTester.reference_data', data_type='loan_type', download=True) }}">Download CSV</a>
+   </p>
+   {{ reference_df.to_html(index=False)|safe }} 
+{% else %}
+    <ul id="ref-data-list">
+        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='loan_type') }}">Loan Types</a></li>
+        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='material_type') }}">Material Types</a></li>
+        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='locations') }}">Locations</a></li>
+        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='patron_group') }}">Patron Group</a></li>
+    </ul>
+{% endif %}
+</div>
+{% endblock %}

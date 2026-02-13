@@ -12,6 +12,8 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from flask import flash, request, redirect, Response
 
+from libsys_airflow.plugins.shared.folio_client import folio_client
+
 CIRC_HOME = "/opt/airflow/circ"
 
 
@@ -92,13 +94,95 @@ class CircRulesTester(AppBuilderBaseView):
             flash(f"Batch report DAG ID {dag_run} doesn't exist")
             return redirect(f"{CircRulesTester.route_base}")
         report = pd.read_json(batch_report_path, encoding="utf-8-sig")
-        timestamp = datetime.datetime.utcnow()
+        timestamp = datetime.datetime.now(datetime.UTC)
         return Response(
             report.to_csv(),
             mimetype="text/csv",
             headers={
                 "Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"
             },
+        )
+
+    @expose("/reference")
+    @expose("/reference/<data_type>")
+    def reference_data(self, data_type=None):
+        _folio_client = folio_client()
+        is_download = bool(request.args.get('download'))
+        match data_type:
+
+            case "loan_type":
+                title = "Loan Types"
+                loan_types_df = pd.DataFrame(
+                    _folio_client.folio_get(
+                        "loan-types", key="loantypes", query_params={"limit": 999}
+                    )
+                )
+                reference_df = loan_types_df.drop(columns=["metadata"]).rename(
+                    columns={"name": "FOLIO name", "id": "UUID"}
+                )
+
+            case "locations":
+                title = "Locations"
+                locations_df = pd.DataFrame(_folio_client.locations)
+                reference_df = locations_df.drop(
+                    columns=[
+                        'discoveryDisplayName',
+                        'isActive',
+                        'institutionId',
+                        'campusId',
+                        'libraryId',
+                        'details',
+                        'primaryServicePoint',
+                        'servicePointIds',
+                        'servicePoints',
+                        'isShadow',
+                        'metadata',
+                        'description',
+                    ]
+                ).rename(
+                    columns={"code": "FOLIO code", "name": "FOLIO name", "id": "UUID"}
+                )
+
+            case "material_type":
+                title = "Material Types"
+                material_types_df = pd.DataFrame(
+                    _folio_client.folio_get(
+                        "material-types", key="mtypes", query_params={"limit": 999}
+                    )
+                )
+                reference_df = material_types_df.drop(
+                    columns=["source", "metadata"]
+                ).rename(columns={"name": "FOLIO name", "id": "UUID"})
+
+            case "patron_group":
+                title = "Patron Groups"
+                patron_group_df = pd.DataFrame(
+                    _folio_client.folio_get(
+                        "/groups", key="usergroups", query_params={"limit": 999}
+                    )
+                )
+                reference_df = patron_group_df.drop(
+                    columns=["metadata", "expirationOffsetInDays"]
+                ).rename(
+                    columns={"group": "FOLIO code", "desc": "FOLIO name", "id": "UUID"}
+                )
+
+            case _:
+                title = "Reference Data"
+                reference_df = pd.DataFrame()
+
+        if is_download and not reference_df.empty:
+            return Response(
+                reference_df.to_csv(index=False),
+                mimetype="text/csv",
+                headers={"Content-Disposition": f"attachment;filename={data_type}.csv"},
+            )
+
+        return self.render_template(
+            "circ_rules_tester/reference-data.html",
+            title=title,
+            data_type=data_type,
+            reference_df=reference_df,
         )
 
     @expose("/report/<dag_run>")
