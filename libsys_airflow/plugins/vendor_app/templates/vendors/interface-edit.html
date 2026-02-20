@@ -40,9 +40,13 @@
     <div class="form-group">
       <label for="interface" class="col-sm-2 col-form-label">Interface</label>
       <div class="col-sm-8" id="interface">
+        {% if interface.upload_only %}
+         <input type="text"  class="form-control" id="display-name" name="display-name" value="{{ interface.display_name }}">
+        {% else %}
         <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
           {{ interface.display_name }}
         </a>
+        {% endif %}
       </div>
     </div>
     <div class="form-group">
@@ -94,6 +98,18 @@
         </label>
       </div>
     </div>
+    <div class="form-group">
+      <label for="additional-email-recipients" class="col-sm-2 col-form-label">Additional Email Recipients</label>
+      <div class="col-sm-8">
+        <input type="text" class="form-control" id="additional-email-recipients" name="additional-email-recipients" value="{{ interface.additional_email_recipients if interface.additional_email_recipients }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="note" class="col-sm-2 col-form-label">Note</label>
+      <div class="col-sm-8">
+        <textarea cols="20" rows="4" name="note" id="note" class="form-control">{% if interface.note %}{{ interface.note }}{% endif %}</textarea>
+      </div>
+    </div>
 
     <hr>
 
@@ -128,6 +144,55 @@
             onclick="newRemoveFieldRule(); return false;">Add Rule</button>
         </div>
       </div>
+  </section>
+
+    <div class="form-group">
+      <label for="prepend-001" class="col-sm-2 col-form-label">Prepend Field 001 Data</label>
+      <div class="col-sm-8">
+        <input type="text" class="form-control" id="prepend-001" name="prepend-001" value="{{ interface.prepend_001['data'] if interface.prepend_001 }}">
+      </div>
+    </div>
+
+  <section id="add-subfields">
+    <template id="add-subfields-template">
+      <div id="add-subfield-rule" class="add-subfield col-sm-offset-2 mt-30">
+        <div class="form-group">
+          <div class="col-sm-offset-1 col-sm-2">
+            <label class="rule-label" for="add-subfield-tag">Field:</label>
+            <input minlength="3" maxlength="3" type="text" id="add-subfield-tag" name="add-subfield-tag" value="">
+          </div>
+          <div class="col-sm-2">
+            <label class="rule-label" for="add-subfield-eval">Evaluate Subfield:</label>
+            <input minlength="1" maxlength="1" type="text" id="add-subfield-eval" name="add-subfield-eval" value="">
+          </div>
+          <div class="col-sm-2">
+            <label class="rule-label" for="add-subfield-pattern">Data Pattern in Subfield:</label>
+            <input minlength="1" maxlength="999" type="text" id="add-subfield-pattern" name="add-subfield-pattern" value="">
+          </div>
+          <div class="col-sm-2">
+            <label class="rule-label" for="add-subfield-code">Subfield:</label>
+            <input minlength="1" maxlength="1" type="text" id="add-subfield-code" name="add-subfield-code" value="">
+          </div>
+          <div class="col-sm-2">
+            <label class="rule-label" for="add-subfield-value">Subfield data:</label>
+            <input maxlength="9999" type="text" id="add-subfield-value" name="add-subfield-value" value="">
+          </div>
+        </div>
+        <span class="help-block">No data pattern will add subfield without attempting to match pattern; i.e. add subfield to all 856 fields.</span>
+        <div class="col-sm-offset-1 mt-30">
+          <button id="add-subfield-rule-remove" class="btn btn-primary" onclick="removeRule(event); return false;">Remove Add Subfield</button>
+        </div>
+      </div>
+    </template>
+
+    <div class="form-group mt-40">
+      <div class="col-sm-2">
+        <strong>Add Subfield to Existing Field</strong>
+      </div>
+      <div class="col-sm-1">
+        <button class="btn btn-primary col-sm-offset-1" onclick="newAddSubfieldToFieldRule(); return false;">Add Rule</button>
+      </div>
+    </div>
   </section>
 
   <section id="move-fields">
@@ -213,6 +278,31 @@
 
 
  /**
+  * Creates a form element for a new Add Subfield to Field Rule and adds it to the form.
+  */
+ function newAddSubfieldToFieldRule(marcField='', evalSubfield='', pattern='', subfieldCode='', subfieldValue='') {
+   const template = document.getElementById("add-subfields-template");
+   const clone = template.content.cloneNode(true);
+   const counter =  document.querySelectorAll('div.add-subfield').length + 1;
+
+   updateTemplate(clone, "add-subfield-rule", counter)
+   updateTemplateRemoveBtn(clone, "add-subfield-rule-remove", "add-subfield-rule", counter)
+   updateInputTemplate(clone, "add-subfield-tag", counter, marcField)
+   updateLabelTemplate(clone, "add-subfield-tag", counter)
+   updateInputTemplate(clone, "add-subfield-eval", counter, evalSubfield)
+   updateLabelTemplate(clone, "add-subfield-eval", counter)
+   updateInputTemplate(clone, "add-subfield-pattern", counter, pattern)
+   updateLabelTemplate(clone, "add-subfield-pattern", counter)
+   updateInputTemplate(clone, "add-subfield-code", counter, subfieldCode)
+   updateLabelTemplate(clone, "add-subfield-code", counter)
+   updateInputTemplate(clone, "add-subfield-value", counter, subfieldValue)
+   updateLabelTemplate(clone, "add-subfield-value", counter)
+
+   const addFields = document.getElementById("add-subfields");
+   addFields.appendChild(clone);
+ }
+
+ /**
   * Creates a Move Field Rule element and adds it to the form.
   */
  function newMoveFieldRule(fromTag='', fromIndicator1='', fromIndicator2='', toTag='', toIndicator1='', toIndicator2='') {
@@ -281,6 +371,11 @@
  function main() {
    {% for delete_marc in interface.delete_marc %}
      newRemoveFieldRule("{{ delete_marc }}");
+   {% endfor %}
+
+
+   {% for add_subfield in interface.add_subfield %}
+     newAddSubfieldToFieldRule("{{ add_subfield['tag'] }}", "{{ add_subfield['eval_subfield'] }}", "{{ add_subfield['pattern'] }}", "{{ add_subfield['subfields'][0]['code'] }}", "{{ add_subfield['subfields'][0]['value'] }}")
    {% endfor %}
 
    {% for change_marc in interface.change_marc %}

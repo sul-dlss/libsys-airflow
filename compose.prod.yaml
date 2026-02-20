@@ -50,7 +50,6 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.3}
   build: .
   environment:
     &airflow-common-env
@@ -118,6 +117,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/fix_encumbrances:/opt/airflow/fix_encumbrances
     - ${AIRFLOW_PROJ_DIR:-.}/orafin-files:/opt/airflow/orafin-files
     - ${AIRFLOW_PROJ_DIR:-.}/authorities:/opt/airflow/authorities
+    - ${AIRFLOW_PROJ_DIR:-.}/sdr-files:/opt/airflow/sdr-files
     - ${AIRFLOW_PROJ_DIR:-.}/.aws:/home/airflow/.aws
   user: "${AIRFLOW_UID:-50000}:0"
   extra_hosts:

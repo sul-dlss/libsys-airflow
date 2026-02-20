@@ -179,6 +179,48 @@ def generate_multiple_oclc_identifiers_email(**kwargs):
         )
 
 
+def _no_files_email_body(dag_id: str, dag_run_id: str, dag_run_url: str):
+    template = Template(
+        """
+        <h2>No Files Found to Transmit for {{ dag_id }}</h2>
+        <p><a href="{{ dag_run_url }}">{{ dag_run_id }}</a>
+    """
+    )
+
+    return template.render(
+        dag_id=dag_id,
+        dag_run_id=dag_run_id,
+        dag_run_url=dag_run_url,
+    )
+
+
+@task
+def no_files_email(**kwargs):
+    """
+    Generates email for failing to find vendor files to export
+    """
+    dag_run = kwargs["dag_run"]
+    dag_run_id = dag_run.run_id
+    dag_id = dag_run.dag.dag_id
+
+    run_url = dag_run_url(dag_run=dag_run)
+    logger.info("Generating email of no files found to transmit")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    html_content = _no_files_email_body(
+        dag_id,
+        dag_run_id,
+        run_url,
+    )
+
+    send_email_with_server_name(
+        to=[
+            devs_to_email_addr,
+        ],
+        subject=f"No Files Found to Transmit for {dag_id}",
+        html_content=html_content,
+    )
+
+
 def _failed_transmission_email_body(
     files: list, vendor: str, dag_id: str, dag_run_id: str, dag_run_url: str
 ):
@@ -266,6 +308,84 @@ def _missing_holdings_for_instances(report: str) -> str:
     return template.render(report_url=report_url, report_name=report_path.name)
 
 
+def _upload_confirmation_email_body(
+    vendor: str, record_id_kind: str, number_of_ids: int, uploaded_filename: str
+) -> str:
+    template = Template(
+        """
+        <h2>Data Export Upload Confirmation</h2>
+        <p>Your file {{ uploaded_filename }} was successfully submitted for export to {{ vendor }} as {{ record_id_kind }}.</p>
+        <p>Number of IDs submitted: {{ number_of_ids }}</p>
+        <p>The records will be processed during the next scheduled data export.</p>
+    """
+    )
+
+    return template.render(
+        vendor=vendor,
+        record_id_kind=record_id_kind,
+        number_of_ids=number_of_ids,
+        uploaded_filename=uploaded_filename,
+    )
+
+
+def _missing_marc_for_instances(**kwargs) -> str:
+    instance_uuids: list = kwargs["instance_uuids"]
+    dag_run = kwargs["dag_run"]
+    dag_run_id = dag_run.run_id
+    dag_id = dag_run.dag.dag_id
+
+    folio_url: str = kwargs["folio_url"]
+
+    run_url = dag_run_url(dag_run=dag_run)
+
+    template = Template(
+        """
+        <h2>Instances with No MARC Records</h2>
+        <h3>DAG: {{ dag_id }} Run: <a href="{{ run_url }}">{{ dag_run_id }}</a></h3>
+        <ul>
+        {% for uuid in instance_uuids %}
+        <li><a href="{{ folio_url }}/inventory/view/{{ uuid }}">{{ uuid }}</a></li>
+        {% endfor %}
+        </ul>
+        """
+    )
+
+    return template.render(
+        dag_id=dag_id,
+        run_url=run_url,
+        dag_run_id=dag_run_id,
+        instance_uuids=instance_uuids,
+        folio_url=folio_url,
+    )
+
+
+def send_confirmation_email(**kwargs):
+    vendor = kwargs["vendor"]
+    user_email = kwargs["user_email"]
+    record_id_kind = kwargs["record_id_kind"]
+    number_of_ids = kwargs["number_of_ids"]
+    uploaded_filename = kwargs["uploaded_filename"]
+
+    if uploaded_filename is not None:
+        logger.info("Generating upload confirmation email")
+        email_addresses = [Variable.get("EMAIL_DEVS")]
+        if user_email is not None:
+            email_addresses.append(user_email)
+
+        send_email_with_server_name(
+            to=','.join(email_addresses),
+            subject="Upload Confirmation for Data Export",
+            html_content=_upload_confirmation_email_body(
+                vendor,
+                record_id_kind,
+                number_of_ids,
+                uploaded_filename,
+            ),
+        )
+
+    return None
+
+
 @task
 def generate_no_holdings_instances_email(**kwargs):
     report = kwargs["report"]
@@ -284,4 +404,34 @@ def generate_no_holdings_instances_email(**kwargs):
         to=email_addresses,
         subject="Instances without Holdings",
         html_content=_missing_holdings_for_instances(report),
+    )
+
+
+@task
+def generate_missing_marc_email(**kwargs):
+    instance_uuids = kwargs["missing_marc_instances"]
+    is_oclc = kwargs.get("is_oclc", False)
+
+    if len(instance_uuids) < 1:
+        logger.info("No missing MARC records")
+        return
+
+    dag_run = kwargs["dag_run"]
+    folio_url = Variable.get("FOLIO_URL")
+
+    email_addresses = [Variable.get("EMAIL_DEVS")]
+
+    if is_oclc and is_production():
+        email_addresses.append(Variable.get("OCLC_EMAIL_SUL"))
+
+    body = _missing_marc_for_instances(
+        instance_uuids=instance_uuids,
+        dag_run=dag_run,
+        folio_url=folio_url,
+    )
+
+    send_email_with_server_name(
+        to=email_addresses,
+        subject=f"Instances missing MARC Records for {dag_run.dag.dag_id}",
+        html_content=body,
     )

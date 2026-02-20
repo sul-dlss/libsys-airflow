@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 
 import pytest
+
+from unittest.mock import MagicMock
 from pytest_mock_resources import create_sqlite_fixture, Rows
-from airflow.models import Variable
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile
@@ -88,11 +89,22 @@ engine = create_sqlite_fixture(rows)
 
 
 @pytest.fixture
-def mock_okapi_url_variable(monkeypatch):
-    def mock_get(key):
-        return "https://okapi-test.stanford.edu"
+def mock_folio_client():
+    def mock_get(*args, **kwargs):
+        if args[0].startswith("/organizations/organizations"):
+            return {"errors": []}
 
-    monkeypatch.setattr(Variable, "get", mock_get)
+    mock_client = MagicMock()
+    mock_client.folio_get = mock_get
+    return mock_client
+
+
+@pytest.fixture
+def mock_okapi_url_variable(mocker):
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.Variable.get',
+        return_value="https://okapi-test.stanford.edu",
+    )
 
 
 @pytest.fixture
@@ -153,12 +165,20 @@ def test_vendors_index_view(
 
 
 def test_vendor_show_view(
-    test_airflow_client, mock_db, mock_okapi_url_variable, mocker  # noqa: F811
+    test_airflow_client,  # noqa: F811
+    mock_db,
+    mock_okapi_url_variable,
+    mocker,
+    mock_folio_client,
 ):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
+        )
+        mocker.patch(
+            'libsys_airflow.plugins.vendor_app.vendor_management.VendorManagementView._folio_client',
+            return_value=mock_folio_client,
         )
         response = test_airflow_client.get('/vendor_management/vendors/1')
         assert response.status_code == 200

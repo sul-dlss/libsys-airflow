@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airflow.sdk import task, task_group, DAG, Param, Variable
 from airflow.providers.standard.operators.python import (
@@ -8,6 +9,8 @@ from airflow.providers.standard.operators.python import (
 )
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
+
+from libsys_airflow.plugins.data_exports.email import send_confirmation_email
 
 from libsys_airflow.plugins.data_exports.instance_ids import (
     choose_fetch_folio_ids,
@@ -29,6 +32,7 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
 from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
     generate_no_holdings_instances_email,
+    generate_missing_marc_email,
 )
 
 from libsys_airflow.plugins.data_exports.oclc_reports import (
@@ -50,6 +54,8 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
+
 with DAG(
     "select_oclc_records",
     default_args=default_args,
@@ -59,19 +65,22 @@ with DAG(
     tags=["data export", "oclc"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
         "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
+        "user_email": Param(None, type=["null", "string"]),
+        "number_of_ids": Param(0, type="integer", minimum=0),
+        "uploaded_filename": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
     start_date=datetime(2025, 1, 14),
@@ -104,6 +113,18 @@ with DAG(
             "vendor": "oclc",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
             "upstream_task_id": "filters_updates_ids",
+        },
+    )
+
+    email_user = PythonOperator(
+        task_id="email_user",
+        python_callable=send_confirmation_email,
+        op_kwargs={
+            "vendor": "oclc",
+            "user_email": "{{ params.user_email }}",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+            "number_of_ids": "{{ params.number_of_ids }}",
+            "uploaded_filename": "{{ params.uploaded_filename }}",
         },
     )
 
@@ -182,6 +203,10 @@ with DAG(
         updates_records=fetch_marc_records["updates"]  # type: ignore
     )
 
+    email_marc_not_found = generate_missing_marc_email(
+        missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True  # type: ignore
+    )
+
     finish_division = EmptyOperator(task_id="finish_division")
 
     multiple_oclc_numbers = multiple_oclc_numbers_group()
@@ -196,6 +221,7 @@ with DAG(
 
 
 check_record_ids >> fetch_folio_record_ids >> filter_out_updates_ids >> save_ids_to_file
+save_ids_to_file >> email_user
 check_record_ids >> save_ids_to_file >> fetch_marc_records
 
 (
@@ -204,6 +230,7 @@ check_record_ids >> save_ids_to_file >> fetch_marc_records
         new_records_by_library,
         delete_records_by_library,
         updates_records_by_library,
+        email_marc_not_found,
     ]
     >> finish_division
 )

@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    Text,
     select,
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
@@ -83,6 +84,7 @@ class VendorInterface(Model):  # type: ignore
     folio_data_import_profile_uuid = Column(String(36), unique=False, nullable=True)
     folio_data_import_processing_name = Column(String(250), unique=False, nullable=True)
     file_pattern = Column(String(250), unique=False, nullable=True)
+    note = Column(Text(), unique=False, nullable=True)
     remote_path = Column(String(250), unique=False, nullable=True)
     processing_dag = Column(String(50), unique=False, nullable=True)
     processing_options = Column(JSON, nullable=True)
@@ -91,6 +93,7 @@ class VendorInterface(Model):  # type: ignore
     # Vendor interface is currently assigned to organization within FOLIO. Upload-only are False
     assigned_in_folio = Column(Boolean, nullable=False, default=True)
     vendor_files = relationship("VendorFile", back_populates="vendor_interface")
+    additional_email_recipients = Column(String(250), unique=False, nullable=True)
 
     @property
     def pending_files(self):
@@ -149,8 +152,16 @@ class VendorInterface(Model):  # type: ignore
         return self.processing_option('package_name')
 
     @property
+    def prepend_001(self):
+        return self.processing_option('prepend_001')
+
+    @property
     def delete_marc(self):
         return self.processing_option('delete_marc', [])
+
+    @property
+    def add_subfield(self):
+        return self.processing_option('add_subfield', [])
 
     @property
     def change_marc(self):

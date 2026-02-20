@@ -23,7 +23,7 @@ set :deploy_to, "/home/libsys/#{fetch(:application)}"
 
 # Default value for linked_dirs is []
 # set :linked_dirs, %w[]
-set :linked_dirs, %w(.aws config vendor-data vendor-keys data-export-files digital-bookplates fix_encumbrances orafin-files logs authorities)
+set :linked_dirs, %w(.aws config vendor-data vendor-keys data-export-files digital-bookplates fix_encumbrances orafin-files logs authorities sdr-files)
 
 # Default value for keep_releases is 5
 set :keep_releases, 2

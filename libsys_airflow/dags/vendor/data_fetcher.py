@@ -10,7 +10,13 @@ from airflow.sdk import (
 )
 
 from libsys_airflow.plugins.airflow.connections import create_connection_task
-from libsys_airflow.plugins.vendor.download import ftp_download_task
+from libsys_airflow.plugins.vendor.download import (
+    filter_by_strategy,
+    filter_already_downloaded,
+    filter_by_mod_date,
+    download_task,
+    update_vendor_files_table,
+)
 from libsys_airflow.plugins.vendor.archive import archive_task
 from libsys_airflow.plugins.vendor.paths import download_path
 from libsys_airflow.plugins.vendor.emails import files_fetched_email_task
@@ -28,8 +34,8 @@ default_args = dict(
     {
         "owner": "folio",
         "depends_on_past": False,
-        "retries": 0,
-        "retry_delay": timedelta(minutes=5),
+        "retries": 1,
+        "retry_delay": timedelta(minutes=1),
     },
 )
 
@@ -52,7 +58,7 @@ with DAG(
         "dataload_profile_uuid": Param(
             None, type=["null", "string"]
         ),  # f4144dbd-def7-4b77-842a-954c62faf319
-        "remote_path": Param(None, type=["null", "string"]),  # 'oclc'
+        "remote_path": Param("", type="string"),  # 'oclc'
         "filename_regex": Param(
             None, type=["null", "string"]
         ),  # '^\d+\.mrc$' or CNT-ORD for special Gobi file filtering.
@@ -77,23 +83,60 @@ with DAG(
 
         return params
 
+    @task
+    def archive_downloaded_files(file_statuses: dict) -> list:
+        return [f[0] for f in file_statuses["fetched"]]
+
+    @task
+    def add_skipped_file_statuses(file_statuses: dict, skipped_files: list) -> dict:
+        file_statuses.update({"skipped": skipped_files})
+        return file_statuses
+
     params = setup()
     conn_id = create_connection_task(params["vendor_interface_uuid"])
 
-    downloaded_files = ftp_download_task(
+    file_list_by_strategy = filter_by_strategy(
+        conn_id,
+        params["remote_path"],
+        params["filename_regex"],
+    )
+
+    files_not_yet_downloaded = filter_already_downloaded(
+        params["remote_path"],
+        params["vendor_uuid"],
+        params["vendor_interface_uuid"],
+        file_list_by_strategy["filtered_files"],
+    )
+
+    files_by_mod_date = filter_by_mod_date(
+        conn_id,
+        params["remote_path"],
+        files_not_yet_downloaded,
+    )
+
+    file_statuses = download_task(
         conn_id,
         params["remote_path"],
         params["download_path"],
-        params["filename_regex"],
-        params["vendor_uuid"],
-        params["vendor_interface_uuid"],
+        params["vendor_interface_name"],
+        files_by_mod_date["filtered_files"],
     )
 
+    vendor_files_entries = add_skipped_file_statuses(
+        file_statuses, files_by_mod_date["skipped"]
+    )
+
+    update_vendor_files_table(
+        vendor_files_entries, params["vendor_uuid"], params["vendor_interface_uuid"]
+    )
+
+    files_to_archive = archive_downloaded_files(file_statuses)
+
     archive_task(
-        downloaded_files,
+        files_to_archive,
         params["download_path"],
         params["vendor_uuid"],
         params["vendor_interface_uuid"],
     )
 
-    files_fetched_email_task(downloaded_files, params)
+    files_fetched_email_task(files_to_archive, params)

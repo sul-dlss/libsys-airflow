@@ -91,8 +91,9 @@ with DAG(
             # Map from processing options to params.
             processing_options = vendor_interface.processing_options or {}
             # Processing options might look like this:
-            # {"package_name": "", "change_marc": [], "delete_marc": []}
-            # {"package_name": "coutts", "change_marc": [{"from": "520", "to": "920"}], "delete_marc": ["123"]}
+            # {"package_name": "", "prepend_001": {}, "change_marc": [], "delete_marc": [], "add_subfield": []}
+            # {"package_name": "coutts", "prepend_001": {"tag":"001", "data":"eb4"} "change_marc": [{"from": "520", "to": "920"}], "delete_marc": ["123"]}
+            params["prepend_001"] = processing_options.get("prepend_001", {})
             params["change_fields"] = processing_options.get("change_marc", [])
             params["remove_fields"] = processing_options.get("delete_marc") or [
                 "905",
@@ -108,21 +109,9 @@ with DAG(
                         "subfields": [{"code": "a", "value": package_name}],
                     }
                 )
-            if vendor_interface.vendor.vendor_code_from_folio == "sfx":
-                add_fields.append(
-                    {
-                        "tag": "590",
-                        "subfields": [{"code": "a", "value": "MARCit brief record."}],
-                        "unless": {
-                            "tag": "035",
-                            "subfields": [{"code": "a", "value": "OCoLC"}],
-                        },
-                    }
-                )
 
             params["add_fields"] = add_fields or None
-
-            # Not yet supported in UI.
+            params["add_subfields"] = processing_options.get("add_subfield", [])
             params["archive_regex"] = processing_options.get("archive_regex")
 
         logger.info(f"Params are {params}")
@@ -139,9 +128,11 @@ with DAG(
     processed_params = process_marc_task(
         params["download_path"],
         filename,
+        params["prepend_001"],
         params["remove_fields"],
         params["change_fields"],
         params["add_fields"],
+        params["add_subfields"],
     )
 
     batch_filenames = batch_task(params["download_path"], processed_params["filename"])

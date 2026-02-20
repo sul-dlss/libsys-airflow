@@ -37,6 +37,8 @@
       <dd><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></dd>
       <dt>Interface ID</dt>
       <dd>{{ interface.folio_interface_uuid or 'Upload only' }}</dd>
+      <dt>Interface Display Name</dt>
+      <dd>{{ interface.display_name }}</dd>
       <dt>Import Profile</dt>
       {% if interface.folio_data_import_profile_uuid %}
         <dd>{{ interface.folio_data_import_processing_name }} ({{ interface.folio_data_import_profile_uuid }})</dd>
@@ -55,13 +57,33 @@
       <dd>{{ interface.active }}</dd>
       <dt>Assigned to vendor in FOLIO</dt>
       <dd>{{ interface.assigned_in_folio }}</dd>
+      <dt>Additional Email Recipients</dt>
+      <dd>{{ interface.additional_email_recipients }}</dd>
+      <dt>Note</dt>
+      <dd>{{ interface.note }}</dd>
       {% if interface.processing_options %}
         <dt>Package Name</dt>
-        <dd>{{ interface.processing_options['package_name'] }}</dd>
+        <dd class="processing_options">{{ interface.processing_options['package_name'] }}</dd>
         <dt>Fields to Remove</dt>
-        <dd>{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dd class="processing_options">{{ ', '.join(interface.processing_options['delete_marc']) }}</dd>
+        <dt>Prepend Field 001 Data</dt>
+        {% if interface.processing_options['prepend_001'] %}
+        <dd class="processing_options">{{ interface.processing_options['prepend_001']['data'] }}</dd>
+        {% else %}
+        <dd class="processing_options"></dd>
+        {% endif %}
+        <dt>Subfields to Add</dt>
+        <dd class="processing_options">
+          {% for rule in interface.processing_options['add_subfield'] %}
+            {% if rule['eval_subfield'] == "" and rule['pattern'] == "" %}
+              {{ rule['tag'] }} <span class="material-icons">double_arrow</span> subfield code: {{ rule['subfields'][0]['code'] }}, subfield value: {{ rule['subfields'][0]['value'] }}<br>
+            {% else %}
+              {{ rule['tag'] }} subfield {{ rule['eval_subfield'] }} contains pattern "{{ rule['pattern'] }}" <span class="material-icons">double_arrow</span> subfield code: {{ rule['subfields'][0]['code'] }}, subfield value: {{ rule['subfields'][0]['value'] }}<br>
+            {% endif %}
+          {% endfor %}
+        </dd>
         <dt>Fields to Move</dt>
-        <dd>
+        <dd class="processing_options">
           {% for rule in interface.processing_options['change_marc'] %}
             {{ rule['from']['tag'] }} (indicator1: "{{ rule['from']['indicator1'] }}", indicator2: "{{ rule['from']['indicator2'] }}") <span class="material-icons">double_arrow</span> {{ rule['to']['tag'] }} (indicator1: "{{ rule['to']['indicator1'] }}", indicator2: "{{ rule['to']['indicator2'] }}")<br>
           {% endfor %}
@@ -165,6 +187,7 @@
         <th>File Size</th>
         <th>File Timestamp</th>
         <th>Loaded</th>
+        <th>Status</th>
         <th data-sortable="false">Actions</th>
       </thead>
       <tbody>
@@ -177,6 +200,7 @@
           <td>{{ file.filesize }}</td>
           <td>{{ file.vendor_timestamp }}</td>
           <td>{{ file.loaded_timestamp }}</td>
+          <td>{{ file.status.value }}</td>
           <td>
             {% if interface.assigned_in_folio or interface.upload_only %}
             <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">

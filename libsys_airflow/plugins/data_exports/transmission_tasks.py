@@ -9,7 +9,8 @@ from s3path import S3Path
 from datetime import datetime
 from typing import Optional, Union
 
-from airflow.sdk import task, Connection
+from airflow.sdk import task
+from airflow.models.connection import Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 
@@ -50,6 +51,14 @@ def gather_files_task(**kwargs) -> dict:
         "file_list": marc_filelist,
         "s3": bool(bucket),
     }
+
+
+@task.branch(task_id="check_file_list")
+def check_file_list_task(file_list: list):
+    if len(file_list) < 1:
+        return "no_files_email"
+    else:
+        return "continue_transmit_data"
 
 
 @task
@@ -124,7 +133,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     else:
         path_module = Path
     with httpx.Client(
-        headers=connection.extra_dejson,
+        headers=connection.extra,
         params=vendor_url_params(conn_id, gather_files["s3"]),
         follow_redirects=True,
     ) as client:
@@ -160,7 +169,7 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     else:
         hook = FTPHook(ftp_conn_id=conn_id)
     connection = Connection.get_connection_from_secrets(conn_id)
-    remote_path = connection.extra_dejson["remote_path"]
+    remote_path = connection.extra["remote_path"]
     success = []
     failures = []
     for f in gather_files["file_list"]:
@@ -383,7 +392,7 @@ def oclc_connections(connection_details: list) -> dict:
     connection_lookup = {}
     for conn_id in connection_details:
         connection = Connection.get_connection_from_secrets(conn_id)
-        oclc_code = connection.extra_dejson["oclc_code"]
+        oclc_code = connection.extra["oclc_code"]
         connection_lookup[oclc_code] = {
             "username": connection.login,
             "password": connection.password,

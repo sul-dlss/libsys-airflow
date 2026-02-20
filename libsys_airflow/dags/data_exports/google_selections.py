@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airflow.sdk import DAG, Param, Variable
 from airflow.providers.standard.operators.python import (
@@ -14,6 +15,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
     save_ids_to_fs,
 )
 
+from libsys_airflow.plugins.data_exports.email import send_confirmation_email
 from libsys_airflow.plugins.data_exports.marc.exports import marc_for_instances
 from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
@@ -32,6 +34,7 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
 
 with DAG(
     "select_google_records",
@@ -44,19 +47,22 @@ with DAG(
     tags=["data export", "google"],
     params={
         "from_date": Param(
-            f"{(datetime.now() - timedelta(1)).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
         ),
         "fetch_folio_record_ids": Param(True, type="boolean"),
         "saved_record_ids_kind": Param(None, type=["null", "string"]),
+        "user_email": Param(None, type=["null", "string"]),
+        "number_of_ids": Param(0, type="integer", minimum=0),
+        "uploaded_filename": Param(None, type=["null", "string"]),
     },
     render_template_as_native_obj=True,
 ) as dag:
@@ -78,6 +84,18 @@ with DAG(
         op_kwargs={
             "vendor": "google",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
+        },
+    )
+
+    email_user = PythonOperator(
+        task_id="email_user",
+        python_callable=send_confirmation_email,
+        op_kwargs={
+            "vendor": "google",
+            "user_email": "{{ params.user_email }}",
+            "record_id_kind": "{{ params.saved_record_ids_kind }}",
+            "number_of_ids": "{{ params.number_of_ids }}",
+            "uploaded_filename": "{{ params.uploaded_filename }}",
         },
     )
 
@@ -114,6 +132,7 @@ with DAG(
 check_record_ids >> [fetch_folio_record_ids, save_ids_to_file]
 fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records
+save_ids_to_file >> email_user
 
 fetch_marc_records >> transform_marc_record >> transform_marc_fields
 transform_marc_fields >> finish_processing_marc

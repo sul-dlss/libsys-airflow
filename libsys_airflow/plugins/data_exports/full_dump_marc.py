@@ -6,7 +6,8 @@ from pathlib import Path
 from s3path import S3Path
 from typing import Union
 
-from airflow.sdk import get_current_context, Variable, Connection
+from airflow.models.connection import Connection
+from airflow.sdk import get_current_context, Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 

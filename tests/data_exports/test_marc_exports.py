@@ -1,3 +1,4 @@
+import httpx
 import pymarc
 import pytest
 
@@ -104,8 +105,10 @@ def mock_folio_client():
 @pytest.fixture
 def mock_folio_404():
     def mock_folio_get_404(*args, **kwargs):
-        raise ValueError(
-            "Error retrieving Record by externalId: '4e66ce0d-4a1d-41dc-8b35-0914df20c7fb', response code 404, Not Found"
+        raise httpx.HTTPStatusError(
+            "Client error '404'",
+            request=httpx.Request('GET', args[0]),
+            response=httpx.Response(404),
         )
 
     mock_404_client = MagicMock()
@@ -187,7 +190,7 @@ def test_retrieve_marc_for_instances(
     assert len(marc_records) == 1
 
 
-def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog):
+def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
         return_value=mock_folio_404,
@@ -196,9 +199,9 @@ def test_retrieve_marc_for_instance_404(mocker, mock_folio_404, tmp_path, caplog
     instance_file = setup_test_file_updates(tmp_path)
 
     exporter = Exporter()
-    exporter.retrieve_marc_for_instances(instance_file, kind="updates")
+    _, not_found = exporter.retrieve_marc_for_instances(instance_file, kind="updates")
 
-    assert "response code 404" in caplog.text
+    assert "4e66ce0d-4a1d-41dc-8b35-0914df20c7fb" in not_found
 
 
 def test_marc_for_instances(

@@ -1,7 +1,7 @@
 import pydantic
 import pytest
 
-from airflow.sdk import Connection
+from airflow.models.connection import Connection
 from libsys_airflow.plugins.data_exports import full_dump_marc
 from libsys_airflow.plugins.data_exports.marc import exporter
 

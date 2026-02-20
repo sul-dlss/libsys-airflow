@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+# A utility for truncating the vendor files table
+
+import os
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, delete
+from sqlalchemy.orm import sessionmaker
+from libsys_airflow.plugins.vendor.models import VendorFile
+
+load_dotenv()
+
+
+def main():
+    db_url = os.getenv(
+        'AIRFLOW_CONN_VENDOR_LOADS',
+        'postgresql+psycopg2://airflow:airflow@localhost:5432/vendor_loads',
+    )
+    engine = create_engine(db_url, echo=True)
+    Session = sessionmaker(bind=engine)
+
+    with Session() as session:
+        table = VendorFile.__table__
+        session.execute(delete(table))
+        session.commit()
+
+
+if __name__ == "__main__":
+    main()

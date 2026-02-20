@@ -1,6 +1,6 @@
 import pytest
 
-from airflow.sdk import Connection
+from airflow.models.connection import Connection
 from airflow.utils.db import merge_conn
 from airflow import settings
 
@@ -82,7 +82,7 @@ def test_create_connection_ftp(mocker):
         return_value={
             "uri": "ftp://example.com",
             "username": "user",
-            "password": "pass",
+            "password": "pass",  # noqa: S105
         },
     )
     conn_id = create_connection("1234")
@@ -102,7 +102,7 @@ def test_create_connection_sftp_with_keyfile(mocker):
         return_value={
             "uri": "sftp://sftp.amalivre.fr",
             "username": "user",
-            "password": None,
+            "password": None,  # noqa: S105
         },
     )
     conn_id = create_connection("1234")
@@ -123,7 +123,7 @@ def test_create_connection_sftp(mocker):
         return_value={
             "uri": "xftp://example.com",
             "username": "user",
-            "password": "pass",
+            "password": "pass",  # noqa: S105
         },
     )
     with pytest.raises(ValueError):

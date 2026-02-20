@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 
+from airflow.models.connection import Connection
 from airflow.sdk import (
     dag,
     task,
-    Connection,
     Param,
     Variable,
 )

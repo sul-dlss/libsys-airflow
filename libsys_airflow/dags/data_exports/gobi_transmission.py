@@ -10,12 +10,14 @@ from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
+    check_file_list_task,
     transmit_data_ftp_task,
     archive_transmitted_data_task,
 )
 
 from libsys_airflow.plugins.data_exports.email import (
     failed_transmission_email,
+    no_files_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,9 +45,15 @@ default_args = {
 def send_gobi_records():
     start = EmptyOperator(task_id="start")
 
-    end = EmptyOperator(task_id="end")
+    end = EmptyOperator(task_id="end", trigger_rule="all_done")
 
     gather_files = gather_files_task(vendor="gobi")
+
+    check_file_list = check_file_list_task(gather_files["file_list"])
+
+    no_files_found_email = no_files_email()
+
+    continue_op = EmptyOperator(task_id="continue_transmit_data")
 
     transmit_data = transmit_data_ftp_task("gobi", gather_files)
 
@@ -53,7 +61,9 @@ def send_gobi_records():
 
     email_failures = failed_transmission_email(transmit_data["failures"])
 
-    start >> gather_files >> transmit_data >> [archive_data, email_failures] >> end
+    start >> gather_files >> check_file_list >> [continue_op, no_files_found_email]
+    no_files_found_email >> end
+    continue_op >> transmit_data >> [archive_data, email_failures] >> end
 
 
 send_gobi_records()

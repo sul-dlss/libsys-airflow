@@ -27,7 +27,7 @@ def dag_run_url(**kwargs) -> str:
     airflow_url = kwargs.get("airflow_url")
 
     if not airflow_url:
-        airflow_url = conf.get('webserver', 'base_url')
+        airflow_url = conf.get('api', 'base_url')
         if not airflow_url.endswith("/"):
             airflow_url = f"{airflow_url}/"
 

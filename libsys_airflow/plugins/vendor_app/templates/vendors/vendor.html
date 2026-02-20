@@ -35,10 +35,42 @@
      })
  }
 
- if (document.readyState !== 'loading') {
+ const vendorStatusHandler = () => {
+    const folioAPIUrl = "{{ okapi_url }}/organizations/organizations/{{ vendor.folio_organization_uuid }}";
+    fetch(folioAPIUrl, {
+      method: 'GET',
+      headers: {
+        'x-okapi-token': '{{ okapi_token }}',
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.dir(response)
+      const statusElement = document.getElementById('vendor-status');
+      statusElement.classList.add('text-danger');
+      statusElement.style.display = 'inline';
+      statusElement.style.fontSize = '1.5em';
+      statusElement.style.float = 'inline-start';
+      statusElement.style.paddingRight = 'inherit';
+      
+      if (!response.ok) {
+        statusElement.textContent = 'Could not verify vendor record in FOLIO';
+      }
+      if (response.status == '404') {
+        statusElement.textContent = 'Vendor record is no longer in FOLIO';
+        const refreshButton = document.getElementById('refresh-button');
+        refreshButton.style.visibility = 'hidden';
+      }
+    }).catch(error => {
+      console.dir(error)
+    })
+  }
+ 
+  if (document.readyState !== 'loading') {
+   vendorStatusHandler()
    vendorActivityHandler()
  } else {
    document.addEventListener('DOMContentLoaded', vendorActivityHandler)
+   document.addEventListener('DOMContentLoaded', vendorStatusHandler)
  }
 </script>
 
@@ -61,6 +93,7 @@
 <main>
   <section>
     <div class="row">
+      <div id="vendor-status" style="display: none;" class="col-md-4"></div>
       <div class="col-md-4">
         <dl class="dl-horizontal">
             <dt>Organization ID</dt>
@@ -71,7 +104,7 @@
       <div class="col-md-2">
         <form method="POST" action="{{ url_for('VendorManagementView.vendor_sync', vendor_id=vendor.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-          <input type="submit" class="btn btn-default" value="Refresh Data from FOLIO">
+          <input id="refresh-button" type="submit" class="btn btn-default" value="Refresh Data from FOLIO">
         </form>
       </div>
       {% endif %}

@@ -30,6 +30,10 @@ def files_fetched_email_task(downloaded_files: list, kwargs: dict):
     kwargs["vendor_interface_url"] = _vendor_interface_url(
         kwargs["vendor_uuid"], kwargs["vendor_interface_uuid"]
     )
+    kwargs["interface_additional_emails"] = _additional_email_recipients(
+        kwargs["vendor_interface_uuid"]
+    )
+
     send_files_fetched_email(**kwargs)
 
 
@@ -39,7 +43,7 @@ def send_files_fetched_email(**kwargs):
         "{{vendor_interface_name}} ({{vendor_code}}) - Daily Fetch Report ({{date}}) [{{environment}}]"
     ).render(kwargs)
     send_email_with_server_name(
-        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        to=_email_recipients(kwargs.get('interface_additional_emails', None)),
         subject=subject,
         html_content=_files_fetched_html_content(**kwargs),
     )
@@ -61,6 +65,26 @@ def _files_fetched_html_content(**kwargs):
         """
     )
     return template.render(kwargs)
+
+
+def _email_recipients(recipients) -> str:
+    recipients = recipients or []
+    email_recipients = [Variable.get('VENDOR_LOADS_TO_EMAIL')]
+    email_recipients.extend(recipients)
+
+    return ','.join(email_recipients)
+
+
+def _additional_email_recipients(vendor_interface_uuid) -> list:
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        interface = VendorInterface.load(vendor_interface_uuid, session)
+
+    recipients = interface.additional_email_recipients
+    if recipients is None:
+        return []
+
+    return recipients.replace(',', ' ').split()
 
 
 def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
@@ -100,11 +124,15 @@ def send_file_loaded_email(**kwargs):
     else:
         kwargs["records_count"] = invoice_count(kwargs["file_path"])
         html_content = _file_loaded_edi_html_content(**kwargs)
+
+    kwargs["interface_additional_emails"] = _additional_email_recipients(
+        kwargs["vendor_interface_uuid"]
+    )
     subject = Template(
         "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report [{{environment}}]"
     ).render(kwargs)
     send_email_with_server_name(
-        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        to=_email_recipients(kwargs.get('interface_additional_emails', None)),
         subject=subject,
         html_content=html_content,
     )
@@ -193,8 +221,11 @@ def file_not_loaded_email_task(**kwargs):
 
 
 def send_file_not_loaded_email(**kwargs):
+    kwargs["interface_additional_emails"] = _additional_email_recipients(
+        kwargs["vendor_interface_uuid"]
+    )
     send_email_with_server_name(
-        to=Variable.get('VENDOR_LOADS_TO_EMAIL'),
+        to=_email_recipients(kwargs.get('interface_additional_emails', None)),
         subject=Template(
             "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Processed [{{environment}}]"
         ).render(kwargs),

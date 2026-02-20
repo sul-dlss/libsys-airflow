@@ -7,7 +7,10 @@ from libsys_airflow.plugins.data_exports.email import (
     generate_no_holdings_instances_email,
     generate_multiple_oclc_identifiers_email,
     generate_oclc_new_marc_errors_email,
+    generate_missing_marc_email,
+    no_files_email,
     failed_transmission_email,
+    send_confirmation_email,
 )
 
 
@@ -170,6 +173,33 @@ def test_prod_oclc_email(mocker, mock_folio_variables):
     ]
 
 
+def test_no_files_email(mocker, mock_dag_run, mock_folio_variables, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    no_files_email.function(dag_run=mock_dag_run)
+    assert "Generating email of no files found to transmit" in caplog.text
+    assert mock_send_email.called
+    assert (
+        mock_send_email.call_args[1]["subject"]
+        == "No Files Found to Transmit for send_vendor_records"
+    )
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+    assert (
+        html_body.find("h2").text
+        == "No Files Found to Transmit for send_vendor_records"
+    )
+    assert html_body.find("a").text == "manual_2022-03-05"
+    assert (
+        html_body.find("a").attrs["href"]
+        == "http://localhost:8080/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
+    )
+
+
 def test_no_failed_transmission_email(mock_dag_run, caplog):
     files = []
     failed_transmission_email.function(files, dag_run=mock_dag_run)
@@ -283,3 +313,137 @@ def test_failed_full_dump_transmission_email(
         html_body.find("a").attrs["href"]
         == "http://localhost:8080/dags/send_all_records/grid?dag_run_id=manual_2022-03-05"
     )
+
+
+def test_generate_missing_marc_email(mocker, mock_dag_run, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    mock_dag_run.dag.dag_id = "select_vendor_records"
+
+    generate_missing_marc_email.function(
+        dag_run=mock_dag_run,
+        missing_marc_instances=[
+            "114363ed-751b-4917-a3cf-ca4beae2a485",
+            "822d8ced-302a-41ca-a370-edf83e36646c",
+            "942e0bd2-e239-4e05-ab03-068e1ae365c1",
+        ],
+    )
+
+    assert mock_send_email.called
+    assert (
+        mock_send_email.call_args[1]["subject"]
+        == "Instances missing MARC Records for select_vendor_records"
+    )
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+
+    missing_instance_marc_list_items = html_body.find_all("li")
+
+    assert len(missing_instance_marc_list_items) == 3
+
+    assert (
+        missing_instance_marc_list_items[0].find("a").text
+        == "114363ed-751b-4917-a3cf-ca4beae2a485"
+    )
+
+
+def test_generate_missing_marc_email_no_missing_marc(
+    mock_dag_run, mock_folio_variables, caplog
+):
+    generate_missing_marc_email.function(
+        dag_run=mock_dag_run, missing_marc_instances=[]
+    )
+
+    assert "No missing MARC records" in caplog.text
+
+
+def test_generate_missing_marc_email_oclc(mocker, mock_dag_run, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.is_production",
+        return_value=True,
+    )
+
+    mock_dag_run.dag.dag_id = "select_vendor_records"
+
+    generate_missing_marc_email.function(
+        dag_run=mock_dag_run,
+        missing_marc_instances=[
+            "114363ed-751b-4917-a3cf-ca4beae2a485",
+            "822d8ced-302a-41ca-a370-edf83e36646c",
+            "942e0bd2-e239-4e05-ab03-068e1ae365c1",
+        ],
+        is_oclc=True,
+    )
+
+    assert mock_send_email.called
+    assert "sul@example.com" in mock_send_email.call_args[1]["to"]
+
+
+def test_upload_confirmation_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename="backstage_ids_2024-12-01.csv",
+        user_email="backstage@example.com",
+    )
+
+    assert mock_send_email.called
+    assert (
+        mock_send_email.call_args[1]["subject"] == "Upload Confirmation for Data Export"
+    )
+    assert (
+        mock_send_email.call_args[1]["to"] == "test@stanford.edu,backstage@example.com"
+    )
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]["html_content"], "html.parser"
+    )
+    assert (
+        html_body.find("p").text
+        == "Your file backstage_ids_2024-12-01.csv was successfully submitted for export to backstage as new."
+    )
+    assert html_body.findAll("p")[1].text == "Number of IDs submitted: 150"
+
+
+def test_upload_no_confirmation_email(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename="backstage_ids_2024-12-01.csv",
+        user_email=None,
+    )
+
+    assert mock_send_email.called
+
+    assert mock_send_email.call_args[1]["to"] == "test@stanford.edu"
+
+
+def test_upload_no_uploaded_filename(mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+    send_confirmation_email(
+        vendor="backstage",
+        record_id_kind="new",
+        number_of_ids=150,
+        uploaded_filename=None,
+        user_email=None,
+    )
+
+    assert not mock_send_email.called
