@@ -124,22 +124,22 @@ class CircRulesTester(AppBuilderBaseView):
             case "locations":
                 title = "Locations"
                 locations_df = pd.DataFrame(_folio_client.locations)
-                reference_df = locations_df.drop(
-                    columns=[
-                        'discoveryDisplayName',
-                        'isActive',
-                        'institutionId',
-                        'campusId',
-                        'libraryId',
-                        'details',
-                        'primaryServicePoint',
-                        'servicePointIds',
-                        'servicePoints',
-                        'isShadow',
-                        'metadata',
-                        'description',
-                    ]
-                ).rename(
+                drop_columns = [
+                    'discoveryDisplayName',
+                    'isActive',
+                    'institutionId',
+                    'campusId',
+                    'libraryId',
+                    'details',
+                    'primaryServicePoint',
+                    'servicePointIds',
+                    'servicePoints',
+                    'metadata',
+                    'description',
+                ]
+                if 'isShadow' in locations_df.columns:
+                    drop_columns.append('isShadow')
+                reference_df = locations_df.drop(columns=drop_columns).rename(
                     columns={"code": "FOLIO code", "name": "FOLIO name", "id": "UUID"}
                 )
 
