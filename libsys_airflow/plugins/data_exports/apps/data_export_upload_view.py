@@ -53,14 +53,13 @@ class DataExportUploadView(AppBuilderBaseView):
     route_base = "/data_export_upload"
 
     def _trigger_dag_run(self, vendor, kind, user_email, number_of_ids, filename):
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag(f"select_{vendor}_records")
-        execution_date = timezone.utcnow()
+        logical_date = execution_date()
         run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
+        TriggerDagRunOperator(
+            task_id="_trigger_dag_run",
+            trigger_dag_id=f"select_{vendor}_records",
+            trigger_run_id=run_id,
+            logical_date=logical_date,
             conf={
                 "fetch_folio_record_ids": False,
                 "saved_record_ids_kind": kind,
