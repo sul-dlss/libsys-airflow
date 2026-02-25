@@ -7,9 +7,10 @@ import time
 import urllib
 
 from typing import Union
+from datetime import datetime, timezone
 
 from airflow.configuration import conf
-from airflow.models import Variable
+from airflow.sdk import Variable
 from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
@@ -17,12 +18,16 @@ from libsys_airflow.plugins.shared.folio_client import folio_client
 logger = logging.getLogger(__name__)
 
 
+def execution_date() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def dag_run_url(**kwargs) -> str:
     dag_run = kwargs["dag_run"]
     airflow_url = kwargs.get("airflow_url")
 
     if not airflow_url:
-        airflow_url = conf.get('webserver', 'base_url')
+        airflow_url = conf.get('api', 'base_url')
         if not airflow_url.endswith("/"):
             airflow_url = f"{airflow_url}/"
 

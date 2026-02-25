@@ -4,9 +4,8 @@ import logging
 from typing import Union
 import httpx
 
-from airflow.decorators import task
-from airflow.models import Variable
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sdk import task, Variable
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from jsonpath_ng.ext import parse

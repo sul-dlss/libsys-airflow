@@ -1,7 +1,7 @@
 import pytest  # noqa
 
 from bs4 import BeautifulSoup
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from libsys_airflow.plugins.digital_bookplates.email import (
     bookplates_metadata_email,

@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -198,7 +197,7 @@ def filter_by_mod_date(
     return result
 
 
-@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", default_var=2))
+@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", 2))
 def download_task(
     conn_id: str,
     remote_path: str,
