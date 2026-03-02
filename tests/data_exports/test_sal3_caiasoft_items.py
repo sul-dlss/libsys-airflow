@@ -31,7 +31,7 @@ def mock_airflow_connection():
         conn_id="postgres-folio",
         conn_type="postgres",
         host="example.com",
-        password="pass",
+        password="pass",  # noqa
         port=9999,
     )
 

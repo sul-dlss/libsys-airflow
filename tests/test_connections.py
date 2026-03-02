@@ -56,7 +56,7 @@ def test_connection_already_exists(db_session):
         conn_type="ftp",
         host="prev.example.com",
         login="prev-user",
-        password="prev-pass",
+        password="prev-pass",  # noqa
         extra=None,
     )
     merge_conn(prev_conn, session=db_session)

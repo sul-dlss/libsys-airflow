@@ -121,7 +121,7 @@ def mock_ftphook_connection():
         conn_type="ftp",
         host="ftp://www.example.com",
         login="username",
-        password="pass",
+        password="pass",  # noqa
         extra={"remote_path": "/remote/path/dir"},
         schema="ftp",
     )
@@ -134,7 +134,7 @@ def mock_oclc_connection():
         conn_type="http",
         host=None,
         login="client_id",
-        password="secret",
+        password="secret",  # noqa
         extra={"oclc_code": "LIB"},
     )
 
