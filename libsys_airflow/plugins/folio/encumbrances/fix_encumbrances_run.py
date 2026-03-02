@@ -10,10 +10,6 @@ logger = logging.getLogger(__name__)
 def fix_encumbrances_run(*args, **kwargs):
     choice = args[0]
     fiscal_year_code = args[1]
-    tenant = args[2]
-    username = args[3]
-    password = args[4]
-
     airflow = kwargs.get("airflow", "/opt/airflow/")
     task_instance = kwargs["task_instance"]
     run_id = task_instance.run_id
@@ -25,9 +21,7 @@ def fix_encumbrances_run(*args, **kwargs):
         with contextlib.redirect_stdout(log):
             try:
                 asyncio.run(
-                    fix_encumbrances_script.run_operation(
-                        int(choice), fiscal_year_code, tenant, username, password
-                    )
+                    fix_encumbrances_script.run_operation(int(choice), fiscal_year_code)
                 )
             except Exception as e:
                 logger.error(f"fix_encumbrance_script failed with: {e}")

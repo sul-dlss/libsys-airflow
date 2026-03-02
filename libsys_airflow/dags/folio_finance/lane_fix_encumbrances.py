@@ -41,7 +41,7 @@ with DAG(
             type="integer",
             minimum=1,
             maximum=9,
-            description="The fix_encumbrance script choice. See libsys_airflow/plugins/folio/fix_encumbrances.py:892",
+            description="The fix_encumbrance script choice. See See libsys_airflow/plugins/folio/encumbrances/fix_encumbrances_master.py:1290",
         ),
     },
 ) as dag:
@@ -54,9 +54,6 @@ with DAG(
         op_args=[
             "{{ params.choice }}",
             FY_CODE,
-            Variable.get("TENANT_ID", "sul"),
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
         ],
         op_kwargs={"library": "lane"},
     )

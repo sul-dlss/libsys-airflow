@@ -36,6 +36,12 @@ def mock_folio_variables(monkeypatch):
             case "FOLIO_URL":
                 value = "okapi-test"
 
+            case "FOLIO_USER":
+                value = "test_user"
+
+            case "FOLIO_PASSWORD":
+                value = "test_pass"
+
             case _:
                 raise ValueError("")
         return value
@@ -65,9 +71,6 @@ def test_fix_encumbrances_log_file_params(
     log_path = fix_encumbrances_run(
         1,
         "SUL2024",
-        "sul",
-        "username",
-        "password",
         airflow=tmp_path,
         task_instance=mock_task_instance,
         library="foo",
