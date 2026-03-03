@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 ITEM_MAX = 2147483647
 MAX_BY_CHUNK = 1000
 IDS_CHUNK = 15
-LINE_CLEAR = '\x1b[2K'
+LINE_CLEAR = ''
 
 tenant = 'sul'
 username = Variable.get("FOLIO_USER")
