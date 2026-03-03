@@ -33,7 +33,7 @@ with DAG(
     ),
     start_date=datetime(2024, 8, 29),
     catchup=False,
-    tags=["folio"],
+    tags=["folio", "encumbrances"],
     params={
         "choice": Param(
             1,
