@@ -1517,6 +1517,7 @@ def dryrun_mode_selection():
 
 
 async def run_operation(choice, fiscal_year_code):
+    logger.info(f'Starting operation {choice} for fiscal year {fiscal_year_code}...')
     initial_time = time.time()
     await login()
     fiscal_year = await get_fiscal_year(fiscal_year_code)
