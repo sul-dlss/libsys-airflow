@@ -142,7 +142,7 @@ async def async_request(method, params):
             'Trying the same request again. If it fails try increasing ASYNC_CLIENT_TIMEOUT.'
         )
         resp = await async_request_without_retry(method, params)
-    if resp.status_code == 401:
+    if 400 <= resp.status_code < 500:
         if access_token_cookie.is_expired():
             await refresh_login()
             # Trying the request again after the token was refreshed...
