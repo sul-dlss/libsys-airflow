@@ -433,7 +433,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
             html_content=law_html_content,
         )
 
-    return len(invoices)
+    return len(invoices) if invoices else 0
 
 
 def generate_summary_email(invoices: list, folio_url: str):
