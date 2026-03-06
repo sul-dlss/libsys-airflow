@@ -295,6 +295,33 @@ def test_generate_ap_paid_report_email(mocker):
     assert "031134FEEDER" not in li.find("a").text
 
 
+def test_generate_ap_paid_report_email_no_invoices(mocker):
+    def _mock_xcom_pull(**kwargs):
+        task_ids = kwargs["task_ids"]
+        match task_ids:
+            case "init_processing_task":
+                return "/opt/airflow/orafin-data/reports/xxdl_ap_payment.csv"
+
+            case _:
+                return None
+
+    mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
+
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.Variable.get",
+        return_value="test@stanford.edu",
+    )
+
+    task_instance = mocker.MagicMock()
+    task_instance.xcom_pull = _mock_xcom_pull
+
+    total_invoices = generate_ap_paid_report_email(
+        "http://folio.stanford.edu", task_instance
+    )
+
+    assert total_invoices == 0
+
+
 def test_generate_excluded_email(mocker):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
