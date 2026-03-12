@@ -7,6 +7,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_ap_error_report_email,
     generate_ap_paid_report_email,
     generate_excluded_email,
+    generate_failed_dag_email,
     generate_invoice_error_email,
     generate_summary_email,
 )
@@ -400,6 +401,36 @@ def test_generate_excluded_email(mocker):
 
     assert found_h2s[2].text == "Future invoice date"
     assert found_h2s[3].text == "Fiscal year not current"
+
+
+def test_generate_failed_dag_email(mocker):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
+    )
+
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.emails.Variable.get",
+        return_value="test@stanford.edu",
+    )
+
+    mock_context = mocker.MagicMock()
+    mock_dag_run = mocker.MagicMock()
+    mock_dag_run.run_id = "mock_instance_run_id"
+    mock_context.dag_run = mock_dag_run
+
+    generate_failed_dag_email(mock_context, "http://airflow-stanford.edu")
+
+    assert mock_send_email.called
+
+    assert mock_send_email.call_args[1]['to'][0] == "test@stanford.edu"
+
+    html_body = BeautifulSoup(
+        mock_send_email.call_args[1]['html_content'], 'html.parser'
+    )
+
+    h1 = html_body.find("h1")
+
+    assert h1.text == "ap_payment_report DAG Failed"
 
 
 def test_generate_invoice_error_email(mocker):
