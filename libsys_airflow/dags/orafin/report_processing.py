@@ -4,6 +4,8 @@ from airflow import DAG
 from airflow.decorators import task_group
 from airflow.operators.empty import EmptyOperator
 
+from libsys_airflow.plugins.orafin.emails import generate_failed_dag_email
+
 from libsys_airflow.plugins.orafin.tasks import (
     email_errors_task,
     email_invoice_errors_task,
@@ -20,9 +22,7 @@ from libsys_airflow.plugins.orafin.tasks import (
 
 default_args = {
     "owner": "libsys",
-    "email": ["sul-unicorn-devs@lists.stanford.edu"],
     "depends_on_past": False,
-    "email_on_failure": True,
     "email_on_retry": False,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
@@ -51,6 +51,7 @@ with DAG(
     start_date=datetime(2023, 9, 19),
     catchup=False,
     tags=["folio", "orafin"],
+    on_failure_callback=generate_failed_dag_email,
     max_active_runs=2,
 ) as dag:
     start = EmptyOperator(task_id="start")
