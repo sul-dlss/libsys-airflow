@@ -12,7 +12,7 @@ from airflow.models import Variable
 
 from libsys_airflow.plugins.orafin.models import Invoice
 from libsys_airflow.plugins.orafin.payments import models_converter
-from libsys_airflow.plugins.shared.utils import send_email_with_server_name
+from libsys_airflow.plugins.shared.utils import dag_run_url, send_email_with_server_name
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +257,26 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
         )
 
 
+def generate_failed_dag_email(context, airflow_url=None):
+    """
+    Sends email when ap_payment_report DAG fails
+    """
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    dag_run = context.get('dag_run')
+
+    dag_url = dag_run_url(dag_run=dag_run, airflow_url=airflow_url)
+
+    html_content = f"""<h1>ap_payment_report DAG Failed</h1>
+    <p>DAG Run: <a href="{dag_url}">{dag_run.run_id}</a></p>
+    """
+
+    send_email_with_server_name(
+        to=[devs_to_email_addr],
+        subject="Failed ap_payment_report DAG",
+        html_content=html_content,
+    )
+
+
 def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
     """
     Retrieves AP report information for invoice that failed to update and
@@ -433,7 +453,7 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
             html_content=law_html_content,
         )
 
-    return len(invoices)
+    return len(invoices) if invoices else 0
 
 
 def generate_summary_email(invoices: list, folio_url: str):
