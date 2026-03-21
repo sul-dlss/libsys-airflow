@@ -22,7 +22,7 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
-FY_CODE = Variable.get("FISCAL_YEAR_CODE_LANE", "LANE2025")
+FY_CODE = Variable.get("FISCAL_YEAR_CODE_LANE", "LANE2026")
 
 
 with DAG(
@@ -34,14 +34,14 @@ with DAG(
     ),
     start_date=datetime(2024, 8, 29),
     catchup=False,
-    tags=["folio"],
+    tags=["folio", "encumbrances"],
     params={
         "choice": Param(
             1,
             type="integer",
             minimum=1,
             maximum=9,
-            description="The fix_encumbrance script choice. See libsys_airflow/plugins/folio/fix_encumbrances.py:892",
+            description="The fix_encumbrance script choice. See See libsys_airflow/plugins/folio/encumbrances/fix_encumbrances_master.py:1290",
         ),
     },
 ) as dag:
@@ -54,9 +54,6 @@ with DAG(
         op_args=[
             "{{ params.choice }}",
             FY_CODE,
-            Variable.get("TENANT_ID", "sul"),
-            Variable.get("FOLIO_USER"),
-            Variable.get("FOLIO_PASSWORD"),
         ],
         op_kwargs={"library": "lane"},
     )
