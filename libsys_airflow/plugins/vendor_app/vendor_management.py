@@ -108,7 +108,7 @@ class VendorManagementView(BaseView):
             vendor=vendor,
             folio_name=folio_name(),
             okapi_url=self._folio_client().gateway_url,
-            okapi_token=self._folio_client().access_token,
+            okapi_token=self._folio_client().okapi_token,
         )
 
     @expose("/vendors/<int:vendor_id>/interfaces", methods=["POST"])

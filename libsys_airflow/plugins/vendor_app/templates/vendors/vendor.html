@@ -36,7 +36,7 @@
  }
 
  const vendorStatusHandler = () => {
-    const folioAPIUrl = "{{ okapi_url }}/organizations/organizations/{{ vendor.folio_organization_uuid }}";
+    const folioAPIUrl = "{{ gateway_url }}/organizations/organizations/{{ vendor.folio_organization_uuid }}";
     fetch(folioAPIUrl, {
       method: 'GET',
       headers: {
