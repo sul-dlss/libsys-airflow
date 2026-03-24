@@ -88,8 +88,8 @@ def mock_xcom_pull(*args, **kwargs):
 
 
 class MockFOLIOClient(pydantic.BaseModel):
-    okapi_url: str = "https://okapi.edu"
-    okapi_headers: dict = {}
+    gateway_url: str = "https://okapi.edu"
+    folio_headers: dict = {}
     locations: list = []
     folio_get: Optional[Callable | None] = None
 

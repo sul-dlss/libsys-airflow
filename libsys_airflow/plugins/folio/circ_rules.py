@@ -40,8 +40,8 @@ def _friendly_name(**kwargs):
     json_path = kwargs["json_path"]
     fallback = kwargs["fallback"]
     folio_result = httpx.get(
-        f"{folio_client.okapi_url}/{query}",
-        headers=folio_client.okapi_headers,
+        f"{folio_client.gateway_url}/{query}",
+        headers=folio_client.folio_headers,
         timeout=15,
     )
     expression = parse(json_path)
@@ -71,8 +71,8 @@ def _library_location_names(**kwargs):
     location_id = kwargs["location_id"]
     row_count = kwargs.get("row_count", "")
     library_location_result = httpx.get(
-        f"""{folio_client.okapi_url}/locations?query=(id=="{location_id}")""",
-        headers=folio_client.okapi_headers,
+        f"""{folio_client.gateway_url}/locations?query=(id=="{location_id}")""",
+        headers=folio_client.folio_headers,
         timeout=15,
     )
     library_location_payload = library_location_result.json()
@@ -91,8 +91,8 @@ def _library_location_names(**kwargs):
         # Second call to Okapi
         library_id = lib_id_match[0].value
         location_units_results = httpx.get(
-            f"""{folio_client.okapi_url}/location-units/libraries?query=(id=="{library_id}")""",
-            headers=folio_client.okapi_headers,
+            f"""{folio_client.gateway_url}/location-units/libraries?query=(id=="{library_id}")""",
+            headers=folio_client.folio_headers,
             timeout=15,
         )
         location_code_expr = parse("$.loclibs[0].code")
@@ -257,7 +257,7 @@ def generate_urls(**kwargs):
             "limit": 2_000,  # Should be plenty
         }
     )
-    base = f"{folio_client.okapi_url}/circulation/rules/{policy_type}-policy"
+    base = f"{folio_client.gateway_url}/circulation/rules/{policy_type}-policy"
     instance.xcom_push(
         key=f"single-policy-url{row_count}", value=f"{base}?{query_string}"
     )
@@ -297,10 +297,10 @@ def policy_report(**kwargs):
         policy_id = f"{policy_type}PolicyId"
         all_policy_id = policy_id
 
-    policy_url = f"{folio_client.okapi_url}/{endpoint}?limit=2000"
+    policy_url = f"{folio_client.gateway_url}/{endpoint}?limit=2000"
 
     policies_result = httpx.get(
-        policy_url, headers=folio_client.okapi_headers, timeout=15
+        policy_url, headers=folio_client.folio_headers, timeout=15
     )
 
     policies = policies_result.json()
@@ -372,7 +372,7 @@ def retrieve_policies(**kwargs):
 
     single_policy_result = httpx.get(
         single_policy_url,
-        headers=folio_client.okapi_headers,
+        headers=folio_client.folio_headers,
         timeout=15,
     )
 
@@ -387,7 +387,7 @@ def retrieve_policies(**kwargs):
 
     all_policies_result = httpx.get(
         all_policies_url,
-        headers=folio_client.okapi_headers,
+        headers=folio_client.folio_headers,
         timeout=15,
     )
     if all_policies_result.status_code == 200:
