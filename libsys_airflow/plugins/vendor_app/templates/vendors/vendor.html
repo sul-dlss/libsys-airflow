@@ -41,7 +41,8 @@
       method: 'GET',
       headers: {
         'x-okapi-token': '{{ okapi_token }}',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Okapi-Tenant': 'sul'
       }
     }).then(response => {
       console.dir(response)
