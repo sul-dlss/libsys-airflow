@@ -79,6 +79,12 @@ with DAG(
             type="boolean",
             description="Recreate the materialized view with the original FOLIO marc records to process.",
         ),
+        "mat_view": Param(
+            "materialized_view",
+            type="string",
+            description="The SQL file to use for creating the materialized view. materialized_view or google_mat_view.",
+            enum=["data_export_marc", "google_mat_view"],
+        ),
         "include_campus": Param(
             Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
             type="string",
@@ -88,7 +94,7 @@ with DAG(
             "marc-files",
             type="string",
             description="The S3 marc file path to deposit the MARC records. CC0 or marc-files.",
-            enum=["marc-files", "CC0"],
+            enum=["pod-files", "CC0", "google-files"],
         ),
     },
 ) as dag:
@@ -109,7 +115,10 @@ with DAG(
 
     @task
     def number_of_records():
-        return fetch_number_of_records()
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        mat_view = params.get("mat_view", "data_export_marc")
+        return fetch_number_of_records(mat_view=mat_view)
 
     @task
     def do_batch_size() -> int:
@@ -144,6 +153,9 @@ with DAG(
 
     @task
     def fetch_folio_records(batch_size, start, stop):
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        mat_view = params.get("mat_view", "data_export_marc")
         _connection = connection_pool.getconn()
         marc_file_list = []
 
@@ -151,7 +163,10 @@ with DAG(
             logger.info(f"fetch_folio_records: from {offset}")
             try:
                 marc = fetch_full_dump_marc(
-                    offset=offset, batch_size=batch_size, connection=_connection
+                    offset=offset,
+                    batch_size=batch_size,
+                    connection=_connection,
+                    mat_view=mat_view,
                 )
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
