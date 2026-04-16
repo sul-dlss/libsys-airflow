@@ -61,8 +61,11 @@ x-airflow-common:
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY:-}
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    # deprecated in version 3, see https://airflow.apache.org/docs/apache-airflow/3.1.0/configurations-ref.html#api-auth
-    # AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
+    AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API__BASE_URL:-airflow}
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}
+    AIRFLOW__API__BASE_URL: ${AIRFLOW__API__BASE_URL}
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
@@ -89,10 +92,6 @@ x-airflow-common:
     AIRFLOW__SMTP__SMTP_HOST: host.docker.internal
     AIRFLOW__SMTP__SMTP_STARTTLS: 'false'
     AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM:-folio-load-reports@lists.stanford.edu}
-    # not in airflow 3
-    # AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL}
-    # AIRFLOW__WEBSERVER__ALLOWED_PAYLOAD_SIZE: 250.0
-    # AIRFLOW__WEBSERVER__SHOW_TRIGGER_FORM_IF_NO_PARAMS: 'true'
     AWS_DEFAULT_REGION: us-west-2
     AIRFLOW_VAR_VENDOR_LOADS_TO_EMAIL: ${VENDOR_LOADS_TO_EMAIL:-folio-load-reports@lists.stanford.edu}
     SQLALCHEMY_SILENCE_UBER_WARNING: 1
