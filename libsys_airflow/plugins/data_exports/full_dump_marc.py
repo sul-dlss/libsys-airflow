@@ -80,7 +80,6 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
 def materialized_view_sql_file(**kwargs) -> Path:
     view_file = kwargs.get("view_file", "materialized_view")
-    breakpoint()
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
         / f"libsys_airflow/plugins/data_exports/sql/{view_file}.sql"
