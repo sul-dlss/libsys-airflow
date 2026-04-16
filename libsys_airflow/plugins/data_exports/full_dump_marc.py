@@ -48,7 +48,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
-    view_file = params.get("view_file", "materialized_view")
+    mat_view = params.get("mat_view", "data_export_marc")
     from_date = params.get("from_date", '2023-08-23')
     to_date = params.get(
         "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
@@ -58,10 +58,10 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
     if recreate:
         logger.info(
-            f"Refreshing { 'google' if view_file == 'google_mat_view' else 'materialized' } view with dates from: {from_date} to: {to_date}"
+            f"Refreshing { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view with dates from: {from_date} to: {to_date}"
         )
 
-        with open(materialized_view_sql_file(view_file=view_file)) as sqv:
+        with open(materialized_view_sql_file(mat_view=mat_view)) as sqv:
             query = sqv.read()
 
         SQLExecuteQueryOperator(
@@ -76,17 +76,17 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
         ).execute(context)
     else:
         logger.info(
-            f"Skipping refresh of { 'google' if view_file == 'google_mat_view' else 'materialized' } view"
+            f"Skipping refresh of { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view"
         )
 
     return query
 
 
 def materialized_view_sql_file(**kwargs) -> Path:
-    view_file = kwargs.get("view_file", "materialized_view")
+    mat_view = kwargs.get("mat_view", "data_export_marc")
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
-        / f"libsys_airflow/plugins/data_exports/sql/{view_file}.sql"
+        / f"libsys_airflow/plugins/data_exports/sql/{mat_view}.sql"
     )
 
     return sql_path
@@ -105,8 +105,9 @@ def fetch_full_dump_marc(**kwargs) -> str:
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
     connection = kwargs.get("connection")
+    mat_view = kwargs.get("mat_view", "data_export_marc")
     cursor = connection.cursor()  # type: ignore
-    sql = "SELECT instanceid, hrid, content FROM public.data_export_marc ORDER BY hrid LIMIT (%s) OFFSET (%s)"
+    sql = f"SELECT instanceid, hrid, content FROM public.{mat_view} ORDER BY hrid LIMIT (%s) OFFSET (%s)"
     params = (batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
@@ -123,7 +124,8 @@ def fetch_full_dump_marc(**kwargs) -> str:
 def fetch_number_of_records(**kwargs) -> int:
     context = get_current_context()
 
-    query = "SELECT count(instanceid) from public.data_export_marc"
+    mat_view = kwargs.get("mat_view", "data_export_marc")
+    query = f"SELECT count(instanceid) from public.{mat_view}"
 
     result = SQLExecuteQueryOperator(
         task_id="postgres_full_count_query",

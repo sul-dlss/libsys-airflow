@@ -17,17 +17,26 @@ class MockSQLExecuteQueryOperator(pydantic.BaseModel):
 
 
 class MockPsycopg2Cursor(pydantic.BaseModel):
-    def fetchall(self):
-        return [()]
+    def close(self):
+        return None
 
     def execute(self, sql_stmt, params):
         self
 
+    def fetchall(self):
+        return [()]
+
 
 class MockPsycopg2Connection(pydantic.BaseModel):
 
+    def commit(self):
+        return None
+    
     def cursor(self):
         return MockPsycopg2Cursor()
+    
+    def close(self):
+        return None
 
 
 class MockCursor(pydantic.BaseModel):
@@ -211,7 +220,7 @@ def mock_get_current_context_recreate_google(monkeypatch, mocker):
             "from_date": "2023-09-01",
             "to_date": "2025-02-01",
             "include_campus": "SUL",
-            "view_file": "google_mat_view",
+            "mat_view": "google_mat_view",
         }
         return context
 
@@ -272,7 +281,7 @@ def test_no_recreate_filter_campus_ids(
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
-        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+        return_value='libsys_airflow/plugins/data_exports/sql/data_export_marc.sql',
     )
 
     query = full_dump_marc.create_campus_filter_view(
@@ -292,7 +301,7 @@ def test_no_recreate_materialized_view(
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
-        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+        return_value='libsys_airflow/plugins/data_exports/sql/data_export_marc.sql',
     )
 
     query = full_dump_marc.create_materialized_view()
@@ -300,7 +309,7 @@ def test_no_recreate_materialized_view(
     if query is None:
         assert True
 
-    assert "Skipping refresh of materialized view" in caplog.text
+    assert "Skipping refresh of data export marc view" in caplog.text
 
 
 def test_recreate_materialized_view(
@@ -310,14 +319,14 @@ def test_recreate_materialized_view(
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
-        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+        return_value='libsys_airflow/plugins/data_exports/sql/data_export_marc.sql',
     )
 
     query = full_dump_marc.create_materialized_view()
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
     assert (
-        "Refreshing materialized view with dates from: 2023-09-01 to: 2025-02-01"
+        "Refreshing data export marc view with dates from: 2023-09-01 to: 2025-02-01"
         in caplog.text
     )
 

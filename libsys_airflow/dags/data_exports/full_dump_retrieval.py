@@ -79,11 +79,11 @@ with DAG(
             type="boolean",
             description="Recreate the materialized view with the original FOLIO marc records to process.",
         ),
-        "view_file": Param(
+        "mat_view": Param(
             "materialized_view",
             type="string",
             description="The SQL file to use for creating the materialized view. materialized_view or google_mat_view.",
-            enum=["materialized_view", "google_mat_view"],
+            enum=["data_export_marc", "google_mat_view"],
         ),
         "include_campus": Param(
             Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
@@ -151,13 +151,15 @@ with DAG(
     @task
     def fetch_folio_records(batch_size, start, stop):
         _connection = connection_pool.getconn()
+        params = context.get("params", {})  # type: ignore
+        mat_view = params.get("mat_view", "data_export_marc")
         marc_file_list = []
 
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
                 marc = fetch_full_dump_marc(
-                    offset=offset, batch_size=batch_size, connection=_connection
+                    offset=offset, batch_size=batch_size, connection=_connection, mat_view=mat_view
                 )
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
