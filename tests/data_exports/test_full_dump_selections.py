@@ -31,10 +31,10 @@ class MockPsycopg2Connection(pydantic.BaseModel):
 
     def commit(self):
         return None
-    
+
     def cursor(self):
         return MockPsycopg2Cursor()
-    
+
     def close(self):
         return None
 
