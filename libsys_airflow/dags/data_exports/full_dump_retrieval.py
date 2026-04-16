@@ -94,7 +94,7 @@ with DAG(
             "marc-files",
             type="string",
             description="The S3 marc file path to deposit the MARC records. CC0 or marc-files.",
-            enum=["marc-files", "CC0"],
+            enum=["pod-files", "CC0", "google-files"],
         ),
     },
 ) as dag:
