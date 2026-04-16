@@ -40,6 +40,7 @@ class MockPsycopg2Connection(pydantic.BaseModel):
 
 
 class MockCursor(pydantic.BaseModel):
+    mat_view: str = "data_export_marc"
     batch_size: int = 0
     offset: int = 0
 
@@ -47,8 +48,9 @@ class MockCursor(pydantic.BaseModel):
         return mock_result_set()[self.offset : self.batch_size + self.offset]
 
     def execute(self, sql_stmt, params):
-        self.batch_size = params[0]
-        self.offset = params[1]
+        self.mat_view = params[0]
+        self.batch_size = params[1]
+        self.offset = params[2]
 
 
 class MockConnection(pydantic.BaseModel):
@@ -264,12 +266,12 @@ def test_fetch_full_dump(
     )
 
     full_dump_marc.fetch_full_dump_marc(
-        offset=0, batch_size=3, connection=MockConnection()
+        mat_view="data_export_marc", offset=0, batch_size=3, connection=MockConnection()
     )
     assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text
 
     full_dump_marc.fetch_full_dump_marc(
-        offset=3, batch_size=3, connection=MockConnection()
+        mat_view="data_export_marc", offset=3, batch_size=3, connection=MockConnection()
     )
     assert "Saving 3 marc records to 3_6.mrc in bucket" in caplog.text
 
