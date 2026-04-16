@@ -115,7 +115,10 @@ with DAG(
 
     @task
     def number_of_records():
-        return fetch_number_of_records()
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        mat_view = params.get("mat_view", "data_export_marc")
+        return fetch_number_of_records(mat_view=mat_view)
 
     @task
     def do_batch_size() -> int:

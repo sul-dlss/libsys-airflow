@@ -108,7 +108,7 @@ def fetch_full_dump_marc(**kwargs) -> str:
     mat_view = kwargs.get("mat_view", "data_export_marc")
     cursor = connection.cursor()  # type: ignore
     sql = "SELECT instanceid, hrid, content FROM public.(%s) ORDER BY hrid LIMIT (%s) OFFSET (%s)"
-    params = (mat_view, batch_size, offset)
+    params = (psycopg2.extensions.AsIs(mat_view), batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
 
@@ -132,7 +132,7 @@ def fetch_number_of_records(**kwargs) -> int:
         conn_id="postgres_folio",
         database=kwargs.get("database", "okapi"),
         sql=query,
-        parameters={"mat_view": mat_view},
+        parameters={"mat_view": psycopg2.extensions.AsIs(mat_view)},
     ).execute(
         context
     )  # type: ignore
