@@ -33,7 +33,11 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
         conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port} password={connection.password}"
         conn = psycopg2.connect(conn_string)
         cur = conn.cursor()
+        logger.info(query)
         cur.execute(query, {"campuses": campuses})
+        conn.commit()
+        cur.close()
+        conn.close()
     else:
         logger.info("Skipping refresh of campus filter view")
 
