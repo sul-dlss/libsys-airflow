@@ -107,7 +107,7 @@ def fetch_full_dump_marc(**kwargs) -> str:
     connection = kwargs.get("connection")
     mat_view = kwargs.get("mat_view", "data_export_marc")
     cursor = connection.cursor()  # type: ignore
-    sql = "SELECT instanceid, hrid, content FROM public.(%s) ORDER BY hrid LIMIT (%s) OFFSET (%s)"
+    sql = "SELECT instanceid, hrid, content FROM public.%s ORDER BY hrid LIMIT (%s) OFFSET (%s)"
     params = (psycopg2.extensions.AsIs(mat_view), batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
