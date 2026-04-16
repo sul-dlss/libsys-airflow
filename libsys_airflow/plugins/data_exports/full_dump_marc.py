@@ -33,7 +33,11 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
         conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port} password={connection.password}"
         conn = psycopg2.connect(conn_string)
         cur = conn.cursor()
+        logger.info(query)
         cur.execute(query, {"campuses": campuses})
+        conn.commit()
+        cur.close()
+        conn.close()
     else:
         logger.info("Skipping refresh of campus filter view")
 
@@ -44,6 +48,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
+    mat_view = params.get("mat_view", "data_export_marc")
     from_date = params.get("from_date", '2023-08-23')
     to_date = params.get(
         "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
@@ -53,9 +58,10 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
     if recreate:
         logger.info(
-            f"Refreshing materialized view with dates from: {from_date} to: {to_date}"
+            f"Refreshing { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view with dates from: {from_date} to: {to_date}"
         )
-        with open(materialized_view_sql_file()) as sqv:
+
+        with open(materialized_view_sql_file(mat_view=mat_view)) as sqv:
             query = sqv.read()
 
         SQLExecuteQueryOperator(
@@ -69,15 +75,18 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
             },
         ).execute(context)
     else:
-        logger.info("Skipping refresh of materialized view")
+        logger.info(
+            f"Skipping refresh of { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view"
+        )
 
     return query
 
 
 def materialized_view_sql_file(**kwargs) -> Path:
+    mat_view = kwargs.get("mat_view", "data_export_marc")
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
-        / "libsys_airflow/plugins/data_exports/sql/materialized_view.sql"
+        / f"libsys_airflow/plugins/data_exports/sql/{mat_view}.sql"
     )
 
     return sql_path
@@ -96,9 +105,10 @@ def fetch_full_dump_marc(**kwargs) -> str:
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
     connection = kwargs.get("connection")
+    mat_view = kwargs.get("mat_view", "data_export_marc")
     cursor = connection.cursor()  # type: ignore
-    sql = "SELECT instanceid, hrid, content FROM public.data_export_marc ORDER BY hrid LIMIT (%s) OFFSET (%s)"
-    params = (batch_size, offset)
+    sql = "SELECT instanceid, hrid, content FROM public.%s ORDER BY hrid LIMIT (%s) OFFSET (%s)"
+    params = (psycopg2.extensions.AsIs(mat_view), batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
 
@@ -114,13 +124,15 @@ def fetch_full_dump_marc(**kwargs) -> str:
 def fetch_number_of_records(**kwargs) -> int:
     context = get_current_context()
 
-    query = "SELECT count(instanceid) from public.data_export_marc"
+    mat_view = kwargs.get("mat_view", "data_export_marc")
+    query = "SELECT count(instanceid) from public.%(mat_view)s"
 
     result = SQLExecuteQueryOperator(
         task_id="postgres_full_count_query",
         conn_id="postgres_folio",
         database=kwargs.get("database", "okapi"),
         sql=query,
+        parameters={"mat_view": psycopg2.extensions.AsIs(mat_view)},
     ).execute(
         context
     )  # type: ignore

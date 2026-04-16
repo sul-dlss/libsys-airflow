@@ -275,7 +275,7 @@ def mock_marc_dir(tmp_path, request):
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
-def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
+def test_skip_record_no_950i(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -283,14 +283,14 @@ def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
-            tag='999',
+            tag='950',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='i', value='not a uuid!'),
             ],
         ),
         pymarc.Field(
-            tag='999',
+            tag='950',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='h', value='some other value'),
@@ -314,7 +314,7 @@ def test_skip_record_no_999i(mocker, mock_marc_dir, mock_folio_client):
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
-def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client):
+def test_add_holdings_items_single_950(mocker, mock_marc_dir, mock_folio_client):
 
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
@@ -324,7 +324,7 @@ def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client)
     record.leader = pymarc.Leader("00475cas a2200169 i 4500")
     record.add_field(
         pymarc.Field(
-            tag='999',
+            tag='950',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='i', value='not a uuid!'),
@@ -345,22 +345,22 @@ def test_add_holdings_items_single_999(mocker, mock_marc_dir, mock_folio_client)
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
 
-    field_999s = mod_marc_records[0].get_fields('999')
+    field_950s = mod_marc_records[0].get_fields('950')
 
-    assert len(field_999s) == 2
-    assert field_999s[1].get_subfields('a')[0] == 'PQ8098.3.E4 A7 1989'
-    assert field_999s[1].get_subfields('e')[0] == 'GRE-FOLIO-FLAT'
-    assert field_999s[1].get_subfields('h')[0] == 'Monograph'
-    assert field_999s[1].get_subfields('i')[0] == '36105029044444'
-    assert field_999s[1].get_subfields('j')[0] == '1'
-    assert field_999s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
-    assert field_999s[1].get_subfields('t')[0] == 'book'
-    assert field_999s[1].get_subfields('w')[0].startswith("Library of Congress")
-    assert field_999s[1].get_subfields('r')[0] == 'Limited lending policy'
+    assert len(field_950s) == 2
+    assert field_950s[1].get_subfields('a')[0] == 'PQ8098.3.E4 A7 1989'
+    assert field_950s[1].get_subfields('e')[0] == 'GRE-FOLIO-FLAT'
+    assert field_950s[1].get_subfields('h')[0] == 'Monograph'
+    assert field_950s[1].get_subfields('i')[0] == '36105029044444'
+    assert field_950s[1].get_subfields('j')[0] == '1'
+    assert field_950s[1].get_subfields('l')[0] == 'GRE-FOLIO-FLAT'
+    assert field_950s[1].get_subfields('t')[0] == 'book'
+    assert field_950s[1].get_subfields('w')[0].startswith("Library of Congress")
+    assert field_950s[1].get_subfields('r')[0] == 'Limited lending policy'
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
-def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_client):
+def test_add_holdings_items_multiple_950(mocker, mock_marc_dir, mock_folio_client):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
         return_value=mock_folio_client,
@@ -368,7 +368,7 @@ def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_clien
     record = pymarc.Record()
     record.add_field(
         pymarc.Field(
-            tag='999',
+            tag='950',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='i', value='e1797b62-a8b1-5f3d-8e85-934d58bd9395')
@@ -388,15 +388,15 @@ def test_add_holdings_items_multiple_999(mocker, mock_marc_dir, mock_folio_clien
     with marc_file.open('rb') as fo:
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
 
-    field_999s = mod_marc_records[0].get_fields('999')
+    field_950s = mod_marc_records[0].get_fields('950')
 
-    assert len(field_999s) == 3
-    assert field_999s[1].get_subfields('a')[0] == "TA357.5 .T87 F74 V.17 1983"
-    assert field_999s[2].get_subfields('a')[0] == "TA357.5 .T87 F74 eV.17 1983"
-    assert field_999s[1].get_subfields('e')[0] == "BUS-NEWS-STKS"
-    assert field_999s[2].get_subfields('e')[0] == "SUL-ELECTRONIC"
+    assert len(field_950s) == 3
+    assert field_950s[1].get_subfields('a')[0] == "TA357.5 .T87 F74 V.17 1983"
+    assert field_950s[2].get_subfields('a')[0] == "TA357.5 .T87 F74 eV.17 1983"
+    assert field_950s[1].get_subfields('e')[0] == "BUS-NEWS-STKS"
+    assert field_950s[2].get_subfields('e')[0] == "SUL-ELECTRONIC"
     # Both Items have the same Holding so subfield l should be the same
-    assert field_999s[1].get_subfields('l') == field_999s[2].get_subfields('l')
+    assert field_950s[1].get_subfields('l') == field_950s[2].get_subfields('l')
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
@@ -409,7 +409,7 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
 
     record.add_field(
         pymarc.Field(
-            tag='999',
+            tag='950',
             indicators=['f', 'f'],
             subfields=[
                 pymarc.Subfield(code='i', value='c77d294c-4d83-4fe0-87b1-f94a845c0d49')
@@ -430,12 +430,12 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
         mod_marc_records = [r for r in pymarc.MARCReader(fo)]
 
     print(mod_marc_records)
-    field_999s = mod_marc_records[0].get_fields('999')
+    field_950s = mod_marc_records[0].get_fields('950')
 
-    assert len(field_999s) == 2
+    assert len(field_950s) == 2
     # Item specific subfields are not present
-    assert field_999s[1].get_subfields('e', 'j', 't') == []
-    assert field_999s[1].get_subfields('a')[0] == "QA 124378"
+    assert field_950s[1].get_subfields('e', 'j', 't') == []
+    assert field_950s[1].get_subfields('a')[0] == "QA 124378"
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
@@ -564,7 +564,7 @@ def test_zip_marc_file(mock_marc_dir):
     for i in range(20):
         raw_xml += f"""<record>
         <leader>00092cas a2200037 i 4500</leader>
-          <datafield ind1="f" ind2="f" tag="999">
+          <datafield ind1="f" ind2="f" tag="950">
            <subfield code="i">not a uuid for {i}!</subfield>
            <subfield code="i">5face3a3-9804-5034-aa02-1eb5db0c191c</subfield>
           </datafield>
