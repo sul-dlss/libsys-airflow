@@ -202,6 +202,25 @@ def mock_get_current_context_recreate(monkeypatch, mocker):
     )
 
 
+@pytest.fixture
+def mock_get_current_context_recreate_google(monkeypatch, mocker):
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {
+            "recreate_view": True,
+            "from_date": "2023-09-01",
+            "to_date": "2025-02-01",
+            "include_campus": "SUL",
+            "view_file": "google_mat_view",
+        }
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.get_current_context',
+        _context,
+    )
+
+
 def setup_recreate_tests(mocker, mock_airflow_connection):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
@@ -214,10 +233,6 @@ def setup_recreate_tests(mocker, mock_airflow_connection):
     mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.psycopg2.connect',
         return_value=MockPsycopg2Connection(),
-    )
-    mocker.patch(
-        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
-        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
     )
     mocker.patch(
         'libsys_airflow.plugins.data_exports.full_dump_marc.filter_campus_sql_file',
@@ -255,6 +270,11 @@ def test_no_recreate_filter_campus_ids(
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
 
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+    )
+
     query = full_dump_marc.create_campus_filter_view(
         connection=MockPsycopg2Connection()
     )
@@ -270,6 +290,11 @@ def test_no_recreate_materialized_view(
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
 
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+    )
+
     query = full_dump_marc.create_materialized_view()
 
     if query is None:
@@ -283,6 +308,11 @@ def test_recreate_materialized_view(
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
 
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+    )
+
     query = full_dump_marc.create_materialized_view()
 
     assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS data_export_marc")
@@ -292,10 +322,34 @@ def test_recreate_materialized_view(
     )
 
 
+def test_recreate_google_view(
+    mocker, mock_get_current_context_recreate_google, mock_airflow_connection, caplog
+):
+    setup_recreate_tests(mocker, mock_airflow_connection)
+
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/google_mat_view.sql',
+    )
+
+    query = full_dump_marc.create_materialized_view()
+
+    assert query.startswith("DROP MATERIALIZED VIEW IF EXISTS google_mat_view")
+    assert (
+        "Refreshing google view with dates from: 2023-09-01 to: 2025-02-01"
+        in caplog.text
+    )
+
+
 def test_recreate_campus_filter_view(
     mocker, mock_get_current_context_recreate, mock_airflow_connection, caplog
 ):
     setup_recreate_tests(mocker, mock_airflow_connection)
+
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.full_dump_marc.materialized_view_sql_file',
+        return_value='libsys_airflow/plugins/data_exports/sql/materialized_view.sql',
+    )
 
     query = full_dump_marc.create_campus_filter_view(
         connection=MockPsycopg2Connection()

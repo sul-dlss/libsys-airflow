@@ -44,6 +44,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     recreate = params.get("recreate_view", False)
+    view_file = params.get("view_file", "materialized_view")
     from_date = params.get("from_date", '2023-08-23')
     to_date = params.get(
         "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
@@ -53,9 +54,10 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
     if recreate:
         logger.info(
-            f"Refreshing materialized view with dates from: {from_date} to: {to_date}"
+            f"Refreshing { 'google' if view_file == 'google_mat_view' else 'materialized' } view with dates from: {from_date} to: {to_date}"
         )
-        with open(materialized_view_sql_file()) as sqv:
+
+        with open(materialized_view_sql_file(view_file=view_file)) as sqv:
             query = sqv.read()
 
         SQLExecuteQueryOperator(
@@ -69,15 +71,19 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
             },
         ).execute(context)
     else:
-        logger.info("Skipping refresh of materialized view")
+        logger.info(
+            f"Skipping refresh of { 'google' if view_file == 'google_mat_view' else 'materialized' } view"
+        )
 
     return query
 
 
 def materialized_view_sql_file(**kwargs) -> Path:
+    view_file = kwargs.get("view_file", "materialized_view")
+    breakpoint()
     sql_path = (
         Path(kwargs.get("airflow", "/opt/airflow"))
-        / "libsys_airflow/plugins/data_exports/sql/materialized_view.sql"
+        / f"libsys_airflow/plugins/data_exports/sql/{view_file}.sql"
     )
 
     return sql_path

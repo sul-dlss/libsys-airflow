@@ -79,6 +79,12 @@ with DAG(
             type="boolean",
             description="Recreate the materialized view with the original FOLIO marc records to process.",
         ),
+        "view_file": Param(
+            "materialized_view",
+            type="string",
+            description="The SQL file to use for creating the materialized view. materialized_view or google_mat_view.",
+            enum=["materialized_view", "google_mat_view"],
+        ),
         "include_campus": Param(
             Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
             type="string",
