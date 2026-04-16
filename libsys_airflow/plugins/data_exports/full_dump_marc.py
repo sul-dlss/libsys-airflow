@@ -107,8 +107,8 @@ def fetch_full_dump_marc(**kwargs) -> str:
     connection = kwargs.get("connection")
     mat_view = kwargs.get("mat_view", "data_export_marc")
     cursor = connection.cursor()  # type: ignore
-    sql = f"SELECT instanceid, hrid, content FROM public.{mat_view} ORDER BY hrid LIMIT (%s) OFFSET (%s)"
-    params = (batch_size, offset)
+    sql = "SELECT instanceid, hrid, content FROM public.(%s) ORDER BY hrid LIMIT (%s) OFFSET (%s)"
+    params = (mat_view, batch_size, offset)
     cursor.execute(sql, params)
     tuples = cursor.fetchall()
 
@@ -125,13 +125,14 @@ def fetch_number_of_records(**kwargs) -> int:
     context = get_current_context()
 
     mat_view = kwargs.get("mat_view", "data_export_marc")
-    query = f"SELECT count(instanceid) from public.{mat_view}"
+    query = "SELECT count(instanceid) from public.%(mat_view)s"
 
     result = SQLExecuteQueryOperator(
         task_id="postgres_full_count_query",
         conn_id="postgres_folio",
         database=kwargs.get("database", "okapi"),
         sql=query,
+        parameters={"mat_view": mat_view},
     ).execute(
         context
     )  # type: ignore

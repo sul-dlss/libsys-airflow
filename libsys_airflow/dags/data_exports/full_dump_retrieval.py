@@ -150,16 +150,20 @@ with DAG(
 
     @task
     def fetch_folio_records(batch_size, start, stop):
-        _connection = connection_pool.getconn()
+        context = get_current_context()
         params = context.get("params", {})  # type: ignore
         mat_view = params.get("mat_view", "data_export_marc")
+        _connection = connection_pool.getconn()
         marc_file_list = []
 
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
                 marc = fetch_full_dump_marc(
-                    offset=offset, batch_size=batch_size, connection=_connection, mat_view=mat_view
+                    offset=offset,
+                    batch_size=batch_size,
+                    connection=_connection,
+                    mat_view=mat_view,
                 )
                 marc_file_list.append(marc)
             except exc.OperationalError as err:
