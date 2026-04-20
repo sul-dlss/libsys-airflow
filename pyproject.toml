@@ -43,6 +43,7 @@ python-crontab = "^3.3.0"
 ruff = "^0.14.1"
 apache-airflow-providers-ftp = "^3.13.2"
 apache-airflow-providers-fab = "^3.2.0"
+apache-airflow-client = "^3.2.0"
 
 
 [tool.poetry.group.test.dependencies]
