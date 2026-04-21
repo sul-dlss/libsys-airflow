@@ -93,7 +93,7 @@ with DAG(
         "marc_file_dir": Param(
             "marc-files",
             type="string",
-            description="The S3 marc file path to deposit the MARC records. CC0 or marc-files.",
+            description="The S3 marc file path to deposit the MARC records for POD, CC0 or Google Books.",
             enum=["pod-files", "CC0", "google-files"],
         ),
     },
