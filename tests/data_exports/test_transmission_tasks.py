@@ -815,7 +815,7 @@ def test_set_holdings_oclc_task(mocker, mock_oclc_connection):
 @pytest.mark.parametrize(
     "vendor,expected_marc_dir",
     [
-        ("pod", "marc-files"),
+        ("pod", "pod-files"),
         ("google-books", "google-files"),
     ],
 )
