@@ -30,6 +30,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 
 from libsys_airflow.dags.data_exports.full_dump_transmission import (
     http_or_ftp_path,
+    retrieve_params,
 )
 
 
@@ -809,3 +810,17 @@ def test_set_holdings_oclc_task(mocker, mock_oclc_connection):
 
     assert result['success']["RCJ"] == ["160ef499-18a2-47a4-bdab-a31522b10508"]
     assert result["failures"]["STF"] == ["d0725143-3ab5-472a-bc1e-b11321d72a13"]
+
+
+@pytest.mark.parametrize(
+    "vendor,expected_marc_dir",
+    [
+        ("pod", "marc-files"),
+        ("google-books", "google-files"),
+    ],
+)
+def test_retrieve_params(vendor, expected_marc_dir):
+    result = retrieve_params.function(params={"vendor": vendor})
+
+    assert result["conn_id"] == vendor
+    assert result["marc_file_dir"] == expected_marc_dir
