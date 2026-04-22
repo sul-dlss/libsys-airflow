@@ -40,7 +40,7 @@ def retrieve_params(**kwargs):
 
     match conn_id:
         case "pod":
-            marc_file_dir = "marc-files"
+            marc_file_dir = "pod-files"
         case "google-books":
             marc_file_dir = "google-files"
         case _:
