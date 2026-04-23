@@ -1,58 +1,49 @@
 DROP MATERIALIZED VIEW IF EXISTS google_mat_view;
 
 CREATE MATERIALIZED VIEW google_mat_view AS
+WITH allowed_material_types AS (
+    SELECT id, jsonb->>'name' as name, jsonb->>'code' as code
+    FROM sul_mod_inventory_storage.material_type
+    WHERE jsonb->>'name' IN ('book', 'periodical')
+       OR jsonb->>'code' = 'score'
+),
+filtered_items AS (
+    SELECT DISTINCT ON (holdingsrecordid)
+        T.id,
+        T.holdingsrecordid,
+        T.materialtypeid,
+        T.jsonb
+    FROM sul_mod_inventory_storage.item T
+    INNER JOIN allowed_material_types MT ON T.materialtypeid = MT.id
+    WHERE
+        ((T.jsonb->>'discoverySuppress')::boolean IS NOT TRUE OR (T.jsonb->>'discoverySuppress') IS NULL)
+        AND T.jsonb -> 'status' ->> 'name' != 'On order'
+        AND (
+            MT.name IN ('book', 'periodical')
+            OR (MT.code = 'score' AND T.jsonb ->> 'numberOfPieces' = '1')
+        )
+    ORDER BY T.holdingsrecordid, T.id
+)
 SELECT
     F.instanceid,
     I.jsonb ->> 'hrid' AS hrid,
     M.content
-FROM filter_campus_ids F
+FROM filtered_items T
+INNER JOIN sul_mod_inventory_storage.holdings_record H 
+    ON H.id = T.holdingsrecordid
 INNER JOIN sul_mod_inventory_storage.instance I
+    ON I.id = H.instanceid
+    AND ((I.jsonb->>'discoverySuppress')::boolean IS NOT TRUE OR (I.jsonb->>'discoverySuppress') IS NULL)
+INNER JOIN filter_campus_ids F
     ON F.instanceid = I.id
-    AND ((I.jsonb->>'discoverySuppress')::boolean IS FALSE OR (I.jsonb->>'discoverySuppress') IS NULL)
-LEFT JOIN (
-    SELECT DISTINCT ON (instanceid)
-        id,
-        instanceid
-    FROM sul_mod_inventory_storage.holdings_record
-    ORDER BY instanceid, id  -- id as tiebreaker; swap for a meaningful column if preferred
-) H
-    ON H.instanceid = I.id
-LEFT JOIN (
-    SELECT DISTINCT ON (holdingsrecordid)
-        id,
-        holdingsrecordid,
-        materialtypeid,
-        jsonb
-    FROM sul_mod_inventory_storage.item T
-    WHERE
-        ((T.jsonb->>'discoverySuppress')::boolean IS FALSE OR (T.jsonb->>'discoverySuppress') IS NULL)
-        AND T.jsonb -> 'status' ->> 'name' NOT IN ('On order')
-        AND (
-            T.materialtypeid IN (
-                SELECT id FROM sul_mod_inventory_storage.material_type
-                WHERE jsonb->>'name' IN ('book', 'periodical')
-            )
-            OR (
-                T.materialtypeid IN (
-                    SELECT id FROM sul_mod_inventory_storage.material_type
-                    WHERE jsonb->>'code' IN ('score')
-                )
-                AND T.jsonb ->> 'numberOfPieces' = '1'
-            )
-        )
-    ORDER BY holdingsrecordid, id  -- id as tiebreaker
-) T
-    ON T.holdingsrecordid = H.id
 LEFT JOIN (
     SELECT DISTINCT ON (external_id)
         external_id,
-        id,
-        generation
+        id
     FROM sul_mod_source_record_storage.records_lb
     ORDER BY external_id, generation DESC
-) R
-    ON R.external_id = I.id
-LEFT JOIN sul_mod_source_record_storage.marc_records_lb M
+) R ON R.external_id = I.id
+LEFT JOIN sul_mod_source_record_storage.marc_records_lb M 
     ON M.id = R.id;
 
 DROP INDEX IF EXISTS google_mat_view_ids;
