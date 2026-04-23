@@ -80,9 +80,9 @@ with DAG(
             description="Recreate the materialized view with the original FOLIO marc records to process.",
         ),
         "mat_view": Param(
-            "materialized_view",
+            "data_export_marc",
             type="string",
-            description="The SQL file to use for creating the materialized view. materialized_view or google_mat_view.",
+            description="The SQL file to use for creating the materialized view. data_export_marc or google_mat_view.",
             enum=["data_export_marc", "google_mat_view"],
         ),
         "include_campus": Param(
@@ -91,7 +91,7 @@ with DAG(
             description="Comma-seperated list of campus coded to include in full dump selection.",
         ),
         "marc_file_dir": Param(
-            "marc-files",
+            "pod-files",
             type="string",
             description="The S3 marc file path to deposit the MARC records for POD, CC0 or Google Books.",
             enum=["pod-files", "CC0", "google-files"],

@@ -41,7 +41,7 @@ def retrieve_params(**kwargs):
     match conn_id:
         case "pod":
             marc_file_dir = "pod-files"
-        case "google-books":
+        case "google":
             marc_file_dir = "google-files"
         case _:
             marc_file_dir = "marc-files"
@@ -76,7 +76,7 @@ def http_or_ftp_path(**kwargs):
             "pod",
             type="string",
             description="Send all records to this vendor.",
-            enum=["pod", "sharevde", "backstage", "google-books"],
+            enum=["pod", "sharevde", "backstage", "google"],
         ),
         "bucket": Param(
             Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"), type="string"
