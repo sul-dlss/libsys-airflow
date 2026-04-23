@@ -7,7 +7,7 @@ from pytest_mock_resources import create_sqlite_fixture, Rows
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile
-from tests.airflow_client import test_airflow_client  # noqa: F401
+from tests.test_airflow_client import test_airflow_client  # noqa: F401
 
 
 now = datetime.utcnow()
