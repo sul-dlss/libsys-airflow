@@ -816,7 +816,7 @@ def test_set_holdings_oclc_task(mocker, mock_oclc_connection):
     "vendor,expected_marc_dir",
     [
         ("pod", "pod-files"),
-        ("google-books", "google-files"),
+        ("google", "google-files"),
     ],
 )
 def test_retrieve_params(vendor, expected_marc_dir):

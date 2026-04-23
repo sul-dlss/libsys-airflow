@@ -146,7 +146,7 @@ def reset_s3(**kwargs) -> None:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     reset = params.get("reset_s3", True)
-    marc_file_dir = params.get("marc_file_dir", "marc-files")
+    marc_file_dir = params.get("marc_file_dir")
 
     if reset:
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
