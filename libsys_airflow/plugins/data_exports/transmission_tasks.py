@@ -41,6 +41,7 @@ def gather_files_task(**kwargs) -> dict:
     file_glob_pattern = vendor_fileformat_spec(vendor)
     if vendor == "full-dump":
         files_dir = params.get("vendor", "pod")
+        logger.info(f"Vendor {vendor} with files_dir {files_dir}")
         match files_dir:
             case "pod":
                 marc_files_dir = "pod-files"
