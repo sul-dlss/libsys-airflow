@@ -30,7 +30,6 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 
 from libsys_airflow.dags.data_exports.full_dump_transmission import (
     http_or_ftp_path,
-    retrieve_params,
 )
 
 
