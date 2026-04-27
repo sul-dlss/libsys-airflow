@@ -40,8 +40,18 @@ def gather_files_task(**kwargs) -> dict:
     marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
     file_glob_pattern = vendor_fileformat_spec(vendor)
     if vendor == "full-dump":
-        files_dir = kwargs.get("files_dir", 'marc-files')
-        marc_filepath = S3Path(f"/{bucket}/data-export-files/{vendor}/{files_dir}/")
+        files_dir = params.get("vendor", "pod")
+        match files_dir:
+            case "pod":
+                marc_files_dir = "pod-files"
+            case "google":
+                marc_files_dir = "google-files"
+            case _:
+                marc_files_dir = "marc-files"
+
+        marc_filepath = S3Path(
+            f"/{bucket}/data-export-files/{vendor}/{marc_files_dir}/"
+        )
     marc_filelist = []
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size in [0, 112]:

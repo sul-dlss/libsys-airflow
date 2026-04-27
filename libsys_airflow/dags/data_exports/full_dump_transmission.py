@@ -38,15 +38,7 @@ def retrieve_params(**kwargs):
     params = kwargs.get("params", {})
     conn_id = params["vendor"]
 
-    match conn_id:
-        case "pod":
-            marc_file_dir = "pod-files"
-        case "google":
-            marc_file_dir = "google-files"
-        case _:
-            marc_file_dir = "marc-files"
-
-    return {"conn_id": conn_id, "marc_file_dir": marc_file_dir}
+    return {"conn_id": conn_id}
 
 
 @task.branch()
@@ -90,9 +82,7 @@ def send_all_records():
 
     vars = retrieve_params()
 
-    gather_files = gather_files_task(
-        vendor="full-dump", files_dir=vars["marc_file_dir"]
-    )
+    gather_files = gather_files_task(vendor="full-dump")
 
     choose_branch = http_or_ftp_path(connection=vars["conn_id"])
 
