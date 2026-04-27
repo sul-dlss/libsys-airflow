@@ -220,4 +220,3 @@ reading_rooms_config = {
         },
     },
 }
-

@@ -26,23 +26,24 @@ def extract_fields(record: dict) -> dict:
             t["alternativeTitle"] for t in record.get("alternativeTitles", [])
         ],
         "authors": [
-            c["name"] for c in record.get("contributors", [])
+            c["name"]
+            for c in record.get("contributors", [])
             if c.get("contributorTypeText") == "Author"
         ],
         "subjects": [s["value"] for s in record.get("subjects", [])],
         "publisher": pub.get("publisher", ""),
         "pub_date": pub.get("dateOfPublication", ""),
         "call_number": next(
-            (c["classificationNumber"] for c in record.get("classifications", [])
-             if "LC" in c.get("classificationTypeId", "")),
-            ""
+            (
+                c["classificationNumber"]
+                for c in record.get("classifications", [])
+                if "LC" in c.get("classificationTypeId", "")
+            ),
+            "",
         ),
         "language": record.get("languages", [""])[0],
         "format": record.get("instanceTypeId", ""),
-        "notes": [
-            n["note"] for n in record.get("notes", [])
-            if not n.get("staffOnly")
-        ],
+        "notes": [n["note"] for n in record.get("notes", []) if not n.get("staffOnly")],
     }
 
 
@@ -83,18 +84,21 @@ def verbalize(record: dict) -> str:
 
 def embed_text(text: str) -> list[float]:
     """Generate embeddings for text using OpenAI."""
-    response = openai.embeddings.create(
-        input=text,
-        model="text-embedding-3-small"
-    )
+    response = openai.embeddings.create(input=text, model="text-embedding-3-small")
     return response.data[0].embedding
 
 
-def upsert_to_vector_store(instance_id: str, embedding: list[float], metadata: dict, verbalized: str):
+def upsert_to_vector_store(
+    instance_id: str, embedding: list[float], metadata: dict, verbalized: str
+):
     """Upsert record to vector store."""
     client = MilvusClient(
-        uri=Variable.get("ZILLIZ_CLOUD_URI"), #https://in03-b3ca0c898344930.serverless.aws-eu-central-1.cloud.zilliz.com
-        token=Variable.get("ZILLIZ_CLOUD_TOKEN") #11086e3b69260910c54eb23909034f32468700c268246f7fd4aba46e45f1aab6df422eeee617dc2c69849f45357a197e493dbab0
+        uri=Variable.get(
+            "ZILLIZ_CLOUD_URI"
+        ),  # https://in03-b3ca0c898344930.serverless.aws-eu-central-1.cloud.zilliz.com
+        token=Variable.get(
+            "ZILLIZ_CLOUD_TOKEN"
+        ),  # 11086e3b69260910c54eb23909034f32468700c268246f7fd4aba46e45f1aab6df422eeee617dc2c69849f45357a197e493dbab0
     )
     logger.info(f"Upserting {instance_id} with {len(embedding)}-dim embedding")
     try:
@@ -104,17 +108,18 @@ def upsert_to_vector_store(instance_id: str, embedding: list[float], metadata: d
                 "id": instance_id,
                 "vector": embedding,
                 "metadata": metadata,
-                "verbalized": verbalized
-            }
+                "verbalized": verbalized,
+            },
         )
         logger.info(f"Upsert response for {instance_id}: {response}")
     except Exception as e:
         logger.error(f"Error upserting {instance_id}: {e}")
 
+
 @task
 def process_folio_instances(**context):
     """
-    Process FOLIO instances through extraction, cleaning, verbalization, 
+    Process FOLIO instances through extraction, cleaning, verbalization,
     embedding, and vector store upsert pipeline.
     """
     # Pull records from upstream SQL task via XCom
@@ -127,7 +132,11 @@ def process_folio_instances(**context):
     processed_count = 0
     for row in raw_records:
         # If stored as JSON string in DB column, parse it
-        record = json.loads(row["instance_json"]) if isinstance(row.get("instance_json"), str) else row
+        record = (
+            json.loads(row["instance_json"])
+            if isinstance(row.get("instance_json"), str)
+            else row
+        )
 
         # Pipeline steps
         extracted = extract_fields(record)
