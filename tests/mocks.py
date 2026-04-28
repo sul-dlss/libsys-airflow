@@ -109,3 +109,14 @@ class MockLibraryConfig(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_username: str = "admin"
     tenant_id: str = "a_lib"
+
+
+class MockAirflowApiClientConfig(pydantic.BaseModel):
+    host: str = "http://localhost:8080"
+    username: str = "user_name"
+    password: str = "napassword"
+    access_token: str = "YW4gYWNjZXNzIHRva2Vu"
+
+
+class MockAirflowApiClient(pydantic.BaseModel):
+    configuration: MockAirflowApiClientConfig
