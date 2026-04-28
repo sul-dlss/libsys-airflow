@@ -37,6 +37,7 @@ def retrieve_params(**kwargs):
     """
     params = kwargs.get("params", {})
     conn_id = params["vendor"]
+
     return {"conn_id": conn_id}
 
 
@@ -67,7 +68,7 @@ def http_or_ftp_path(**kwargs):
             "pod",
             type="string",
             description="Send all records to this vendor.",
-            enum=["pod", "sharevde", "backstage"],
+            enum=["pod", "sharevde", "backstage", "google"],
         ),
         "bucket": Param(
             Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"), type="string"
@@ -79,9 +80,9 @@ def send_all_records():
 
     end = EmptyOperator(task_id="end")
 
-    gather_files = gather_files_task(vendor="full-dump")
-
     vars = retrieve_params()
+
+    gather_files = gather_files_task(full_dump=True)
 
     choose_branch = http_or_ftp_path(connection=vars["conn_id"])
 

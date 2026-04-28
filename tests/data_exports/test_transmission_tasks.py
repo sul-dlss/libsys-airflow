@@ -101,6 +101,37 @@ def mock_full_dump_params(request):
     return {"conn_id": conn_id}
 
 
+@pytest.fixture(params=["pod", "google"])
+def mock_vendor_s3_files(request, tmp_path, mocker):
+    mocker.patch.object(transmission_tasks, "S3Path", pathlib.Path)
+
+    vendor = request.param
+    bucket = "data-export-test"
+
+    if vendor == "pod":
+        file_dir = tmp_path / "data-export-files" / "full-dump" / "pod-files"
+        filenames = [
+            "2024030214.xml.gz",
+            "2024020314.xml.gz",
+        ]
+    else:  # google
+        file_dir = tmp_path / "data-export-files" / "full-dump" / "google-files"
+        filenames = [
+            "2024030214.xml.gz",
+            "2024020314.xml.gz",
+        ]
+
+    file_dir.mkdir(parents=True, exist_ok=True)
+    file_list = []
+    for filename in filenames:
+        file_path = file_dir / filename
+        file_path.touch()
+        file_path.write_text("hello world")
+        file_list.append(file_path)
+
+    return {"file_list": file_list, "s3": True, "bucket": bucket, "vendor": vendor}
+
+
 @pytest.fixture
 def mock_httpx_connection():
     return Connection(
@@ -161,12 +192,19 @@ def test_gather_files_task(tmp_path, mock_vendor_marc_files):
     assert len(marc_files["file_list"]) == 1
 
 
-def test_gather_full_dump_files(mocker):
+@pytest.mark.parametrize("mock_vendor_s3_files", ["google"], indirect=True)
+def test_gather_full_dump_files(tmp_path, mocker, mock_vendor_s3_files):
     mocker.patch.object(transmission_tasks, "S3Path", pathlib.Path)
     marc_files = gather_files_task.function(
-        vendor="full-dump", params={"bucket": "data-export-test"}
+        vendor="full-dump",
+        params={"bucket": tmp_path, "vendor": "google"},
+        full_dump=True,
     )
     assert marc_files["s3"]
+    assert (
+        pathlib.Path(marc_files["file_list"][0]).name
+        == pathlib.Path(mock_vendor_s3_files["file_list"][0]).name
+    )
 
 
 @pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
