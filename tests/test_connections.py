@@ -1,8 +1,12 @@
 import pytest
 
-from airflow.models import Connection
-from airflow.utils.db import merge_conn
-from airflow import settings
+from unittest.mock import MagicMock
+from airflow_client.client.rest import ApiException
+
+from mocks import (  # noqa
+    MockAirflowApiClientConfig,
+    MockAirflowApiClient,
+)
 
 from libsys_airflow.plugins.airflow.connections import (
     find_or_create_conn,
@@ -10,86 +14,63 @@ from libsys_airflow.plugins.airflow.connections import (
 )
 
 
-@pytest.fixture
-def db_session():
-    Session = getattr(settings, "Session", None)
-    if Session is None:
-        raise RuntimeError("Session must be set before!")
-    session = Session()
-    try:
-        yield session
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def delete_connection(conn_id, session):
-    conn = find_connection(conn_id, session)
-    if conn:
-        session.delete(conn)
-        session.commit()
-
-
-def find_connection(conn_id, session):
-    conn = session.query(Connection).filter_by(conn_id=conn_id).first()
-    return conn
-
-
-def test_connection_does_not_exist(db_session):
-    delete_connection('ftp-example.com', db_session)
-    conn_id = find_or_create_conn('ftp', 'example.com', 'user', 'pass')
-    assert conn_id == 'ftp-example.com-user'
-
-    conn = find_connection(conn_id, db_session)
-    assert conn.conn_id == "ftp-example.com-user"
-    assert conn.conn_type == "ftp"
-    assert conn.host == "example.com"
-    assert conn.login == "user"
-
-
-def test_connection_already_exists(db_session):
-    delete_connection("ftp-example.com-user", db_session)
-    prev_conn = Connection(  # noqa
-        conn_id="ftp-example.com",
-        conn_type="ftp",
-        host="prev.example.com",
-        login="prev-user",
-        password="prev-pass",
-        extra=None,
+def mock_api_instance():
+    api_instance = MagicMock()
+    api_instance.get_connection.return_value = MagicMock(
+        connection_id="ftp-example.com-user"
     )
-    merge_conn(prev_conn, session=db_session)
-
-    conn_id = find_or_create_conn("ftp", "example.com", "user", "pass", 234, None)
-    assert conn_id == "ftp-example.com-user"
-    conn = find_connection(conn_id, db_session)
-    assert conn.conn_id == "ftp-example.com-user"
-    assert conn.conn_type == "ftp"
-    assert conn.host == "example.com"
-    assert conn.login == "user"
-    assert conn.port == 234
-    assert conn.extra is None
+    return api_instance
 
 
-def test_create_connection_ftp(mocker):
-    mock_find_or_create_conn = mocker.patch(
-        "libsys_airflow.plugins.airflow.connections.find_or_create_conn",
-        return_value="ftp-example.com-user",
+def mock_api_instance_not_found():
+    api_instance = MagicMock()
+
+    def mock_get_connection(*args, **kwargs):
+        raise ApiException("Connection not found")
+
+    api_instance.get_connection = mock_get_connection
+    api_instance.post_connection.return_value = MagicMock(
+        connection_id="ftp-example.com-user"
+    )
+    return api_instance
+
+
+@pytest.fixture
+def mock_client_config():
+    return MockAirflowApiClientConfig()
+
+
+@pytest.fixture
+def mock_api_client():
+    return MockAirflowApiClient(configuration=MockAirflowApiClientConfig())
+
+
+def test_connection_already_exists(mock_api_client, mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.airflow.connections.api_client",
+        return_value=mock_api_client,
     )
     mocker.patch(
-        "libsys_airflow.plugins.airflow.connections.interface_info",
-        return_value={
-            "uri": "ftp://example.com",
-            "username": "user",
-            "password": "pass",  # noqa: S105
-        },
+        "libsys_airflow.plugins.airflow.connections.airflow_client.client.ConnectionApi",
+        return_value=mock_api_instance(),
     )
-    conn_id = create_connection("1234")
+
+    conn_id = find_or_create_conn("ftp", "example.com", "user", "pass")
     assert conn_id == "ftp-example.com-user"
-    mock_find_or_create_conn.assert_called_once_with(
-        "ftp", "example.com", "user", "pass", None, None
+
+
+def test_create_connection_ftp(mock_api_client, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.airflow.connections.api_client",
+        return_value=mock_api_client,
     )
+    mocker.patch(
+        "libsys_airflow.plugins.airflow.connections.airflow_client.client.ConnectionApi",
+        return_value=mock_api_instance_not_found(),
+    )
+    conn_id = find_or_create_conn("ftp", "example.com", "user", "pass")
+    assert conn_id == "ftp-example.com-user"
+    assert "Exception when calling ConnectionApi" in caplog.text
 
 
 def test_create_connection_sftp_with_keyfile(mocker):

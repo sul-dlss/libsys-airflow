@@ -2,10 +2,9 @@ import logging
 
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, task, task_group
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import dag, task, task_group, Variable
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
-from airflow.models import Variable
 
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (

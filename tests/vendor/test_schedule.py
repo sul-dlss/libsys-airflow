@@ -10,7 +10,7 @@ from libsys_airflow.plugins.vendor.models import (
     VendorFile,
     FileStatus,
 )
-from tests.airflow_client import test_airflow_client  # noqa: F401
+from tests.test_airflow_client import test_airflow_client  # noqa: F401
 
 now = datetime.utcnow()
 

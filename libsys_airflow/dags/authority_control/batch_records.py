@@ -2,8 +2,11 @@
 
 from datetime import datetime
 
-from airflow.decorators import dag, task
-from airflow.operators.python import get_current_context
+from airflow.sdk import (
+    dag,
+    get_current_context,
+    task,
+)
 
 from libsys_airflow.plugins.authority_control.helpers import (
     clean_up,
