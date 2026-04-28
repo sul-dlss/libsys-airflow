@@ -5,7 +5,7 @@ set :repo_url, 'https://github.com/sul-dlss/libsys-airflow.git'
 set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
 set :migration, 'https://github.com/sul-dlss/folio_migration.git'
-set :alembic_dbs, ['vma', 'digital_bookplates']
+set :alembic_dbs, ['vendor_loads', 'digital_bookplates']
 set :ssh_options, { :forward_agent => true }
 
 def alembic_dbs
