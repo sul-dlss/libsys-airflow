@@ -1,6 +1,7 @@
 import json
 import logging
 import openai
+import voyageai
 
 from airflow import Variable
 from airflow.decorators import task
@@ -82,7 +83,15 @@ def verbalize(record: dict) -> str:
     return text
 
 
-def embed_text(text: str) -> list[float]:
+def embed_voyage_text(text: str) -> list[float]:
+    """Generate embeddings for text using VoyageAI/Athropic."""
+    VOYAGE_API_KEY=Variable.get("VOYAGE_API_KEY")
+    vo = voyageai.Client()
+    response = vo.embed(input=text, model="voyage-code-2")
+    return response.embeddings[0]
+
+
+def embed_openai_text(text: str) -> list[float]:
     """Generate embeddings for text using OpenAI."""
     response = openai.embeddings.create(input=text, model="text-embedding-3-small")
     return response.data[0].embedding
@@ -95,10 +104,10 @@ def upsert_to_vector_store(
     client = MilvusClient(
         uri=Variable.get(
             "ZILLIZ_CLOUD_URI"
-        ),  # https://in03-b3ca0c898344930.serverless.aws-eu-central-1.cloud.zilliz.com
+        ),
         token=Variable.get(
             "ZILLIZ_CLOUD_TOKEN"
-        ),  # 11086e3b69260910c54eb23909034f32468700c268246f7fd4aba46e45f1aab6df422eeee617dc2c69849f45357a197e493dbab0
+        ),
     )
     logger.info(f"Upserting {instance_id} with {len(embedding)}-dim embedding")
     try:
@@ -142,7 +151,7 @@ def process_folio_instances(**context):
         extracted = extract_fields(record)
         cleaned = clean_fields(extracted)
         verbalized = verbalize(cleaned)
-        embedding = embed_text(verbalized)
+        embedding = embed_voyage_text(verbalized)
 
         metadata = {
             "instance_id": cleaned["instance_id"],
