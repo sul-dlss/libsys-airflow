@@ -1,4 +1,4 @@
-from airflow.sdk import Variable
+import os
 import airflow_client.client
 from pydantic import BaseModel
 import httpx
@@ -8,18 +8,10 @@ class AirflowAccessToken(BaseModel):
     access_token: str
 
 
-def client_configuration() -> airflow_client.client.Configuration:
-    return airflow_client.client.Configuration(
-        host="http://localhost:8080",
-        username=Variable.get("AIRFLOW_VAR_API_USER", "nausername"),
-        password=Variable.get("AIRFLOW_VAR_API_PASSWORD", "napassword"),
-    )
-
-
 def get_access_token(
     host: str,
-    username: str,
-    password: str,
+    username: str | None,
+    password: str | None,
 ) -> str:
     url = f"{host}/auth/token"
     payload = {
@@ -36,7 +28,15 @@ def get_access_token(
     return response_success.access_token
 
 
-def api_client(
-    configuration: airflow_client.client.Configuration,
-) -> airflow_client.client.ApiClient:
+def api_client() -> airflow_client.client.ApiClient:
+    configuration = airflow_client.client.Configuration(
+        host=os.getenv("AIRFLOW__API__BASE_URL", "http://airflow-apiserver:8080"),
+        username=os.getenv("AIRFLOW_VAR_API_USER", "nausername"),
+        password=os.getenv("AIRFLOW_VAR_API_PASSWORD", "napassword"),
+    )
+    configuration.access_token = get_access_token(
+        host=configuration.host,
+        username=configuration.username,
+        password=configuration.password,
+    )
     return airflow_client.client.ApiClient(configuration)
