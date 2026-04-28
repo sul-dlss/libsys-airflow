@@ -159,14 +159,16 @@ def remove_marc_files(marc_file_list: list):
         logger.info(f"Removed {file_path}")
 
 
-def zip_marc_file(marc_file: str, full_dump: bool = False):
+def zip_marc_file(marc_file: str, vendor: str, full_dump: bool = False):
     if full_dump:
         marc_path = S3Path(marc_file)
     else:
         marc_path = pathlib.Path(marc_file)  # type: ignore
 
-    # For now only compress POD files
-    vendor = marc_path.parent.parent.parent.name
+    """
+    Compress POD and all full-dump files
+    """
+    logger.info(f"Compressing {marc_path} for vendor {vendor}")
     compress_for = ['pod', 'full-dump']
     if not any(str in vendor for str in compress_for):
         return

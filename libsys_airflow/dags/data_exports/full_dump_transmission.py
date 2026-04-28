@@ -82,7 +82,7 @@ def send_all_records():
 
     vars = retrieve_params()
 
-    gather_files = gather_files_task(vendor="full-dump")
+    gather_files = gather_files_task(full_dump=True)
 
     choose_branch = http_or_ftp_path(connection=vars["conn_id"])
 

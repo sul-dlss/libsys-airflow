@@ -203,7 +203,7 @@ with DAG(
             for marc_file in marc_files:
                 stem = pathlib.Path(marc_file).suffix
                 xml = marc_file.replace(stem, '.xml')
-                zip_marc_file(xml, True)
+                zip_marc_file(xml, vendor="full-dump", full_dump=True)
 
         (
             transform_marc_records_add_holdings(marc_files)

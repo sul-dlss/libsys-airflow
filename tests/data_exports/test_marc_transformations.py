@@ -580,7 +580,7 @@ def test_zip_marc_file(mock_marc_dir):
 
     assert marc_file.stat()[6] == 5819
 
-    zip_marc_file(str(marc_file), False)
+    zip_marc_file(str(marc_file), vendor="pod", full_dump=False)
 
     marc_zip_file = mock_marc_dir / "20240509.xml.gz"
 
@@ -588,13 +588,13 @@ def test_zip_marc_file(mock_marc_dir):
     assert marc_file.exists() is False
 
 
-@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+@pytest.mark.parametrize("mock_marc_dir", ["full-dump"], indirect=True)
 def test_zip_marc_files_not_pod(mock_marc_dir):
     marc_file = mock_marc_dir / "20240509.xml"
 
     marc_file.touch()
 
-    zip_marc_file(str(marc_file), False)
+    zip_marc_file(str(marc_file), vendor="full-dump", full_dump=True)
 
     marc_zip_file = mock_marc_dir / "20240509.gz"
 
