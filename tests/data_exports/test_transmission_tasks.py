@@ -198,6 +198,7 @@ def test_gather_full_dump_files(tmp_path, mocker, mock_vendor_s3_files):
     marc_files = gather_files_task.function(
         vendor="full-dump",
         params={"bucket": tmp_path, "vendor": "google"},
+        full_dump=True,
     )
     assert marc_files["s3"]
     assert (
