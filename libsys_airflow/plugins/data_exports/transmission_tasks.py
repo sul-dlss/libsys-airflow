@@ -34,15 +34,17 @@ def gather_files_task(**kwargs) -> dict:
     """
     logger.info("Gathering files to transmit")
     airflow = kwargs.get("airflow", "/opt/airflow")
-    vendor = kwargs["vendor"]
+    vendor = kwargs.get("vendor", None)
+    full_dump = kwargs.get("full_dump", False)
     params = kwargs.get("params", {})
     bucket = params.get("bucket", {})
     marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
     file_glob_pattern = vendor_fileformat_spec(vendor)
-    if vendor == "full-dump":
-        files_dir = params.get("vendor", "pod")
-        logger.info(f"Vendor {vendor} with files_dir {files_dir}")
-        match files_dir:
+    
+    if full_dump:
+        file_glob_pattern = "**/*.gz"
+        vendor = params.get("vendor", "full-dump")
+        match vendor:
             case "pod":
                 marc_files_dir = "pod-files"
             case "google":
@@ -50,10 +52,12 @@ def gather_files_task(**kwargs) -> dict:
             case _:
                 marc_files_dir = "marc-files"
 
+        logger.info(f"Full dump with files_dir {marc_files_dir}")
         marc_filepath = S3Path(
-            f"/{bucket}/data-export-files/{vendor}/{marc_files_dir}/"
+            f"/{bucket}/data-export-files/full-dump/{marc_files_dir}/"
         )
     marc_filelist = []
+    
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size in [0, 112]:
             continue
@@ -356,8 +360,6 @@ def vendor_fileformat_spec(vendor):
     """
     match vendor:
         case "pod":
-            return "**/*.gz"
-        case "full-dump":
             return "**/*.gz"
         case "gobi":
             return "**/*.txt"
