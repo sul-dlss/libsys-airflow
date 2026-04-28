@@ -40,7 +40,7 @@ def gather_files_task(**kwargs) -> dict:
     bucket = params.get("bucket", {})
     marc_filepath = Path(airflow) / f"data-export-files/{vendor}/marc-files/"
     file_glob_pattern = vendor_fileformat_spec(vendor)
-    
+
     if full_dump:
         file_glob_pattern = "**/*.gz"
         vendor = params.get("vendor", "full-dump")
@@ -57,7 +57,7 @@ def gather_files_task(**kwargs) -> dict:
             f"/{bucket}/data-export-files/full-dump/{marc_files_dir}/"
         )
     marc_filelist = []
-    
+
     for f in marc_filepath.glob(file_glob_pattern):
         if f.stat().st_size in [0, 112]:
             continue
