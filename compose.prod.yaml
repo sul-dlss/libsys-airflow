@@ -65,7 +65,7 @@ x-airflow-common:
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API__BASE_URL:-airflow}
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}
-    AIRFLOW__API__BASE_URL: ${AIRFLOW__API__BASE_URL}
+    AIRFLOW__API__BASE_URL: 'http://airflow-apiserver:8080'
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
