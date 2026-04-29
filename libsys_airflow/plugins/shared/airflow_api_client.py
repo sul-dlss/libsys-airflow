@@ -2,7 +2,9 @@ import os
 import airflow_client.client
 from pydantic import BaseModel
 import httpx
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AirflowAccessToken(BaseModel):
     access_token: str
@@ -14,17 +16,24 @@ def get_access_token(
     password: str | None,
 ) -> str:
     url = f"{host}/auth/token"
+    logger.info(f"Getting access token from {url}")
     payload = {
         "username": username,
         "password": password,
     }
     headers = {"Content-Type": "application/json"}
-    response = httpx.post(url, json=payload, headers=headers)
-    if response.status_code != 201:
-        raise RuntimeError(
+    try:
+        response = httpx.post(url, json=payload, headers=headers)
+        if response.status_code == 201:
+            response_success = AirflowAccessToken(**response.json())
+        else:
+            raise RuntimeError(
             f"Failed to get access token: {response.status_code} {response.text}"
         )
-    response_success = AirflowAccessToken(**response.json())
+    except httpx.ConnectError as e:
+        print(f"Connection error: {e}")
+        raise
+
     return response_success.access_token
 
 
