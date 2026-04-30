@@ -61,7 +61,7 @@ def compress_marc_files(marc_file_list: dict, vendor: str):
     for marc_file in marc_files:
         stem = pathlib.Path(marc_file).suffix
         xml = marc_file.replace(stem, '.xml')
-        zip_marc_file(xml, vendor="pod")
+        zip_marc_file(xml, vendor=vendor)
 
 
 with DAG(
@@ -172,7 +172,8 @@ with DAG(
         task_id="transform_folio_marc_compress_files",
         python_callable=compress_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
+            "vendor": "pod",
         },
     )
 
