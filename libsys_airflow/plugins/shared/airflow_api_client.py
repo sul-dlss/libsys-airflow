@@ -39,7 +39,7 @@ def get_access_token(
 
 def api_client() -> airflow_client.client.ApiClient:
     configuration = airflow_client.client.Configuration(
-        host=os.getenv("AIRFLOW__API__BASE_URL", "http://airflow-apiserver:8080"),
+        host="http://airflow-apiserver:8080",
         username=os.getenv("AIRFLOW_VAR_API_USER", "nausername"),
         password=os.getenv("AIRFLOW_VAR_API_PASSWORD", "napassword"),
     )
