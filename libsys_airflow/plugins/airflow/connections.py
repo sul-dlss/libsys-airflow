@@ -1,13 +1,15 @@
 import logging
+import airflow_client.client
+from airflow_client.client.rest import ApiException
+from airflow_client.client.models.connection_body import ConnectionBody
 from urllib.parse import urlparse
 from typing import Optional
 import json
 
-from airflow.models import Connection
-from airflow.decorators import task
-from sqlalchemy.orm.session import Session
-from airflow.utils.session import NEW_SESSION, provide_session
-
+from airflow.sdk import task
+from libsys_airflow.plugins.shared.airflow_api_client import (
+    api_client,
+)
 from libsys_airflow.plugins.folio.interface import interface_info
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,9 @@ CONN_TYPES = ["ftp", "sftp"]
 
 @task
 def create_connection_task(interface_id: str) -> str:
+    """
+    Given a vendor_interface_uuid, returns the Airflow ConnectionBody.connection_id
+    """
     return create_connection(interface_id)
 
 
@@ -38,7 +43,6 @@ def create_connection(interface_id: str) -> str:
     return conn_id
 
 
-@provide_session
 def find_or_create_conn(
     conn_type: str,
     host: str,
@@ -46,27 +50,42 @@ def find_or_create_conn(
     pwd: Optional[str] = None,
     port: Optional[int] = None,
     key_file: Optional[str] = None,
-    session: Session = NEW_SESSION,
 ) -> str:
     conn_id = f"{conn_type}-{host}-{login}"
-    conn = session.query(Connection).filter_by(conn_id=conn_id).first()
-    if not conn:
-        conn = Connection(conn_id=conn_id)
-    conn.conn_id = conn_id
-    conn.conn_type = conn_type
-    conn.host = host
-    conn.login = login
-    conn.port = port
+    client = api_client()
+    api_instance = airflow_client.client.ConnectionApi(client)
+    try:
+        api_response = api_instance.get_connection(
+            connection_id=conn_id, _headers={"Accept": "application/json"}
+        )
+        return api_response.connection_id
+    except ApiException as e:
+        logger.info(f"Exception when calling ConnectionApi for {conn_id}: {e}")
+
+    conn: dict = {}
+    conn["connection_id"] = conn_id
+    conn["conn_type"] = conn_type
+    conn["host"] = host
+    conn["login"] = login
+    conn["port"] = port
 
     if pwd:
-        conn.set_password(pwd)
+        conn["password"] = pwd
     if key_file:
-        conn.set_extra(json.dumps({"key_file": key_file}))
+        conn["extra"] = json.dumps({"key_file": key_file})
 
-    session.add(conn)
-    session.commit()
+    payload = ConnectionBody.from_dict(conn)
+    if payload is None:
+        raise ValueError(
+            f"Invalid connection data for conn_id: {conn_id}. Payload cannot be None."
+        )
+    try:
+        api_response = api_instance.post_connection(payload)
+        return api_response.connection_id
+    except ApiException as e:
+        logger.warning(f"Exception when posting ConnectionBody for {conn_id}: {e}")
 
-    return conn_id
+    return api_response.connection_id
 
 
 def _key_file(info, uri):

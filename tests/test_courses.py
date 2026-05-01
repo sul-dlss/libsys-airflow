@@ -4,7 +4,7 @@ import pathlib
 
 from datetime import datetime
 from unittest.mock import MagicMock
-from airflow.exceptions import AirflowException
+from airflow.providers.standard.exceptions import AirflowException
 
 from libsys_airflow.plugins.folio.courses import (
     _term_names,

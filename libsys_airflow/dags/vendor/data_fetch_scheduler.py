@@ -4,9 +4,8 @@ import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import true
 
-from airflow import DAG
-from airflow.decorators import task
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sdk import DAG, task
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.vendor.models import VendorInterface

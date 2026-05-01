@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 from pytest_mock_resources import create_sqlite_fixture, Rows
@@ -10,9 +10,9 @@ from libsys_airflow.plugins.vendor.models import (
     VendorFile,
     FileStatus,
 )
-from tests.airflow_client import test_airflow_client  # noqa: F401
+from tests.test_airflow_client import test_airflow_client  # noqa: F401
 
-now = datetime.utcnow()
+now = datetime.now(UTC)
 
 rows = Rows(
     # set up a vendor and its "interface"

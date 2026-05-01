@@ -91,7 +91,7 @@ cap alembic:migrate  # Run Alembic database migrations
 
 In `config/deploy.rb` at the top, add new default database set to the list of alembic_dbs:
 ```
-set :alembic_dbs, ['vma', 'digital_bookplates', 'new_database', '...']
+set :alembic_dbs, ['vendor_loads', 'digital_bookplates', 'new_database', '...']
 ```
 
 Or alternately, run any alembic task with the ALEMBIC_DBS environment variable set, e.g.
@@ -135,7 +135,7 @@ to see changes in the running Airflow environment.
 We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
 these [directions](https://alembic.sqlalchemy.org/en/latest/cookbook.html#run-multiple-alembic-environments-from-one-ini-file).
 
-To run any `alembic` commands you need add the `--name` parameter followed by `vma` for the Vendor Management database
+To run any `alembic` commands you need add the `--name` parameter followed by `vendor_loads` for the Vendor Management database
 and `digital_bookplates` for the Digital Bookplates database.
 
 ### Local Database Creation and Migrations
@@ -196,12 +196,12 @@ To generate a migration script, first make the changes in the `models.py`
 module and then run the following steps:
 
 1. Set your shell to use the local poetry virtual environment: `poetry shell`
-2. Run `dotenv run alembic --name vma revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
+2. Run `dotenv run alembic --name vendor_loads revision --autogenerate -m "{short message describing change}"` (**NOTE**: not all changes to the model are detected, see this [note](https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect) in the documentation)
 3. After the migration script is created, run `dotenv run alembic upgrade head` to apply your latest changes to the database.
 
-If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic --name vma upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
+If you prefer not to use `poetry shell` you can use `poetry run` along with `dotenv` instead: e.g. `poetry run dotenv run alembic --name vendor_loads upgrade head`. Or you can simply put the `DATABASE_*` environment variables into your shell via another means.
 
-To fix multiple heads: `poetry run alembic --name vma merge heads -m "merge <revision 1> and <revision 2>"`
+To fix multiple heads: `poetry run alembic --name vendor_loads merge heads -m "merge <revision 1> and <revision 2>"`
 
 #### Clearing out VendorFiles for Development
 Assuming you have populated VendorFiles table and want to re-fetch vendor files, clear out the database table with:
