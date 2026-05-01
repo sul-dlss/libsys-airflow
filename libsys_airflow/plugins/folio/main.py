@@ -3,6 +3,7 @@ from flask import Blueprint
 from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
 from libsys_airflow.plugins.folio.apps.healthcheck_view import Healthcheck
 
+
 bp = Blueprint(
     "folio_plugin",
     __name__,
