@@ -14,10 +14,6 @@ from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 CIRC_HOME = "/opt/airflow/circ"
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class CircRulesTester(AppBuilderBaseView):
     default_view = "circ_home"
@@ -80,7 +76,6 @@ class CircRulesTester(AppBuilderBaseView):
                 )
                 run_id = api_response.dag_run_id
                 redirect_url = f"/pluginsv2{CircRulesTester.route_base}/report/{run_id}"
-                logger.info(f"Redirect_url {redirect_url}")
             except Exception as e:
                 flash(f"Failed to Trigger circ_rules_scenario_test DAG, error:{e}")
                 redirect_url = f"/pluginsv2{CircRulesTester.circ_home}"
