@@ -81,6 +81,7 @@ def find_or_create_conn(
         )
     try:
         api_response = api_instance.post_connection(payload)
+        logger.info(f"Created connection for {conn_id}")
         return api_response.connection_id
     except ApiException as e:
         logger.warning(f"Exception when posting ConnectionBody for {conn_id}: {e}")
