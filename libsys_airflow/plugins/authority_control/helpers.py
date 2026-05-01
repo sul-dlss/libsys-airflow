@@ -8,6 +8,8 @@ import pymarc
 from airflow.sdk import Variable
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
+from libsys_airflow.plugins.shared.folio_client import folio_client
+
 logger = logging.getLogger(__name__)
 
 
