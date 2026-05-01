@@ -6,7 +6,9 @@ from alembic.script import ScriptDirectory
 
 def test_only_single_head_revision_in_migrations():
     config = Config('alembic.ini')
-    vendor_loads_script = ScriptDirectory(dir=config.get_section('vendor_loads')['script_location'])
+    vendor_loads_script = ScriptDirectory(
+        dir=config.get_section('vendor_loads')['script_location']
+    )
     digital_bookplate_script = ScriptDirectory(
         dir=config.get_section('digital_bookplates')['script_location']
     )
