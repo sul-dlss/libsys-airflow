@@ -6,7 +6,7 @@
     {% if run_id %}
         <p>
             DAG <strong>delete_authority_records</strong> triggered with
-            <a href="/dags/delete_authority_records/graph?dag_run_id={{ run_id }}">Run ID {{ run_id }}</a>
+            <a href="/dags/delete_authority_records/runs/{{ run_id }}">Run ID {{ run_id }}</a>
         </p>
         {% if email %}
             Report email will be sent to {{ email }} when DAG is completed.
