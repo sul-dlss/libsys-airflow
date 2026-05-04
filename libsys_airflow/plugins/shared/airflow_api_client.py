@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class AirflowAccessToken(BaseModel):
     access_token: str
 
@@ -28,8 +29,8 @@ def get_access_token(
             response_success = AirflowAccessToken(**response.json())
         else:
             raise RuntimeError(
-            f"Failed to get access token: {response.status_code} {response.text}"
-        )
+                f"Failed to get access token: {response.status_code} {response.text}"
+            )
     except httpx.ConnectError as e:
         print(f"Connection error: {e}")
         raise
