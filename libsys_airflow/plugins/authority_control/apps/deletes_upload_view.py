@@ -3,11 +3,12 @@ import pathlib
 
 import pandas as pd
 
-from airflow.models import DagBag
-from airflow.utils.state import State
-
 from flask import flash, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
+
+from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
+
+from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 
 class AuthorityRecordsDeleteUploadView(AppBuilderBaseView):
@@ -23,18 +24,15 @@ class AuthorityRecordsDeleteUploadView(AppBuilderBaseView):
         return str(deletes_csv_path.absolute())
 
     def _trigger_dag_run(self, deletes_csv_file: str, email: str | None = None) -> str:
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("delete_authority_records")
-        execution_date = datetime.datetime.now(datetime.UTC)
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
-            conf={"kwargs": {"file": deletes_csv_file, "email": email}},
-            external_trigger=True,
-        )
-        return run_id
+        with api_client() as airflow_api_client:
+            api_instance = DagRunApi(airflow_api_client)
+            trigger_body = TriggerDAGRunPostBody(
+                conf={"kwargs": {"file": deletes_csv_file, "email": email}}
+            )
+            api_response = api_instance.trigger_dag_run(
+                "delete_authority_records", trigger_body
+            )
+            return api_response.dag_run_id
 
     @expose("/upload", methods=["POST"])
     def upload_csv(self):
