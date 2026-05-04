@@ -52,7 +52,7 @@ class DataExportUploadView(AppBuilderBaseView):
     default_view = "data_export_upload_home"
     route_base = "/data_export_upload"
 
-    def _trigger_dag_run(self, vendor, kind):
+    def _trigger_dag_run(self, vendor, kind, user_email, number_of_ids, filename):
         logical_date = execution_date()
         dag_id = f"select_{vendor}_records"
         run_id = f"manual__{logical_date}"
