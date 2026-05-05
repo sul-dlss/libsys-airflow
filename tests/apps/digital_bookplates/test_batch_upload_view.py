@@ -17,6 +17,12 @@ from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upl
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
+from unittest.mock import MagicMock
+from mocks import (  # noqa
+    MockAirflowApiClientConfig,
+    MockAirflowApiClient,
+)
+
 
 rows = Rows(
     DigitalBookplate(
@@ -42,6 +48,28 @@ rows = Rows(
 )
 
 engine = create_sqlite_fixture(rows)
+
+
+@pytest.fixture
+def mock_client_config():
+    return MockAirflowApiClientConfig()
+
+
+@pytest.fixture
+def mock_api_client():
+    return MockAirflowApiClient(configuration=MockAirflowApiClientConfig())
+
+
+def mock_api_instance():
+    api_instance = MagicMock()
+
+    mock_response = MagicMock()
+    mock_response.dag_id = "digital_bookplate_979"
+    mock_response.dag_run_id = "manual__2024-10-17"
+
+    api_instance.trigger_dag_run.return_value = mock_response
+
+    return api_instance
 
 
 @pytest.fixture
@@ -122,11 +150,15 @@ def test_get_fund(mocker, mock_db, tmp_path):
     }
 
 
-def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
+def test_upload_file(mocker, test_airflow_client, mock_api_client, mock_db, tmp_path):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator"
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance(),
     )
-
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
     response = test_airflow_client.post(
@@ -170,11 +202,15 @@ def test_existing_upload_file(tmp_path):
     assert (upload_path / "new-bookplate-instances-copy-2.csv").exists()
 
 
-def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
+def test_column_header(mocker, test_airflow_client, mock_api_client, mock_db, tmp_path):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.TriggerDagRunOperator"
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance(),
     )
-
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
     test_airflow_client.post(

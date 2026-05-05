@@ -4,11 +4,12 @@ from typing import Union
 
 from airflow.sdk import task, Variable
 from airflow.providers.standard.exceptions import AirflowException
-from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.shared import utils
+from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 from folioclient import FolioClient
 from sqlalchemy.orm import Session
@@ -50,22 +51,27 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     """
     instance_uuid: str = kwargs["instance_uuid"]
     funds: list = kwargs["funds"]
-    dag_run_id: Union[str, None] = kwargs.get("run_id")
+    run_id: Union[str, None] = kwargs.get("run_id")
     dag_payload = {instance_uuid: funds}
     execution_date = utils.execution_date()
 
-    if dag_run_id is None:
-        dag_run_id = f"manual__{execution_date}"
+    if run_id is None:
+        run_id = f"manual__{execution_date}"
 
-    TriggerDagRunOperator(
-        task_id="launch_digital_bookplate_979_dag",
-        trigger_dag_id="digital_bookplate_979",
-        trigger_run_id=dag_run_id,
-        logical_date=execution_date,
-        conf={"druids_for_instance_id": dag_payload},
-    )
+    with api_client() as airflow_api_client:
+        api_instance = DagRunApi(airflow_api_client)
+        trigger_dag_run_post_body = TriggerDAGRunPostBody(
+            dag_run_id=run_id,
+            logical_date=execution_date,
+            conf={"druids_for_instance_id": dag_payload},
+        )
 
-    logger.info(f"Triggers 979 DAG with dag_id {dag_run_id}")
+        api_response = api_instance.trigger_dag_run(
+            "digital_bookplate_979", trigger_dag_run_post_body
+        )
+        dag_run_id = api_response.dag_run_id
+
+    logger.info(f"Triggers 979 DAG with DAG run ID {dag_run_id}")
     return dag_run_id
 
 
@@ -79,14 +85,20 @@ def launch_poll_for_979_dags_email(**kwargs):
     execution_date = utils.execution_date()
     run_id = f"manual__{execution_date}"
 
-    TriggerDagRunOperator(
-        task_id="launch_poll_for_979_dags_email",
-        trigger_dag_id="poll_for_digital_bookplate_979s_email",
-        trigger_run_id=run_id,
-        logical_date=execution_date,
-        conf={"dag_runs": dag_runs, "email": email},
-    )
-    logger.info(f"Triggers polling DAG for 979 DAG runs with dag_id {run_id}")
+    with api_client() as airflow_api_client:
+        api_instance = DagRunApi(airflow_api_client)
+        trigger_dag_run_post_body = TriggerDAGRunPostBody(
+            dag_run_id=run_id,
+            logical_date=execution_date,
+            conf={"dag_runs": dag_runs, "email": email},
+        )
+
+        api_response = api_instance.trigger_dag_run(
+            "poll_for_digital_bookplate_979s_email", trigger_dag_run_post_body
+        )
+        dag_run_id = api_response.dag_run_id
+
+    logger.info(f"Triggers polling DAG for 979 DAG runs with DAG run ID {dag_run_id}")
 
 
 def _new_bookplates(funds: list) -> dict:
