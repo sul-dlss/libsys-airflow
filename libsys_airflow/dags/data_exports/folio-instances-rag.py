@@ -27,7 +27,7 @@ with DAG(
     schedule_interval="@daily",
     start_date=days_ago(1),
     catchup=False,
-    tags=["library", "rag", "folio"],
+    tags=["data-export", "rag", "folio"],
 ) as dag:
 
     fetch_folio_instances = SQLExecuteQueryOperator(
