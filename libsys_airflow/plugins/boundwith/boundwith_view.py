@@ -4,8 +4,8 @@ import pandas as pd
 
 from flask import flash, request
 
-from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
-from libsys_airflow.plugins.shared.utils import execution_date
+from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
+from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
@@ -13,21 +13,20 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 def trigger_bw_dag(
     bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None], file_name: str
 ) -> tuple:
-    logical_date = execution_date()
-    run_id = f"manual__{logical_date}"
-    TriggerDagRunOperator(
-        task_id="trigger_bw_dag",
-        trigger_dag_id="add_bw_relationships",
-        trigger_run_id=run_id,
-        logical_date=logical_date,
-        conf={
-            "relationships": bw_df.to_dict(orient='records'),
-            "email": user_email,
-            "sunid": sunid,
-            "file_name": file_name,
-        },
-    )
-    return run_id, logical_date
+    dag_id = "add_bw_relationships"
+    with api_client() as airflow_api_client:
+        api_instance = DagRunApi(airflow_api_client)
+        trigger_dag_run_post_body = TriggerDAGRunPostBody(
+            conf={
+                "relationships": bw_df.to_dict(orient='records'),
+                "email": user_email,
+                "sunid": sunid,
+                "file_name": file_name,
+            }
+        )
+
+        api_response = api_instance.trigger_dag_run(dag_id, trigger_dag_run_post_body)
+    return api_response.dag_run_id
 
 
 class BoundWithView(AppBuilderBaseView):
@@ -40,7 +39,7 @@ class BoundWithView(AppBuilderBaseView):
         if "upload-boundwith" not in request.files:
             flash("Missing Boundwith Relationship File")
             rendered_page = self.render_template("boundwith/index.html")
-        elif len(sunid.strip()) < 1:
+        elif sunid is None or len(sunid.strip()) < 1:
             flash("SUNID Required")
             rendered_page = self.render_template("boundwith/index.html")
         else:
