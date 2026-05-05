@@ -209,9 +209,6 @@ def test_run_data_export_upload_with_dag_config(
     mock_api_response = MagicMock()
     mock_api_response.dag_run_id = "test_dag_run_123"
     mock_api_instance.trigger_dag_run.return_value = mock_api_response
-    
-    mock_api_client.return_value.__enter__ = MagicMock(return_value=MagicMock())
-    mock_api_client.return_value.__exit__ = MagicMock(return_value=False)
 
     response = test_airflow_client.post(
         '/data_export_upload/create',
