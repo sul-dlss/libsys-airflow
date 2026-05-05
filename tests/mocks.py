@@ -120,3 +120,9 @@ class MockAirflowApiClientConfig(pydantic.BaseModel):
 
 class MockAirflowApiClient(pydantic.BaseModel):
     configuration: MockAirflowApiClientConfig
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False  # Don't suppress exceptions
