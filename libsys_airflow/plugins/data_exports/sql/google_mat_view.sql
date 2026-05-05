@@ -24,7 +24,7 @@ filtered_items AS (
         )
     ORDER BY T.holdingsrecordid, T.id
 )
-SELECT
+SELECT DISTINCT ON (F.instanceid)
     F.instanceid,
     I.jsonb ->> 'hrid' AS hrid,
     M.content
