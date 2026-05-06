@@ -35,11 +35,11 @@ class DAG979Sensor(BaseSensorOperator):
                     logger.warning(
                         f"No dag run found for digital_bookplate_979 with run ID {dag_run_id}"
                     )
-                    continue
                 else:
                     logger.info(
                         f"Exception when calling DagRunApi for {dag_run_id}: {e}"
                     )
+                continue
 
             state = api_response.state.name.lower()
             self.dag_runs[dag_run_id]['state'] = state
@@ -63,7 +63,7 @@ class DAG979Sensor(BaseSensorOperator):
 
                 self.dag_runs[dag_run_id]['instances'] = instances
         poke_result = all(
-            [val['state'] in ['success', 'failed'] for val in self.dag_runs.values()]
+            [val['state'] in ['success', 'failed'] for val in self.dag_runs.values() if val['state'] is not None]
         )
         logger.info(f"Result of polling DAGs {poke_result}")
         return poke_result
