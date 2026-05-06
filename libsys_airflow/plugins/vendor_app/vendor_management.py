@@ -1,13 +1,15 @@
 import re
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 
-from airflow.api.common.trigger_dag import trigger_dag
 from airflow.sdk import Variable
+from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from flask_appbuilder import expose, BaseView
 from flask import abort, request, redirect, url_for, flash, send_from_directory
 from folioclient import FolioClient
+
+from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 from libsys_airflow.plugins.vendor.job_profiles import (
     job_profiles,
@@ -444,46 +446,66 @@ class VendorManagementView(BaseView):
         return redirect(url_for("VendorManagementView.dashboard"))
 
     def _trigger_processing_dag(self, vendor_file, session):
-        dag_run = trigger_dag(
-            'default_data_processor',
-            conf={
-                "filename": vendor_file.vendor_filename,
-                "vendor_uuid": vendor_file.vendor_interface.vendor.folio_organization_uuid,
-                "vendor_interface_uuid": vendor_file.vendor_interface.interface_uuid,
-                "dataload_profile_uuid": vendor_file.vendor_interface.folio_data_import_profile_uuid,
-            },
-        )
+        with api_client() as airflow_api_client:
+            api_instance = DagRunApi(airflow_api_client)
+            trigger_dag_body = TriggerDAGRunPostBody(
+                conf={
+                    "filename": vendor_file.vendor_filename,
+                    "vendor_uuid": vendor_file.vendor_interface.vendor.folio_organization_uuid,
+                    "vendor_interface_uuid": vendor_file.vendor_interface.interface_uuid,
+                    "dataload_profile_uuid": vendor_file.vendor_interface.folio_data_import_profile_uuid,
+                }
+            )
+            api_response = api_instance.trigger_dag_run(
+                'default_data_processor', trigger_dag_body
+            )
 
-        logger.info(f"Triggered DAG {dag_run} for {vendor_file.vendor_filename}")
-        vendor_file.dag_run_id = dag_run.run_id
-        vendor_file.expected_processing_time = dag_run.execution_date
-        vendor_file.updated = datetime.utcnow()
-        vendor_file.status = FileStatus.loading
-        session.commit()
-        logger.info(
-            f"Updated vendor_file {vendor_file}: dag_run_id={dag_run.run_id} execution_date={dag_run.execution_date}"
-        )
+            dag_run_id = api_response.dag_run_id
+            logger.info(
+                f"Triggered DAG {api_response.dag_id} for {vendor_file.vendor_filename}"
+            )
+            vendor_file.dag_run_id = dag_run_id
+            vendor_file.expected_processing_time = api_response.queued_at
+            vendor_file.updated = datetime.now(UTC)
+            vendor_file.status = FileStatus.loading
+            session.commit()
+            logger.info(
+                f"Updated vendor_file {vendor_file}: dag_run_id={dag_run_id} queued date={api_response.queue_at}"
+            )
 
     def _trigger_fetcher_dag(self, interface):
-        dag = trigger_dag(
-            'data_fetcher',
-            conf={
-                "vendor_interface_name": interface.display_name,
-                "vendor_code": interface.vendor.vendor_code_from_folio,
-                "vendor_uuid": interface.vendor.folio_organization_uuid,
-                "vendor_interface_uuid": interface.folio_interface_uuid,
-                "dataload_profile_uuid": interface.folio_data_import_profile_uuid,
-                "remote_path": interface.remote_path,
-                "filename_regex": interface.file_pattern,
-            },
-        )
-        logger.info(f"Triggered DAG {dag} for {interface.display_name}")
+        with api_client() as airflow_api_client:
+            logger.info(f"Interface {interface.remote_path}")
+            api_instance = DagRunApi(airflow_api_client)
+            trigger_dag_body = TriggerDAGRunPostBody(
+                conf={
+                    "vendor_interface_name": interface.display_name,
+                    "vendor_code": interface.vendor.vendor_code_from_folio,
+                    "vendor_uuid": interface.vendor.folio_organization_uuid,
+                    "vendor_interface_uuid": interface.folio_interface_uuid,
+                    "dataload_profile_uuid": interface.folio_data_import_profile_uuid,
+                    "remote_path": interface.remote_path or "",
+                    "filename_regex": interface.file_pattern,
+                }
+            )
+            api_response = api_instance.trigger_dag_run(
+                "data_fetcher", trigger_dag_body
+            )
+            logger.info(
+                f"Triggered DAG {api_response.dag_id} for {interface.display_name}"
+            )
 
     def _trigger_folio_vendor_sync_dag(self, vendor):
-        dag = trigger_dag(
-            'folio_vendor_sync',
-            conf={
-                "folio_org_uuid": vendor.folio_organization_uuid,
-            },
-        )
-        logger.info(f"Triggered DAG {dag} for {vendor.display_name}")
+        with api_client() as airflow_api_client:
+            api_instance = DagRunApi(airflow_api_client)
+            trigger_dag_body = TriggerDAGRunPostBody(
+                conf={
+                    "folio_org_uuid": vendor.folio_organization_uuid,
+                },
+            )
+            api_response = api_instance.trigger_dag_run(
+                'folio_vendor_sync', trigger_dag_body
+            )
+            logger.info(
+                f"Triggered DAG {api_response.dag_id} for {vendor.display_name}"
+            )
