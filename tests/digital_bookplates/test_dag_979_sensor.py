@@ -24,10 +24,12 @@ def mock_api_instance(request):
         }
         mock_response.state.name = 'SUCCESS'
         api_instance.get_dag_run.return_value = mock_response
-        
+
     elif test_type == "not_found":
-        api_instance.get_dag_run.side_effect = ApiException(status=404, reason="Not Found")
-        
+        api_instance.get_dag_run.side_effect = ApiException(
+            status=404, reason="Not Found"
+        )
+
     elif test_type == "mixed":
         # For mixed, create a success response and a 500 exception
         mock_success_response = MagicMock()
@@ -37,11 +39,11 @@ def mock_api_instance(request):
             "druids_for_instance_id": {"d55f7f1b-9512-452c-98ff-5e2be9dcdb16": {}}
         }
         mock_success_response.state.name = 'SUCCESS'
-        
+
         # side_effect with a list: first call returns success, second raises exception
         api_instance.get_dag_run.side_effect = [
             mock_success_response,
-            ApiException(status=500, reason="Internal Server Error")
+            ApiException(status=500, reason="Internal Server Error"),
         ]
 
     return api_instance
@@ -80,7 +82,9 @@ def test_dag_979_sensor_no_dags(mock_api_client, mock_api_instance, mocker, capl
 
 
 @pytest.mark.parametrize("mock_api_instance", ["mixed"], indirect=True)
-def test_dag_979_sensor_mixed_responses(mock_api_client, mock_api_instance, mocker, caplog):
+def test_dag_979_sensor_mixed_responses(
+    mock_api_client, mock_api_instance, mocker, caplog
+):
     mocker.patch(
         "libsys_airflow.plugins.digital_bookplates.dag_979_sensor.api_client",
         return_value=mock_api_client,
@@ -90,13 +94,18 @@ def test_dag_979_sensor_mixed_responses(mock_api_client, mock_api_instance, mock
         return_value=mock_api_instance,
     )
     sensor = DAG979Sensor(
-        task_id="poll-979-dags", dag_runs=["manual__2024-10-17","manual__2024-10-18"], poke_interval=10.0
+        task_id="poll-979-dags",
+        dag_runs=["manual__2024-10-17", "manual__2024-10-18"],
+        poke_interval=10.0,
     )
     result = sensor.poke(context={})
     assert result is True
     assert sensor.dag_runs["manual__2024-10-17"]["state"] == "success"
-    assert sensor.dag_runs["manual__2024-10-17"]["instances"][0]["uuid"] == "d55f7f1b-9512-452c-98ff-5e2be9dcdb16"
-    assert sensor.dag_runs["manual__2024-10-18"]["state"] == None
+    assert (
+        sensor.dag_runs["manual__2024-10-17"]["instances"][0]["uuid"]
+        == "d55f7f1b-9512-452c-98ff-5e2be9dcdb16"
+    )
+    assert sensor.dag_runs["manual__2024-10-18"]["state"] is None
     assert "Exception when calling DagRunApi for manual__2024-10-18" in caplog.text
 
 

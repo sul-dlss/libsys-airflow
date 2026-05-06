@@ -63,7 +63,11 @@ class DAG979Sensor(BaseSensorOperator):
 
                 self.dag_runs[dag_run_id]['instances'] = instances
         poke_result = all(
-            [val['state'] in ['success', 'failed'] for val in self.dag_runs.values() if val['state'] is not None]
+            [
+                val['state'] in ['success', 'failed']
+                for val in self.dag_runs.values()
+                if val['state'] is not None
+            ]
         )
         logger.info(f"Result of polling DAGs {poke_result}")
         return poke_result
