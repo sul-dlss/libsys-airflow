@@ -26,6 +26,7 @@ def trigger_bw_dag(
         )
 
         api_response = api_instance.trigger_dag_run(dag_id, trigger_dag_run_post_body)
+    
     return api_response.dag_run_id
 
 
@@ -54,13 +55,12 @@ class BoundWithView(AppBuilderBaseView):
                     flash(f"Warning! CSV file has {len(bw_df)} rows, limit is 1,000")
                     rendered_page = self.render_template("boundwith/index.html")
                 else:
-                    run_id, execution_date = trigger_bw_dag(
+                    run_id, logical_date = trigger_bw_dag(
                         bw_df, sunid, email_addr, raw_csv.filename
                     )
                     rendered_page = self.render_template(
                         "boundwith/index.html",
                         run_id=run_id,
-                        execution_date=execution_date,
                         user_email=email_addr,
                     )
             except pd.errors.EmptyDataError:
