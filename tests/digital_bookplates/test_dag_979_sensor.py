@@ -40,10 +40,17 @@ def mock_api_instance(request):
         }
         mock_success_response.state.name = 'SUCCESS'
 
-        # side_effect with a list: first call returns success, second raises exception
+        mock_running_response = MagicMock()
+        mock_running_response.dag_id
+        mock_running_response.dag_run_id
+        mock_running_response.conf = {"druids_for_instance_id": {"abc-123": {}}}
+        mock_running_response.state.name = "RUNNING"
+
+        # side_effect with a list: first call returns success, second raises exception, third call returns dag_run that would be polled again
         api_instance.get_dag_run.side_effect = [
             mock_success_response,
             ApiException(status=500, reason="Internal Server Error"),
+            mock_running_response,
         ]
 
     return api_instance
@@ -74,7 +81,7 @@ def test_dag_979_sensor_no_dags(mock_api_client, mock_api_instance, mocker, capl
     )
     result = sensor.poke(context={})
 
-    assert result is True
+    assert result is False
     assert (
         "No dag run found for digital_bookplate_979 with run ID manual__2024-10-17"
         in caplog.text
@@ -95,11 +102,11 @@ def test_dag_979_sensor_mixed_responses(
     )
     sensor = DAG979Sensor(
         task_id="poll-979-dags",
-        dag_runs=["manual__2024-10-17", "manual__2024-10-18"],
+        dag_runs=["manual__2024-10-17", "manual__2024-10-18", "manual__2024-10-19"],
         poke_interval=10.0,
     )
     result = sensor.poke(context={})
-    assert result is True
+    assert result is False
     assert sensor.dag_runs["manual__2024-10-17"]["state"] == "success"
     assert (
         sensor.dag_runs["manual__2024-10-17"]["instances"][0]["uuid"]
@@ -107,6 +114,7 @@ def test_dag_979_sensor_mixed_responses(
     )
     assert sensor.dag_runs["manual__2024-10-18"]["state"] is None
     assert "Exception when calling DagRunApi for manual__2024-10-18" in caplog.text
+    assert sensor.dag_runs["manual__2024-10-19"]["state"] is None
 
 
 @pytest.mark.parametrize("mock_api_instance", ["success"], indirect=True)
