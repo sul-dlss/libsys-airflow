@@ -42,11 +42,11 @@ class DAG979Sensor(BaseSensorOperator):
                 continue
 
             state = api_response.state.name.lower()
-            self.dag_runs[dag_run_id]['state'] = state
-            self.dag_runs[dag_run_id]['url'] = dag_run_response_url(
-                dag_run=api_response
-            )
             if state in ['success', 'failed']:
+                self.dag_runs[dag_run_id]['state'] = state
+                self.dag_runs[dag_run_id]['url'] = dag_run_response_url(
+                    dag_run=api_response
+                )
                 instances = []
                 for instance, bookplates in api_response.conf[
                     'druids_for_instance_id'
@@ -63,11 +63,7 @@ class DAG979Sensor(BaseSensorOperator):
 
                 self.dag_runs[dag_run_id]['instances'] = instances
         poke_result = all(
-            [
-                val['state'] in ['success', 'failed']
-                for val in self.dag_runs.values()
-                if val['state'] is not None
-            ]
+            [val['state'] in ['success', 'failed'] for val in self.dag_runs.values()]
         )
         logger.info(f"Result of polling DAGs {poke_result}")
         return poke_result
