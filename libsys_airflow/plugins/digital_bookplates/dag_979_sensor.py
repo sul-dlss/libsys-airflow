@@ -1,9 +1,14 @@
 import logging
 
-from airflow.models import DagRun
-from airflow.sdk import BaseSensorOperator, DAG
+import airflow_client.client
+from airflow_client.client.models.dag_run_response import DAGRunResponse
+from airflow_client.client.rest import ApiException
+from airflow.sdk import BaseSensorOperator
 
-from libsys_airflow.plugins.shared.utils import dag_run_url
+from libsys_airflow.plugins.shared.utils import dag_run_response_url
+from libsys_airflow.plugins.shared.airflow_api_client import (
+    api_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +23,32 @@ class DAG979Sensor(BaseSensorOperator):
 
     def poke(self, context) -> bool:
         logger.info(f"Checking state for {len(self.dag_runs)} DAG runs")
+        client = api_client()
         for dag_run_id in self.dag_runs.keys():
-            dag_runs = DagRun.find(dag_id='digital_bookplate_979', run_id=dag_run_id)
-            if len(dag_runs) < 1:
+            api_instance = airflow_client.client.DagRunApi(client)
+            try:
+                api_response: DAGRunResponse = api_instance.get_dag_run(
+                    "digital_bookplate_979", dag_run_id
+                )
+            except ApiException as e:
+                if e.status == 404:
+                    logger.warning(
+                        f"No dag run found for digital_bookplate_979 with run ID {dag_run_id}"
+                    )
+                else:
+                    logger.info(
+                        f"Exception when calling DagRunApi for {dag_run_id}: {e}"
+                    )
                 continue
-            dag_run = dag_runs[0]
-            state = dag_run.get_state()
-            self.dag_runs[dag_run_id]['state'] = state
-            dag_run.dag = DAG(dag_id='digital_bookplate_979')
-            self.dag_runs[dag_run_id]['url'] = dag_run_url(dag_run=dag_run)
+
+            state = api_response.state.name.lower()
             if state in ['success', 'failed']:
+                self.dag_runs[dag_run_id]['state'] = state
+                self.dag_runs[dag_run_id]['url'] = dag_run_response_url(
+                    dag_run=api_response
+                )
                 instances = []
-                for instance, bookplates in dag_run.conf[
+                for instance, bookplates in api_response.conf[
                     'druids_for_instance_id'
                 ].items():
                     funds = []

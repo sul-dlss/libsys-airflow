@@ -6,6 +6,8 @@ import pytest
 from jsonpath_ng.ext import parse
 from libsys_airflow.plugins.shared import utils
 
+from unittest.mock import MagicMock
+
 
 @pytest.fixture
 def marc_json():
@@ -143,6 +145,15 @@ def mock_folio_add_marc_tags(mocker):
     return mocker
 
 
+@pytest.fixture
+def mock_dag_run_response():
+    mock_response = MagicMock()
+    mock_response.dag_id = "digital_bookplate_979"
+    mock_response.dag_run_id = "manual__2026-04-16T21:31:44.765161+00:00"
+
+    return mock_response
+
+
 def mock_httpx_client():
     def mock_response(request):
         response = None
@@ -162,6 +173,16 @@ def mock_folio_client(mocker):
     mock.okapi_url = "http://okapi:9130"
     mock.folio_get = mock_folio_get
     return mock
+
+
+def test_dag_run_response_url(mock_dag_run_response):
+    url = utils.dag_run_response_url(
+        dag_run=mock_dag_run_response, airflow_url="http://localhost/"
+    )
+    assert (
+        url
+        == "http://localhost/dags/digital_bookplate_979/runs/manual__2026-04-16T21:31:44.765161+00:00"
+    )
 
 
 def test__marc_json_with_new_tags__(

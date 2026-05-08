@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 from airflow.configuration import conf
 from airflow.sdk import Variable
+from airflow_client.client.models.dag_run_response import DAGRunResponse
 from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
@@ -20,6 +21,18 @@ logger = logging.getLogger(__name__)
 
 def execution_date() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def dag_run_response_url(**kwargs) -> str:
+    dag_run: DAGRunResponse = kwargs["dag_run"]
+    airflow_url = kwargs.get("airflow_url")
+
+    if not airflow_url:
+        airflow_url = conf.get('api', 'base_url')
+        if not airflow_url.endswith("/"):
+            airflow_url = f"{airflow_url}/"
+
+    return f"{airflow_url}dags/{dag_run.dag_id}/runs/{dag_run.dag_run_id}"
 
 
 def dag_run_url(**kwargs) -> str:
