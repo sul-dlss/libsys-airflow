@@ -47,10 +47,10 @@ with DAG(
                 logical_date = execution_date()
                 dag_run_id = f"manual__{logical_date}-{vendor_file.vendor_filename}"
 
-                vendor_file.dag_run_id = dag_run_id
+                vendor_file.dag_run_id = dag_run_id  # type: ignore
                 vendor_file.dag_execution_date = execution_date
-                vendor_file.updated = datetime.now(timezone.utc).isoformat()
-                vendor_file.status = FileStatus.loading
+                vendor_file.updated = datetime.now(timezone.utc).isoformat()  # type: ignore
+                vendor_file.status = FileStatus.loading  # type: ignore
 
                 logger.info(
                     f"updated vendor_file {vendor_file}: dag_run_id={dag_run_id} logical_date={logical_date}"
