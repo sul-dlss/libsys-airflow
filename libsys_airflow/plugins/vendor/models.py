@@ -68,7 +68,7 @@ class Vendor(Model):  # type: ignore
     @classmethod
     def with_vendor_interfaces(cls, session: Session) -> List['Vendor']:
         return session.scalars(
-            select(cls).join(VendorInterface).distinct().order_by(Vendor.display_name)  #type: ignore
+            select(cls).join(VendorInterface).distinct().order_by(Vendor.display_name)  # type: ignore
         ).unique()
 
 
@@ -173,7 +173,9 @@ class VendorInterface(Model):  # type: ignore
         return self.folio_interface_uuid is None
 
     @classmethod
-    def load(cls, interface_uuid: str, session: Session) -> 'Union[VendorInterface, None]':
+    def load(
+        cls, interface_uuid: str, session: Session
+    ) -> 'Union[VendorInterface, None]':
         match = UPLOAD_FILE_REGEX.match(interface_uuid)
         if match:
             id = int(match.group(1))
@@ -255,8 +257,12 @@ class VendorFile(Model):  # type: ignore
         return [datetime.fromisoformat(timestamp) for timestamp in self.loaded_history]
 
     @classmethod
-    def load(cls, interface_uuid: str, filename: str, session: Session) -> 'Union[VendorFile, None]':
-        vendor_interface: VendorInterface | None = VendorInterface.load(interface_uuid, session)
+    def load(
+        cls, interface_uuid: str, filename: str, session: Session
+    ) -> 'Union[VendorFile, None]':
+        vendor_interface: VendorInterface | None = VendorInterface.load(
+            interface_uuid, session
+        )
         return cls.load_with_vendor_interface(vendor_interface, filename, session)
 
     @classmethod

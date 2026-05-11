@@ -20,4 +20,4 @@ class EngineWrapper:
 
 
 engine = EngineWrapper()
-Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))  #type: ignore
+Session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))  # type: ignore
