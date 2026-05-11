@@ -20,7 +20,7 @@ Called by the vendor selection DAGs except oclc and the full record selections
 
 
 def add_holdings_items_to_marc_files(marc_file_list: dict, full_dump: bool):
-    connection_pool = SQLPool().pool()
+    connection_pool = SQLPool(conn_id="postgres_folio").pool()
     _connection = connection_pool.getconn()
     transformer = Transformer(connection=_connection)
     new_and_updates = marc_file_list['new'] + marc_file_list['updates']
