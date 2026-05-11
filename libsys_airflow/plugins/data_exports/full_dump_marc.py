@@ -57,7 +57,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
     if recreate:
         logger.info(
-            f"Refreshing { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view with dates from: {from_date} to: {to_date}"
+            f"Refreshing {'google' if mat_view == 'google_mat_view' else 'data export marc'} view with dates from: {from_date} to: {to_date}"
         )
 
         with open(materialized_view_sql_file(mat_view=mat_view)) as sqv:
@@ -75,7 +75,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
         ).execute(context)
     else:
         logger.info(
-            f"Skipping refresh of { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view"
+            f"Skipping refresh of {'google' if mat_view == 'google_mat_view' else 'data export marc'} view"
         )
 
     return query
