@@ -199,7 +199,7 @@ with DAG(
             >> compress_marc_files(marc_files)
         )
 
-    connection_pool = SQLPool().pool()
+    connection_pool = SQLPool(conn_id="postgres_folio").pool()
 
     number_of_jobs = do_concurrency()
 
