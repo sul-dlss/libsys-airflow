@@ -12,7 +12,7 @@ from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 def trigger_bw_dag(
     bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None], file_name: str
-) -> tuple:
+) -> str:
     dag_id = "add_bw_relationships"
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)

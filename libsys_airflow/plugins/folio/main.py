@@ -34,8 +34,8 @@ class FOLIOPlugin(AirflowPlugin):
     name = "FOLIOInformation"
     operators = []  # type: ignore
     flask_blueprints = [bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [
         circ_rules_tester_package,
