@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 
-from airflow.models.connection import Connection
 from airflow.sdk import (
     dag,
     task,
+    Connection,
     Param,
     Variable,
 )
@@ -51,7 +51,7 @@ def http_or_ftp_path(**kwargs):
     """
     conn_id = kwargs.get("connection")
     logger.info(f"Send all records to vendor {conn_id}")
-    connection = Connection.get_connection_from_secrets(conn_id)
+    connection = Connection.get(conn_id)
     conn_type = connection.conn_type
     logger.info(f"Transmit data via {conn_type}")
     if conn_type == "http":

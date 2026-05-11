@@ -9,8 +9,7 @@ from s3path import S3Path
 from datetime import datetime
 from typing import Optional, Union
 
-from airflow.sdk import task
-from airflow.models.connection import Connection
+from airflow.sdk import task, Connection
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 
@@ -143,13 +142,13 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
     params = kwargs.get("params", {})
     conn_id = params["vendor"]
     logger.info(f"Transmit data to {conn_id}")
-    connection = Connection.get_connection_from_secrets(conn_id)
+    connection = Connection.get(conn_id)
     if gather_files["s3"]:
         path_module = S3Path
     else:
         path_module = Path
     with httpx.Client(
-        headers=connection.extra,
+        headers=connection.extra_dejson,
         params=vendor_url_params(conn_id, gather_files["s3"]),
         follow_redirects=True,
     ) as client:
@@ -184,8 +183,8 @@ def transmit_data_ftp_task(conn_id, gather_files) -> dict:
         hook = SFTPHook(ftp_conn_id=conn_id)
     else:
         hook = FTPHook(ftp_conn_id=conn_id)
-    connection = Connection.get_connection_from_secrets(conn_id)
-    remote_path = connection.extra["remote_path"]
+    connection = Connection.get(conn_id)
+    remote_path = connection.extra_dejson["remote_path"]
     success = []
     failures = []
     for f in gather_files["file_list"]:
@@ -405,8 +404,8 @@ def return_success_test_instance(files) -> dict:
 def oclc_connections(connection_details: list) -> dict:
     connection_lookup = {}
     for conn_id in connection_details:
-        connection = Connection.get_connection_from_secrets(conn_id)
-        oclc_code = connection.extra["oclc_code"]
+        connection = Connection.get(conn_id)
+        oclc_code = connection.extra_dejson["oclc_code"]
         connection_lookup[oclc_code] = {
             "username": connection.login,
             "password": connection.password,

@@ -234,7 +234,7 @@ def mock_get_current_context_recreate_google(monkeypatch, mocker):
 
 def setup_recreate_tests(mocker, mock_airflow_connection):
     mocker.patch(
-        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
+        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get',
         return_value=mock_airflow_connection,
     )
     mocker.patch(
@@ -261,7 +261,7 @@ def test_fetch_full_dump(
     mocker.patch.object(exporter, "S3Path")
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mocker.patch(
-        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
+        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get',
         return_value=mock_airflow_connection,
     )
 

@@ -2,6 +2,7 @@ import pytest  # noqa
 import pathlib
 
 import httpx
+import json
 import pymarc
 
 from http import HTTPStatus
@@ -140,7 +141,7 @@ def mock_httpx_connection():
         host="https://www.example.com",
         login=None,
         password=None,
-        extra={"Authorization": "access_token"},
+        extra=json.dumps({"Authorization": "access_token"}),
         schema="https",
     )
 
@@ -153,7 +154,7 @@ def mock_ftphook_connection():
         host="ftp://www.example.com",
         login="username",
         password="pass",
-        extra={"remote_path": "/remote/path/dir"},
+        extra=json.dumps({"remote_path": "/remote/path/dir"}),
         schema="ftp",
     )
 
@@ -166,7 +167,7 @@ def mock_oclc_connection():
         host=None,
         login="client_id",
         password="secret",
-        extra={"oclc_code": "LIB"},
+        extra=json.dumps({"oclc_code": "LIB"}),
     )
 
 
@@ -241,7 +242,7 @@ def test_transmit_data_ftp_task(
         "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_ftphook_connection,
     )
 
@@ -264,7 +265,7 @@ def test_transmit_gobi_data_ftp_task(
         "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_ftphook_connection,
     )
 
@@ -289,7 +290,7 @@ def test_transmit_backstage_data_ftp_task(
         "airflow.providers.ftp.hooks.ftp.FTPHook.store_file", return_value=True
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_ftphook_connection,
     )
 
@@ -314,7 +315,7 @@ def test_transmit_data_task(
         return_value=mock_httpx_success,
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_httpx_connection,
     )
     mocker.patch(
@@ -332,7 +333,7 @@ def test_transmit_data_task(
 @pytest.mark.parametrize("mock_full_dump_params", ["http-example.com"], indirect=True)
 def test_full_dump_http(mocker, mock_httpx_connection, mock_full_dump_params, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_httpx_connection,
     )
     branch = http_or_ftp_path.function(connection=mock_full_dump_params["conn_id"])
@@ -343,7 +344,7 @@ def test_full_dump_http(mocker, mock_httpx_connection, mock_full_dump_params, ca
 @pytest.mark.parametrize("mock_full_dump_params", ["ftp-example.com"], indirect=True)
 def test_full_dump_ftp(mocker, mock_ftphook_connection, mock_full_dump_params, caplog):
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_ftphook_connection,
     )
     branch = http_or_ftp_path.function(connection=mock_full_dump_params["conn_id"])
@@ -359,7 +360,7 @@ def test_transmit_data_from_s3_task(
         return_value=mock_httpx_success,
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_httpx_connection,
     )
     mocker.patch(
@@ -387,7 +388,7 @@ def test_transmit_data_failed(
         return_value=mock_httpx_failure,
     )
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_httpx_connection,
     )
     mocker.patch(
@@ -404,7 +405,7 @@ def test_transmit_data_failed(
 
 def test_oclc_connections(mocker, mock_oclc_connection):
     mocker.patch(
-        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get_connection_from_secrets",
+        "libsys_airflow.plugins.data_exports.transmission_tasks.Connection.get",
         return_value=mock_oclc_connection,
     )
     connection_lookup = oclc_connections(["http.oclc-LIB"])
