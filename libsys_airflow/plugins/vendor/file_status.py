@@ -3,18 +3,17 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.sdk import get_current_context
+from airflow.sdk import Context
 
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
 
 
 # You would expect to find this in models.py. However, when running an upgrade, models.py is used
 # in a context in which Airflow library is not available.
-def record_status_from_context(status: FileStatus, **kwargs):
+def record_status_from_context(context: Context, status: FileStatus, **kwargs):
     """
     Update the status of a VendorFile specified in the DAG context.
     """
-    context = get_current_context()
     vendor_uuid = context["params"]["vendor_uuid"]
     vendor_interface_uuid = context["params"]["vendor_interface_uuid"]
     filename = context["params"]["filename"]
