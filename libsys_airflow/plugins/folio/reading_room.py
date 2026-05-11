@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union
 
-from airflow.decorators import task
-from airflow.sdk import get_current_context, Connection
+from airflow.sdk import get_current_context, task, Connection
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.folio.helpers.constants import reading_rooms_config

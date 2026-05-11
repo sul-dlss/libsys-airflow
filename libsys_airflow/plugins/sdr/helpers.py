@@ -5,7 +5,7 @@ import uuid
 
 import pandas as pd
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from folioclient import FolioClient
 
 logger = logging.getLogger(__name__)
