@@ -25,7 +25,6 @@ jobs:
           poetry install
       - name: Test with pytest
         run: |
-          poetry run airflow db init
           poetry run pytest -rP
           poetry run coverage lcov
           poetry run coveralls --service=github
