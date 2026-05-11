@@ -53,16 +53,11 @@ def launch_digital_bookplate_979_dag(**kwargs) -> str:
     funds: list = kwargs["funds"]
     run_id: Union[str, None] = kwargs.get("run_id")
     dag_payload = {instance_uuid: funds}
-    execution_date = utils.execution_date()
-
-    if run_id is None:
-        run_id = f"manual__{execution_date}"
 
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)
         trigger_dag_run_post_body = TriggerDAGRunPostBody(
             dag_run_id=run_id,
-            logical_date=execution_date,
             conf={"druids_for_instance_id": dag_payload},
         )
 
@@ -89,7 +84,6 @@ def launch_poll_for_979_dags_email(**kwargs):
         api_instance = DagRunApi(airflow_api_client)
         trigger_dag_run_post_body = TriggerDAGRunPostBody(
             dag_run_id=run_id,
-            logical_date=execution_date,
             conf={"dag_runs": dag_runs, "email": email},
         )
 

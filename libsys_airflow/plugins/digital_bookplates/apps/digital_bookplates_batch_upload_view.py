@@ -48,7 +48,7 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     upload_df.to_csv(report_path, index=False)
 
 
-def _get_fund(fund_id: int) -> dict:
+def _get_fund(fund_id: int) -> dict | None:
     if not fund_id:
         return None
 
@@ -56,10 +56,10 @@ def _get_fund(fund_id: int) -> dict:
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         fund = session.query(DigitalBookplate).get(fund_id)
     return {
-        "druid": fund.druid,
-        "fund_name": fund.fund_name,
-        "image_filename": fund.image_filename,
-        "title": fund.title,
+        "druid": fund.druid,  # type: ignore
+        "fund_name": fund.fund_name,  # type: ignore
+        "image_filename": fund.image_filename,  # type: ignore
+        "title": fund.title,  # type: ignore
     }
 
 

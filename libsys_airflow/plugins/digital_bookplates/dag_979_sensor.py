@@ -48,9 +48,12 @@ class DAG979Sensor(BaseSensorOperator):
                     dag_run=api_response
                 )
                 instances = []
-                for instance, bookplates in api_response.conf[
-                    'druids_for_instance_id'
-                ].items():
+                dag_run_config: dict = (
+                    api_response.conf['druids_for_instance_id']
+                    if api_response.conf
+                    else {}
+                )
+                for instance, bookplates in dag_run_config.items():
                     funds = []
                     for bookplate in bookplates:
                         funds.append(
