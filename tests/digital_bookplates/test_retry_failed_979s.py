@@ -81,7 +81,4 @@ def test_poll_for_979s_dags(mocker, mock_run_ids, mock_variable, caplog):
     assert (
         f"{len(mock_run_ids)} failed 979 DAG runs queued: {mock_run_ids}" in caplog.text
     )
-    mock_email.assert_called_once_with(
-        dag_runs=mock_run_ids,
-        email="test@example.com"
-    )
+    mock_email.assert_called_once_with(dag_runs=mock_run_ids, email="test@example.com")

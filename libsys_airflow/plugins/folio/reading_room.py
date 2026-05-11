@@ -61,7 +61,9 @@ class ReadingRoomsData:
                 lookup[opt['id']] = opt['value']
 
         except Exception as e:
-            logger.warning(f"Could not retrieve usergroup lookup from postgres_folio connection: {e}")
+            logger.warning(
+                f"Could not retrieve usergroup lookup from postgres_folio connection: {e}"
+            )
             # Return empty lookup if connection doesn't exist or fails
             pass
 
