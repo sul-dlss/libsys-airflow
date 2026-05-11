@@ -45,7 +45,7 @@ with DAG(
     render_template_as_native_obj=True,
     params={},
 ) as dag:
-    connection_pool = SQLPool().pool()
+    connection_pool = SQLPool(conn_id="postgres_folio").pool()
 
     create_sal3_materialized_view = PythonOperator(
         task_id="sal3_items_materialized_view",

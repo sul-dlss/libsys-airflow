@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Union
 
 from airflow.decorators import task
-from airflow.models import Connection
-from airflow.operators.python import get_current_context
+from airflow.sdk import get_current_context, Connection
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.folio.helpers.constants import reading_rooms_config
@@ -51,14 +50,22 @@ class ReadingRoomsData:
         with open(self.usergroup_sql_file()) as sqv:
             query = sqv.read()
 
-        connection = Connection.get_connection_from_secrets("postgres_folio")
-        conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port} password={connection.password}"
-        conn = psycopg2.connect(conn_string)
-        cur = conn.cursor()
-        cur.execute(query)
-        results = cur.fetchall()
-        for opt in results[0][0]:
-            lookup[opt['id']] = opt['value']
+        try:
+            connection = Connection.get("postgres_folio")
+            conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port} password={connection.password}"
+            conn = psycopg2.connect(conn_string)
+            cur = conn.cursor()
+            cur.execute(query)
+            results = cur.fetchall()
+            for opt in results[0][0]:
+                lookup[opt['id']] = opt['value']
+
+        except Exception as e:
+            logger.warning(
+                f"Could not retrieve usergroup lookup from postgres_folio connection: {e}"
+            )
+            # Return empty lookup if connection doesn't exist or fails
+            pass
 
         return lookup
 

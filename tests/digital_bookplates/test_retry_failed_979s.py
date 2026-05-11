@@ -73,11 +73,12 @@ def test_clear_failed_add_marc_tags_to_record(caplog):
 
 
 def test_poll_for_979s_dags(mocker, mock_run_ids, mock_variable, caplog):
-    poll_for_979s_dags.function(mock_run_ids)
-    mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.Variable.get",
-        return_value=mock_variable,
+    mock_email = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.dag_979_retries.launch_poll_for_979_dags_email"
     )
+    poll_for_979s_dags.function(mock_run_ids)
+
     assert (
         f"{len(mock_run_ids)} failed 979 DAG runs queued: {mock_run_ids}" in caplog.text
     )
+    mock_email.assert_called_once_with(dag_runs=mock_run_ids, email="test@example.com")
