@@ -306,7 +306,7 @@ def _record_vendor_file(
         expected_processing_time = datetime.now(timezone.utc)
         if vendor_interface.processing_delay_in_days:
             expected_processing_time += timedelta(
-                days=vendor_interface.processing_delay_in_days
+                days=vendor_interface.processing_delay_in_days  # type: ignore
             )
 
         new_vendor_file = VendorFile(
@@ -364,7 +364,7 @@ def _vendor_interface_id(
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        return vendor_interface.id
+        return vendor_interface.id  # type: ignore
 
 
 def _is_fetched(

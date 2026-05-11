@@ -38,8 +38,8 @@ class VendorManagementPlugin(AirflowPlugin):
     name = "Vendor Management"
     operators = []  # type: ignore
     flask_blueprints = [vendor_mgt_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [vendor_management_view_package]
     appbuilder_menu_items = []

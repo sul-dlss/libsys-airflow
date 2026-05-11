@@ -81,7 +81,7 @@ def _additional_email_recipients(vendor_interface_uuid) -> list:
         interface = VendorInterface.load(vendor_interface_uuid, session)
 
     recipients = interface.additional_email_recipients
-    if recipients is None:
+    if not recipients:
         return []
 
     return recipients.replace(',', ' ').split()

@@ -27,10 +27,10 @@ def record_status_from_context(status: FileStatus, **kwargs):
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        vendor_file.status = status
+        vendor_file.status = status  # type: ignore
         now = datetime.utcnow()
-        vendor_file.updated = now
+        vendor_file.updated = now  # type: ignore
         if status is FileStatus.loaded:
-            vendor_file.loaded_timestamp = now
-            vendor_file.loaded_history = vendor_file.loaded_history + [now.isoformat()]
+            vendor_file.loaded_timestamp = now  # type: ignore
+            vendor_file.loaded_history = vendor_file.loaded_history + [now.isoformat()]  # type: ignore
         session.commit()

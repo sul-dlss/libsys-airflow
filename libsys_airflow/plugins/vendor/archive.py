@@ -68,6 +68,6 @@ def archive_file(
     archive_filepath = archive_path / vendor_file.vendor_filename
     archive_path.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(download_filepath, archive_filepath)
-    vendor_file.archive_date = date.today()
+    vendor_file.archive_date = date.today()  # type: ignore
     session.commit()
     logger.info(f"Archived {vendor_file.vendor_filename} to {archive_filepath}")
