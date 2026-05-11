@@ -304,7 +304,7 @@ def _record_vendor_file(
             session.delete(existing_vendor_file)
 
         expected_processing_time = datetime.now(timezone.utc)
-        if vendor_interface.processing_delay_in_days:
+        if vendor_interface.processing_delay_in_days:  # type: ignore
             expected_processing_time += timedelta(
                 days=vendor_interface.processing_delay_in_days  # type: ignore
             )
@@ -312,7 +312,7 @@ def _record_vendor_file(
         new_vendor_file = VendorFile(
             created=datetime.now(timezone.utc),
             updated=datetime.now(timezone.utc),
-            vendor_interface_id=vendor_interface.id,
+            vendor_interface_id=vendor_interface.id,  # type: ignore
             vendor_filename=filename,
             filesize=filesize,
             status=status,

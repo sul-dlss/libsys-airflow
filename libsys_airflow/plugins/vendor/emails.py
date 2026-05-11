@@ -80,7 +80,7 @@ def _additional_email_recipients(vendor_interface_uuid) -> list:
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         interface = VendorInterface.load(vendor_interface_uuid, session)
 
-    recipients = interface.additional_email_recipients
+    recipients = interface.additional_email_recipients   # type: ignore
     if not recipients:
         return []
 

@@ -51,7 +51,7 @@ def archive(
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        archive_file(download_path, vendor_file, session)
+        archive_file(download_path, vendor_file, session)  # type: ignore
 
 
 def archive_file(
