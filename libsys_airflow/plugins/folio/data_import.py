@@ -108,7 +108,7 @@ def data_import(
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        vendor_file.folio_job_execution_uuid = job_execution_id
+        vendor_file.folio_job_execution_uuid = job_execution_id  # type: ignore
         session.commit()
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"
