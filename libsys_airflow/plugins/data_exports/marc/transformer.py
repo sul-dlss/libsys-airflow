@@ -93,7 +93,6 @@ class Transformer(object):
         """
         Adds FOLIO Holdings and Items information to MARC records
         """
-
         marc_path = pathlib.Path(marc_file)
         if full_dump:
             marc_path = S3Path(marc_file)
@@ -108,8 +107,8 @@ class Transformer(object):
                     subfields_i = self.instance_subfields(record)
 
                     if subfields_i:
-                        new_999s = self.add_holdings_items_fields(subfields_i)
-                        record.add_field(*new_999s)
+                        new_950s = self.add_holdings_items_fields(subfields_i)
+                        record.add_field(*new_950s)
                         marc_records.append(record)
 
                     if not i % 100:
@@ -143,7 +142,7 @@ class Transformer(object):
                     if holding.get("discoverySuppress", False):
                         continue
 
-                    field_999 = self.add_holdings_subfields(holding)
+                    field_950 = self.add_holdings_subfields(holding)
 
                     holding_id = holding["id"]
 
@@ -159,25 +158,25 @@ class Transformer(object):
 
                     match len(active_items):
                         case 0:
-                            if len(field_999.subfields) > 0:
-                                fields.append(field_999)
+                            if len(field_950.subfields) > 0:
+                                fields.append(field_950)
 
                         case 1:
-                            self.add_item_subfields(field_999, active_items[0][0])
-                            if len(field_999.subfields) > 0:
-                                fields.append(field_999)
+                            self.add_item_subfields(field_950, active_items[0][0])
+                            if len(field_950.subfields) > 0:
+                                fields.append(field_950)
 
                         case _:
-                            org_999 = copy.deepcopy(field_999)
-                            self.add_item_subfields(field_999, active_items[0][0])
-                            if len(field_999.subfields) > 0:
-                                fields.append(field_999)
+                            org_950 = copy.deepcopy(field_950)
+                            self.add_item_subfields(field_950, active_items[0][0])
+                            if len(field_950.subfields) > 0:
+                                fields.append(field_950)
                             for item_tuple in active_items[1:]:
                                 item = item_tuple[0]
-                                new_999 = copy.deepcopy(org_999)
-                                self.add_item_subfields(new_999, item)
-                                if len(new_999.subfields) > 0:
-                                    fields.append(new_999)
+                                new_950 = copy.deepcopy(org_950)
+                                self.add_item_subfields(new_950, item)
+                                if len(new_950.subfields) > 0:
+                                    fields.append(new_950)
 
             except Exception as e:
                 logger.warning(f"Error with holdings or items: {e}")
@@ -186,42 +185,42 @@ class Transformer(object):
         return fields
 
     def add_holdings_subfields(self, holding: dict) -> pymarc.Field:
-        field_999 = pymarc.Field(tag="999", indicators=[' ', ' '])  # type: ignore
+        field_950 = pymarc.Field(tag="950", indicators=[' ', ' '])  # type: ignore
         if len(holding.get("holdingsTypeId", "")) > 0:
             holdings_type_name = self.holdings_type.get(holding["holdingsTypeId"])
             if holdings_type_name:
-                field_999.add_subfield('h', holdings_type_name)
+                field_950.add_subfield('h', holdings_type_name)
         if len(holding.get("permanentLocationId", "")) > 0:
             permanent_location_code = self.locations.get(holding['permanentLocationId'])
             if permanent_location_code:
-                field_999.add_subfield('l', permanent_location_code)
+                field_950.add_subfield('l', permanent_location_code)
         if len(holding.get("callNumberTypeId", "")) > 0:
             call_number_type = self.call_numbers.get(holding['callNumberTypeId'])
             if call_number_type:
-                field_999.add_subfield('w', call_number_type)
+                field_950.add_subfield('w', call_number_type)
         if len(holding.get("illPolicyId", "")) > 0:
             ill_policy = self.ill_policies.get(holding['illPolicyId'])
             if ill_policy:
-                field_999.add_subfield('r', ill_policy)
+                field_950.add_subfield('r', ill_policy)
         if len(holding.get("callNumber", "")) > 0:
-            field_999.add_subfield('a', holding['callNumber'], 0)
-        return field_999
+            field_950.add_subfield('a', holding['callNumber'], 0)
+        return field_950
 
-    def add_item_subfields(self, field_999: pymarc.Field, item: dict):
+    def add_item_subfields(self, field_950: pymarc.Field, item: dict):
         if 'barcode' in item:
-            field_999.add_subfield('i', item['barcode'])
+            field_950.add_subfield('i', item['barcode'])
         if 'materialTypeId' in item:
-            field_999.add_subfield('t', self.materialtypes.get(item['materialTypeId']))
+            field_950.add_subfield('t', self.materialtypes.get(item['materialTypeId']))
         if 'effectiveLocationId' in item:
             location_code = self.locations.get(item['effectiveLocationId'])
             if location_code:
-                field_999.add_subfield('e', location_code)
+                field_950.add_subfield('e', location_code)
         if len(item.get('numberOfPieces', '')) > 0:
-            field_999.add_subfield('j', item['numberOfPieces'])
+            field_950.add_subfield('j', item['numberOfPieces'])
 
         if "enumeration" in item:
-            for subfield in field_999.subfields:
+            for subfield in field_950.subfields:
                 if subfield.code == 'a':
-                    value = field_999.delete_subfield('a')
+                    value = field_950.delete_subfield('a')
                     value = f"{value} {item['enumeration']}"
-                    field_999.add_subfield('a', value, 0)
+                    field_950.add_subfield('a', value, 0)

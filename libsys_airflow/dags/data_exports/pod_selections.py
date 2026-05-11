@@ -54,14 +54,14 @@ def missing_marc_records_email(**kwargs):
     )
 
 
-def compress_marc_files(marc_file_list: dict):
+def compress_marc_files(marc_file_list: dict, vendor: str):
     marc_files = (
         marc_file_list['new'] + marc_file_list['updates'] + marc_file_list['deletes']
     )
     for marc_file in marc_files:
         stem = pathlib.Path(marc_file).suffix
         xml = marc_file.replace(stem, '.xml')
-        zip_marc_file(xml)
+        zip_marc_file(xml, vendor=vendor)
 
 
 with DAG(
@@ -172,7 +172,8 @@ with DAG(
         task_id="transform_folio_marc_compress_files",
         python_callable=compress_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
+            "vendor": "pod",
         },
     )
 
