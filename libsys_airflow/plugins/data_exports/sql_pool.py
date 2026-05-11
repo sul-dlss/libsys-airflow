@@ -1,14 +1,14 @@
-from airflow.models.connection import Connection
-from airflow.sdk import Variable
+from airflow.sdk import Connection, Variable
 from psycopg2.pool import SimpleConnectionPool
 
 
 class SQLPool:
-    def __init__(self, **kwargs):
+    def __init__(self, conn_id, **kwargs):
+        self.conn_id = conn_id
         self.conn = self.connection()
 
     def connection(self):
-        return Connection.get_connection_from_secrets('postgres_folio')
+        return Connection.get(self.conn_id)
 
     def pool(self):
         conn = self.conn
