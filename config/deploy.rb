@@ -4,7 +4,6 @@ set :application, 'libsys-airflow'
 set :repo_url, 'https://github.com/sul-dlss/libsys-airflow.git'
 set :user, 'libsys'
 set :venv, '/home/libsys/virtual-env/bin/activate'
-set :migration, 'https://github.com/sul-dlss/folio_migration.git'
 set :alembic_dbs, ['vendor_loads', 'digital_bookplates']
 set :ssh_options, { :forward_agent => true }
 
@@ -122,10 +121,6 @@ namespace :airflow do
     on roles(:app) do
       execute "cd #{release_path} && source #{fetch(:venv)} && pip3 install -r requirements.txt && poetry build --format=wheel --no-interaction --no-ansi && pip3 install dist/*.whl"
       execute "cp #{release_path}/config/.env #{release_path}/."
-      execute "cd #{release_path} && git clone #{fetch(:migration)} migration"
-      execute "chmod +x #{release_path}/migration/create_folder_structure.sh"
-      execute "cd #{release_path}/migration && ./create_folder_structure.sh"
-      execute "cd #{release_path}/migration && mkdir -p archive"
     end
   end
 
@@ -175,10 +170,10 @@ namespace :airflow do
     end
   end
 
-  desc 'restart webserver'
-  task :webserver do
+  desc 'restart apiserver'
+  task :apiserver do
     on roles(:app) do
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow restart airflow-webserver"
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow restart airflow-apiserver"
     end
   end
 
