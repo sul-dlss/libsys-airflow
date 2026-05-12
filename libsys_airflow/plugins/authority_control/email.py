@@ -1,6 +1,6 @@
 import logging
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from libsys_airflow.plugins.shared.utils import (
     is_production,

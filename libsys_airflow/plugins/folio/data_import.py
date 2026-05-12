@@ -4,8 +4,7 @@ import os
 import pathlib
 from typing import Optional
 
-from airflow.models import Variable
-from airflow.decorators import task
+from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from folioclient import FolioClient
@@ -45,7 +44,7 @@ def data_import_branch_task(dataload_profile_uuid: Optional[str]):
     on_execute_callback=record_loading,
     on_success_callback=record_loaded,
     on_failure_callback=record_loading_error,
-    max_active_tis_per_dag=Variable.get("max_active_data_import_tis", default_var=1),
+    max_active_tis_per_dag=1,
     multiple_outputs=True,
 )
 def data_import_task(
@@ -109,7 +108,7 @@ def data_import(
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        vendor_file.folio_job_execution_uuid = job_execution_id
+        vendor_file.folio_job_execution_uuid = job_execution_id  # type: ignore
         session.commit()
     logger.info(
         f"Data import job started for {batch_filenames} with job_execution_id {job_execution_id}"

@@ -4,8 +4,7 @@ import pathlib
 from jinja2 import Template
 
 from airflow.configuration import conf
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
 from libsys_airflow.plugins.shared.utils import is_production, dag_run_url
@@ -24,10 +23,10 @@ def _cohort_emails():
 
 
 def _match_oclc_library(**kwargs):
-    library: str = kwargs["library"]
-    to_emails: list = kwargs["to_emails"]
-    subject_line: str = kwargs["subject_line"]
-    cohort_emails: dict = kwargs["cohort_emails"]
+    library = kwargs["library"]
+    to_emails = kwargs["to_emails"]
+    subject_line = kwargs["subject_line"]
+    cohort_emails = kwargs["cohort_emails"]
 
     match library:
         case "CASUM":

@@ -17,7 +17,7 @@ class OrafinPlugin(AirflowPlugin):
     name = "Orafin Files"
     operators = []  # type: ignore
     flask_blueprints = [orafin_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [orafin_view_package]

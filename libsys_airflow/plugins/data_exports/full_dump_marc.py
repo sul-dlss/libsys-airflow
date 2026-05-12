@@ -6,8 +6,7 @@ from pathlib import Path
 from s3path import S3Path
 from typing import Union
 
-from airflow.models import Variable, Connection
-from airflow.operators.python import get_current_context
+from airflow.sdk import get_current_context, Connection, Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from libsys_airflow.plugins.data_exports.marc.exporter import Exporter
 
@@ -29,7 +28,7 @@ def create_campus_filter_view(**kwargs) -> Union[str, None]:
         with open(filter_campus_sql_file()) as sqv:
             query = sqv.read()
 
-        connection = Connection.get_connection_from_secrets("postgres_folio")
+        connection = Connection.get("postgres_folio")
         conn_string = f"dbname=okapi user=okapi host={connection.host} port={connection.port} password={connection.password}"
         conn = psycopg2.connect(conn_string)
         cur = conn.cursor()
@@ -58,7 +57,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
 
     if recreate:
         logger.info(
-            f"Refreshing { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view with dates from: {from_date} to: {to_date}"
+            f"Refreshing {'google' if mat_view == 'google_mat_view' else 'data export marc'} view with dates from: {from_date} to: {to_date}"
         )
 
         with open(materialized_view_sql_file(mat_view=mat_view)) as sqv:
@@ -76,7 +75,7 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
         ).execute(context)
     else:
         logger.info(
-            f"Skipping refresh of { 'google' if mat_view == 'google_mat_view' else 'data export marc' } view"
+            f"Skipping refresh of {'google' if mat_view == 'google_mat_view' else 'data export marc'} view"
         )
 
     return query

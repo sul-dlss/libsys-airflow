@@ -2,7 +2,7 @@ import pydantic
 import pytest
 
 from pathlib import Path
-from airflow.models import Connection
+from airflow.sdk import Connection
 from libsys_airflow.plugins.data_exports import sal3_items
 
 
@@ -102,7 +102,7 @@ def mock_get_current_context(monkeypatch, mocker):
 
 def setup_tests(mocker, mock_airflow_connection):
     mocker.patch(
-        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get_connection_from_secrets',
+        'libsys_airflow.plugins.data_exports.sql_pool.Connection.get',
         return_value=mock_airflow_connection,
     )
     mocker.patch(

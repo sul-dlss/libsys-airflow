@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 
-from airflow import DAG
-from airflow.models import Variable
-from airflow.operators.python import PythonOperator
+from airflow.sdk import DAG
+from airflow.sdk import Variable
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
@@ -45,7 +45,7 @@ with DAG(
     render_template_as_native_obj=True,
     params={},
 ) as dag:
-    connection_pool = SQLPool().pool()
+    connection_pool = SQLPool(conn_id="postgres_folio").pool()
 
     create_sal3_materialized_view = PythonOperator(
         task_id="sal3_items_materialized_view",

@@ -3,7 +3,7 @@ import pathlib
 import pytest
 
 
-from airflow.www import app as application
+from airflow.providers.fab.www import app as application
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
 
@@ -19,11 +19,17 @@ def test_airflow_client():
     templates_folder = f"{root_directory}/libsys_airflow/plugins/sdr/templates"
     reports_base = pathlib.Path(f"{root_directory}/tests/apps/sdr/report_file_fixtures")
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
+
     app.config['WTF_CSRF_ENABLED'] = False
     setattr(SdrMissingBarcodesView, "reports_base", reports_base)  # noqa
-    app.appbuilder.add_view(SdrMissingBarcodesView, "SDRReports", category="SDR Report")
-    app.blueprints['SdrMissingBarcodesView'].template_folder = templates_folder
+
+    with app.app_context():
+        app.appbuilder.add_view(
+            SdrMissingBarcodesView, "SDRReports", category="SDR Report"
+        )
+        app.blueprints['SdrMissingBarcodesView'].template_folder = templates_folder
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:

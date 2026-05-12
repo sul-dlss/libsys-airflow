@@ -4,9 +4,8 @@ import logging
 from typing import Union
 import httpx
 
-from airflow.decorators import task
-from airflow.models import Variable
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sdk import task, Variable
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from jsonpath_ng.ext import parse
@@ -55,13 +54,13 @@ def check_deleted_from_argo(druid_purls: list):
                 .where(DigitalBookplate.druid == druid)
                 .first()
             )
-            digital_bookplate.deleted_from_argo = True
-            digital_bookplate.updated = datetime.datetime.utcnow()
+            digital_bookplate.deleted_from_argo = True  # type: ignore
+            digital_bookplate.updated = datetime.datetime.utcnow()  # type: ignore
             deleted_info.append(
                 {
                     "druid": druid,
-                    "fund_name": digital_bookplate.fund_name,
-                    "title": digital_bookplate.title,
+                    "fund_name": digital_bookplate.fund_name,  # type: ignore
+                    "title": digital_bookplate.title,  # type: ignore
                 }
             )
             session.commit()

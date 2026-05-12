@@ -1,4 +1,6 @@
-from airflow.www import app as application
+# from airflow.www import app as application
+# from airflow.www.extensions.init_appbuilder import create_app
+from airflow.providers.fab.www import app as application
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
 import pytest
@@ -12,16 +14,18 @@ from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTe
 def test_airflow_client():
     templates_folder = f"{root_directory}/libsys_airflow/plugins/folio/templates"
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
     app.config['WTF_CSRF_ENABLED'] = False
 
-    app.appbuilder.add_view(
-        CircRulesTester,
-        "CircRulesTester",
-        category="Circ Rules Tests",
-    )
+    with app.app_context():
+        app.appbuilder.add_view(
+            CircRulesTester,
+            "CircRulesTester",
+            category="Circ Rules Tests",
+        )
 
-    app.blueprints["CircRulesTester"].template_folder = templates_folder
+        app.blueprints["CircRulesTester"].template_folder = templates_folder
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:

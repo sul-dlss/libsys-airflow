@@ -2,11 +2,9 @@ import datetime
 import logging
 
 
-from airflow import DAG
-from airflow.operators.empty import EmptyOperator
-from airflow.operators.python import PythonOperator
-from airflow.utils.task_group import TaskGroup
-from airflow.models import Variable
+from airflow.sdk import DAG, TaskGroup, Variable
+from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
 from folioclient import FolioClient
 from libsys_airflow.plugins.folio.circ_rules import (

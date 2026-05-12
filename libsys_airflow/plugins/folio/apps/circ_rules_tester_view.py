@@ -1,18 +1,16 @@
-import datetime
+from datetime import datetime, timezone
 import json
 import pathlib
 
 import pandas as pd
 
-from airflow.models import DagBag
-from airflow.utils import timezone
-from airflow.utils.state import State
-
+from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from flask import flash, request, redirect, Response
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
+from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 CIRC_HOME = "/opt/airflow/circ"
 
@@ -22,19 +20,18 @@ class CircRulesTester(AppBuilderBaseView):
     route_base = "/circ_rule_tester"
 
     def _trigger_dag_run(self, scenerio_file):
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("circ_rules_batch_tests")
         scenerio_df = pd.read_csv(scenerio_file)
-        execution_date = timezone.utcnow()
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
-            conf={"scenarios": scenerio_df.to_json()},
-            external_trigger=True,
-        )
-        return run_id
+        dag_id = "circ_rules_batch_tests"
+        with api_client() as airflow_api_client:
+            api_instance = DagRunApi(airflow_api_client)
+            trigger_dag_run_post_body = TriggerDAGRunPostBody(
+                conf={"scenarios": scenerio_df.to_json()}
+            )
+
+            api_response = api_instance.trigger_dag_run(
+                dag_id, trigger_dag_run_post_body
+            )
+            return api_response.dag_run_id
 
     @expose("/")
     def circ_home(self):
@@ -51,29 +48,38 @@ class CircRulesTester(AppBuilderBaseView):
         if not scenario_file.filename.endswith("csv"):
             flash("Scenario file must be a csv")
         else:
-            dag_run_id = self._trigger_dag_run(scenario_file)
-            return redirect(f"{CircRulesTester.route_base}/batch_report/{dag_run_id}")
+            try:
+                dag_run_id = self._trigger_dag_run(scenario_file)
+                return redirect(
+                    f"/pluginsv2{CircRulesTester.route_base}/batch_report/{dag_run_id}"
+                )
+            except Exception as e:
+                flash(f"Failed to trigger circ_rules_batch_tests DAG. Error: {e} ")
         return self.render_template("circ_rules_tester/index.html")
 
     @expose("/test", methods=["POST"])
     def run_test(self):
-        execution_date = timezone.utcnow()
-        dagbag = DagBag("/opt/airflow/dags")
-        dag = dagbag.get_dag("circ_rules_scenario_tests")
-        run_id = f"manual__{execution_date.isoformat()}"
-        dag.create_dagrun(
-            run_id=run_id,
-            execution_date=execution_date,
-            state=State.RUNNING,
+        dag_id = "circ_rules_scenario_tests"
+        trigger_dag_run_post_body = TriggerDAGRunPostBody(
             conf=dict(
                 patron_group_id=request.form["patron_group_id"],
                 material_type_id=request.form["material_type_id"],
                 loan_type_id=request.form["loan_type_id"],
                 location_id=request.form["location_id"],
             ),
-            external_trigger=True,
         )
-        return redirect(f"{CircRulesTester.route_base}/report/{run_id}")
+        with api_client() as airflow_api_client:
+            api_instance = DagRunApi(airflow_api_client)
+            try:
+                api_response = api_instance.trigger_dag_run(
+                    dag_id, trigger_dag_run_post_body
+                )
+                run_id = api_response.dag_run_id
+                redirect_url = f"/pluginsv2{CircRulesTester.route_base}/report/{run_id}"
+            except Exception as e:
+                flash(f"Failed to Trigger circ_rules_scenario_test DAG, error:{e}")
+                redirect_url = f"/pluginsv2{CircRulesTester.circ_home}"
+        return redirect(redirect_url)
 
     @expose("/batch_report/<dag_run>")
     def report_batch(self, dag_run):
@@ -92,14 +98,14 @@ class CircRulesTester(AppBuilderBaseView):
         batch_report_path = pathlib.Path(f"{CIRC_HOME}/{dag_run}.json")
         if not batch_report_path.exists():
             flash(f"Batch report DAG ID {dag_run} doesn't exist")
-            return redirect(f"{CircRulesTester.route_base}")
+            return redirect(f"/pluginsv2{CircRulesTester.route_base}")
         report = pd.read_json(batch_report_path, encoding="utf-8-sig")
-        timestamp = datetime.datetime.now(datetime.UTC)
+        timestamp = datetime.now(timezone.utc).toordinal()
         return Response(
             report.to_csv(),
             mimetype="text/csv",
             headers={
-                "Content-Disposition": f"attachment;filename=batch_report_{timestamp.toordinal()}.csv"
+                "Content-Disposition": f"attachment;filename=batch_report_{timestamp}.csv"
             },
         )
 

@@ -7,7 +7,7 @@ import pydantic
 import pytest
 import requests
 
-from airflow.models import Variable
+from airflow.sdk import Variable
 from pytest_mock import MockerFixture
 
 
@@ -109,3 +109,20 @@ class MockLibraryConfig(pydantic.BaseModel):
     okapi_url: str = "https://okapi.edu"
     okapi_username: str = "admin"
     tenant_id: str = "a_lib"
+
+
+class MockAirflowApiClientConfig(pydantic.BaseModel):
+    host: str = "http://localhost:8080"
+    username: str = "user_name"
+    password: str = "napassword"
+    access_token: str = "YW4gYWNjZXNzIHRva2Vu"
+
+
+class MockAirflowApiClient(pydantic.BaseModel):
+    configuration: MockAirflowApiClientConfig
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False  # Don't suppress exceptions

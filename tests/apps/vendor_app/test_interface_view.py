@@ -13,7 +13,7 @@ from libsys_airflow.plugins.vendor.models import (
     VendorFile,
     FileStatus,
 )
-from tests.airflow_client import test_airflow_client  # noqa: F401
+from tests.test_airflow_client import test_airflow_client  # noqa: F401
 
 now = datetime.utcnow()
 
@@ -196,6 +196,15 @@ def mock_dag_run():
 
 
 @pytest.fixture
+def mock_api_dag_response():
+    mock_dag_response = MagicMock()
+    mock_dag_response.dag_run_id = 'manual__2023-04-25T16:34:12.777715+00:00'
+    mock_dag_response.dag_id = 'default_data_processor'
+    mock_dag_response.queued_at = datetime(2023, 4, 25, 16, 34, 12, 777715)
+    return mock_dag_response
+
+
+@pytest.fixture
 def mock_variable(mocker):
     return mocker.patch(
         'libsys_airflow.plugins.vendor_app.vendor_management.Variable.get',
@@ -333,10 +342,18 @@ def test_interface_edit_upload_only_view(
         assert display_name_input.attrs['value'] == "Acme Upload Only"
 
 
-def test_reload_file(test_airflow_client, mock_db, mock_dag_run, mocker):  # noqa: F811
-    mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag',
-        return_value=mock_dag_run,
+def test_reload_file(
+    test_airflow_client, mock_db, mock_api_dag_response, mocker  # noqa: F811
+):
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.trigger_dag_run.return_value = mock_api_dag_response
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.DagRunApi',
+        return_value=mock_api_instance,
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.api_client',
+        return_value=mocker.MagicMock(),
     )
     with Session(mock_db()) as session:
         mocker.patch(
@@ -349,26 +366,39 @@ def test_reload_file(test_airflow_client, mock_db, mock_dag_run, mocker):  # noq
     with Session(mock_db()) as session:
         vendor_file = session.get(VendorFile, 1)
         assert vendor_file.status == FileStatus.loading
-        assert vendor_file.dag_run_id == mock_dag_run.run_id
-        assert vendor_file.expected_processing_time == mock_dag_run.execution_date
+        assert vendor_file.dag_run_id == mock_api_dag_response.dag_run_id
+        assert vendor_file.expected_processing_time == mock_api_dag_response.queued_at
 
-    mock_trigger_dag.assert_called_once_with(
-        'default_data_processor',
-        conf={
-            "filename": 'acme-marc.dat',
-            "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
-            "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
-            "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
-        },
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["filename"]
+        == 'acme-marc.dat'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_uuid"]
+        == '375C6E33-2468-40BD-A5F2-73F82FE56DB0'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_interface_uuid"]
+        == '140530EB-EE54-4302-81EE-D83B9DAC9B6E'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["dataload_profile_uuid"]
+        == 'A8635200-F876-46E0-ACF0-8E0EFA542A3F'
     )
 
 
 def test_upload_file(
-    test_airflow_client, mock_db, mock_dag_run, tmp_path, mocker  # noqa: F811
+    test_airflow_client, mock_db, mock_api_dag_response, tmp_path, mocker  # noqa: F811
 ):
-    mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag',
-        return_value=mock_dag_run,
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.trigger_dag_run.return_value = mock_api_dag_response
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.DagRunApi',
+        return_value=mock_api_instance,
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.api_client',
+        return_value=mocker.MagicMock(),
     )
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
@@ -415,18 +445,25 @@ def test_upload_file(
         assert vendor_file.filesize == 35981
         assert vendor_file.status == FileStatus.loading
         assert vendor_file.archive_date == today
-        assert vendor_file.dag_run_id == mock_dag_run.run_id
-        assert vendor_file.expected_processing_time == mock_dag_run.execution_date
+        assert vendor_file.dag_run_id == mock_api_dag_response.dag_run_id
+        assert vendor_file.expected_processing_time == mock_api_dag_response.queued_at
 
-        mock_trigger_dag.assert_called_once_with(
-            'default_data_processor',
-            conf={
-                "filename": 'acme-extra-strength-marc.dat',
-                "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
-                "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
-                "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
-            },
-        )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["filename"]
+        == 'acme-extra-strength-marc.dat'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_uuid"]
+        == '375C6E33-2468-40BD-A5F2-73F82FE56DB0'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_interface_uuid"]
+        == '140530EB-EE54-4302-81EE-D83B9DAC9B6E'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["dataload_profile_uuid"]
+        == 'A8635200-F876-46E0-ACF0-8E0EFA542A3F'
+    )
 
 
 def test_download_original_file(
@@ -516,8 +553,21 @@ def test_download_missing_file(
 
 
 def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
-    mock_trigger_dag = mocker.patch(
-        'libsys_airflow.plugins.vendor_app.vendor_management.trigger_dag'
+
+    mock_dag_response = MagicMock()
+    mock_dag_response.dag_run_id = 'manual__2023-04-25T16:34:12.777715+00:00'
+    mock_dag_response.dag_id = 'data_fetcher'
+    mock_dag_response.queued_at = datetime(2023, 4, 25, 16, 34, 12, 777715)
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.trigger_dag_run.return_value = mock_dag_response
+
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.DagRunApi',
+        return_value=mock_api_instance,
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.vendor_app.vendor_management.api_client',
+        return_value=mocker.MagicMock(),
     )
     with Session(mock_db()) as session:
         mocker.patch(
@@ -527,17 +577,32 @@ def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
         response = test_airflow_client.post('/vendor_management/interfaces/1/fetch')
         assert response.status_code == 302
 
-    mock_trigger_dag.assert_called_once_with(
-        'data_fetcher',
-        conf={
-            "vendor_interface_name": 'Acme FTP',
-            "vendor_code": 'ACME',
-            "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
-            "vendor_interface_uuid": '140530EB-EE54-4302-81EE-D83B9DAC9B6E',
-            "dataload_profile_uuid": 'A8635200-F876-46E0-ACF0-8E0EFA542A3F',
-            "remote_path": "stanford/outgoing/data",
-            "filename_regex": "*.mrc",
-        },
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_interface_name"]
+        == "Acme FTP"
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_code"] == "ACME"
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_uuid"]
+        == '375C6E33-2468-40BD-A5F2-73F82FE56DB0'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["vendor_interface_uuid"]
+        == '140530EB-EE54-4302-81EE-D83B9DAC9B6E'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["dataload_profile_uuid"]
+        == 'A8635200-F876-46E0-ACF0-8E0EFA542A3F'
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["remote_path"]
+        == "stanford/outgoing/data"
+    )
+    assert (
+        mock_api_instance.trigger_dag_run.call_args[0][1].conf["filename_regex"]
+        == "*.mrc"
     )
 
 

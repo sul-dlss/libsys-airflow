@@ -3,8 +3,7 @@
 import logging
 
 from datetime import datetime
-from airflow.decorators import dag, task, task_group
-from airflow.operators.python import get_current_context
+from airflow.sdk import dag, task, task_group, get_current_context
 
 from libsys_airflow.plugins.authority_control.email import email_deletes_report
 from libsys_airflow.plugins.authority_control.helpers import (

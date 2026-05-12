@@ -4,7 +4,7 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from airflow.decorators import task
+from airflow.sdk import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session
@@ -51,7 +51,7 @@ def archive(
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        archive_file(download_path, vendor_file, session)
+        archive_file(download_path, vendor_file, session)  # type: ignore
 
 
 def archive_file(
@@ -68,6 +68,6 @@ def archive_file(
     archive_filepath = archive_path / vendor_file.vendor_filename
     archive_path.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(download_filepath, archive_filepath)
-    vendor_file.archive_date = date.today()
+    vendor_file.archive_date = date.today()  # type: ignore
     session.commit()
     logger.info(f"Archived {vendor_file.vendor_filename} to {archive_filepath}")

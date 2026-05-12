@@ -21,8 +21,8 @@ class AuthorityDeletesPlugin(AirflowPlugin):
     name = "FOLIO Authority Deletes Upload"
     operators = []  # type: ignore
     flask_blueprints = [authority_deletes_upload_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [authority_deletes_view_package]
     appbuilder_menu_items = []

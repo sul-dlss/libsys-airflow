@@ -5,8 +5,8 @@ import pathlib
 import pandas as pd
 import pymarc
 
-from airflow.models import Variable
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.sdk import Variable
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 

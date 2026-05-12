@@ -17,8 +17,8 @@ class BoundwithPlugin(AirflowPlugin):
     name = "Boundwith CSV Upload"
     operators = []  # type: ignore
     flask_blueprints = [boundwith_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [boundwith_view_package]
     appbuilder_menu_items = []

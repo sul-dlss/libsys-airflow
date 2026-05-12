@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy.sql.expression import true
-from typing import List, Any
+from typing import List, Any, Sequence, Union
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +63,12 @@ class Vendor(Model):  # type: ignore
             .filter(VendorInterface.active == true())
             .distinct()
             .order_by(Vendor.display_name)
-        ).unique()
+        ).unique()  # type: ignore
 
     @classmethod
     def with_vendor_interfaces(cls, session: Session) -> List['Vendor']:
         return session.scalars(
-            select(cls).join(VendorInterface).distinct().order_by(Vendor.display_name)
+            select(cls).join(VendorInterface).distinct().order_by(Vendor.display_name)  # type: ignore
         ).unique()
 
 
@@ -136,16 +136,13 @@ class VendorInterface(Model):  # type: ignore
     @property
     def interface_uuid(self) -> str:
         # This accounts for upload only interfaces, which don't have a folio_interface_uuid.
-        return self.folio_interface_uuid or f"upload_only-{self.id}"
+        return self.folio_interface_uuid or f"upload_only-{self.id}"  # type: ignore
 
     def __repr__(self) -> str:
         return f"{self.display_name} - {self.interface_uuid}"
 
     def processing_option(self, key: str, default: Any = None) -> Any:
-        if self.processing_options is not None:
-            return self.processing_options.get(key, default)
-        else:
-            return default
+        return self.processing_options.get(key, default)
 
     @property
     def package_name(self):
@@ -176,7 +173,9 @@ class VendorInterface(Model):  # type: ignore
         return self.folio_interface_uuid is None
 
     @classmethod
-    def load(cls, interface_uuid: str, session: Session) -> 'VendorInterface':
+    def load(
+        cls, interface_uuid: str, session: Session
+    ) -> 'Union[VendorInterface, None]':
         match = UPLOAD_FILE_REGEX.match(interface_uuid)
         if match:
             id = int(match.group(1))
@@ -189,7 +188,7 @@ class VendorInterface(Model):  # type: ignore
     @classmethod
     def load_with_vendor(
         cls, vendor_uuid: str, interface_uuid: str, session: Session
-    ) -> 'VendorInterface':
+    ) -> 'Union[VendorInterface, None]':
         match = UPLOAD_FILE_REGEX.match(interface_uuid)
         if match:
             id = int(match.group(1))
@@ -200,7 +199,7 @@ class VendorInterface(Model):  # type: ignore
         return session.scalars(
             select(cls)
             .where(cls.folio_interface_uuid == interface_uuid)
-            .where(cls.vendor_id == vendor.id)
+            .where(cls.vendor_id == vendor.id)  # type: ignore
         ).first()
 
 
@@ -246,7 +245,7 @@ class VendorFile(Model):  # type: ignore
         nullable=False,
         default=FileStatus.not_fetched,
         server_default=FileStatus.not_fetched.value,
-    )
+    )  # type: ignore
     dag_run_id = Column(String(350), unique=True, nullable=True)
     folio_job_execution_uuid = Column(String(36), unique=False, nullable=True)
 
@@ -258,22 +257,26 @@ class VendorFile(Model):  # type: ignore
         return [datetime.fromisoformat(timestamp) for timestamp in self.loaded_history]
 
     @classmethod
-    def load(cls, interface_uuid: str, filename: str, session: Session) -> 'VendorFile':
-        vendor_interface = VendorInterface.load(interface_uuid, session)
+    def load(
+        cls, interface_uuid: str, filename: str, session: Session
+    ) -> 'Union[VendorFile, None]':
+        vendor_interface: VendorInterface | None = VendorInterface.load(
+            interface_uuid, session
+        )
         return cls.load_with_vendor_interface(vendor_interface, filename, session)
 
     @classmethod
     def load_with_vendor_interface(
-        cls, vendor_interface: VendorInterface, filename: str, session: Session
-    ) -> 'VendorFile':
+        cls, vendor_interface: VendorInterface | None, filename: str, session: Session
+    ) -> 'Union[VendorFile, None]':
         return session.scalars(
             select(cls)
-            .where(cls.vendor_interface_id == vendor_interface.id)
+            .where(cls.vendor_interface_id == vendor_interface.id)  # type: ignore
             .where(cls.vendor_filename == filename)
         ).first()
 
     @classmethod
-    def ready_for_data_processing(cls, session: Session) -> List["VendorFile"]:
+    def ready_for_data_processing(cls, session: Session) -> Sequence["VendorFile"]:
         """
         Returns a list of VendorFile objects that are ready for loading into
         Folio. These are files that have a status of "fetched" and which have an

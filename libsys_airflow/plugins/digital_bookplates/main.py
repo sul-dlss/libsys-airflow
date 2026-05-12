@@ -34,8 +34,8 @@ class DigitalBookplatesBatchUploadPlugin(AirflowPlugin):
     name = "Digital Bookplates Batch Upload"
     operators = []  # type: ignore
     flask_blueprints = [digital_bookplates_batch_upload_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [digital_bookplates_batch_upload_package]
     appbuilder_menu_items = []
@@ -45,8 +45,8 @@ class DigitalBookplatesDownloadPlugin(AirflowPlugin):
     name = "Digital Bookplates File Download"
     operators = []  # type: ignore
     flask_blueprints = [digital_bookplates_download_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [digital_bookplates_download_package]
     appbuilder_menu_items = []

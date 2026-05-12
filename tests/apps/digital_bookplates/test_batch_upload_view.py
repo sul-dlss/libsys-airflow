@@ -1,10 +1,10 @@
-import datetime
+from datetime import datetime, timezone
 import io
 
 import pandas as pd
 import pytest
 
-from airflow.www import app as application
+from airflow.providers.fab.www import app as application
 from conftest import root_directory
 from bs4 import BeautifulSoup
 from flask.wrappers import Response
@@ -17,12 +17,18 @@ from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_batch_upl
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
+from unittest.mock import MagicMock
+from mocks import (  # noqa
+    MockAirflowApiClientConfig,
+    MockAirflowApiClient,
+)
+
 
 rows = Rows(
     DigitalBookplate(
         id=1,
-        created=datetime.datetime(2024, 10, 14, 12, 15, 0, 733715),
-        updated=datetime.datetime(2024, 10, 14, 12, 15, 0, 733715),
+        created=datetime(2024, 10, 14, 12, 15, 0, 733715),
+        updated=datetime(2024, 10, 14, 12, 15, 0, 733715),
         druid="kp761xz4568",
         fund_name="ASHENR",
         image_filename="dp698zx8237_00_0001.jp2",
@@ -31,8 +37,8 @@ rows = Rows(
     ),
     DigitalBookplate(
         id=2,
-        created=datetime.datetime(2024, 10, 14, 17, 16, 15, 986798),
-        updated=datetime.datetime(2024, 10, 14, 17, 16, 15, 986798),
+        created=datetime(2024, 10, 14, 17, 16, 15, 986798),
+        updated=datetime(2024, 10, 14, 17, 16, 15, 986798),
         druid="ab123xy4567",
         fund_name=None,
         image_filename="ab123xy4567_00_0001.jp2",
@@ -45,21 +51,46 @@ engine = create_sqlite_fixture(rows)
 
 
 @pytest.fixture
+def mock_client_config():
+    return MockAirflowApiClientConfig()
+
+
+@pytest.fixture
+def mock_api_client():
+    return MockAirflowApiClient(configuration=MockAirflowApiClientConfig())
+
+
+def mock_api_instance():
+    api_instance = MagicMock()
+
+    mock_response = MagicMock()
+    mock_response.dag_id = "digital_bookplate_979"
+    mock_response.dag_run_id = "manual__2024-10-17"
+
+    api_instance.trigger_dag_run.return_value = mock_response
+
+    return api_instance
+
+
+@pytest.fixture
 def test_airflow_client():
     templates_folder = (
         f"{root_directory}/libsys_airflow/plugins/digital_bookplates/templates"
     )
 
-    app = application.create_app(testing=True)
+    app = application.create_app(enable_plugins=False)
     app.config['WTF_CSRF_ENABLED'] = False
-    app.appbuilder.add_view(
-        DigitalBookplatesBatchUploadView,
-        "DigitalBookplatesBatchUpload",
-        category="FOLIO",
-    )
-    app.blueprints['DigitalBookplatesBatchUploadView'].template_folder = (
-        templates_folder
-    )
+
+    with app.app_context():
+        app.appbuilder.add_view(
+            DigitalBookplatesBatchUploadView,
+            "DigitalBookplatesBatchUpload",
+            category="FOLIO",
+        )
+        app.blueprints['DigitalBookplatesBatchUploadView'].template_folder = (
+            templates_folder
+        )
+
     app.response_class = HTMLResponse
 
     with app.test_client() as client:
@@ -119,9 +150,15 @@ def test_get_fund(mocker, mock_db, tmp_path):
     }
 
 
-def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
-    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
-
+def test_upload_file(mocker, test_airflow_client, mock_api_client, mock_db, tmp_path):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance(),
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
     response = test_airflow_client.post(
@@ -146,7 +183,7 @@ def test_upload_file(mocker, test_airflow_client, mock_db, tmp_path):
 
 
 def test_existing_upload_file(tmp_path):
-    current_timestamp = datetime.datetime.utcnow()
+    current_timestamp = datetime.now(timezone.utc)
     upload_path = (
         tmp_path
         / f"{current_timestamp.year}/{current_timestamp.month}/{current_timestamp.day}"
@@ -165,9 +202,15 @@ def test_existing_upload_file(tmp_path):
     assert (upload_path / "new-bookplate-instances-copy-2.csv").exists()
 
 
-def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
-    mocker.patch("libsys_airflow.plugins.digital_bookplates.bookplates.DagBag")
-
+def test_column_header(mocker, test_airflow_client, mock_api_client, mock_db, tmp_path):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance(),
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
     mocker.patch.object(DigitalBookplatesBatchUploadView, "files_base", tmp_path)
 
     test_airflow_client.post(
@@ -182,7 +225,7 @@ def test_column_header(mocker, test_airflow_client, mock_db, tmp_path):
         },
     )
 
-    current_timestamp = datetime.datetime.utcnow()
+    current_timestamp = datetime.now(timezone.utc)
     upload_path = (
         tmp_path
         / f"{current_timestamp.year}/{current_timestamp.month}/{current_timestamp.day}"

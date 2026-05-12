@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.ftp.hooks.ftp import FTPHook
 from airflow.providers.sftp.hooks.sftp import SFTPHook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -198,7 +197,7 @@ def filter_by_mod_date(
     return result
 
 
-@task(max_active_tis_per_dag=Variable.get("max_active_download_tis", default_var=2))
+@task(max_active_tis_per_dag=2)
 def download_task(
     conn_id: str,
     remote_path: str,
@@ -305,15 +304,15 @@ def _record_vendor_file(
             session.delete(existing_vendor_file)
 
         expected_processing_time = datetime.now(timezone.utc)
-        if vendor_interface.processing_delay_in_days:
+        if vendor_interface.processing_delay_in_days:  # type: ignore
             expected_processing_time += timedelta(
-                days=vendor_interface.processing_delay_in_days
+                days=vendor_interface.processing_delay_in_days  # type: ignore
             )
 
         new_vendor_file = VendorFile(
             created=datetime.now(timezone.utc),
             updated=datetime.now(timezone.utc),
-            vendor_interface_id=vendor_interface.id,
+            vendor_interface_id=vendor_interface.id,  # type: ignore
             vendor_filename=filename,
             filesize=filesize,
             status=status,
@@ -365,7 +364,7 @@ def _vendor_interface_id(
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        return vendor_interface.id
+        return vendor_interface.id  # type: ignore
 
 
 def _is_fetched(

@@ -1,11 +1,14 @@
 import logging
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, task
-from airflow.models.param import Param
-from airflow.models.connection import Connection
-from airflow.models import Variable
-from airflow.operators.empty import EmptyOperator
+from airflow.sdk import (
+    dag,
+    task,
+    Connection,
+    Param,
+    Variable,
+)
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
@@ -48,7 +51,7 @@ def http_or_ftp_path(**kwargs):
     """
     conn_id = kwargs.get("connection")
     logger.info(f"Send all records to vendor {conn_id}")
-    connection = Connection.get_connection_from_secrets(conn_id)
+    connection = Connection.get(conn_id)
     conn_type = connection.conn_type
     logger.info(f"Transmit data via {conn_type}")
     if conn_type == "http":

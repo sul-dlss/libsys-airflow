@@ -3,14 +3,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils.context import Context
+from airflow.sdk import Context
 
 from libsys_airflow.plugins.vendor.models import VendorInterface, VendorFile, FileStatus
 
 
 # You would expect to find this in models.py. However, when running an upgrade, models.py is used
 # in a context in which Airflow library is not available.
-def record_status_from_context(context: Context, status: FileStatus):
+def record_status_from_context(context: Context, status: FileStatus, **kwargs):
     """
     Update the status of a VendorFile specified in the DAG context.
     """
@@ -26,10 +26,10 @@ def record_status_from_context(context: Context, status: FileStatus):
         vendor_file = VendorFile.load_with_vendor_interface(
             vendor_interface, filename, session
         )
-        vendor_file.status = status
+        vendor_file.status = status  # type: ignore
         now = datetime.utcnow()
-        vendor_file.updated = now
+        vendor_file.updated = now  # type: ignore
         if status is FileStatus.loaded:
-            vendor_file.loaded_timestamp = now
-            vendor_file.loaded_history = vendor_file.loaded_history + [now.isoformat()]
+            vendor_file.loaded_timestamp = now  # type: ignore
+            vendor_file.loaded_history = vendor_file.loaded_history + [now.isoformat()]  # type: ignore
         session.commit()

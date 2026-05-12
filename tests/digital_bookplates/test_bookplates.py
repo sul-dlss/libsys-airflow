@@ -5,6 +5,11 @@ from unittest.mock import MagicMock
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
 
+from mocks import (  # noqa
+    MockAirflowApiClientConfig,
+    MockAirflowApiClient,
+)
+
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_979_marc_tags,
@@ -63,13 +68,32 @@ def pg_hook(mocker, engine) -> PostgresHook:
 
 
 @pytest.fixture
-def mock_dag_bag(mocker):
-    def mock_get_dag(dag_id: str):
-        return mocker.MagicMock()
+def mock_client_config():
+    return MockAirflowApiClientConfig()
 
-    dag_bag = mocker.MagicMock()
-    dag_bag.get_dag = mock_get_dag
-    return dag_bag
+
+@pytest.fixture
+def mock_api_client():
+    return MockAirflowApiClient(configuration=MockAirflowApiClientConfig())
+
+
+@pytest.fixture(
+    params=["digital_bookplate_979", "poll_for_digital_bookplate_979s_email"]
+)
+def mock_api_instance(request):
+    dag_id = request.param
+    api_instance = MagicMock()
+
+    mock_response = MagicMock()
+    mock_response.dag_id = dag_id
+    if dag_id == "digital_bookplate_979":
+        mock_response.dag_run_id = "manual__2024-10-17"
+    else:
+        mock_response.dag_run_id = "manual__2024-10-24:01:30:00"
+
+    api_instance.trigger_dag_run.return_value = mock_response
+
+    return api_instance
 
 
 @pytest.fixture
@@ -462,36 +486,60 @@ def test_add_979_marc_tags():
     assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
 
 
-def test_launch_digital_bookplate_979_dag(mocker, mock_dag_bag, caplog):
-    dag_bag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+@pytest.mark.parametrize("mock_api_instance", ["digital_bookplate_979"], indirect=True)
+def test_launch_digital_bookplate_979_dag(
+    mocker, mock_api_client, mock_api_instance, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
+    dag_run = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance,
     )
 
     launch_digital_bookplate_979_dag(
         instance_uuid="01ae59b3-d7c6-4bf6-8097-02f9227932fa", funds=[{}]
     )
 
-    assert dag_bag.called
-    assert "Triggers 979 DAG with dag_id" in caplog.text
+    assert dag_run.called
+    assert "Triggers 979 DAG with DAG run ID manual__2024-10-17" in caplog.text
 
 
-def test_launch_poll_for_979_dags(mocker, mock_dag_bag, caplog):
-    dag_bag = mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+@pytest.mark.parametrize(
+    "mock_api_instance", ["poll_for_digital_bookplate_979s_email"], indirect=True
+)
+def test_launch_poll_for_979_dags(mocker, mock_api_client, mock_api_instance, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
+    dag_run = mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance,
     )
 
     launch_poll_for_979_dags_email(dag_runs=['manual__2024-10-24:00:00:00'])
 
-    assert dag_bag.called
-    assert "Triggers polling DAG for 979 DAG runs" in caplog.text
+    assert dag_run.called
+    assert (
+        "Triggers polling DAG for 979 DAG runs with DAG run ID manual__2024-10-24:01:30:00"
+        in caplog.text
+    )
 
 
-def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
+@pytest.mark.parametrize("mock_api_instance", ["digital_bookplate_979"], indirect=True)
+def test_trigger_digital_bookplate_979_task(
+    mocker, mock_api_client, mock_api_instance, caplog
+):
     mocker.patch(
-        "libsys_airflow.plugins.digital_bookplates.bookplates.DagBag",
-        return_value=mock_dag_bag,
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance,
     )
     incoming_instances = [
         {},
@@ -515,7 +563,7 @@ def test_trigger_digital_bookplate_979_task(mocker, mock_dag_bag, caplog):
     assert len(dag_run_ids) == 1
 
 
-def test_trigger_digital_bookplate_979_task_no_instances(mocker, mock_dag_bag, caplog):
+def test_trigger_digital_bookplate_979_task_no_instances(mocker, caplog):
     incoming_instances = []
     dag_run_ids = trigger_digital_bookplate_979_task.function(
         instances=incoming_instances

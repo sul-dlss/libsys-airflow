@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 import logging
 import pathlib
 
@@ -25,7 +25,7 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     Saves uploaded file to digital-bookplates/{year}/{day} location
     and if file name already exists, increments until unique
     """
-    current_time = datetime.datetime.utcnow()
+    current_time = datetime.now(timezone.utc)
     report_base = (
         pathlib.Path(files_base)
         / f"{current_time.year}/{current_time.month}/{current_time.day}"
@@ -48,15 +48,18 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     upload_df.to_csv(report_path, index=False)
 
 
-def _get_fund(fund_id: int) -> dict:
+def _get_fund(fund_id: int) -> dict | None:
+    if not fund_id:
+        return None
+
     pg_hook = PostgresHook("digital_bookplates")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         fund = session.query(DigitalBookplate).get(fund_id)
     return {
-        "druid": fund.druid,
-        "fund_name": fund.fund_name,
-        "image_filename": fund.image_filename,
-        "title": fund.title,
+        "druid": fund.druid,  # type: ignore
+        "fund_name": fund.fund_name,  # type: ignore
+        "image_filename": fund.image_filename,  # type: ignore
+        "title": fund.title,  # type: ignore
     }
 
 
@@ -69,14 +72,34 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
     def trigger_add_979_dags(self):
         if "upload-instance-uuids" not in request.files:
             flash("Missing Instance UUIDs file")
-            return redirect('/digital_bookplates_batch_upload')
+            return redirect(f"/pluginsv2/{self.route_base}/")
 
         email = request.form.get("email")
+
         fund_db_id = request.form.get("fundSelect")
+        if not fund_db_id:
+            flash("Fund not selected!")
+            return redirect(f"/pluginsv2/{self.route_base}/")
+
         fund = _get_fund(fund_db_id)
-        raw_upload_instances_file = request.files["upload-instance-uuids"]
+        if fund is None:
+            flash("Invalid fund selected")
+            return redirect(f"/pluginsv2/{self.route_base}/")
+
+        raw_upload_instances_file = request.files.get("upload-instance-uuids")
+        if len(raw_upload_instances_file.filename) < 1:
+            flash("Missing Instance UUIDs file")
+            return redirect(f"/pluginsv2/{self.route_base}/")
+        if not raw_upload_instances_file.filename.endswith("csv"):
+            flash("Instance UUIDs file must be a csv")
+            return redirect(f"/pluginsv2/{self.route_base}/")
+
         try:
             df = pd.read_csv(raw_upload_instances_file, header=None)
+            if df.empty:
+                flash("Warning! Empty Instance UUID file.")
+                return redirect(f"/pluginsv2/{self.route_base}/")
+
             upload_instances_df = df.rename(columns={0: 'Instance UUID'})
             dag_runs = []
             for row in upload_instances_df.iterrows():
@@ -96,7 +119,7 @@ class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
             )
         except pd.errors.EmptyDataError:
             flash("Warning! Empty Instance UUID file.")
-        return redirect('/digital_bookplates_batch_upload')
+        return redirect(f"/pluginsv2/{self.route_base}/")
 
     @expose("/")
     def digital_bookplates_batch_upload_home(self):

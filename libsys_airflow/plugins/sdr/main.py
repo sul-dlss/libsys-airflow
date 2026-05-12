@@ -20,7 +20,7 @@ class SdrPlugin(AirflowPlugin):
     name = "SDR Reports"
     operators = []  # type: ignore
     flask_blueprints = [sdr_missing_barcodes_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [sdr_missing_barcodes_package]

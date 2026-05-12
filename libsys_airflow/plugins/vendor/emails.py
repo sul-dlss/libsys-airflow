@@ -3,8 +3,7 @@ import logging
 import pathlib
 
 from airflow.configuration import conf
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session
@@ -81,8 +80,8 @@ def _additional_email_recipients(vendor_interface_uuid) -> list:
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         interface = VendorInterface.load(vendor_interface_uuid, session)
 
-    recipients = interface.additional_email_recipients
-    if recipients is None:
+    recipients = interface.additional_email_recipients  # type: ignore
+    if not recipients:
         return []
 
     return recipients.replace(',', ' ').split()

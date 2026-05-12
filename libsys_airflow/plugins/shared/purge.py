@@ -3,7 +3,7 @@ import logging
 import pathlib
 import shutil
 
-from airflow.decorators import task
+from airflow.sdk import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy import select
@@ -114,15 +114,15 @@ def _process_vendor_file(vendor_file_info: dict, session: Session):
         for filename in info["files"]:
             vendor_file = session.scalars(
                 select(VendorFile)
-                .where(VendorFile.vendor_interface_id == vendor_interface.id)
+                .where(VendorFile.vendor_interface_id == vendor_interface.id)  # type: ignore
                 .where(VendorFile.vendor_filename == filename)
                 .where(VendorFile.archive_date == updated_date.date())
             ).first()
             if vendor_file is None:
                 logger.error(f"{filename} for {vendor_interface} not found")
                 continue
-            vendor_file.status = FileStatus.purged
-            vendor_file.updated = datetime.utcnow()
+            vendor_file.status = FileStatus.purged  # type: ignore
+            vendor_file.updated = datetime.utcnow()  # type: ignore
             logger.info(f"Updated {vendor_file}")
             session.commit()
 

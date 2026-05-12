@@ -2,8 +2,7 @@ import logging
 
 from jinja2 import Template
 
-from airflow.decorators import task
-from airflow.models import Variable
+from airflow.sdk import task, Variable
 
 from libsys_airflow.plugins.shared.utils import (
     is_production,

@@ -47,8 +47,8 @@ class DataExportUploadPlugin(AirflowPlugin):
     name = "Data Export CSV Upload"
     operators = []  # type: ignore
     flask_blueprints = [data_export_upload_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [data_export_upload_view_package]
     appbuilder_menu_items = []
@@ -58,8 +58,8 @@ class DataExportDownloadPlugin(AirflowPlugin):
     name = "Data Export MARC Download"
     operators = []  # type: ignore
     flask_blueprints = [data_export_download_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [data_export_download_view_package]
     appbuilder_menu_items = []
@@ -69,8 +69,8 @@ class DataExportOCLCReportsPlugin(AirflowPlugin):
     name = "Data Export OCLC Reports"
     operators = []  # type: ignore
     flask_blueprints = [data_export_oclc_reports_bp]
-    hooks = []
-    executors = []
+    hooks = []  # type: ignore
+    executors = []  # type: ignore
     admin_views = []
     appbuilder_views = [data_export_oclc_reports_view_package]
     appbuilder_menu_items = []

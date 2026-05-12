@@ -6,11 +6,8 @@ from datetime import datetime
 
 import folioclient
 
-from airflow.decorators import dag, task
-from airflow.models import Variable
-from airflow.operators.empty import EmptyOperator
-from airflow.operators.python import get_current_context
-from airflow.utils.trigger_rule import TriggerRule
+from airflow.sdk import dag, get_current_context, task, TriggerRule, Variable
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 
 from libsys_airflow.plugins.sdr.helpers import (

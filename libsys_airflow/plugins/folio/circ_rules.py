@@ -6,7 +6,7 @@ import urllib.parse
 import httpx
 
 from typing import Union
-from airflow.operators.python import get_current_context
+from airflow.sdk import get_current_context
 from jsonpath_ng.ext import parse
 
 logger = logging.getLogger(__name__)
