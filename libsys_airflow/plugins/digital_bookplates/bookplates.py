@@ -319,9 +319,10 @@ def retrieve_druids_for_instance_task(**kwargs):
 @task
 def trigger_digital_bookplate_979_task(**kwargs):
     instances = kwargs["instances"]
+    rows = [instances] if isinstance(instances, dict) else instances
     dag_run_ids = []
     total_instances: int = 0
-    for row in instances:
+    for row in rows:
         if len(row) < 1:
             continue
 

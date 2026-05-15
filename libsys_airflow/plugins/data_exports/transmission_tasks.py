@@ -57,7 +57,7 @@ def gather_files_task(**kwargs) -> dict:
         )
     marc_filelist = []
 
-    for f in marc_filepath.glob(file_glob_pattern):
+    for f in sorted(marc_filepath.glob(file_glob_pattern)):
         if f.stat().st_size in [0, 112]:
             continue
         marc_filelist.append(str(f))

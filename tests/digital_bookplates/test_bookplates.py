@@ -563,6 +563,36 @@ def test_trigger_digital_bookplate_979_task(
     assert len(dag_run_ids) == 1
 
 
+@pytest.mark.parametrize("mock_api_instance", ["digital_bookplate_979"], indirect=True)
+def test_trigger_digital_bookplate_979_task_single_dict(
+    mocker, mock_api_client, mock_api_instance, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.api_client",
+        return_value=mock_api_client,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.DagRunApi",
+        return_value=mock_api_instance,
+    )
+    incoming_instances = {
+        'a855e551-47da-4621-9e05-5da512f526f7': [
+            {
+                'fund_name': 'TANENBAUM',
+                'druid': 'yv459xj8957',
+                'image_filename': 'yv459xj8957_00_0001.jp2',
+                'title': 'The Mary M. Tanenbaum Chinese Art Fund',
+            }
+        ]
+    }
+    dag_run_ids = trigger_digital_bookplate_979_task.function(
+        instances=incoming_instances
+    )
+
+    assert "Total incoming instances 1" in caplog.text
+    assert len(dag_run_ids) == 1
+
+
 def test_trigger_digital_bookplate_979_task_no_instances(mocker, caplog):
     incoming_instances = []
     dag_run_ids = trigger_digital_bookplate_979_task.function(

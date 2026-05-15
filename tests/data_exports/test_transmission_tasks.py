@@ -112,14 +112,14 @@ def mock_vendor_s3_files(request, tmp_path, mocker):
     if vendor == "pod":
         file_dir = tmp_path / "data-export-files" / "full-dump" / "pod-files"
         filenames = [
-            "2024030214.xml.gz",
             "2024020314.xml.gz",
+            "2024030214.xml.gz",
         ]
     else:  # google
         file_dir = tmp_path / "data-export-files" / "full-dump" / "google-files"
         filenames = [
-            "2024030214.xml.gz",
             "2024020314.xml.gz",
+            "2024030214.xml.gz",
         ]
 
     file_dir.mkdir(parents=True, exist_ok=True)
