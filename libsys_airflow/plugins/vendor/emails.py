@@ -96,7 +96,7 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
         airflow_url = conf.get('webserver', 'base_url')
         if not airflow_url.endswith("/"):
             airflow_url = f"{airflow_url}/"
-        return f"{airflow_url}/pluginsv2/vendor_management/interfaces/{vendor_interface.id}"
+        return f"{airflow_url}pluginsv2/vendor_management/interfaces/{vendor_interface.id}"
 
 
 @task

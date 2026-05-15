@@ -112,7 +112,7 @@ def test_send_files_fetched_email(pg_hook, mocker, mock_folio_variables):
         vendor_interface_name='Acme FTP',
         vendor_code='ACME',
         vendor_interface_uuid='140530EB-EE54-4302-81EE-D83B9DAC9B6E',
-        vendor_interface_url='https://folio-stage.stanford.edu/vendor_management/interfaces/1',
+        vendor_interface_url='https://folio-stage.stanford.edu/pluginsv2/vendor_management/interfaces/1',
         downloaded_files=['123456.mrc', '234567.mrc'],
         environment='development',
     )
@@ -121,7 +121,7 @@ def test_send_files_fetched_email(pg_hook, mocker, mock_folio_variables):
         to='test@stanford.edu',
         subject="Acme FTP (ACME) - Daily Fetch Report (2021-01-01) [development]",
         html_content="""
-        <h5>Acme FTP (ACME) - <a href="https://folio-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
+        <h5>Acme FTP (ACME) - <a href="https://folio-stage.stanford.edu/pluginsv2/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h5>
 
         <p>
             Files fetched:
@@ -222,7 +222,7 @@ def test_send_file_loaded_bib_email_no_001s(
         subject="Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
         html_content=f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
-        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
+        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/pluginsv2/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 bib record(s) read from MARC file.</p>
@@ -301,7 +301,7 @@ def test_send_file_loaded_bib_email_with_001s(
         subject="Acme FTP (ACME) - (123456.mrc) - File Load Report [development]",
         html_content=f"""
         <h5>FOLIO Catalog MARC Load started on {now}</h5>
-        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
+        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/pluginsv2/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename 123456.mrc - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 bib record(s) read from MARC file.</p>
@@ -375,7 +375,7 @@ def test_send_file_loaded_edi_email(pg_hook, mocker, mock_folio_variables, tmp_p
         subject="Acme FTP (ACME) - (inv574076.edi.txt) - File Load Report [development]",
         html_content=f"""
         <h5>FOLIO Catalog EDI Load started on {now}</h5>
-        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
+        <h6>Acme FTP (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/pluginsv2/vendor_management/interfaces/1">140530EB-EE54-4302-81EE-D83B9DAC9B6E</a></h6>
 
         <p>Filename inv574076.edi.txt - https://folio-stage.stanford.edu/data-import/job-summary/d7460945-6f0c-4e74-86c9-34a8438d652e</p>
         <p>37 invoices read from EDI file.</p>
@@ -399,7 +399,7 @@ def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
         vendor_interface_name='Acme FTP Additional Emails',
         vendor_code='ACME',
         vendor_interface_uuid='C803F1CD-9D6C-4074-A8D9-2C23D4B85B07',
-        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2",
+        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/pluginsv2/vendor_management/interfaces/2",
         filename='123456.mrc',
         environment='development',
     )
@@ -408,7 +408,7 @@ def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
         to='test@stanford.edu,additional1@stanford.edu,additional2@stanford.edu',
         subject="Acme FTP Additional Emails (ACME) - (123456.mrc) - File Processed [development]",
         html_content=f"""
-        <h5>Acme FTP Additional Emails (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2">C803F1CD-9D6C-4074-A8D9-2C23D4B85B07</a></h5>
+        <h5>Acme FTP Additional Emails (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/pluginsv2/vendor_management/interfaces/2">C803F1CD-9D6C-4074-A8D9-2C23D4B85B07</a></h5>
 
         <p>
             File processed, but not loaded: 123456.mrc
