@@ -1,13 +1,12 @@
 from datetime import datetime
 
-from airflow.sdk import dag, get_current_context, task
+from airflow.sdk import dag
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.trigger import CronTriggerTimetable
 
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
     failed_979_dags,
-    run_ids,
-    clear_failed_add_marc_tags_to_record,
+    clear_dag_runs,
     poll_for_979s_dags,
 )
 
@@ -33,19 +32,11 @@ def retry_failed_979s():
 
     end = EmptyOperator(task_id="end")
 
-    @task
-    def find_failed_979_dags():
-        context = get_current_context()
-        bash_operator = failed_979_dags()
-        return bash_operator.execute(context)
+    failed_dag_runs = failed_979_dags()
 
-    failed_dag_runs = find_failed_979_dags()
+    rerun_failed_979_dags = clear_dag_runs(dag_runs=failed_dag_runs)
 
-    dag_run_ids = run_ids(failed_dag_runs)
-
-    rerun_failed_979_dags = clear_failed_add_marc_tags_to_record()
-
-    start >> rerun_failed_979_dags >> poll_for_979s_dags(dag_run_ids) >> end
+    start >> rerun_failed_979_dags >> poll_for_979s_dags(rerun_failed_979_dags) >> end
 
 
 retry_failed_979s()
