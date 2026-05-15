@@ -45,7 +45,7 @@ def dag_run_url(**kwargs) -> str:
             airflow_url = f"{airflow_url}/"
 
     params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
-    return f"{airflow_url}dags/{dag_run.dag.dag_id}/grid?{params}"
+    return f"{airflow_url}dags/{dag_run.dag_id}/grid?{params}"
 
 
 def is_production():
