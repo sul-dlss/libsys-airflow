@@ -54,8 +54,7 @@ def mock_folio_variables(monkeypatch):
 def mock_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "manual_2022-03-05"
-    dag_run.dag = mocker.stub(name="dag")
-    dag_run.dag.dag_id = "send_vendor_records"
+    dag_run.dag_id = "send_vendor_records"
 
     return dag_run
 
@@ -196,7 +195,7 @@ def test_no_files_email(mocker, mock_dag_run, mock_folio_variables, caplog):
     assert html_body.find("a").text == "manual_2022-03-05"
     assert (
         html_body.find("a").attrs["href"]
-        == "http://localhost:8080/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
+        == "http://localhost:8080/dags/send_vendor_records/runs/manual_2022-03-05"
     )
 
 
@@ -238,7 +237,7 @@ def test_failed_transmission_email(mocker, mock_dag_run, mock_folio_variables, c
 
     assert (
         html_body.find("a").attrs["href"]
-        == "http://localhost:8080/dags/send_vendor_records/grid?dag_run_id=manual_2022-03-05"
+        == "http://localhost:8080/dags/send_vendor_records/runs/manual_2022-03-05"
     )
 
     list_items = html_body.findAll("li")
@@ -278,7 +277,7 @@ def test_generate_oclc_new_marc_errors_email(
 def test_failed_full_dump_transmission_email(
     mocker, mock_dag_run, mock_folio_variables
 ):
-    mock_dag_run.dag.dag_id = "send_all_records"
+    mock_dag_run.dag_id = "send_all_records"
 
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
@@ -311,7 +310,7 @@ def test_failed_full_dump_transmission_email(
 
     assert (
         html_body.find("a").attrs["href"]
-        == "http://localhost:8080/dags/send_all_records/grid?dag_run_id=manual_2022-03-05"
+        == "http://localhost:8080/dags/send_all_records/runs/manual_2022-03-05"
     )
 
 
@@ -320,7 +319,7 @@ def test_generate_missing_marc_email(mocker, mock_dag_run, mock_folio_variables)
         "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
     )
 
-    mock_dag_run.dag.dag_id = "select_vendor_records"
+    mock_dag_run.dag_id = "select_vendor_records"
 
     generate_missing_marc_email.function(
         dag_run=mock_dag_run,
@@ -371,7 +370,7 @@ def test_generate_missing_marc_email_oclc(mocker, mock_dag_run, mock_folio_varia
         return_value=True,
     )
 
-    mock_dag_run.dag.dag_id = "select_vendor_records"
+    mock_dag_run.dag_id = "select_vendor_records"
 
     generate_missing_marc_email.function(
         dag_run=mock_dag_run,

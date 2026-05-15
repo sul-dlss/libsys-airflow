@@ -18,7 +18,7 @@ def mock_api_instance(request):
     if test_type == "success":
         mock_response = MagicMock()
         mock_response.dag_id = "digital_bookplate_979"
-        mock_response.dag_run_id = "manual__2024-10-17"
+        mock_response.run_id = "manual__2024-10-17"
         mock_response.conf = {
             "druids_for_instance_id": {"d55f7f1b-9512-452c-98ff-5e2be9dcdb16": {}}
         }
@@ -34,7 +34,7 @@ def mock_api_instance(request):
         # For mixed, create a success response and a 500 exception
         mock_success_response = MagicMock()
         mock_success_response.dag_id = "digital_bookplate_979"
-        mock_success_response.dag_run_id = "manual__2024-10-17"
+        mock_success_response.run_id = "manual__2024-10-17"
         mock_success_response.conf = {
             "druids_for_instance_id": {"d55f7f1b-9512-452c-98ff-5e2be9dcdb16": {}}
         }

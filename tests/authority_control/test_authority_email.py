@@ -31,13 +31,9 @@ def mock_folio_variables(monkeypatch):
     monkeypatch.setattr(Variable, "get", mock_get)
 
 
-class MockDag(BaseModel):
-    dag_id: str = "load_marc_file"
-
-
 class MockDagRun(BaseModel):
     run_id: str = "marc-import-2025-02-12T00:00:00+00:00"
-    dag: MockDag = MockDag()
+    dag_id: str = "load_marc_file"
 
 
 def test_email_deletes_report(mocker, mock_folio_variables):
@@ -56,7 +52,7 @@ def test_email_deletes_report(mocker, mock_folio_variables):
 
     dag_run = MockDagRun()
     dag_run.run_id = "manual__2025-12-16T20:35:13"
-    dag_run.dag.dag_id = "delete_authority_records"
+    dag_run.dag_id = "delete_authority_records"
 
     email_deletes_report(
         deleted=10,

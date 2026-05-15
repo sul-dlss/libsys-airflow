@@ -50,13 +50,8 @@ def mock_folio_variables(monkeypatch):
 
 
 def test_fix_encumbrances_log_file_params(
-    mocker, tmp_path, mock_task_instance, mock_folio_variables, monkeypatch
+    mocker, tmp_path, mock_task_instance, mock_folio_variables
 ):
-    mocker.patch(
-        'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_master.Variable.get',
-        return_value=mock_folio_variables,
-    )
-
     async_mock = AsyncMock()
     mocker.patch(
         'libsys_airflow.plugins.folio.encumbrances.fix_encumbrances_master.run_operation',
@@ -79,7 +74,7 @@ def test_fix_encumbrances_log_file_params(
     assert log_path.endswith("foo-scheduled__2024-07-29T19:00:00:00:00.log")
 
 
-def test_fix_encumbrances_email_subject():
+def test_fix_encumbrances_email_subject(mock_folio_variables):
     from libsys_airflow.plugins.shared.utils import _subject_with_server_name
     from libsys_airflow.plugins.folio.encumbrances.email import subject
 
@@ -87,7 +82,7 @@ def test_fix_encumbrances_email_subject():
     assert subj == "okapi-test - Fix Encumbrances for SUL2024"
 
 
-def test_email_to(mocker):
+def test_email_to(mocker, mock_folio_variables):
     mocker.patch(
         'libsys_airflow.plugins.shared.utils.send_email_with_server_name',
         return_value=None,

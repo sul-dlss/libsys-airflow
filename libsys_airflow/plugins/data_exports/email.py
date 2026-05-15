@@ -201,7 +201,7 @@ def no_files_email(**kwargs):
     """
     dag_run = kwargs["dag_run"]
     dag_run_id = dag_run.run_id
-    dag_id = dag_run.dag.dag_id
+    dag_id = dag_run.dag_id
 
     run_url = dag_run_url(dag_run=dag_run)
     logger.info("Generating email of no files found to transmit")
@@ -260,7 +260,7 @@ def failed_transmission_email(files: list, **kwargs):
     """
     dag_run = kwargs["dag_run"]
     dag_run_id = dag_run.run_id
-    dag_id = dag_run.dag.dag_id
+    dag_id = dag_run.dag_id
 
     run_url = dag_run_url(dag_run=dag_run)
     params = kwargs.get("params", {})
@@ -332,7 +332,7 @@ def _missing_marc_for_instances(**kwargs) -> str:
     instance_uuids: list = kwargs["instance_uuids"]
     dag_run = kwargs["dag_run"]
     dag_run_id = dag_run.run_id
-    dag_id = dag_run.dag.dag_id
+    dag_id = dag_run.dag_id
 
     folio_url: str = kwargs["folio_url"]
 
@@ -432,6 +432,6 @@ def generate_missing_marc_email(**kwargs):
 
     send_email_with_server_name(
         to=email_addresses,
-        subject=f"Instances missing MARC Records for {dag_run.dag.dag_id}",
+        subject=f"Instances missing MARC Records for {dag_run.dag_id}",
         html_content=body,
     )
