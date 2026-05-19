@@ -389,9 +389,9 @@ def test_generate_excluded_email(mocker):
 
     html_body = BeautifulSoup(sul_call[0][2]['html_content'], 'html.parser')
 
-    found_h2s = html_body.findAll("h2")
+    found_h2s = html_body.find_all("h2")
     assert found_h2s[0].text == "Amount split"
-    list_items = html_body.findAll("li")
+    list_items = html_body.find_all("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Invoice line number: 1"
@@ -479,9 +479,9 @@ def test_generate_invoice_error_email(mocker):
 
     assert html_body.find("a").text == invoice_uuid
 
-    table_rows = html_body.findAll("tr")
+    table_rows = html_body.find_all("tr")
 
-    ap_report_row_tds = table_rows[1].findAll("td")
+    ap_report_row_tds = table_rows[1].find_all("td")
 
     assert ap_report_row_tds[0].text == "3500"
     assert ap_report_row_tds[1].text == "2402586"
@@ -518,7 +518,7 @@ def test_generate_summary_email(mocker):
     )
 
     assert html_body.find("h2").text == "Approved Invoices Sent to AP"
-    list_items = html_body.findAll("li")
+    list_items = html_body.find_all("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Vendor Invoice Number: 242428ZP1"
