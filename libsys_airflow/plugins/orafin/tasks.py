@@ -241,7 +241,7 @@ def update_invoices_task(invoice: dict):
 @task.branch()
 def update_email_branch(update_result):
     if update_result is False:
-        return "update-folio.email_invoice_errors"
+        return "update-folio.email_invoice_errors_task"
     return "update-folio.retrieve_voucher_task"
 
 
