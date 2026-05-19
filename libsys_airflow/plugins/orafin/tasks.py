@@ -91,21 +91,21 @@ def email_summary_task(invoices: list):
 
 
 @task
-def email_invoice_errors_task(ti=None):
+def email_invoice_errors_task(invoice=None, ti=None):
     folio_url = Variable.get("FOLIO_URL")
     # Pull from the mapped task using map_index
     update_result = ti.xcom_pull(
         task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
     )
-    if update_result is None or update_result is False:
-        logger.warning(
-            f"No valid invoice to email about, update_result: {update_result}"
-        )
-        return "Skipped - no invoice to email about"
+    # Send error email if update_result is False
+    if update_result is False:
+        if invoice and invoice.get("id"):
+            invoice_id = invoice["id"]
+            generate_invoice_error_email(invoice_id, folio_url, ti)
+            return f"Emailed Error for Invoice {invoice_id}"
 
-    invoice_id = update_result
-    generate_invoice_error_email(invoice_id, folio_url, ti)
-    return f"Emailed Error for Invoice {invoice_id}"
+    logger.info(f"No error to email - update_result: {update_result}")
+    return "Skipped - no error to report"
 
 
 @task

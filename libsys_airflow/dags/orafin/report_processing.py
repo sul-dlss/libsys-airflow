@@ -32,7 +32,10 @@ default_args = {
 def update_folio(record):
     invoice_id = update_invoices_task(invoice=record)
     voucher_result = retrieve_voucher_task()
-    update_email_branch(invoice_id) >> [voucher_result, email_invoice_errors_task()]
+    update_email_branch(invoice_id) >> [
+        voucher_result,
+        email_invoice_errors_task(invoice=record),
+    ]
 
     voucher_result >> update_vouchers_task()
 
