@@ -308,10 +308,14 @@ def test_update_invoice(mock_folio_client, caplog):
     assert invoice["status"] == "Paid"
 
 
-def test_update_invoice_failure(mock_folio_client):
+def test_update_invoice_failure(mock_folio_client, caplog):
     invoice = {"id": "b13c879f-7f5e-49e6-a522-abf04f66fa1b"}
     invoice_update_result = update_invoice(invoice, mock_folio_client)
 
+    assert (
+        "Failed to update invoice b13c879f-7f5e-49e6-a522-abf04f66fa1b: Internal Server Error"
+        in caplog.text
+    )
     assert invoice_update_result is False
 
 
