@@ -245,7 +245,7 @@ def update_email_branch(update_result):
     return "update-folio.retrieve_voucher_task"
 
 
-@task
+@task(trigger_rule="none_failed_min_one_success")
 def update_vouchers_task(ti=None):
     voucher = ti.xcom_pull(
         task_ids="update-folio.retrieve_voucher_task", map_indexes=ti.map_index
