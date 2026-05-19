@@ -222,9 +222,10 @@ def update_invoice(invoice: dict, folio_client: FolioClient) -> Union[dict, bool
     try:
         folio_client.folio_put(f"/invoice/invoices/{invoice['id']}", invoice)
         logger.info(f"Updated {invoice['id']} to status of Paid")
-    except httpx.HTTPError:
+        return invoice
+    except httpx.HTTPError as e:
+        logger.error(f"Failed to update invoice {invoice['id']}: {e}")
         return False
-    return invoice
 
 
 def update_voucher(
