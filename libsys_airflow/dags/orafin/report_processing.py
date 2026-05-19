@@ -65,4 +65,8 @@ with DAG(
 
     invoices = retrieve_invoice_task.expand(row=report_rows)
 
-    update_folio.expand(record=invoices) >> email_group() >> finish_updates
+    # Prevents creating task group instances for already-paid invoices
+    folio_updates = update_folio.expand(record=invoices)
+    emails = email_group()
+
+    folio_updates >> emails >> finish_updates
