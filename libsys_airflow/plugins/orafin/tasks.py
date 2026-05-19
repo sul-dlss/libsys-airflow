@@ -93,10 +93,17 @@ def email_summary_task(invoices: list):
 @task
 def email_invoice_errors_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
-    invoice_id = ti.xcom_pull(task_ids="update_invoices_task")
-    if invoice_id is None:
-        return "No invoice ID to email about"
+    # Pull from the mapped task using map_index
+    update_result = ti.xcom_pull(
+        task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
+    )
+    if update_result is None or update_result is False:
+        logger.warning(
+            f"No valid invoice to email about, update_result: {update_result}"
+        )
+        return "Skipped - no invoice to email about"
 
+    invoice_id = update_result
     generate_invoice_error_email(invoice_id, folio_url, ti)
     return f"Emailed Error for Invoice {invoice_id}"
 
@@ -236,6 +243,7 @@ def update_invoices_task(invoice: dict):
         return invoice['id']  # Update succeeded
     else:
         logger.error("Invoice is None")
+        return None
 
 
 @task.branch()

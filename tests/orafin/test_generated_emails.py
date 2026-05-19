@@ -251,12 +251,14 @@ def test_generate_ap_paid_report_email(mocker):
             return "/opt/airflow/orafin-data/reports/xxdl_ap_payment_09282023161640.csv"
         if task_ids.startswith("retrieve_invoice_task"):
             return [
+                None,  # mapped tasks where some returned None (paid invoices)
                 {
                     "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
                     "vendorInvoiceNo": "23-24364",
                     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
                     "accountingCode": "031134FEEDER",
                 },
+                None,
                 {
                     "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
                     "vendorInvoiceNo": "56-23478",
