@@ -377,10 +377,7 @@ def test_transfer_to_orafin(mock_sftp_hook, mocker, tmp_path, caplog):
 LIB376992    DR000000000023.95USE_CA              1065087-101-AALIB-53245
 LIB376992    TX000000000002.19USE_CA              1065087-101-AALIB-53245"""
     )
-    mocker.patch(
-        "libsys_airflow.plugins.orafin.payments.is_production",
-        return_value=0
-    )
+    mocker.patch("libsys_airflow.plugins.orafin.payments.is_production", return_value=0)
     transfer_to_orafin(str(feeder_file_path))
 
     assert feeder_file_path.exists()
