@@ -230,8 +230,10 @@ def update_invoices_task(invoice: dict):
     if invoice:
         folio_client = _folio_client()
         logger.info(f"Updating Invoice {invoice['id']}")
-        update_invoice(invoice, folio_client)
-        return invoice['id']
+        result = update_invoice(invoice, folio_client)
+        if result is False:
+            return False  # Update failed
+        return invoice['id']  # Update succeeded
     else:
         logger.error("Invoice is None")
 
