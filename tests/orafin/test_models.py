@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, UTC
 import uuid
 
 import pytest  # noqa
@@ -110,7 +110,7 @@ def mock_invoice():
         acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
         fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo="10592",
-        invoiceDate=datetime.datetime(2023, 7, 12),
+        invoiceDate=datetime(2023, 7, 12),
         lines=[
             InvoiceLine(
                 id="b26f45bd-aa92-471d-9aa9-a27d5f520a78",
@@ -238,7 +238,7 @@ def test_expense_codes(mock_folio_client):
 
     invoice = Invoice(
         id="abcdefa",
-        invoiceDate=datetime.datetime(2023, 6, 28),
+        invoiceDate=datetime(2023, 6, 28),
         fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo="12356",
         accountingCode="4567",
@@ -412,7 +412,7 @@ def test_invoice_header_reconcile_amount():
         accountingCode='011033FEEDER',
         id='b88cc4cf-ba1e-4355-9f28-94ef624e7d14',
         acqUnitIds=["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
-        invoiceDate=datetime.datetime(2023, 9, 22),
+        invoiceDate=datetime(2023, 9, 22),
         fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
         folioInvoiceNo='12265',
         subTotal=53790.0,
@@ -675,7 +675,7 @@ def test_attachment_flag(mock_invoice):
 
 def test_terms_name(mock_invoice):
     assert mock_invoice.terms_name == "N30"
-    mock_invoice.paymentDue = datetime.datetime(2023, 7, 13)
+    mock_invoice.paymentDue = datetime(2023, 7, 13)
     assert mock_invoice.terms_name == "IMMEDIATE"
 
 
@@ -833,7 +833,7 @@ def test_feeder_file(mock_invoice, mock_folio_client):
 
     raw_feeder_file = feeder_file.generate()
 
-    current_date_str = datetime.datetime.utcnow().strftime("%Y%m%d")
+    current_date_str = datetime.now(UTC).strftime("%Y%m%d")
     last_line = f"LIB9999999999TR{current_date_str}2000000001516.83"
 
     assert raw_feeder_file.splitlines()[-1] == last_line
@@ -950,7 +950,7 @@ yen_invoice = Invoice(
     currency='JPY',
     exchangeRate=0.006678211586901763,
     fiscalYearId="e9c45170-2eb3-4207-a1c8-39a51e8b9dd0",
-    invoiceDate=datetime.datetime(2023, 10, 2),
+    invoiceDate=datetime(2023, 10, 2),
     subTotal=11200.0,
     total=12085.0,
     folioInvoiceNo='11110',
