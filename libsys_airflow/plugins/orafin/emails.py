@@ -282,6 +282,10 @@ def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
     Retrieves AP report information for invoice that failed to update and
     emails report
     """
+    # Avoids pydantic error if invoice_id is None (for already paid invoices)
+    if invoice_id is None:
+        return
+
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
