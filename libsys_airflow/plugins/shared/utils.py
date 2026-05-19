@@ -4,14 +4,14 @@ import logging
 import pymarc
 import re
 import time
-import urllib
 
 from typing import Union
 from datetime import datetime, timezone
+from urllib.parse import quote
 
+from airflow_client.client import DAGRunResponse
 from airflow.configuration import conf
 from airflow.sdk import Variable
-from airflow_client.client.models.dag_run_response import DAGRunResponse
 from airflow.utils.email import send_email
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
@@ -23,7 +23,7 @@ def execution_date() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def dag_run_response_url(**kwargs) -> str:
+def dag_run_url(**kwargs) -> str:
     dag_run: DAGRunResponse = kwargs["dag_run"]
     airflow_url = kwargs.get("airflow_url")
 
@@ -32,20 +32,8 @@ def dag_run_response_url(**kwargs) -> str:
         if not airflow_url.endswith("/"):
             airflow_url = f"{airflow_url}/"
 
-    return f"{airflow_url}dags/{dag_run.dag_id}/runs/{dag_run.dag_run_id}"
-
-
-def dag_run_url(**kwargs) -> str:
-    dag_run = kwargs["dag_run"]
-    airflow_url = kwargs.get("airflow_url")
-
-    if not airflow_url:
-        airflow_url = conf.get('api', 'base_url')
-        if not airflow_url.endswith("/"):
-            airflow_url = f"{airflow_url}/"
-
-    params = urllib.parse.urlencode({"dag_run_id": dag_run.run_id})
-    return f"{airflow_url}dags/{dag_run.dag.dag_id}/grid?{params}"
+    run_id = getattr(dag_run, 'run_id', '') or getattr(dag_run, 'dag_run_id', '')
+    return f"{airflow_url}dags/{dag_run.dag_id}/runs/{quote(run_id)}"
 
 
 def is_production():

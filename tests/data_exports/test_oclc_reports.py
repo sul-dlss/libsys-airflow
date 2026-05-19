@@ -19,8 +19,7 @@ from libsys_airflow.plugins.data_exports.oclc_reports import (
 def mock_dag_run(mocker):
     dag_run = mocker.stub(name="dag_run")
     dag_run.run_id = "scheduled__2024-07-29T19:00:00:00:00"
-    dag_run.dag = mocker.stub(name="dag")
-    dag_run.dag.dag_id = "send_oclc_records"
+    dag_run.dag_id = "send_oclc_records"
 
     return dag_run
 
@@ -313,7 +312,7 @@ def test_holdings_set_errors_match_task(tmp_path, mocker, mock_dag_run):
     assert dag_a[0].text == "DAG Run"
     assert (
         dag_a[0].attrs["href"]
-        == "http://localhost:8080/dags/send_oclc_records/grid?dag_run_id=scheduled__2024-07-29T19%3A00%3A00%3A00%3A00"
+        == "http://localhost:8080/dags/send_oclc_records/runs/scheduled__2024-07-29T19%3A00%3A00%3A00%3A00"
     )
 
     hoover_report = pathlib.Path(reports['HIN'])

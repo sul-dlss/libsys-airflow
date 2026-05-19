@@ -149,7 +149,7 @@ def mock_folio_add_marc_tags(mocker):
 def mock_dag_run_response():
     mock_response = MagicMock()
     mock_response.dag_id = "digital_bookplate_979"
-    mock_response.dag_run_id = "manual__2026-04-16T21:31:44.765161+00:00"
+    mock_response.run_id = "manual__2026-04-16T21:31:44.765161+00:00"
 
     return mock_response
 
@@ -176,12 +176,12 @@ def mock_folio_client(mocker):
 
 
 def test_dag_run_response_url(mock_dag_run_response):
-    url = utils.dag_run_response_url(
+    url = utils.dag_run_url(
         dag_run=mock_dag_run_response, airflow_url="http://localhost/"
     )
     assert (
         url
-        == "http://localhost/dags/digital_bookplate_979/runs/manual__2026-04-16T21:31:44.765161+00:00"
+        == "http://localhost/dags/digital_bookplate_979/runs/manual__2026-04-16T21%3A31%3A44.765161%2B00%3A00"
     )
 
 

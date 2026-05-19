@@ -416,7 +416,8 @@ def test_generate_failed_dag_email(mocker):
     mock_context = mocker.MagicMock()
     mock_dag_run = mocker.MagicMock()
     mock_dag_run.run_id = "mock_instance_run_id"
-    mock_context.dag_run = mock_dag_run
+    mock_dag_run.dag_id = "ap_payment_report"
+    mock_context.get.return_value = mock_dag_run
 
     generate_failed_dag_email(mock_context, "http://airflow-stanford.edu")
 

@@ -370,7 +370,10 @@ def mock_sftp_hook(mocker):
     return mock_hook
 
 
-def test_transfer_to_orafin(mock_sftp_hook, tmp_path, caplog):
+def test_transfer_to_orafin(mock_sftp_hook, mocker, tmp_path, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.orafin.payments.is_production", return_value=False
+    )
     feeder_file_path = tmp_path / "feeder20210823_202309240000"
     feeder_file_path.write_text(
         """LIB376992    HD006169FEEDER         23-13094 376992                         20230503000000000385.52DR                              N30

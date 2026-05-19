@@ -5,7 +5,7 @@ from airflow_client.client.models.dag_run_response import DAGRunResponse
 from airflow_client.client.rest import ApiException
 from airflow.sdk import BaseSensorOperator
 
-from libsys_airflow.plugins.shared.utils import dag_run_response_url
+from libsys_airflow.plugins.shared.utils import dag_run_url
 from libsys_airflow.plugins.shared.airflow_api_client import (
     api_client,
 )
@@ -44,9 +44,7 @@ class DAG979Sensor(BaseSensorOperator):
             state = api_response.state.name.lower()
             if state in ['success', 'failed']:
                 self.dag_runs[dag_run_id]['state'] = state
-                self.dag_runs[dag_run_id]['url'] = dag_run_response_url(
-                    dag_run=api_response
-                )
+                self.dag_runs[dag_run_id]['url'] = dag_run_url(dag_run=api_response)
                 instances = []
                 dag_run_config: dict = (
                     api_response.conf['druids_for_instance_id']
