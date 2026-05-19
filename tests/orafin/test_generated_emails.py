@@ -296,98 +296,17 @@ def test_generate_ap_paid_report_email(mocker):
     assert "031134FEEDER" not in li.find("a").text
 
 
-def test_generate_ap_paid_report_email_with_none_values(mocker):
-    """Test that None values from paid invoices are filtered out"""
-
-    def _paid_xcom_pull(**kwargs):
-        task_ids = kwargs["task_ids"]
-        if task_ids.startswith("init_processing_task"):
-            return "/opt/airflow/orafin-data/reports/xxdl_ap_payment_09282023161640.csv"
-        if task_ids.startswith("retrieve_invoice_task"):
-            # Simulates mapped tasks where some returned None (paid invoices)
-            return [
-                None,  # Paid invoice
-                None,  # Paid invoice
-                {
-                    "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
-                    "vendorInvoiceNo": "23-24364",
-                    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
-                    "accountingCode": "031134FEEDER",
-                },
-                None,  # Paid invoice
-                {
-                    "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
-                    "vendorInvoiceNo": "56-23478",
-                    "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
-                    "accountingCode": "071724FEEDER",
-                },
-                None,  # Paid invoice
-            ]
-
-    mock_send_email = mocker.patch(
-        "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
-    )
-
-    mocker.patch(
-        "libsys_airflow.plugins.orafin.emails.Variable.get",
-        return_value="test@stanford.edu",
-    )
-
-    task_instance = mocker.MagicMock()
-    task_instance.xcom_pull = _paid_xcom_pull
-
-    total_invoices = generate_ap_paid_report_email(
-        "http://folio.stanford.edu", task_instance
-    )
-
-    assert total_invoices == 2
-    assert mock_send_email.called
-
-    html_body = BeautifulSoup(
-        mock_send_email.call_args[1]['html_content'], 'html.parser'
-    )
-
-    paragraph = html_body.find("p")
-    assert paragraph.text == "From ap report xxdl_ap_payment_09282023161640.csv"
-
-    li = html_body.find("li")
-    assert li.find("a").text == "Vendor Invoice Number: 23-24364"
-
-
-def test_generate_ap_paid_report_email_all_none(mocker):
-    """Test when all mapped tasks return None (all invoices were paid)"""
-
-    def _mock_xcom_pull(**kwargs):
-        task_ids = kwargs["task_ids"]
-        if task_ids.startswith("init_processing_task"):
-            return "/opt/airflow/orafin-data/reports/xxdl_ap_payment.csv"
-        if task_ids.startswith("retrieve_invoice_task"):
-            return [None, None, None, None]  # All paid invoices
-
-    mocker.patch(
-        "libsys_airflow.plugins.orafin.emails.Variable.get",
-        return_value="test@stanford.edu",
-    )
-
-    task_instance = mocker.MagicMock()
-    task_instance.xcom_pull = _mock_xcom_pull
-
-    total_invoices = generate_ap_paid_report_email(
-        "http://folio.stanford.edu", task_instance
-    )
-
-    assert total_invoices == 0
-
-
 def test_generate_ap_paid_report_email_no_invoices(mocker):
-    """Test when retrieve_invoice_task returns None (no mapped tasks)"""
-
     def _mock_xcom_pull(**kwargs):
         task_ids = kwargs["task_ids"]
-        if task_ids.startswith("init_processing_task"):
-            return "/opt/airflow/orafin-data/reports/xxdl_ap_payment.csv"
-        if task_ids.startswith("retrieve_invoice_task"):
-            return None
+        match task_ids:
+            case "init_processing_task":
+                return "/opt/airflow/orafin-data/reports/xxdl_ap_payment.csv"
+
+            case _:
+                return None
+
+    mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
 
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
@@ -470,9 +389,9 @@ def test_generate_excluded_email(mocker):
 
     html_body = BeautifulSoup(sul_call[0][2]['html_content'], 'html.parser')
 
-    found_h2s = html_body.find_all("h2")
+    found_h2s = html_body.findAll("h2")
     assert found_h2s[0].text == "Amount split"
-    list_items = html_body.find_all("li")
+    list_items = html_body.findAll("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Invoice line number: 1"
@@ -560,9 +479,9 @@ def test_generate_invoice_error_email(mocker):
 
     assert html_body.find("a").text == invoice_uuid
 
-    table_rows = html_body.find_all("tr")
+    table_rows = html_body.findAll("tr")
 
-    ap_report_row_tds = table_rows[1].find_all("td")
+    ap_report_row_tds = table_rows[1].findAll("td")
 
     assert ap_report_row_tds[0].text == "3500"
     assert ap_report_row_tds[1].text == "2402586"
@@ -599,7 +518,7 @@ def test_generate_summary_email(mocker):
     )
 
     assert html_body.find("h2").text == "Approved Invoices Sent to AP"
-    list_items = html_body.find_all("li")
+    list_items = html_body.findAll("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Vendor Invoice Number: 242428ZP1"

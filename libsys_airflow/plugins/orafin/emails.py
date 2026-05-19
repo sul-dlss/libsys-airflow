@@ -391,10 +391,6 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     """
     ap_report_path = task_instance.xcom_pull(task_ids="init_processing_task")
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
-    # Filter out None values from the mapped task results
-    if invoices:
-        invoices = [inv for inv in invoices if inv is not None]
-
     ap_report_name = pathlib.Path(ap_report_path).name
     grouped_invoices = _group_invoices_by_acqunit(invoices)
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
