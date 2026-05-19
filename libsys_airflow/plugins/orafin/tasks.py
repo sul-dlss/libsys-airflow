@@ -94,6 +94,9 @@ def email_summary_task(invoices: list):
 def email_invoice_errors_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     invoice_id = ti.xcom_pull(task_ids="update_invoices_task")
+    if invoice_id is None:
+        return "No invoice ID to email about"
+
     generate_invoice_error_email(invoice_id, folio_url, ti)
     return f"Emailed Error for Invoice {invoice_id}"
 
