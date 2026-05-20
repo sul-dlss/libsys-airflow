@@ -10,6 +10,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_failed_dag_email,
     generate_invoice_error_email,
     generate_summary_email,
+    _group_invoices_by_acqunit,
 )
 
 from test_payments import invoice_dict, invoice_lines, vendor
@@ -251,15 +252,12 @@ def test_generate_ap_paid_report_email(mocker):
             return "/opt/airflow/orafin-data/reports/xxdl_ap_payment_09282023161640.csv"
         if task_ids.startswith("retrieve_invoice_task"):
             return [
-                None,  # already-paid invoices will return None in retrieve_invoice_task
                 {
                     "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
                     "vendorInvoiceNo": "23-24364",
                     "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
                     "accountingCode": "031134FEEDER",
                 },
-                None,
-                None,
                 {
                     "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
                     "vendorInvoiceNo": "56-23478",
@@ -297,6 +295,35 @@ def test_generate_ap_paid_report_email(mocker):
     li = html_body.find("li")
     assert li.find("a").text == "Vendor Invoice Number: 23-24364"
     assert "031134FEEDER" not in li.find("a").text
+
+
+def test_group_invoices_by_acqunit():
+    invoice = {
+        "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+        "vendorInvoiceNo": "23-24364",
+        "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+        "accountingCode": "031134FEEDER",
+    }
+
+    grouped_acqunits = _group_invoices_by_acqunit(invoice)
+    assert isinstance(grouped_acqunits["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"], list)
+
+    invoices = [
+        {
+            "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+            "vendorInvoiceNo": "23-24364",
+            "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+            "accountingCode": "031134FEEDER",
+        },
+        {
+            "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
+            "vendorInvoiceNo": "56-23478",
+            "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+            "accountingCode": "071724FEEDER",
+        },
+    ]
+    grouped_acqunits = _group_invoices_by_acqunit(invoices)
+    assert len(grouped_acqunits["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"]) == 2
 
 
 def test_generate_ap_paid_report_email_no_invoices(mocker):

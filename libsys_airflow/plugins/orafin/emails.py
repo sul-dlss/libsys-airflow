@@ -191,12 +191,15 @@ def _group_excluded_invoices(invoices_reasons: list):
     return grouped_acqunits
 
 
-def _group_invoices_by_acqunit(invoices: Union[list, None]) -> dict:
+def _group_invoices_by_acqunit(invoices: Union[dict, list, None]) -> dict:
     """
     Groups invoices by acq unit ID
     """
     grouped_acqunits: dict = {}
     if invoices:
+        if isinstance(invoices, dict):
+            invoices = [invoices]
+
         for row in invoices:
             acq_unit = row["acqUnitIds"][0]
             if acq_unit in grouped_acqunits:
@@ -391,10 +394,6 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
     """
     ap_report_path = task_instance.xcom_pull(task_ids="init_processing_task")
     invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
-    # Filter out None values - these are already-paid and reported in email_errors_task
-    if invoices:
-        invoices = [inv for inv in invoices if inv is not None]
-
     ap_report_name = pathlib.Path(ap_report_path).name
     grouped_invoices = _group_invoices_by_acqunit(invoices)
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
