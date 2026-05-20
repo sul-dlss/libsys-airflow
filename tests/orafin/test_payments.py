@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import pytest  # noqa
 
 from unittest.mock import MagicMock
@@ -269,7 +269,7 @@ def test_get_invoice(mock_folio_client):
     assert invoice.amount == invoice.total
     invoice.total = -100.00
     assert invoice.invoice_type == "CR"
-    invoice.paymentDue = datetime.utcnow()
+    invoice.paymentDue = datetime.now(UTC)
     assert invoice.terms_name == "IMMEDIATE"
     assert invoice.lines[0].tax_code(True) == "SALES_STANDARD"
     invoice.lines[0].adjustmentsTotal = 0.0

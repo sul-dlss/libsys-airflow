@@ -93,7 +93,10 @@ def email_summary_task(invoices: list):
 @task
 def email_invoice_errors_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
-    invoice_id = ti.xcom_pull(task_ids="update_invoices_task")
+    # Pull from the mapped task using map_index
+    invoice_id = ti.xcom_pull(
+        task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
+    )
     generate_invoice_error_email(invoice_id, folio_url, ti)
     return f"Emailed Error for Invoice {invoice_id}"
 
@@ -236,7 +239,7 @@ def update_invoices_task(invoice: dict):
 @task.branch()
 def update_email_branch(update_result):
     if update_result is False:
-        return "update-folio.email_invoice_errors"
+        return "update-folio.email_invoice_errors_task"
     return "update-folio.retrieve_voucher_task"
 
 

@@ -191,12 +191,15 @@ def _group_excluded_invoices(invoices_reasons: list):
     return grouped_acqunits
 
 
-def _group_invoices_by_acqunit(invoices: Union[list, None]) -> dict:
+def _group_invoices_by_acqunit(invoices: Union[dict, list, None]) -> dict:
     """
     Groups invoices by acq unit ID
     """
     grouped_acqunits: dict = {}
     if invoices:
+        if isinstance(invoices, dict):
+            invoices = [invoices]
+
         for row in invoices:
             acq_unit = row["acqUnitIds"][0]
             if acq_unit in grouped_acqunits:

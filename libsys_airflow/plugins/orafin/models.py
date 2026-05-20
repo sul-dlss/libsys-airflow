@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 import numpy as np
 import pandas as pd
@@ -402,7 +402,7 @@ class FeederFile:
         raw_file += "".join(
             [
                 self.trailer_number,
-                f"""TR{datetime.utcnow().strftime("%Y%m%d")}""",
+                f"""TR{datetime.now(UTC).strftime("%Y%m%d")}""",
                 str(self.number_of_invoices),
                 f"{self.batch_total_amount:015.2f}",
             ]

@@ -10,6 +10,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_failed_dag_email,
     generate_invoice_error_email,
     generate_summary_email,
+    _group_invoices_by_acqunit,
 )
 
 from test_payments import invoice_dict, invoice_lines, vendor
@@ -296,6 +297,35 @@ def test_generate_ap_paid_report_email(mocker):
     assert "031134FEEDER" not in li.find("a").text
 
 
+def test_group_invoices_by_acqunit():
+    invoice = {
+        "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+        "vendorInvoiceNo": "23-24364",
+        "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+        "accountingCode": "031134FEEDER",
+    }
+
+    grouped_acqunits = _group_invoices_by_acqunit(invoice)
+    assert isinstance(grouped_acqunits["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"], list)
+
+    invoices = [
+        {
+            "id": "9cf2899a-c7a6-4101-bf8e-c5996ded5fd1",
+            "vendorInvoiceNo": "23-24364",
+            "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+            "accountingCode": "031134FEEDER",
+        },
+        {
+            "id": "de3eabab-94c8-4616-9192-7f7b1483e157",
+            "vendorInvoiceNo": "56-23478",
+            "acqUnitIds": ["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"],
+            "accountingCode": "071724FEEDER",
+        },
+    ]
+    grouped_acqunits = _group_invoices_by_acqunit(invoices)
+    assert len(grouped_acqunits["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"]) == 2
+
+
 def test_generate_ap_paid_report_email_no_invoices(mocker):
     def _mock_xcom_pull(**kwargs):
         task_ids = kwargs["task_ids"]
@@ -389,9 +419,9 @@ def test_generate_excluded_email(mocker):
 
     html_body = BeautifulSoup(sul_call[0][2]['html_content'], 'html.parser')
 
-    found_h2s = html_body.findAll("h2")
+    found_h2s = html_body.find_all("h2")
     assert found_h2s[0].text == "Amount split"
-    list_items = html_body.findAll("li")
+    list_items = html_body.find_all("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Invoice line number: 1"
@@ -480,9 +510,9 @@ def test_generate_invoice_error_email(mocker):
 
     assert html_body.find("a").text == invoice_uuid
 
-    table_rows = html_body.findAll("tr")
+    table_rows = html_body.find_all("tr")
 
-    ap_report_row_tds = table_rows[1].findAll("td")
+    ap_report_row_tds = table_rows[1].find_all("td")
 
     assert ap_report_row_tds[0].text == "3500"
     assert ap_report_row_tds[1].text == "2402586"
@@ -519,7 +549,7 @@ def test_generate_summary_email(mocker):
     )
 
     assert html_body.find("h2").text == "Approved Invoices Sent to AP"
-    list_items = html_body.findAll("li")
+    list_items = html_body.find_all("li")
     assert "Vendor Invoice Number: 242428ZP1" in list_items[0].text
     anchor = html_body.find("a")
     assert anchor.text == "Vendor Invoice Number: 242428ZP1"
