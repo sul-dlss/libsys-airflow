@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import MagicMock, mock_open, patch
 
 from libsys_airflow.plugins.folio.reading_room import (
