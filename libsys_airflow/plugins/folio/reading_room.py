@@ -26,7 +26,7 @@ def get_usergroup_sql_path(**kwargs) -> str:
 
 @task
 def retrieve_usergroup_lookup() -> dict:
-    """Retrieve usergroup custom field options from FOLIO database"""
+    """Retrieve usergroup custom field options from PostgreSQL"""
     lookup = {}
     sql_path = get_usergroup_sql_path()
 
@@ -51,7 +51,6 @@ def retrieve_usergroup_lookup() -> dict:
         logger.warning(
             f"Could not retrieve usergroup lookup from postgres_folio connection: {e}"
         )
-        # Return empty lookup if connection doesn't exist or fails
 
     return lookup
 
@@ -121,168 +120,159 @@ def formatted_date(from_date: Union[str, None]) -> str:
 
 
 @task
-def retrieve_users_batch_for_reading_room_access() -> list:
-    """Retrieve users with reading room access from FOLIO and return in batches"""
+def retrieve_user_id_batches() -> list:
+    """Retrieve user IDs from FOLIO and return in batches"""
     context = get_current_context()
     params = context.get("params", {})
     from_date = params.get("from_date")
-    user_batch_limit = params.get("user_batch_limit", 500)
+    user_batch_limit = params.get("user_batch_limit", 100)
+
+    # Additional safety check
+    if user_batch_limit > 1000:
+        logger.warning(
+            f"user_batch_limit {user_batch_limit} exceeds maximum of 1000, using 1000"
+        )
+        user_batch_limit = 1000
+    elif user_batch_limit < 1:
+        logger.warning(f"user_batch_limit {user_batch_limit} is less than 1, using 1")
+        user_batch_limit = 1
 
     client = folio_client()
     query_date = formatted_date(from_date)
-    logger.info(f"Retrieving users updated after {formatted_date(from_date)}")
+    logger.info(f"Retrieving users updated after {query_date}")
+    logger.info(f"Using batch size: {user_batch_limit}")
 
     # folio_get_all returns a generator
     users_generator = client.folio_get_all(
         "users",
         key="users",
         query=f'updatedDate>"{query_date}"',
-        limit=1000,  # Fetch 1000 users per API call
+        limit=1000,  # Page size for API calls
     )
 
-    # Convert generator to list
-    all_users = [row for row in users_generator]
-    logger.info(f"Retrieved {len(all_users)} users")
+    # Extract only user IDs (not full user objects) - much smaller XCom payload
+    all_user_ids = [user["id"] for user in users_generator]
+
+    logger.info(f"Retrieved {len(all_user_ids)} user IDs total")
 
     # Split into batches
-    if len(all_users) == 0:
+    if len(all_user_ids) == 0:
         logger.info("No users to process")
         return []
 
-    # Create batches using user_batch_limit
-    user_batches = [
-        all_users[x : x + user_batch_limit]
-        for x in range(0, len(all_users), user_batch_limit)
+    # Create batches of user IDs (just strings, very lightweight)
+    user_id_batches = [
+        all_user_ids[x : x + user_batch_limit]
+        for x in range(0, len(all_user_ids), user_batch_limit)
     ]
 
-    logger.info(f"Split into {len(user_batches)} batches")
-    return user_batches
+    logger.info(f"Split into {len(user_id_batches)} batches")
+    return user_id_batches
 
 
 @task(max_active_tis_per_dag=5)
-def generate_reading_room_access_batch(
-    user_batch: list,
+def process_user_id_batch(
+    user_id_batch: list,
     usergroups: dict,
     patron_groups: dict,
     reading_rooms: dict,
-) -> list:
-    """Generate reading room access data for a batch of users in FOLIO"""
-    reading_room_patron_permissions = []
-
-    logger.info(f"Generating reading room access for batch of {len(user_batch)} users")
+) -> dict:
+    """Process a batch of user IDs - fetch data and update permissions"""
+    logger.info(f"Processing batch of {len(user_id_batch)} user IDs")
     client = folio_client()
 
-    for user in user_batch:
-        folio_user = FolioUser(
-            id=user["id"],
-            patronGroup=user.get("patronGroup", ""),
-            customFields=user.get("customFields", {}),
-            patron_groups=patron_groups,
-            usergroups=usergroups,
-        )
+    updates_count = 0
+    errors_count = 0
 
-        permissions = []
-        existing_access = []
-
-        # Get existing permissions
+    for user_id in user_id_batch:
         try:
-            existing_perms = client.folio_get(
-                f"reading-room-patron-permission/{folio_user.id}"
+            # Fetch full user data
+            user = client.folio_get(f"users/{user_id}")
+
+            folio_user = FolioUser(
+                id=user["id"],
+                patronGroup=user.get("patronGroup", ""),
+                customFields=user.get("customFields", {}),
+                patron_groups=patron_groups,
+                usergroups=usergroups,
             )
 
-            for existing_perm in existing_perms:
-                perm_id = existing_perm.get("id", str(uuid.uuid4()))
-                existing_perm["id"] = perm_id
-                if "metadata" in existing_perm:
-                    del existing_perm["metadata"]
-                existing_access.append(existing_perm)
-        except Exception as e:
-            logger.warning(
-                f"Could not retrieve existing permissions for user {folio_user.id}: {e}"
-            )
+            permissions = []
+            existing_access = []
 
-        # Determine access for each reading room
-        for room_name, room_config in reading_rooms_config.items():
-            access = "NOT_ALLOWED"
-
-            # Check if allowed based on patron group
-            for allowed_list in room_config['allowed'].values():
-                if folio_user.patron_group_name in allowed_list:
-                    access = "ALLOWED"
-                    break
-
-            # Check if disallowed based on usergroup (overrides allowed)
-            for disallowed_list in room_config['disallowed'].values():
-                if folio_user.usergroup_name in disallowed_list:
-                    access = "NOT_ALLOWED"
-                    break
-
-            """
-            All users should have an existing entry for each reading room when the
-            reading room is created in FOLIO. However, to be safe, we check here and
-            only add a new entry if one does not already exist.
-            """
-            updated = False
-            for ea in existing_access:
-                if ea.get('readingRoomName') == room_name:
-                    ea['access'] = access
-                    updated = True
-                    break
-
-            # Add new entry if none exists
-            if not updated and not any(
-                ea.get('readingRoomName') == room_name for ea in existing_access
-            ):
-                permissions.append(
-                    {
-                        "id": str(uuid.uuid4()),
-                        "userId": folio_user.id,
-                        "readingRoomId": reading_rooms.get(room_name),
-                        "readingRoomName": room_name,
-                        "access": access,
-                    }
+            # Get existing permissions
+            try:
+                existing_perms = client.folio_get(
+                    f"reading-room-patron-permission/{folio_user.id}"
                 )
 
-        # Combine new and existing permissions
-        permissions.extend(existing_access)
+                for existing_perm in existing_perms:
+                    perm_id = existing_perm.get('id', str(uuid.uuid4()))
+                    existing_perm['id'] = perm_id
+                    if 'metadata' in existing_perm:
+                        del existing_perm['metadata']
+                    existing_access.append(existing_perm)
+            except Exception as e:
+                logger.warning(
+                    f"Could not retrieve existing permissions for user {folio_user.id}: {e}"
+                )
 
-        patron_permissions = {"userId": folio_user.id, "permissions": permissions}
-        reading_room_patron_permissions.append(patron_permissions)
+            # Determine access for each reading room
+            for room_name, room_config in reading_rooms_config.items():
+                access = "NOT_ALLOWED"
 
-    logger.info(
-        f"Generated permissions for {len(reading_room_patron_permissions)} users in batch"
-    )
-    return reading_room_patron_permissions
+                # Check if allowed based on patron group
+                for allowed_list in room_config['allowed'].values():
+                    if folio_user.patron_group_name in allowed_list:
+                        access = "ALLOWED"
+                        break
 
+                # Check if disallowed based on usergroup (overrides allowed)
+                for disallowed_list in room_config['disallowed'].values():
+                    if folio_user.usergroup_name in disallowed_list:
+                        access = "NOT_ALLOWED"
+                        break
 
-@task(max_active_tis_per_dag=5)
-def update_reading_room_permissions_batch(reading_room_patron_permissions: list):
-    """Update reading room access permissions in FOLIO for a batch"""
-    client = folio_client()
+                # Update existing access entry if one exists
+                updated = False
+                for ea in existing_access:
+                    if ea.get('readingRoomName') == room_name:
+                        ea['access'] = access
+                        updated = True
+                        break
 
-    logger.info(
-        f"Updating reading room patron permissions for batch of {len(reading_room_patron_permissions)} users"
-    )
+                # Add new entry if none exists
+                if not updated and not any(
+                    ea.get('readingRoomName') == room_name for ea in existing_access
+                ):
+                    permissions.append(
+                        {
+                            "id": str(uuid.uuid4()),
+                            "userId": folio_user.id,
+                            "readingRoomId": reading_rooms.get(room_name),
+                            "readingRoomName": room_name,
+                            "access": access,
+                        }
+                    )
 
-    success_count = 0
-    error_count = 0
+            # Combine new and existing permissions
+            permissions.extend(existing_access)
 
-    for patron_permission in reading_room_patron_permissions:
-        user_id = patron_permission['userId']
-        permissions = patron_permission['permissions']
-        try:
+            # Update permissions in FOLIO
             client.folio_put(
-                f"reading-room-patron-permission/{user_id}",
+                f"reading-room-patron-permission/{folio_user.id}",
                 permissions,
             )
-            success_count += 1
+            updates_count += 1
+
         except Exception as e:
-            logger.error(f"Failed to update permissions for user {user_id}: {e}")
-            error_count += 1
+            logger.error(f"Failed to process user {user_id}: {e}")
+            errors_count += 1
 
-    logger.info(f"Completed batch: {success_count} successful, {error_count} failed")
+    logger.info(f"Completed batch: {updates_count} successful, {errors_count} errors")
 
-    if error_count > 0:
-        raise Exception(
-            f"Failed to update permissions for {error_count} users in batch"
-        )
+    return {
+        "batch_size": len(user_id_batch),
+        "updates_count": updates_count,
+        "errors_count": errors_count,
+    }
