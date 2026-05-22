@@ -66,9 +66,7 @@ def reading_room_access():
         usergroups=usergroups,
         patron_groups=patron_groups,
         reading_rooms=reading_rooms,
-    ).expand(
-        user_batch=user_batches
-    )
+    ).expand(user_batch=user_batches)
 
     # Update permissions for each batch
     update_reading_room_permissions_batch.expand(
