@@ -6,10 +6,12 @@ from airflow.sdk import dag, Param
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.folio.reading_room import (
+    retrieve_usergroup_lookup,
+    retrieve_patron_group_lookup,
+    retrieve_reading_rooms_lookup,
     retrieve_users_batch_for_reading_room_access,
     generate_reading_room_access,
     update_reading_room_permissions,
-    ReadingRoomsData,
 )
 
 
@@ -44,11 +46,23 @@ default_args = {
     },
 )
 def reading_room_access():
-    reading_rooms_data = ReadingRoomsData()
+    # Retrieve all lookup data as separate tasks
+    usergroups = retrieve_usergroup_lookup()
+    patron_groups = retrieve_patron_group_lookup()
+    reading_rooms = retrieve_reading_rooms_lookup()
+
+    # Retrieve users
     retrieved_users = retrieve_users_batch_for_reading_room_access()
+
+    # Generate access with all lookup data
     generate_access = generate_reading_room_access(
-        users=retrieved_users, reading_rooms_data=reading_rooms_data
+        users=retrieved_users,
+        usergroups=usergroups,
+        patron_groups=patron_groups,
+        reading_rooms=reading_rooms,
     )
+
+    # Update permissions
     update_reading_room_permissions(generate_access)
 
 
