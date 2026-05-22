@@ -128,17 +128,20 @@ def retrieve_users_batch_for_reading_room_access() -> list:
     from_date = params.get("from_date")
 
     client = folio_client()
+    query_date = formatted_date(from_date)
     logger.info(f"Retrieving users updated after {formatted_date(from_date)}")
 
-    users = client.folio_get_all(
+    # folio_get_all returns a generator, so we need to convert to list
+    users_generator = client.folio_get_all(
         "users",
         key="users",
-        query=f'updatedDate>"{formatted_date(from_date)}"',
-        limit=99999,
+        query=f'updatedDate>"{query_date}"',
+        limit=1000,  # Fetch 1000 users per API call
     )
 
-    logger.info(f"Retrieved {len(users)} users")
-    return users
+    users_list = list(users_generator)
+    logger.info(f"Retrieved {len(users_list)} users")
+    return users_list
 
 
 @task
