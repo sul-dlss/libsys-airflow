@@ -26,7 +26,7 @@ def get_usergroup_sql_path(**kwargs) -> str:
 
 @task
 def retrieve_usergroup_lookup() -> dict:
-    """Retrieve usergroup custom field options from PostgreSQL"""
+    """Retrieve usergroup custom field options from FOLIO database"""
     lookup = {}
     sql_path = get_usergroup_sql_path()
 
@@ -38,7 +38,6 @@ def retrieve_usergroup_lookup() -> dict:
 
         logger.info(f"Executing query from {sql_path}")
 
-        # Use PostgresHook - designed for use inside tasks
         pg_hook = PostgresHook(postgres_conn_id="postgres_folio")
         results = pg_hook.get_records(query)
 
@@ -195,7 +194,11 @@ def generate_reading_room_access(
                     access = "NOT_ALLOWED"
                     break
 
-            # Update existing access entry if one exists
+            """
+            All users should have an existing entry for each reading room when the
+            reading room is created in FOLIO. However, to be safe, we check here and
+            only add a new entry if one does not already exist.
+            """
             updated = False
             for ea in existing_access:
                 if ea.get('readingRoomName') == room_name:
