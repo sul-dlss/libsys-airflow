@@ -7,6 +7,7 @@ from datetime import datetime
 import folioclient
 
 from airflow.sdk import dag, get_current_context, task, TriggerRule, Variable
+from airflow.sdk.exceptions import AirflowSkipException
 from airflow.providers.standard.operators.empty import EmptyOperator
 
 
@@ -110,9 +111,12 @@ def manage_sdr_stat_codes(**kwargs):
             map_indexes=None,
         )
 
+        if missing_barcode_files is None:
+            raise AirflowSkipException("No missing barcodes file - skipping task")
+
         concat_missing_barcodes(missing_barcode_files)
 
-    @task(trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS)
+    @task(trigger_rule=TriggerRule.NONE_FAILED)
     def remove_csv_file(**kwargs):
         task_instance = kwargs["ti"]
         csv_file = task_instance.xcom_pull(
