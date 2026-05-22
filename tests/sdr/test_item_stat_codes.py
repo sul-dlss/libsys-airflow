@@ -114,8 +114,9 @@ def test_process_barcode_batch_success(dag, mocker):
     mock_ti.xcom_push.assert_not_called()
 
 
-def test_process_barcode_batch_missing_barcode(dag, mocker):
+def test_process_barcode_batch_missing_barcode(dag, mocker, tmp_path):
     """process_barcode_batch saves missing barcodes to a file and xcom-pushes its path"""
+    missing_file = str(tmp_path / "abc123.csv")
     mock_ti = MagicMock()
     mock_ti.xcom_pull.return_value = STAT_CODE_LOOKUP
     mocker.patch(
@@ -134,7 +135,7 @@ def test_process_barcode_batch_missing_barcode(dag, mocker):
     )
     mocker.patch(
         "libsys_airflow.dags.sdr.item_stat_codes.save_missing_barcodes",
-        return_value="/tmp/abc123.csv",
+        return_value=missing_file,
     )
 
     dag.task_dict["process_barcode_batch"].python_callable(
@@ -142,7 +143,7 @@ def test_process_barcode_batch_missing_barcode(dag, mocker):
     )
 
     mock_ti.xcom_push.assert_called_once_with(
-        key="missing_barcode_file", value="/tmp/abc123.csv"
+        key="missing_barcode_file", value=missing_file
     )
 
 
@@ -159,18 +160,16 @@ def test_process_barcode_batch_api_error(dag, mocker, caplog):
         return_value={"error": "Connection error for barcode: 111"},
     )
 
-    dag.task_dict["process_barcode_batch"].python_callable(
-        batch=["111"], ti=mock_ti
-    )
+    dag.task_dict["process_barcode_batch"].python_callable(batch=["111"], ti=mock_ti)
 
     mock_ti.xcom_push.assert_not_called()
     assert "111 error: Connection error" in caplog.text
 
 
-def test_combine_missing_barcode_files(dag, mocker):
+def test_combine_missing_barcode_files(dag, mocker, tmp_path):
     """combine_missing_barcode_files xcom-pulls with map_indexes=None and calls concat"""
     mock_ti = MagicMock()
-    mock_files = ["/tmp/file1.csv", "/tmp/file2.csv"]
+    mock_files = [str(tmp_path / "file1.csv"), str(tmp_path / "file2.csv")]
     mock_ti.xcom_pull.return_value = mock_files
     mock_concat = mocker.patch(
         "libsys_airflow.dags.sdr.item_stat_codes.concat_missing_barcodes"
