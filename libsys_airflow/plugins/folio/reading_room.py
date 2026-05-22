@@ -122,16 +122,17 @@ def formatted_date(from_date: Union[str, None]) -> str:
 
 @task
 def retrieve_users_batch_for_reading_room_access() -> list:
-    """Retrieve users with reading room access from FOLIO"""
+    """Retrieve users with reading room access from FOLIO and return in batches"""
     context = get_current_context()
     params = context.get("params", {})
     from_date = params.get("from_date")
+    user_batch_limit = params.get("user_batch_limit", 500)
 
     client = folio_client()
     query_date = formatted_date(from_date)
     logger.info(f"Retrieving users updated after {formatted_date(from_date)}")
 
-    # folio_get_all returns a generator, so we need to convert to list
+    # folio_get_all returns a generator
     users_generator = client.folio_get_all(
         "users",
         key="users",
@@ -139,25 +140,39 @@ def retrieve_users_batch_for_reading_room_access() -> list:
         limit=1000,  # Fetch 1000 users per API call
     )
 
-    users_list = list(users_generator)
-    logger.info(f"Retrieved {len(users_list)} users")
-    return users_list
+    # Convert generator to list
+    all_users = [row for row in users_generator]
+    logger.info(f"Retrieved {len(all_users)} users")
+
+    # Split into batches
+    if len(all_users) == 0:
+        logger.info("No users to process")
+        return []
+
+    # Create batches using user_batch_limit
+    user_batches = [
+        all_users[x : x + user_batch_limit]
+        for x in range(0, len(all_users), user_batch_limit)
+    ]
+
+    logger.info(f"Split into {len(user_batches)} batches")
+    return user_batches
 
 
-@task
-def generate_reading_room_access(
-    users: list,
+@task(max_active_tis_per_dag=5)
+def generate_reading_room_access_batch(
+    user_batch: list,
     usergroups: dict,
     patron_groups: dict,
     reading_rooms: dict,
 ) -> list:
-    """Generate reading room access data for users in FOLIO"""
+    """Generate reading room access data for a batch of users in FOLIO"""
     reading_room_patron_permissions = []
 
-    logger.info(f"Generating reading room access for {len(users)} users")
+    logger.info(f"Generating reading room access for batch of {len(user_batch)} users")
     client = folio_client()
 
-    for user in users:
+    for user in user_batch:
         folio_user = FolioUser(
             id=user["id"],
             patronGroup=user.get("patronGroup", ""),
@@ -170,16 +185,21 @@ def generate_reading_room_access(
         existing_access = []
 
         # Get existing permissions
-        existing_perms = client.folio_get(
-            f"reading-room-patron-permission/{folio_user.id}"
-        )
+        try:
+            existing_perms = client.folio_get(
+                f"reading-room-patron-permission/{folio_user.id}"
+            )
 
-        for existing_perm in existing_perms:
-            perm_id = existing_perm.get('id', str(uuid.uuid4()))
-            existing_perm['id'] = perm_id
-            if 'metadata' in existing_perm:
-                del existing_perm['metadata']
-            existing_access.append(existing_perm)
+            for existing_perm in existing_perms:
+                perm_id = existing_perm.get("id", str(uuid.uuid4()))
+                existing_perm["id"] = perm_id
+                if "metadata" in existing_perm:
+                    del existing_perm["metadata"]
+                existing_access.append(existing_perm)
+        except Exception as e:
+            logger.warning(
+                f"Could not retrieve existing permissions for user {folio_user.id}: {e}"
+            )
 
         # Determine access for each reading room
         for room_name, room_config in reading_rooms_config.items():
@@ -230,32 +250,39 @@ def generate_reading_room_access(
         reading_room_patron_permissions.append(patron_permissions)
 
     logger.info(
-        f"Generated permissions for {len(reading_room_patron_permissions)} users"
+        f"Generated permissions for {len(reading_room_patron_permissions)} users in batch"
     )
     return reading_room_patron_permissions
 
 
-@task
-def update_reading_room_permissions(reading_room_patron_permissions: list):
-    """Update reading room access permissions in FOLIO"""
+@task(max_active_tis_per_dag=5)
+def update_reading_room_permissions_batch(reading_room_patron_permissions: list):
+    """Update reading room access permissions in FOLIO for a batch"""
     client = folio_client()
 
     logger.info(
-        f"Updating reading room patron permissions for {len(reading_room_patron_permissions)} users"
+        f"Updating reading room patron permissions for batch of {len(reading_room_patron_permissions)} users"
     )
+
+    success_count = 0
+    error_count = 0
 
     for patron_permission in reading_room_patron_permissions:
         user_id = patron_permission['userId']
         permissions = patron_permission['permissions']
+        try:
+            client.folio_put(
+                f"reading-room-patron-permission/{user_id}",
+                permissions,
+            )
+            success_count += 1
+        except Exception as e:
+            logger.error(f"Failed to update permissions for user {user_id}: {e}")
+            error_count += 1
 
-        logger.debug(
-            f"Updating permissions for user {user_id}: "
-            f"{len(permissions)} permission(s)"
+    logger.info(f"Completed batch: {success_count} successful, {error_count} failed")
+
+    if error_count > 0:
+        raise Exception(
+            f"Failed to update permissions for {error_count} users in batch"
         )
-
-        client.folio_put(
-            f"reading-room-patron-permission/{user_id}",
-            permissions,
-        )
-
-    logger.info("Completed updating reading room permissions")

@@ -10,8 +10,8 @@ from libsys_airflow.plugins.folio.reading_room import (
     retrieve_patron_group_lookup,
     retrieve_reading_rooms_lookup,
     retrieve_users_batch_for_reading_room_access,
-    generate_reading_room_access,
-    update_reading_room_permissions,
+    generate_reading_room_access_batch,
+    update_reading_room_permissions_batch,
 )
 
 
@@ -43,6 +43,13 @@ default_args = {
             type=["null", "string"],
             description="The earliest date to select record IDs from FOLIO.",
         ),
+        "user_batch_limit": Param(
+            500,
+            type="integer",
+            minimum=1,
+            maximum=999,
+            description="Number of users to process per batch (1-999, default: 500).",
+        ),
     },
 )
 def reading_room_access():
@@ -51,19 +58,22 @@ def reading_room_access():
     patron_groups = retrieve_patron_group_lookup()
     reading_rooms = retrieve_reading_rooms_lookup()
 
-    # Retrieve users
-    retrieved_users = retrieve_users_batch_for_reading_room_access()
+    # Retrieve users in batches
+    user_batches = retrieve_users_batch_for_reading_room_access()
 
-    # Generate access with all lookup data
-    generate_access = generate_reading_room_access(
-        users=retrieved_users,
+    # Generate access for each batch
+    permissions_batches = generate_reading_room_access_batch.expand(
+        user_batch=user_batches
+    ).partial(
         usergroups=usergroups,
         patron_groups=patron_groups,
         reading_rooms=reading_rooms,
     )
 
-    # Update permissions
-    update_reading_room_permissions(generate_access)
+    # Update permissions for each batch
+    update_reading_room_permissions_batch.expand(
+        reading_room_patron_permissions=permissions_batches
+    )
 
 
 reading_room_access()
