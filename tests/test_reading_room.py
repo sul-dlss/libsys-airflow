@@ -348,7 +348,7 @@ def test_process_user_id_batch(
                 "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",  # graduate
                 "customFields": {"usergroup": "opt_99"},  # best friend
             }
-        # Existing permissions
+        # Existing permissions - user_1 has wrong access (will be updated)
         elif endpoint == "reading-room-patron-permission/user_1":
             return [
                 {
@@ -356,10 +356,11 @@ def test_process_user_id_batch(
                     "userId": "user_1",
                     "readingRoomId": "95d15527-7bd4-42e7-a629-0618742918e5",
                     "readingRoomName": "Green 24-hour study space",
-                    "access": "ALLOWED",
+                    "access": "ALLOWED",  # Should be NOT_ALLOWED (user has disallowed usergroup)
                     "metadata": {},
                 }
             ]
+        # user_2 and user_3 have no existing permissions (will add new)
         elif endpoint == "reading-room-patron-permission/user_2":
             return []
         elif endpoint == "reading-room-patron-permission/user_3":
@@ -380,7 +381,8 @@ def test_process_user_id_batch(
 
     # Check result summary
     assert result["batch_size"] == 3
-    assert result["updates_count"] == 3
+    assert result["updates_count"] == 3  # All 3 users need updates
+    assert result["skipped_count"] == 0
     assert result["errors_count"] == 0
 
     # Verify folio_put was called 3 times (once per user)
@@ -394,10 +396,7 @@ def test_process_user_id_batch_with_errors(
     """Test processing a batch with some errors"""
     mock_client = MagicMock()
 
-    call_count = 0
-
     def mock_get(endpoint):
-        nonlocal call_count
         if endpoint == "users/user_1":
             return {
                 "id": "user_1",
@@ -432,6 +431,7 @@ def test_process_user_id_batch_with_errors(
     # Check result summary
     assert result["batch_size"] == 3
     assert result["updates_count"] == 2  # user_1 and user_3 succeeded
+    assert result["skipped_count"] == 0
     assert result["errors_count"] == 1  # user_2 failed
 
     # Verify folio_put was called 2 times (not for failed user)
@@ -473,6 +473,7 @@ def test_process_user_id_batch_permission_update_failure(
     # Check result summary - should count as error
     assert result["batch_size"] == 1
     assert result["updates_count"] == 0
+    assert result["skipped_count"] == 0
     assert result["errors_count"] == 1
 
 
@@ -496,10 +497,71 @@ def test_process_user_id_batch_empty(
     # Check result summary
     assert result["batch_size"] == 0
     assert result["updates_count"] == 0
+    assert result["skipped_count"] == 0
     assert result["errors_count"] == 0
 
     # Verify no API calls were made
     mock_client.folio_get.assert_not_called()
+    mock_client.folio_put.assert_not_called()
+
+
+@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
+def test_process_user_id_batch_no_changes_needed(
+    mock_client_func, lookup_data, mock_reading_rooms_config
+):
+    """Test that users with correct permissions are skipped"""
+    mock_client = MagicMock()
+
+    def mock_get(endpoint):
+        if endpoint == "users/user_1":
+            return {
+                "id": "user_1",
+                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                "customFields": {
+                    "usergroup": "opt_1"
+                },  # sul - borrowdirect brown (disallowed)
+            }
+        elif endpoint == "reading-room-patron-permission/user_1":
+            # User already has correct permissions
+            return [
+                {
+                    "id": "perm_user_1",
+                    "userId": "user_1",
+                    "readingRoomId": "95d15527-7bd4-42e7-a629-0618742918e5",
+                    "readingRoomName": "Green 24-hour study space",
+                    "access": "NOT_ALLOWED",  # Correct - faculty but disallowed usergroup
+                    "metadata": {},
+                },
+                {
+                    "id": "perm_user_2",
+                    "userId": "user_1",
+                    "readingRoomId": "a4d15527-7bd4-42e7-a629-0618742918e6",
+                    "readingRoomName": "Reading Room A",
+                    "access": "NOT_ALLOWED",  # Correct - faculty but disallowed usergroup
+                    "metadata": {},
+                },
+            ]
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
+    mock_client_func.return_value = mock_client
+
+    user_id_batch = ["user_1"]
+
+    result = process_user_id_batch.function(
+        user_id_batch=user_id_batch,
+        usergroups=lookup_data["usergroups"],
+        patron_groups=lookup_data["patron_groups"],
+        reading_rooms=lookup_data["reading_rooms"],
+    )
+
+    # Check result summary - user should be skipped
+    assert result["batch_size"] == 1
+    assert result["updates_count"] == 0
+    assert result["skipped_count"] == 1  # User already has correct permissions
+    assert result["errors_count"] == 0
+
+    # Verify folio_put was NOT called
     mock_client.folio_put.assert_not_called()
 
 
@@ -585,6 +647,7 @@ def test_process_user_id_batch_access_determination(
     assert green_perm_not_allowed["access"] == "NOT_ALLOWED"
 
     assert result["updates_count"] == 3
+    assert result["skipped_count"] == 0
     assert result["errors_count"] == 0
 
 
@@ -600,7 +663,7 @@ def test_process_user_id_batch_preserves_existing_permissions(
             return {
                 "id": "user_1",
                 "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {"usergroup": "opt_99"},
+                "customFields": {"usergroup": "opt_99"},  # best friend (allowed)
             }
         elif endpoint == "reading-room-patron-permission/user_1":
             # User already has existing permissions
@@ -644,8 +707,8 @@ def test_process_user_id_batch_preserves_existing_permissions(
     )
 
     # Verify existing permission IDs are preserved
-    assert any(p["id"] == "existing_perm_1" for p in permissions_captured)
-    assert any(p["id"] == "existing_perm_2" for p in permissions_captured)
+    assert any(p.get("id") == "existing_perm_1" for p in permissions_captured)
+    assert any(p.get("id") == "existing_perm_2" for p in permissions_captured)
 
     # Verify metadata was removed
     for p in permissions_captured:
@@ -659,6 +722,62 @@ def test_process_user_id_batch_preserves_existing_permissions(
     )
     assert green_perm["access"] == "ALLOWED"  # Updated from NOT_ALLOWED
     assert green_perm["id"] == "existing_perm_1"  # Same ID preserved
+
+    assert result["updates_count"] == 1
+    assert result["skipped_count"] == 0
+    assert result["errors_count"] == 0
+
+
+@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
+def test_process_user_id_batch_skips_missing_rooms(
+    mock_client_func, lookup_data, mock_reading_rooms_config, caplog
+):
+    """Test that rooms in config but not in FOLIO are skipped"""
+    mock_client = MagicMock()
+
+    # Create a reading_rooms lookup that's missing "Reading Room A"
+    incomplete_reading_rooms = {
+        "Green 24-hour study space": "95d15527-7bd4-42e7-a629-0618742918e5",
+        # "Reading Room A" is missing
+    }
+
+    def mock_get(endpoint):
+        if endpoint == "users/user_1":
+            return {
+                "id": "user_1",
+                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                "customFields": {"usergroup": "opt_99"},
+            }
+        elif "reading-room-patron-permission" in endpoint:
+            return []
+        return {}
+
+    permissions_captured = None
+
+    def mock_put(endpoint, permissions):
+        nonlocal permissions_captured
+        permissions_captured = permissions
+
+    mock_client.folio_get.side_effect = mock_get
+    mock_client.folio_put.side_effect = mock_put
+    mock_client_func.return_value = mock_client
+
+    user_id_batch = ["user_1"]
+
+    result = process_user_id_batch.function(
+        user_id_batch=user_id_batch,
+        usergroups=lookup_data["usergroups"],
+        patron_groups=lookup_data["patron_groups"],
+        reading_rooms=incomplete_reading_rooms,  # Missing "Reading Room A"
+    )
+
+    # Should only create permission for "Green 24-hour study space"
+    assert len(permissions_captured) == 1
+    assert permissions_captured[0]["readingRoomName"] == "Green 24-hour study space"
+
+    # Should log warning about missing room
+    assert "Rooms in config but not in FOLIO" in caplog.text
+    assert "Reading Room A" in caplog.text
 
     assert result["updates_count"] == 1
     assert result["errors_count"] == 0

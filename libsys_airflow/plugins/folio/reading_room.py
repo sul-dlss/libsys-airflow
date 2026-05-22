@@ -179,9 +179,28 @@ def process_user_id_batch(
 ) -> dict:
     """Process a batch of user IDs - fetch data and update permissions"""
     logger.info(f"Processing batch of {len(user_id_batch)} user IDs")
+
+    # Warn about config/FOLIO room mismatches
+    config_rooms = set(reading_rooms_config.keys())
+    folio_rooms = set(reading_rooms.keys())
+    missing_in_folio = config_rooms - folio_rooms
+    missing_in_config = folio_rooms - config_rooms
+
+    if missing_in_folio:
+        logger.warning(
+            f"Rooms in config but not in FOLIO: {missing_in_folio}. "
+            f"These rooms will be skipped."
+        )
+    if missing_in_config:
+        logger.info(
+            f"Rooms in FOLIO but not in config: {missing_in_config}. "
+            f"Existing permissions for these rooms will be preserved as-is."
+        )
+
     client = folio_client()
 
     updates_count = 0
+    skipped_count = 0
     errors_count = 0
 
     for user_id in user_id_batch:
@@ -197,8 +216,9 @@ def process_user_id_batch(
                 usergroups=usergroups,
             )
 
-            permissions = []
+            new_permissions = []
             existing_access = []
+            has_changes = False
 
             # Get existing permissions
             try:
@@ -207,18 +227,30 @@ def process_user_id_batch(
                 )
 
                 for existing_perm in existing_perms:
-                    perm_id = existing_perm.get('id', str(uuid.uuid4()))
-                    existing_perm['id'] = perm_id
+                    # Ensure id exists, generate if missing
+                    if 'id' not in existing_perm:
+                        existing_perm['id'] = str(uuid.uuid4())
+                    # Remove metadata
                     if 'metadata' in existing_perm:
                         del existing_perm['metadata']
                     existing_access.append(existing_perm)
+
             except Exception as e:
                 logger.warning(
                     f"Could not retrieve existing permissions for user {folio_user.id}: {e}"
                 )
 
-            # Determine access for each reading room
+            # Determine access for each reading room in our config
             for room_name, room_config in reading_rooms_config.items():
+                # Skip if room doesn't exist in FOLIO
+                room_id = reading_rooms.get(room_name)
+                if room_id is None:
+                    logger.debug(
+                        f"Skipping room '{room_name}' for user {folio_user.id} - "
+                        f"not found in FOLIO"
+                    )
+                    continue
+
                 access = "NOT_ALLOWED"
 
                 # Check if allowed based on patron group
@@ -233,35 +265,72 @@ def process_user_id_batch(
                         access = "NOT_ALLOWED"
                         break
 
-                # Update existing access entry if one exists
-                updated = False
+                # Check if user already has this permission with the correct access
+                found_existing = False
                 for ea in existing_access:
                     if ea.get('readingRoomName') == room_name:
-                        ea['access'] = access
-                        updated = True
+                        found_existing = True
+                        # Check if access needs to be updated
+                        if ea.get('access') != access:
+                            logger.debug(
+                                f"Access change for {folio_user.id} - "
+                                f"room: {room_name}, {ea.get('access')} -> {access}"
+                            )
+                            ea['access'] = access
+                            has_changes = True
                         break
 
-                # Add new entry if none exists
-                if not updated and not any(
-                    ea.get('readingRoomName') == room_name for ea in existing_access
-                ):
-                    permissions.append(
+                # Add new entry if none exists for this reading room
+                if not found_existing:
+                    logger.debug(
+                        f"Adding new permission for {folio_user.id} - "
+                        f"room: {room_name}, access: {access}"
+                    )
+
+                    # Include 'id' for new permissions - REQUIRED by API
+                    new_permissions.append(
                         {
                             "id": str(uuid.uuid4()),
                             "userId": folio_user.id,
-                            "readingRoomId": reading_rooms.get(room_name),
+                            "readingRoomId": room_id,
                             "readingRoomName": room_name,
                             "access": access,
                         }
                     )
+                    has_changes = True
 
             # Combine new and existing permissions
-            permissions.extend(existing_access)
+            all_permissions = new_permissions + existing_access
+
+            # Only do PUT if there are changes
+            if not has_changes:
+                logger.info(f"No changes needed for user {folio_user.id}, skipping PUT")
+                skipped_count += 1
+                continue
+
+            # Validate all permissions before sending
+            for perm in all_permissions:
+                if not perm.get('id'):
+                    logger.error(f"Permission missing id: {perm}")
+                    raise ValueError(
+                        f"Invalid permission structure for user {folio_user.id} - missing id"
+                    )
+                if not perm.get('readingRoomId'):
+                    logger.error(f"Permission missing readingRoomId: {perm}")
+                    raise ValueError(
+                        f"Invalid permission structure for user {folio_user.id} - missing readingRoomId"
+                    )
+
+            # Log what we're about to send
+            logger.info(
+                f"Updating {len(all_permissions)} permissions for user {folio_user.id} "
+                f"({len(new_permissions)} new, {len(existing_access)} existing)"
+            )
 
             # Update permissions in FOLIO
             client.folio_put(
                 f"reading-room-patron-permission/{folio_user.id}",
-                permissions,
+                all_permissions,
             )
             updates_count += 1
 
@@ -269,10 +338,14 @@ def process_user_id_batch(
             logger.error(f"Failed to process user {user_id}: {e}")
             errors_count += 1
 
-    logger.info(f"Completed batch: {updates_count} successful, {errors_count} errors")
+    logger.info(
+        f"Completed batch: {updates_count} updated, {skipped_count} skipped (no changes), "
+        f"{errors_count} errors"
+    )
 
     return {
         "batch_size": len(user_id_batch),
         "updates_count": updates_count,
+        "skipped_count": skipped_count,
         "errors_count": errors_count,
     }
