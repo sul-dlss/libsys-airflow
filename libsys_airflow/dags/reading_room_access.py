@@ -62,12 +62,12 @@ def reading_room_access():
     user_batches = retrieve_users_batch_for_reading_room_access()
 
     # Generate access for each batch
-    permissions_batches = generate_reading_room_access_batch.expand(
-        user_batch=user_batches
-    ).partial(
+    permissions_batches = generate_reading_room_access_batch.partial(
         usergroups=usergroups,
         patron_groups=patron_groups,
         reading_rooms=reading_rooms,
+    ).expand(
+        user_batch=user_batches
     )
 
     # Update permissions for each batch
