@@ -6,7 +6,7 @@ from libsys_airflow.plugins.folio.reading_room import (
     retrieve_patron_group_lookup,
     retrieve_reading_rooms_lookup,
     retrieve_user_id_batches,
-    process_user_id_batch,
+    process_user_batch_by_offset,
     formatted_date,
     get_usergroup_sql_path,
 )
@@ -238,23 +238,14 @@ def test_retrieve_reading_rooms_lookup(mock_client_func):
 def test_retrieve_user_id_batches(mock_client_func, mock_context):
     """Test user ID batch retrieval"""
     mock_client = MagicMock()
-    mock_client.folio_get_all.return_value = [
-        {
-            "id": "user_1",
-            "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
-            "customFields": {"usergroup": "opt_1"},
-        },
-        {
-            "id": "user_2",
-            "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",
-            "customFields": {"usergroup": "opt_2"},
-        },
-        {
-            "id": "user_3",
-            "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",
-            "customFields": {"usergroup": "opt_99"},
-        },
-    ]
+
+    # Mock folio_get to return total count when key="totalRecords"
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "totalRecords":
+            return 250  # Return an integer, not a MagicMock
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
     mock_context.return_value = {
         "params": {"from_date": "2025-12-01", "user_batch_limit": 100}
@@ -262,45 +253,74 @@ def test_retrieve_user_id_batches(mock_client_func, mock_context):
 
     result = retrieve_user_id_batches.function()
 
-    # Result should be a list of batches containing only user IDs
-    assert len(result) == 1  # 1 batch (3 users with batch_limit of 100)
-    assert len(result[0]) == 3  # First batch contains 3 user IDs
-    assert result[0] == ["user_1", "user_2", "user_3"]  # Just IDs, not full objects
-    mock_client.folio_get_all.assert_called_once()
+    # Result should be a list of batch metadata dictionaries
+    assert len(result) == 3  # 250 users / 100 per batch = 3 batches
+
+    # Check first batch
+    assert result[0] == {"from_date": "2025-12-01", "offset": 0, "limit": 100}
+
+    # Check second batch
+    assert result[1] == {"from_date": "2025-12-01", "offset": 100, "limit": 100}
+
+    # Check third batch (remaining 50 users)
+    assert result[2] == {"from_date": "2025-12-01", "offset": 200, "limit": 50}
+
+
+@patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
+@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
+def test_retrieve_user_id_batches_no_users(mock_client_func, mock_context):
+    """Test retrieving user ID batches when no users found"""
+    mock_client = MagicMock()
+
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "totalRecords":
+            return 0  # No users
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
+    mock_client_func.return_value = mock_client
+    mock_context.return_value = {
+        "params": {"from_date": "2025-12-01", "user_batch_limit": 100}
+    }
+
+    result = retrieve_user_id_batches.function()
+
+    # Should return empty list when no users
+    assert result == []
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
 def test_retrieve_user_id_batches_large_dataset(mock_client_func, mock_context):
-    """Test user ID batch retrieval with large dataset"""
+    """Test retrieving user ID batches with large dataset"""
     mock_client = MagicMock()
 
-    # Create 250 mock users
-    mock_users = [
-        {
-            "id": f"user_{i}",
-            "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
-            "customFields": {"usergroup": "opt_1"},
-        }
-        for i in range(250)
-    ]
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "totalRecords":
+            return 130052  # Large number of users
+        return {}
 
-    mock_client.folio_get_all.return_value = mock_users
+    mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
     mock_context.return_value = {
-        "params": {"from_date": "2025-12-01", "user_batch_limit": 100}
+        "params": {"from_date": "2024-11-01", "user_batch_limit": 100}
     }
 
     result = retrieve_user_id_batches.function()
 
-    # Result should be 3 batches (100, 100, 50)
-    assert len(result) == 3
-    assert len(result[0]) == 100  # First batch
-    assert len(result[1]) == 100  # Second batch
-    assert len(result[2]) == 50  # Third batch (remaining users)
-    # Verify they're just IDs
-    assert result[0][0] == "user_0"
-    assert result[2][-1] == "user_249"
+    # Should create 1301 batches (130052 / 100 = 1300.52 -> 1301)
+    assert len(result) == 1301
+
+    # Check first batch
+    assert result[0]["offset"] == 0
+    assert result[0]["limit"] == 100
+
+    # Check last batch (should have 52 users)
+    assert result[-1]["offset"] == 130000
+    assert result[-1]["limit"] == 52
+
+    # All batches should have the same from_date
+    assert all(batch["from_date"] == "2024-11-01" for batch in result)
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
@@ -308,46 +328,80 @@ def test_retrieve_user_id_batches_large_dataset(mock_client_func, mock_context):
 def test_retrieve_user_id_batches_empty_result(mock_client_func, mock_context):
     """Test user ID batch retrieval with no users"""
     mock_client = MagicMock()
-    mock_client.folio_get_all.return_value = []
+
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "totalRecords":
+            return 0
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
+    # Try to set batch limit above 1000
     mock_context.return_value = {
-        "params": {"from_date": "2025-12-01", "user_batch_limit": 100}
+        "params": {"from_date": "2025-12-01", "user_batch_limit": 1500}
     }
 
     result = retrieve_user_id_batches.function()
 
     assert result == []
-    mock_client.folio_get_all.assert_called_once()
 
 
-# Test process_user_id_batch
+@patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch(
-    mock_client_func, lookup_data, mock_reading_rooms_config
-):
-    """Test processing a batch of user IDs"""
+def test_retrieve_user_id_batches_exceeds_max_limit(mock_client_func, mock_context):
+    """Test that batch limit is capped at 1000"""
     mock_client = MagicMock()
 
-    # Mock user data retrieval
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {"usergroup": "opt_1"},  # sul - borrowdirect brown
-            }
-        elif endpoint == "users/user_2":
-            return {
-                "id": "user_2",
-                "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",  # courtesy
-                "customFields": {"usergroup": "opt_99"},  # best friend
-            }
-        elif endpoint == "users/user_3":
-            return {
-                "id": "user_3",
-                "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",  # graduate
-                "customFields": {"usergroup": "opt_99"},  # best friend
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "totalRecords":
+            return 2500
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
+    mock_client_func.return_value = mock_client
+    # Try to set batch limit above 1000
+    mock_context.return_value = {
+        "params": {"from_date": "2025-12-01", "user_batch_limit": 1500}
+    }
+
+    result = retrieve_user_id_batches.function()
+
+    # Should cap at 1000, so 2500 / 1000 = 3 batches
+    assert len(result) == 3
+    assert result[0]["limit"] == 1000
+    assert result[1]["limit"] == 1000
+    assert result[2]["limit"] == 500  # Remaining
+
+
+# Test process_user_batch_by_offset
+@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
+def test_process_user_batch_by_offset(
+    mock_client_func, lookup_data, mock_reading_rooms_config
+):
+    """Test processing a batch of users by offset"""
+    mock_client = MagicMock()
+
+    # Mock fetching users for this batch
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            # Return users for this batch
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {"usergroup": "opt_1"},  # sul - borrowdirect brown
+                },
+                {
+                    "id": "user_2",
+                    "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",  # courtesy
+                    "customFields": {"usergroup": "opt_99"},  # best friend
+                },
+                {
+                    "id": "user_3",
+                    "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",  # graduate
+                    "customFields": {"usergroup": "opt_99"},  # best friend
+                },
+            ]
         # Existing permissions - user_1 has wrong access (will be updated)
         elif endpoint == "reading-room-patron-permission/user_1":
             return [
@@ -370,10 +424,10 @@ def test_process_user_id_batch(
     mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1", "user_2", "user_3"]
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -381,6 +435,7 @@ def test_process_user_id_batch(
 
     # Check result summary
     assert result["batch_size"] == 3
+    assert result["offset"] == 0
     assert result["updates_count"] == 3  # All 3 users need updates
     assert result["skipped_count"] == 0
     assert result["errors_count"] == 0
@@ -390,39 +445,47 @@ def test_process_user_id_batch(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_with_errors(
+def test_process_user_batch_by_offset_with_errors(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test processing a batch with some errors"""
     mock_client = MagicMock()
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
-                "customFields": {"usergroup": "opt_1"},
-            }
-        elif endpoint == "users/user_2":
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
+                    "customFields": {"usergroup": "opt_1"},
+                },
+                {
+                    "id": "user_2",
+                    "patronGroup": "c2f10c81-01c1-4b97-9362-6d412df42f53",
+                    "customFields": {"usergroup": "opt_99"},
+                },
+                {
+                    "id": "user_3",
+                    "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",
+                    "customFields": {"usergroup": "opt_99"},
+                },
+            ]
+        elif endpoint == "reading-room-patron-permission/user_1":
+            return []
+        elif endpoint == "reading-room-patron-permission/user_2":
             # Simulate API error for user_2
-            raise Exception("User not found")
-        elif endpoint == "users/user_3":
-            return {
-                "id": "user_3",
-                "patronGroup": "d3f10c81-01c1-4b97-9362-6d412df42f54",
-                "customFields": {"usergroup": "opt_99"},
-            }
-        elif "reading-room-patron-permission" in endpoint:
+            raise Exception("Permission not found")
+        elif endpoint == "reading-room-patron-permission/user_3":
             return []
         return {}
 
     mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1", "user_2", "user_3"]
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -439,19 +502,21 @@ def test_process_user_id_batch_with_errors(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_permission_update_failure(
+def test_process_user_batch_by_offset_permission_update_failure(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test when permission update fails"""
     mock_client = MagicMock()
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
-                "customFields": {"usergroup": "opt_1"},
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",
+                    "customFields": {"usergroup": "opt_1"},
+                }
+            ]
         elif "reading-room-patron-permission" in endpoint:
             return []
         return {}
@@ -461,10 +526,10 @@ def test_process_user_id_batch_permission_update_failure(
     mock_client.folio_put.side_effect = Exception("Permission update failed")
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1"]
+    batch_metadata = {"from_date": "2024-11-01T00:00:00", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -478,17 +543,24 @@ def test_process_user_id_batch_permission_update_failure(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_empty(
+def test_process_user_batch_by_offset_empty(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test processing empty batch"""
     mock_client = MagicMock()
+
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return []
+        return {}
+
+    mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
 
-    user_id_batch = []
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -500,27 +572,28 @@ def test_process_user_id_batch_empty(
     assert result["skipped_count"] == 0
     assert result["errors_count"] == 0
 
-    # Verify no API calls were made
-    mock_client.folio_get.assert_not_called()
+    # Verify folio_put was not called
     mock_client.folio_put.assert_not_called()
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_no_changes_needed(
+def test_process_user_batch_by_offset_no_changes_needed(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test that users with correct permissions are skipped"""
     mock_client = MagicMock()
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {
-                    "usergroup": "opt_1"
-                },  # sul - borrowdirect brown (disallowed)
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {
+                        "usergroup": "opt_1"
+                    },  # sul - borrowdirect brown (disallowed)
+                }
+            ]
         elif endpoint == "reading-room-patron-permission/user_1":
             # User already has correct permissions
             return [
@@ -546,10 +619,10 @@ def test_process_user_id_batch_no_changes_needed(
     mock_client.folio_get.side_effect = mock_get
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1"]
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -566,33 +639,35 @@ def test_process_user_id_batch_no_changes_needed(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_access_determination(
+def test_process_user_batch_by_offset_access_determination(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test that access is correctly determined based on patron group and usergroup"""
     mock_client = MagicMock()
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_faculty_allowed":
-            return {
-                "id": "user_faculty_allowed",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {"usergroup": "opt_99"},  # best friend (not disallowed)
-            }
-        elif endpoint == "users/user_faculty_disallowed":
-            return {
-                "id": "user_faculty_disallowed",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {
-                    "usergroup": "opt_1"
-                },  # sul - borrowdirect brown (disallowed)
-            }
-        elif endpoint == "users/user_not_allowed":
-            return {
-                "id": "user_not_allowed",
-                "patronGroup": "e4f10c81-01c1-4b97-9362-6d412df42f55",  # pseudopatron (not in allowed list)
-                "customFields": {"usergroup": "opt_99"},
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_faculty_allowed",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {
+                        "usergroup": "opt_99"
+                    },  # best friend (not disallowed)
+                },
+                {
+                    "id": "user_faculty_disallowed",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {
+                        "usergroup": "opt_1"
+                    },  # sul - borrowdirect brown (disallowed)
+                },
+                {
+                    "id": "user_not_allowed",
+                    "patronGroup": "e4f10c81-01c1-4b97-9362-6d412df42f55",  # pseudopatron (not in allowed list)
+                    "customFields": {"usergroup": "opt_99"},
+                },
+            ]
         elif "reading-room-patron-permission" in endpoint:
             return []
         return {}
@@ -608,14 +683,10 @@ def test_process_user_id_batch_access_determination(
     mock_client.folio_put.side_effect = mock_put
     mock_client_func.return_value = mock_client
 
-    user_id_batch = [
-        "user_faculty_allowed",
-        "user_faculty_disallowed",
-        "user_not_allowed",
-    ]
+    batch_metadata = {"from_date": "2024-11-01T00:00:00", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -652,19 +723,21 @@ def test_process_user_id_batch_access_determination(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_preserves_existing_permissions(
+def test_process_user_batch_by_offset_preserves_existing_permissions(
     mock_client_func, lookup_data, mock_reading_rooms_config
 ):
     """Test that existing permissions are updated, not replaced"""
     mock_client = MagicMock()
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {"usergroup": "opt_99"},  # best friend (allowed)
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {"usergroup": "opt_99"},  # best friend (allowed)
+                }
+            ]
         elif endpoint == "reading-room-patron-permission/user_1":
             # User already has existing permissions
             return [
@@ -697,10 +770,10 @@ def test_process_user_id_batch_preserves_existing_permissions(
     mock_client.folio_put.side_effect = mock_put
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1"]
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=lookup_data["reading_rooms"],
@@ -729,7 +802,7 @@ def test_process_user_id_batch_preserves_existing_permissions(
 
 
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_process_user_id_batch_skips_missing_rooms(
+def test_process_user_batch_by_offset_skips_missing_rooms(
     mock_client_func, lookup_data, mock_reading_rooms_config, caplog
 ):
     """Test that rooms in config but not in FOLIO are skipped"""
@@ -741,13 +814,15 @@ def test_process_user_id_batch_skips_missing_rooms(
         # "Reading Room A" is missing
     }
 
-    def mock_get(endpoint):
-        if endpoint == "users/user_1":
-            return {
-                "id": "user_1",
-                "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
-                "customFields": {"usergroup": "opt_99"},
-            }
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            return [
+                {
+                    "id": "user_1",
+                    "patronGroup": "b1f10c81-01c1-4b97-9362-6d412df42f52",  # faculty
+                    "customFields": {"usergroup": "opt_99"},
+                }
+            ]
         elif "reading-room-patron-permission" in endpoint:
             return []
         return {}
@@ -762,10 +837,10 @@ def test_process_user_id_batch_skips_missing_rooms(
     mock_client.folio_put.side_effect = mock_put
     mock_client_func.return_value = mock_client
 
-    user_id_batch = ["user_1"]
+    batch_metadata = {"from_date": "2024-11-01", "offset": 0, "limit": 100}
 
-    result = process_user_id_batch.function(
-        user_id_batch=user_id_batch,
+    result = process_user_batch_by_offset.function(
+        batch_metadata=batch_metadata,
         usergroups=lookup_data["usergroups"],
         patron_groups=lookup_data["patron_groups"],
         reading_rooms=incomplete_reading_rooms,  # Missing "Reading Room A"
@@ -775,7 +850,7 @@ def test_process_user_id_batch_skips_missing_rooms(
     assert len(permissions_captured) == 1
     assert permissions_captured[0]["readingRoomName"] == "Green 24-hour study space"
 
-    # Should log warning about missing room
+    # Should log warning about missing room (only on first batch, offset=0)
     assert "Rooms in config but not in FOLIO" in caplog.text
     assert "Reading Room A" in caplog.text
 
