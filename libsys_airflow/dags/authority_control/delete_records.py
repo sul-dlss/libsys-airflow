@@ -3,7 +3,7 @@
 import logging
 
 from datetime import datetime
-from airflow.sdk import dag, task, task_group, get_current_context
+from airflow.sdk import dag, task, get_current_context
 
 from libsys_airflow.plugins.authority_control.email import email_deletes_report
 from libsys_airflow.plugins.authority_control.helpers import (
@@ -41,71 +41,48 @@ def delete_authority_records(*args, **kwargs):
         return {"file": csv_file, "email": email_addr}
 
     @task
-    def read_csv_parse_001s(**kwargs):
-        task_instance = kwargs["ti"]
-        csv_file = task_instance.xcom_pull(task_ids="setup_dag", key="file")
+    def read_csv_parse_001s(csv_file):
         update_csv_file_path = clean_csv_file(file=csv_file)
         return update_csv_file_path
 
     @task
-    def batch_001s(**kwargs):
-        updated_csv_file = kwargs.get("file")
+    def batch_001s(updated_csv_file):
         batches = batch_csv(file=updated_csv_file)
         return batches
 
-    @task_group(group_id="retrieve-delete-group")
-    def retrieve_and_delete_auth_records(**kwargs):
-
-        @task(multiple_outputs=True)
-        def retrieve_authority_records(**kwargs):
-            csv_batch_file = kwargs.get("file")
-            results = find_authority_by_001(file=csv_batch_file)
-            return results
-
-        @task
-        def delete_authority_records(**kwargs):
-            results = kwargs["results"]
-            delete_uuids = results.get("deletes")
-            results = delete_authorities(deletes=delete_uuids)
-            return results
-
-        find_results = retrieve_authority_records(file=kwargs.get("batch"))
-        delete_authority_records(results=find_results)
+    @task(multiple_outputs=True)
+    def retrieve_authority_records(csv_batch_file):
+        results = find_authority_by_001(file=csv_batch_file)
+        return results
 
     @task
-    def move_csv_files(**kwargs):
-        task_instance = kwargs["ti"]
-        all_csv_files = []
-        original_csv = task_instance.xcom_pull(task_ids="setup_dag", key="file")
-        all_csv_files.append(original_csv)
-        updated_csv = task_instance.xcom_pull(task_ids="read_csv_parse_001s")
-        all_csv_files.append(updated_csv)
-        batch_csvs = task_instance.xcom_pull(task_ids="batch_001s")
+    def delete_authority_records(results):
+        delete_uuids = results.get("deletes")
+        results = delete_authorities(deletes=delete_uuids)
+        return results
+
+    @task
+    def move_csv_files(original_csv, updated_csv, batch_csvs, trigger):
+        all_csv_files = [original_csv, updated_csv]
         all_csv_files.extend(batch_csvs)
         archive_csv_files(csv_files=all_csv_files)
 
     @task
-    def email_report(**kwargs):
-        task_instance = kwargs["ti"]
-        retrieve_results = task_instance.xcom_pull(
-            task_ids="retrieve-delete-group.retrieve_authority_records",
-            map_indexes=None,
-        )
+    def email_report(retrieve_results, deleted_results, email, **context):
+        """
+        retrieve_results and deleted_results are automatically lists
+        containing outputs from all mapped task instances
+        """
         missing, multiples, errors = [], [], []
         for row in retrieve_results:
-            missing.extend(row['missing'])
-            multiples.extend(row['multiples'])
-            errors.extend(row['errors'])
+            missing.extend(row.get("missing", []))
+            multiples.extend(row.get("multiples", []))
+            errors.extend(row.get("errors", []))
 
-        deleted_results = task_instance.xcom_pull(
-            task_ids="retrieve-delete-group.delete_authority_records", map_indexes=None
-        )
         deleted = 0
         for row in deleted_results:
-            deleted += row['deleted']
-            errors.extend(row['errors'])
-
-        email = task_instance.xcom_pull(task_ids="setup_dag", key="email")
+            deleted += row.get("deleted", 0)
+            errors.extend(row.get("errors", []))
 
         email_deletes_report(
             missing=missing,
@@ -113,18 +90,32 @@ def delete_authority_records(*args, **kwargs):
             email=email,
             deleted=int(deleted),
             errors=errors,
-            **kwargs,
+            **context,
         )
 
-    updated_csv = read_csv_parse_001s()
-    batches_001s = batch_001s(file=updated_csv)
+    # DAG flow
+    setup = setup_dag()
 
-    setup_dag() >> updated_csv
+    updated_csv = read_csv_parse_001s(csv_file=setup["file"])
+    batches_001s = batch_001s(updated_csv_file=updated_csv)
 
-    retrieve_and_delete_auth_records.expand(batch=batches_001s) >> [
-        move_csv_files(),
-        email_report(),
-    ]
+    # Mapped tasks - these expand based on the batches
+    retrieve_results = retrieve_authority_records.expand(csv_batch_file=batches_001s)
+    delete_results = delete_authority_records.expand(results=retrieve_results)
+
+    # Downstream tasks that consume all mapped results
+    move_csv_files(
+        original_csv=setup["file"],
+        updated_csv=updated_csv,
+        batch_csvs=batches_001s,
+        trigger=delete_results,
+    )
+
+    email_report(
+        retrieve_results=retrieve_results,
+        deleted_results=delete_results,
+        email=setup["email"],
+    )
 
 
 delete_authority_records()
