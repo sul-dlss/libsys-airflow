@@ -61,7 +61,7 @@ def _oclc_report_html(report: str, library: str):
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
 
-    report_url = f"{airflow_url}data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
+    report_url = f"{airflow_url}pluginsv2/data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
 
     return f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
 
@@ -295,9 +295,7 @@ def _missing_holdings_for_instances(report: str) -> str:
     if not airflow_url.endswith("/"):
         airflow_url = f"{airflow_url}/"
 
-    report_url = (
-        f"{airflow_url}data_export_oclc_reports/missing_holdings/{report_path.name}"
-    )
+    report_url = f"{airflow_url}pluginsv2/data_export_oclc_reports/missing_holdings/{report_path.name}"
 
     template = Template(
         """
