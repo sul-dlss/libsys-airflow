@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 
 from airflow.sdk import Variable
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
+from airflow_client.client.models.dag_run_response import DAGRunResponse
 from flask_appbuilder import expose, BaseView
 from flask import abort, request, redirect, url_for, flash, send_from_directory
 from folioclient import FolioClient
@@ -456,7 +457,7 @@ class VendorManagementView(BaseView):
                     "dataload_profile_uuid": vendor_file.vendor_interface.folio_data_import_profile_uuid,
                 }
             )
-            api_response = api_instance.trigger_dag_run(
+            api_response: DAGRunResponse = api_instance.trigger_dag_run(
                 'default_data_processor', trigger_dag_body
             )
 
@@ -470,7 +471,7 @@ class VendorManagementView(BaseView):
             vendor_file.status = FileStatus.loading
             session.commit()
             logger.info(
-                f"Updated vendor_file {vendor_file}: dag_run_id={dag_run_id} queued date={api_response.queue_at}"
+                f"Updated vendor_file {vendor_file}: dag_run_id={dag_run_id} queued date={api_response.queued_at.isoformat()}"
             )
 
     def _trigger_fetcher_dag(self, interface):
@@ -488,7 +489,7 @@ class VendorManagementView(BaseView):
                     "filename_regex": interface.file_pattern,
                 }
             )
-            api_response = api_instance.trigger_dag_run(
+            api_response: DAGRunResponse = api_instance.trigger_dag_run(
                 "data_fetcher", trigger_dag_body
             )
             logger.info(
@@ -503,7 +504,7 @@ class VendorManagementView(BaseView):
                     "folio_org_uuid": vendor.folio_organization_uuid,
                 },
             )
-            api_response = api_instance.trigger_dag_run(
+            api_response: DAGRunResponse = api_instance.trigger_dag_run(
                 'folio_vendor_sync', trigger_dag_body
             )
             logger.info(
