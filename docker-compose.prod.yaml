@@ -100,7 +100,7 @@ x-airflow-common:
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     DATABASE_USERNAME: ${DATABASE_USERNAME}
-    DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-20}
+    DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-50}
     # HB   library uses HONEYBADGER_ENVIRONMENT, which is different from Ruby library.
     HONEYBADGER_ENVIRONMENT: ${HONEYBADGER_ENV}
     HONEYBADGER_API_KEY: ${HONEYBADGER_API_KEY}
