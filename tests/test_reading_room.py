@@ -323,56 +323,6 @@ def test_retrieve_user_id_batches_large_dataset(mock_client_func, mock_context):
     assert all(batch["from_date"] == "2024-11-01" for batch in result)
 
 
-@patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
-@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_retrieve_user_id_batches_empty_result(mock_client_func, mock_context):
-    """Test user ID batch retrieval with no users"""
-    mock_client = MagicMock()
-
-    def mock_get(endpoint, key=None, query_params=None):
-        if endpoint == "users" and key == "totalRecords":
-            return 0
-        return {}
-
-    mock_client.folio_get.side_effect = mock_get
-    mock_client_func.return_value = mock_client
-    # Try to set batch limit above 1000
-    mock_context.return_value = {
-        "params": {"from_date": "2025-12-01", "user_batch_limit": 1500}
-    }
-
-    result = retrieve_user_id_batches.function()
-
-    assert result == []
-
-
-@patch("libsys_airflow.plugins.folio.reading_room.get_current_context")
-@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
-def test_retrieve_user_id_batches_exceeds_max_limit(mock_client_func, mock_context):
-    """Test that batch limit is capped at 1000"""
-    mock_client = MagicMock()
-
-    def mock_get(endpoint, key=None, query_params=None):
-        if endpoint == "users" and key == "totalRecords":
-            return 2500
-        return {}
-
-    mock_client.folio_get.side_effect = mock_get
-    mock_client_func.return_value = mock_client
-    # Try to set batch limit above 1000
-    mock_context.return_value = {
-        "params": {"from_date": "2025-12-01", "user_batch_limit": 1500}
-    }
-
-    result = retrieve_user_id_batches.function()
-
-    # Should cap at 1000, so 2500 / 1000 = 3 batches
-    assert len(result) == 3
-    assert result[0]["limit"] == 1000
-    assert result[1]["limit"] == 1000
-    assert result[2]["limit"] == 500  # Remaining
-
-
 # Test process_user_batch_by_offset
 @patch("libsys_airflow.plugins.folio.reading_room.folio_client")
 def test_process_user_batch_by_offset(

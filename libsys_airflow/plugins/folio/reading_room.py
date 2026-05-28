@@ -127,16 +127,6 @@ def retrieve_user_id_batches() -> list:
     from_date = params.get("from_date")
     user_batch_limit = params.get("user_batch_limit", 500)
 
-    # Additional safety check
-    if user_batch_limit > 1000:
-        logger.warning(
-            f"user_batch_limit {user_batch_limit} exceeds maximum of 1000, using 1000"
-        )
-        user_batch_limit = 1000
-    elif user_batch_limit < 1:
-        logger.warning(f"user_batch_limit {user_batch_limit} is less than 1, using 1")
-        user_batch_limit = 1
-
     client = folio_client()
     query_date = formatted_date(from_date)
     logger.info(f"Retrieving user count for users updated after {query_date}")
