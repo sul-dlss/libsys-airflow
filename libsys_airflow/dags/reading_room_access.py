@@ -6,10 +6,11 @@ from airflow.sdk import dag, Param
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.folio.reading_room import (
-    retrieve_users_batch_for_reading_room_access,
-    generate_reading_room_access,
-    update_reading_room_permissions,
-    ReadingRoomsData,
+    retrieve_usergroup_lookup,
+    retrieve_patron_group_lookup,
+    retrieve_reading_rooms_lookup,
+    retrieve_user_id_batches,
+    process_user_batch_by_offset,
 )
 
 
@@ -41,15 +42,31 @@ default_args = {
             type=["null", "string"],
             description="The earliest date to select record IDs from FOLIO.",
         ),
+        "user_batch_limit": Param(
+            500,
+            type="integer",
+            minimum=1,
+            maximum=1000,
+            description="Number of user IDs to process per batch (1-1000, default: 500).",
+        ),
     },
 )
 def reading_room_access():
-    reading_rooms_data = ReadingRoomsData()
-    retrieved_users = retrieve_users_batch_for_reading_room_access()
-    generate_access = generate_reading_room_access(
-        users=retrieved_users, reading_rooms_data=reading_rooms_data
-    )
-    update_reading_room_permissions(generate_access)
+    # Retrieve all lookup data as separate tasks
+    usergroups = retrieve_usergroup_lookup()
+    patron_groups = retrieve_patron_group_lookup()
+    reading_rooms = retrieve_reading_rooms_lookup()
+
+    # Get batch offset/limit info
+    batch_metadata_list = retrieve_user_id_batches()
+
+    # Process each batch
+    # Each mapped task fetches its own users based on offset/limit
+    process_user_batch_by_offset.partial(
+        usergroups=usergroups,
+        patron_groups=patron_groups,
+        reading_rooms=reading_rooms,
+    ).expand(batch_metadata=batch_metadata_list)
 
 
 reading_room_access()
