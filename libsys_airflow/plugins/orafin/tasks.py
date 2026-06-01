@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 from airflow.sdk import get_current_context, task, Variable
+from airflow.sdk.exceptions import AirflowSkipException
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 
 from folioclient import FolioClient
@@ -94,11 +95,15 @@ def email_summary_task(invoices: list):
 def email_invoice_errors_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     # Pull from the mapped task using map_index
-    invoice_id = ti.xcom_pull(
+    update_result = ti.xcom_pull(
         task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
     )
-    generate_invoice_error_email(invoice_id, folio_url, ti)
-    return f"Emailed Error for Invoice {invoice_id}"
+    if update_result and update_result.get("invoice_id"):
+        invoice_id = update_result["invoice_id"]
+        generate_invoice_error_email(invoice_id, folio_url, ti)
+        return f"Emailed Error for Invoice {invoice_id}"
+
+    return "No error to report"
 
 
 @task
@@ -195,9 +200,15 @@ def retrieve_voucher_task(ti=None):
     """
     Retrieves voucher based on invoice id
     """
-    invoice_id: str = ti.xcom_pull(
+    update_result = ti.xcom_pull(
         task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
     )
+    # Check if update failed
+    if update_result is False or update_result.get("status") == "failed":
+        logger.info(f"Skipping voucher retrieval - update result: {update_result}")
+        raise AirflowSkipException("Update did not succeed")
+
+    invoice_id = update_result["invoice_id"]
     folio_client = _folio_client()
     return retrieve_voucher(invoice_id, folio_client)
 
@@ -229,16 +240,20 @@ def transform_folio_data_task(invoice_id: str):
 def update_invoices_task(invoice: dict):
     if invoice:
         folio_client = _folio_client()
-        logger.info(f"Updating Invoice {invoice['id']}")
-        update_invoice(invoice, folio_client)
-        return invoice['id']
+        invoice_id = invoice["id"]
+        logger.info(f"Updating Invoice {invoice_id}")
+        result = update_invoice(invoice, folio_client)
+        if result is False:
+            return {"status": "failed", "invoice_id": invoice_id}
+        return {"status": "success", "invoice_id": invoice_id}
     else:
         logger.error("Invoice is None")
+        return None
 
 
 @task.branch()
 def update_email_branch(update_result):
-    if update_result is False:
+    if update_result and update_result.get("status") == "failed":
         return "update-folio.email_invoice_errors_task"
     return "update-folio.retrieve_voucher_task"
 
