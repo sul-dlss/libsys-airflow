@@ -236,7 +236,7 @@ def update_voucher(
     """
     row = task_instance.xcom_pull(
         task_ids="retrieve_invoice_task", key=voucher["invoiceId"]
-    )[0]
+    )
     voucher["status"] = "Paid"  # should already be Paid when update_invoice task ran
     voucher["disbursementAmount"] = row["AmountPaid"]
     voucher["disbursementNumber"] = row["PaymentNumber"]
