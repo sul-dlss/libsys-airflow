@@ -231,10 +231,9 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    entrypoint: /opt/airflow/fix_and_migrate.sh
+    entrypoint: /bin/bash
     # yamllint disable rule:line-length
     command:
-      - bash
       - -c
       - |
         if [[ -z "${AIRFLOW_UID}" ]]; then
@@ -287,14 +286,13 @@ services:
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'false'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
-      - ./fix_and_migrate.sh:/opt/airflow/fix_and_migrate.sh:ro
 
   airflow-cli:
     <<: *airflow-common
