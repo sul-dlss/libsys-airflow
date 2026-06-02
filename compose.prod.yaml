@@ -231,10 +231,9 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    entrypoint: /opt/airflow/fix_and_migrate.sh
+    entrypoint: /bin/bash
     # yamllint disable rule:line-length
     command:
-      - bash
       - -c
       - |
         if [[ -z "${AIRFLOW_UID}" ]]; then
@@ -294,7 +293,6 @@ services:
     user: "0:0"
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
-      - ./fix_and_migrate.sh:/opt/airflow/fix_and_migrate.sh:ro
 
   airflow-cli:
     <<: *airflow-common
