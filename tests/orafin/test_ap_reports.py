@@ -321,14 +321,12 @@ def test_update_invoice_failure(mock_folio_client, caplog):
 
 def test_update_voucher(mocker, mock_folio_client, caplog):
     def _xcom_pull(*args, **kwargs):
-        return [
-            {
-                "AmountPaid": "2499.01",
-                "PaymentAmount": "2498.63",
-                "PaymentDate": "10/24/2023",
-                "PaymentNumber": "2983835",
-            }
-        ]
+        return {
+            "AmountPaid": "2499.01",
+            "PaymentAmount": "2498.63",
+            "PaymentDate": "10/24/2023",
+            "PaymentNumber": "2983835",
+        }
 
     mock_task_instance = mocker.MagicMock()
     mock_task_instance.xcom_pull = _xcom_pull
@@ -351,14 +349,12 @@ def test_update_voucher(mocker, mock_folio_client, caplog):
 
 def test_update_voucher_failed(mocker, mock_folio_client, caplog):
     def _xcom_pull(*args, **kwargs):
-        return [
-            {
-                "AmountPaid": "2499.01",
-                "PaymentAmount": "2498.63",
-                "PaymentDate": "10/24/2023",
-                "PaymentNumber": "2983835",
-            }
-        ]
+        return {
+            "AmountPaid": "2499.01",
+            "PaymentAmount": "2498.63",
+            "PaymentDate": "10/24/2023",
+            "PaymentNumber": "2983835",
+        }
 
     mock_task_instance = mocker.MagicMock()
     mock_task_instance.xcom_pull = _xcom_pull
