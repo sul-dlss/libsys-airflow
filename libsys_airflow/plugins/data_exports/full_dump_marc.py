@@ -49,8 +49,8 @@ def create_materialized_view(**kwargs) -> Union[str, None]:
     recreate = params.get("recreate_view", False)
     mat_view = params.get("mat_view", "data_export_marc")
     from_date = params.get("from_date", '2023-08-23')
-    to_date = params.get(
-        "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
+    to_date = params.get("to_date") or (datetime.now() + timedelta(1)).strftime(
+        '%Y-%m-%d'
     )
 
     query = None
