@@ -71,8 +71,9 @@ with DAG(
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            "",
-            type="string",
+            None,
+            type=["string", "null"],
+            format="date",
             description="The latest date to select record IDs from FOLIO. Leave blank to default to tomorrow's date.",
         ),
         "recreate_view": Param(
