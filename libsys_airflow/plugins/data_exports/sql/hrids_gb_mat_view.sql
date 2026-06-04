@@ -3,9 +3,11 @@
 -- and the connecting user to have pg_read_server_files privilege (or be a superuser).
 -- Update the paths below to match the actual location on the DB server.
 
-CREATE TEMP TABLE hrid_list (hrid text);
-COPY hrid_list FROM '/home/folio/hrids_gb.txt';
-COPY hrid_list FROM '/home/folio/hrids_not_gb.txt';
+DROP TABLE IF EXISTS public.hrid_export_list;
+CREATE TABLE public.hrid_export_list (hrid text);
+COPY public.hrid_export_list FROM '/home/folio/hrids_gb.txt';
+COPY public.hrid_export_list FROM '/home/folio/hrids_not_gb.txt';
+CREATE INDEX ON public.hrid_export_list (hrid);
 
 DROP MATERIALIZED VIEW IF EXISTS hrids_gb_mat_view;
 CREATE MATERIALIZED VIEW hrids_gb_mat_view AS
@@ -13,7 +15,7 @@ SELECT I.id AS instanceid,
        I.jsonb -> 'hrid' AS hrid,
        M.content
 FROM sul_mod_inventory_storage.instance I
-INNER JOIN hrid_list H ON I.jsonb ->> 'hrid' = H.hrid
+INNER JOIN public.hrid_export_list H ON I.jsonb ->> 'hrid' = H.hrid
 LEFT JOIN (
     SELECT DISTINCT ON (external_id) external_id, id, generation
     FROM sul_mod_source_record_storage.records_lb
