@@ -86,7 +86,7 @@ with DAG(
             "data_export_marc",
             type="string",
             description="The SQL file to use for creating the materialized view. data_export_marc or google_mat_view.",
-            enum=["data_export_marc", "google_mat_view"],
+            enum=["data_export_marc", "hrids_gb_mat_view", "google_mat_view"],
         ),
         "include_campus": Param(
             Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
