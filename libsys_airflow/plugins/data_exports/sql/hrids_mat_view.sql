@@ -1,11 +1,11 @@
 -- Materialized view built from flat lists of FOLIO instance hrids.
--- The COPY commands below require the txt files to exist on the DB server filesystem
--- and the connecting user to have pg_read_server_files privilege (or be a superuser).
--- Update the paths below to match the actual location on the DB server.
+-- The COPY commands below require the txt files to exist on the DB server filesystem with appropriate permissions.
+-- You can have more than one hrid file, but make sure the txt files as a group contain only unique hrids, one per line, and no header row.
 
 DROP TABLE IF EXISTS public.hrid_export_list;
 CREATE TABLE public.hrid_export_list (hrid text);
 COPY public.hrid_export_list FROM '/home/folio/hrids.txt';
+-- COPY public.hrid_export_list FROM '/home/folio/hrids2.txt';
 
 DELETE FROM public.hrid_export_list a
     USING public.hrid_export_list b
