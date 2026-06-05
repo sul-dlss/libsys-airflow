@@ -7,6 +7,11 @@ DROP TABLE IF EXISTS public.hrid_export_list;
 CREATE TABLE public.hrid_export_list (hrid text);
 COPY public.hrid_export_list FROM '/home/folio/hrids_gb.txt';
 COPY public.hrid_export_list FROM '/home/folio/hrids_not_gb.txt';
+
+DELETE FROM public.hrid_export_list a
+    USING public.hrid_export_list b
+    WHERE a.ctid > b.ctid AND a.hrid = b.hrid;
+
 CREATE INDEX ON public.hrid_export_list (hrid);
 
 DROP MATERIALIZED VIEW IF EXISTS hrids_gb_mat_view;
