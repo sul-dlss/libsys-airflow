@@ -5,8 +5,7 @@
 
 DROP TABLE IF EXISTS public.hrid_export_list;
 CREATE TABLE public.hrid_export_list (hrid text);
-COPY public.hrid_export_list FROM '/home/folio/hrids_gb.txt';
-COPY public.hrid_export_list FROM '/home/folio/hrids_not_gb.txt';
+COPY public.hrid_export_list FROM '/home/folio/hrids.txt';
 
 DELETE FROM public.hrid_export_list a
     USING public.hrid_export_list b
@@ -14,8 +13,8 @@ DELETE FROM public.hrid_export_list a
 
 CREATE INDEX ON public.hrid_export_list (hrid);
 
-DROP MATERIALIZED VIEW IF EXISTS hrids_gb_mat_view;
-CREATE MATERIALIZED VIEW hrids_gb_mat_view AS
+DROP MATERIALIZED VIEW IF EXISTS hrids_mat_view;
+CREATE MATERIALIZED VIEW hrids_mat_view AS
 SELECT I.id AS instanceid,
        I.jsonb -> 'hrid' AS hrid,
        M.content
@@ -30,7 +29,7 @@ LEFT JOIN sul_mod_source_record_storage.marc_records_lb M
     ON M.id = R.id
 ORDER BY I.jsonb -> 'hrid';
 
-DROP INDEX IF EXISTS hrids_gb_mat_view_ids;
-DROP INDEX IF EXISTS hrids_gb_mat_view_hrids;
-CREATE UNIQUE INDEX hrids_gb_mat_view_ids ON hrids_gb_mat_view (instanceid);
-CREATE UNIQUE INDEX hrids_gb_mat_view_hrids ON hrids_gb_mat_view (hrid);
+DROP INDEX IF EXISTS hrids_mat_view_ids;
+DROP INDEX IF EXISTS hrids_mat_view_hrids;
+CREATE UNIQUE INDEX hrids_mat_view_ids ON hrids_mat_view (instanceid);
+CREATE UNIQUE INDEX hrids_mat_view_hrids ON hrids_mat_view (hrid);
