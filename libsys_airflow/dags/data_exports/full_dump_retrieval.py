@@ -10,7 +10,6 @@ from airflow.sdk import (
     task_group,
     DAG,
     Param,
-    Variable,
 )
 from airflow.providers.standard.operators.empty import EmptyOperator
 
@@ -66,16 +65,16 @@ with DAG(
             description="Remove excluded tags listed in marc/excluded_tags.pyfrom incoming record.",
         ),
         "from_date": Param(
-            Variable.get("FOLIO_EPOCH_DATE", "1885-11-11"),
+            "1885-11-11",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now()).strftime('%Y-%m-%d')}",
+            None,
+            type=["string", "null"],
             format="date",
-            type="string",
-            description="The latest date to select record IDs from FOLIO.",
+            description="The latest date to select record IDs from FOLIO. Leave blank to default to tomorrow's date.",
         ),
         "recreate_view": Param(
             False,
@@ -86,10 +85,10 @@ with DAG(
             "data_export_marc",
             type="string",
             description="The SQL file to use for creating the materialized view. data_export_marc or google_mat_view.",
-            enum=["data_export_marc", "google_mat_view"],
+            enum=["data_export_marc", "google_mat_view", "hrids_mat_view"],
         ),
         "include_campus": Param(
-            Variable.get("INCLUDE_CAMPUS", "SUL, LAW, GSB, HOOVER, MED"),
+            "SUL, LAW, GSB, HOOVER, MED",
             type="string",
             description="Comma-seperated list of campus coded to include in full dump selection.",
         ),

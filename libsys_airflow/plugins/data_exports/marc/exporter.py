@@ -210,7 +210,6 @@ class Exporter(object):
         logger.info(f"Writing to directory: {directory}")
         directory.mkdir(parents=True, exist_ok=True)
         marc_file = directory / f"{marc_file_name}.mrc"
-        marc_file.touch()
 
         with marc_file.open(mode) as fo:
             marc_writer = marcWriter(fo)
