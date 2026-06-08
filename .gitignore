@@ -20,5 +20,3 @@ vendor-keys/
 digital-bookplates/
 authorities/
 sdr-files/
-libsys_airflow/plugins/data_exports/sql/*
-!libsys_airflow/plugins/data_exports/sql/**/*.sql
