@@ -638,7 +638,10 @@ def test_marc_clean_serialize_strips_newlines(mock_marc_dir):
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_transformer_cleans_newlines_in_950(mocker, mock_marc_dir, mock_folio_client):
     mock_folio_client.call_number_types = [
-        {'id': '95467209-6d7b-468b-94df-0f5d7ad2747d', 'name': 'Library of\nCongress classification'},
+        {
+            'id': '95467209-6d7b-468b-94df-0f5d7ad2747d',
+            'name': 'Library of\nCongress classification',
+        },
     ]
     mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',

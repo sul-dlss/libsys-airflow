@@ -19,7 +19,10 @@ def _strip_newlines(record: pymarc.Record) -> None:
         if not hasattr(field, 'subfields'):
             continue
         field.subfields = [
-            pymarc.Subfield(sf.code, sf.value.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' '))
+            pymarc.Subfield(
+                sf.code,
+                sf.value.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' '),
+            )
             for sf in field.subfields
         ]
 

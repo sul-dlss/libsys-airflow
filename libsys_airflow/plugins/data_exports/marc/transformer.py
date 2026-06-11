@@ -213,7 +213,9 @@ class Transformer(object):
         if 'barcode' in item:
             field_950.add_subfield('i', self._clean(item['barcode']))
         if 'materialTypeId' in item:
-            field_950.add_subfield('t', self._clean(self.materialtypes.get(item['materialTypeId'])))
+            field_950.add_subfield(
+                't', self._clean(self.materialtypes.get(item['materialTypeId']))
+            )
         if 'effectiveLocationId' in item:
             location_code = self.locations.get(item['effectiveLocationId'])
             if location_code:
