@@ -600,3 +600,74 @@ def test_zip_marc_files_not_pod(mock_marc_dir):
 
     assert marc_file.exists()
     assert marc_zip_file.exists() is False
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_clean_serialize_strips_newlines(mock_marc_dir):
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='245',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='A Title\nWith Newline')],
+        ),
+        pymarc.Field(
+            tag='520',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='Summary\r\nwith CRLF')],
+        ),
+    )
+
+    marc_file = mock_marc_dir / "20240520.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    marc_clean_serialize(str(marc_file.absolute()), full_dump=False, exclude_tags=False)
+
+    with marc_file.open('rb') as fo:
+        modified_record = next(pymarc.MARCReader(fo))
+
+    assert modified_record['245']['a'] == 'A Title With Newline'
+    assert modified_record['520']['a'] == 'Summary with CRLF'
+    assert '\n' not in modified_record['245']['a']
+    assert '\r' not in modified_record['520']['a']
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_transformer_cleans_newlines_in_950(mocker, mock_marc_dir, mock_folio_client):
+    mock_folio_client.call_number_types = [
+        {'id': '95467209-6d7b-468b-94df-0f5d7ad2747d', 'name': 'Library of\nCongress classification'},
+    ]
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c'),
+            ],
+        )
+    )
+
+    marc_file = mock_marc_dir / "20240521.mrc"
+
+    with marc_file.open('wb+') as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
+    transformer.add_holdings_items(str(marc_file), full_dump=False)
+
+    with marc_file.open('rb') as fo:
+        mod_marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    field_950 = mod_marc_records[0].get_fields('950')[0]
+    assert '\n' not in field_950['w']
+    assert field_950['w'] == 'Library of Congress classification'

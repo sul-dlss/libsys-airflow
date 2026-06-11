@@ -14,6 +14,16 @@ from s3path import S3Path
 logger = logging.getLogger(__name__)
 
 
+def _strip_newlines(record: pymarc.Record) -> None:
+    for field in record.fields:
+        if not hasattr(field, 'subfields'):
+            continue
+        field.subfields = [
+            pymarc.Subfield(sf.code, sf.value.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' '))
+            for sf in field.subfields
+        ]
+
+
 """
 Called by the vendor selection DAGs except oclc and the full record selections
 """
@@ -121,6 +131,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
         with marc_path.open("wb") as fo:
             marc_writer = pymarc.MARCWriter(fo)  # type: ignore
             for record in marc_records:
+                _strip_newlines(record)
                 marc_writer.write(record)
             marc_writer.close()
 

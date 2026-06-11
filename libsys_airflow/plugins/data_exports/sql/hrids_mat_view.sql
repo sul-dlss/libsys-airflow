@@ -2,7 +2,7 @@
 -- The COPY commands below require the txt files to exist on the DB server filesystem with appropriate permissions.
 -- You can have more than one hrid file, but make sure the txt files as a group contain only unique hrids, one per line, and no header row.
 
-DROP TABLE IF EXISTS public.hrid_export_list;
+DROP TABLE IF EXISTS public.hrid_export_list CASCADE;
 CREATE TABLE public.hrid_export_list (hrid text);
 COPY public.hrid_export_list FROM '/home/folio/hrids.txt';
 -- COPY public.hrid_export_list FROM '/home/folio/hrids2.txt';

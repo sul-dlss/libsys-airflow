@@ -184,43 +184,46 @@ class Transformer(object):
 
         return fields
 
+    def _clean(self, value: str) -> str:
+        return value.replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
+
     def add_holdings_subfields(self, holding: dict) -> pymarc.Field:
         field_950 = pymarc.Field(tag="950", indicators=[' ', ' '])  # type: ignore
         if len(holding.get("holdingsTypeId", "")) > 0:
             holdings_type_name = self.holdings_type.get(holding["holdingsTypeId"])
             if holdings_type_name:
-                field_950.add_subfield('h', holdings_type_name)
+                field_950.add_subfield('h', self._clean(holdings_type_name))
         if len(holding.get("permanentLocationId", "")) > 0:
             permanent_location_code = self.locations.get(holding['permanentLocationId'])
             if permanent_location_code:
-                field_950.add_subfield('l', permanent_location_code)
+                field_950.add_subfield('l', self._clean(permanent_location_code))
         if len(holding.get("callNumberTypeId", "")) > 0:
             call_number_type = self.call_numbers.get(holding['callNumberTypeId'])
             if call_number_type:
-                field_950.add_subfield('w', call_number_type)
+                field_950.add_subfield('w', self._clean(call_number_type))
         if len(holding.get("illPolicyId", "")) > 0:
             ill_policy = self.ill_policies.get(holding['illPolicyId'])
             if ill_policy:
-                field_950.add_subfield('r', ill_policy)
+                field_950.add_subfield('r', self._clean(ill_policy))
         if len(holding.get("callNumber", "")) > 0:
-            field_950.add_subfield('a', holding['callNumber'], 0)
+            field_950.add_subfield('a', self._clean(holding['callNumber']), 0)
         return field_950
 
     def add_item_subfields(self, field_950: pymarc.Field, item: dict):
         if 'barcode' in item:
-            field_950.add_subfield('i', item['barcode'])
+            field_950.add_subfield('i', self._clean(item['barcode']))
         if 'materialTypeId' in item:
-            field_950.add_subfield('t', self.materialtypes.get(item['materialTypeId']))
+            field_950.add_subfield('t', self._clean(self.materialtypes.get(item['materialTypeId'])))
         if 'effectiveLocationId' in item:
             location_code = self.locations.get(item['effectiveLocationId'])
             if location_code:
-                field_950.add_subfield('e', location_code)
+                field_950.add_subfield('e', self._clean(location_code))
         if len(item.get('numberOfPieces', '')) > 0:
-            field_950.add_subfield('j', item['numberOfPieces'])
+            field_950.add_subfield('j', self._clean(item['numberOfPieces']))
 
         if "enumeration" in item:
             for subfield in field_950.subfields:
                 if subfield.code == 'a':
                     value = field_950.delete_subfield('a')
-                    value = f"{value} {item['enumeration']}"
+                    value = f"{value} {self._clean(item['enumeration'])}"
                     field_950.add_subfield('a', value, 0)
