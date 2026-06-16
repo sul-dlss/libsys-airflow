@@ -81,7 +81,10 @@ def email_excluded_task(invoices_exclusion_reasons: list):
 def email_paid_task(ti=None):
     folio_url = Variable.get("FOLIO_URL")
     total_invoices = generate_ap_paid_report_email(folio_url, ti)
-    return f"Emailed all paid invoices for {folio_url} {total_invoices}"
+    if total_invoices == 0:
+        raise AirflowSkipException("No paid invoices to report; already paid.")
+    else:
+        return f"Emailed all paid invoices for {folio_url} {total_invoices}"
 
 
 @task
@@ -92,18 +95,14 @@ def email_summary_task(invoices: list):
 
 
 @task
-def email_invoice_errors_task(ti=None):
+def email_invoice_errors_task(update_result, ti=None):
     folio_url = Variable.get("FOLIO_URL")
-    # Pull from the mapped task using map_index
-    update_result = ti.xcom_pull(
-        task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
-    )
-    if update_result and update_result.get("invoice_id"):
+    if update_result and update_result.get("status") == "failed":
         invoice_id = update_result["invoice_id"]
         generate_invoice_error_email(invoice_id, folio_url, ti)
         return f"Emailed Error for Invoice {invoice_id}"
-
-    return "No error to report"
+    else:
+        raise AirflowSkipException("No error to report")
 
 
 @task
@@ -196,13 +195,10 @@ def retrieve_invoice_task(row: dict):
 
 
 @task
-def retrieve_voucher_task(ti=None):
+def retrieve_voucher_task(update_result):
     """
     Retrieves voucher based on invoice id
     """
-    update_result = ti.xcom_pull(
-        task_ids="update-folio.update_invoices_task", map_indexes=ti.map_index
-    )
     # Check if update failed
     if update_result is False or update_result.get("status") == "failed":
         logger.info(f"Skipping voucher retrieval - update result: {update_result}")
@@ -251,18 +247,8 @@ def update_invoices_task(invoice: dict):
         return None
 
 
-@task.branch()
-def update_email_branch(update_result):
-    if update_result and update_result.get("status") == "failed":
-        return "update-folio.email_invoice_errors_task"
-    return "update-folio.retrieve_voucher_task"
-
-
 @task
-def update_vouchers_task(ti=None):
-    voucher = ti.xcom_pull(
-        task_ids="update-folio.retrieve_voucher_task", map_indexes=ti.map_index
-    )
+def update_vouchers_task(voucher, ti=None):
     if voucher:
         folio_client = _folio_client()
         logger.info(f"Updating voucher {voucher['id']}")

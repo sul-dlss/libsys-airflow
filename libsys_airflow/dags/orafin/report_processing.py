@@ -13,7 +13,6 @@ from libsys_airflow.plugins.orafin.tasks import (
     init_processing_task,
     retrieve_invoice_task,
     retrieve_voucher_task,
-    update_email_branch,
     update_invoices_task,
     update_vouchers_task,
 )
@@ -30,11 +29,10 @@ default_args = {
 
 @task_group(group_id="update-folio")
 def update_folio(record):
-    invoice_id = update_invoices_task(invoice=record)
-    voucher_result = retrieve_voucher_task()
-    update_email_branch(invoice_id) >> [voucher_result, email_invoice_errors_task()]
-
-    voucher_result >> update_vouchers_task()
+    update_invoice_result = update_invoices_task(invoice=record)
+    voucher_result = retrieve_voucher_task(update_invoice_result)
+    email_invoice_errors_task(update_invoice_result)
+    update_vouchers_task(voucher_result)
 
 
 @task_group(group_id="email-group")
@@ -55,7 +53,7 @@ with DAG(
 ) as dag:
     start = EmptyOperator(task_id="start")
 
-    finish_updates = EmptyOperator(task_id="end")
+    finish_updates = EmptyOperator(task_id="end", trigger_rule="all_done")
 
     report_path = init_processing_task()
 
