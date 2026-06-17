@@ -331,3 +331,37 @@ def test_exclude_marc_by_vendor_sharevde(mocker):
     marc_record.add_field(field_590, field_915)
 
     assert exporter.exclude_marc_by_vendor(marc_record, 'sharevde')
+
+
+def test_retrieve_marc_for_full_dump_vendor_none(mocker):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    mock_variable = mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.Variable'
+    )
+    mock_variable.get = lambda key, _: (
+        "none" if key == "FULL_DUMP_VENDOR" else "test-bucket"
+    )
+    mock_write = mocker.patch.object(
+        Exporter, 'write_marc', return_value='/test/0_1.mrc'
+    )
+
+    marc_json = {
+        "leader": "01509nam a2200361 a 4500",
+        "fields": [
+            {"001": "a123"},
+            {
+                "915": {
+                    "ind1": "1",
+                    "ind2": "0",
+                    "subfields": [{"a": "NO EXPORT"}, {"b": "FOR SU ONLY"}],
+                }
+            },
+        ],
+    }
+    instance_ids = [('uuid-1', '"hrid-1"', marc_json)]
+
+    exporter_instance = Exporter()
+    exporter_instance.retrieve_marc_for_full_dump("0_1.mrc", instance_ids)
+
+    _, _, written_records, _ = mock_write.call_args[0]
+    assert len(written_records) == 1

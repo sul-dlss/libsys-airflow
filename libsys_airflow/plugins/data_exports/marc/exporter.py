@@ -155,14 +155,14 @@ class Exporter(object):
                 logger.warning(e)
                 continue
 
-            if self.exclude_marc_by_vendor(marc21, "full-dump"):
+            if self.exclude_marc_by_vendor(
+                marc21, Variable.get("FULL_DUMP_VENDOR", "full-dump")
+            ):
                 continue
 
             marc.append(marc21)
 
-        logger.info(
-            f"Saving {len(instance_ids)} marc records to {marc_filename} in bucket."
-        )
+        logger.info(f"Saving {len(marc)} marc records to {marc_filename} in bucket.")
         marc_file = self.write_marc(
             pathlib.Path(marc_filename), S3Path(full_dump_files), marc, "."
         )

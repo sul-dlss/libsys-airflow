@@ -82,6 +82,7 @@ def mock_result_set():
     return [
         (
             'e53ba957-8a95-5a5d-a0b6-4e712b3cb9cc',
+            '"a1"',
             {
                 "fields": [
                     {
@@ -97,6 +98,7 @@ def mock_result_set():
         ),
         (
             'e53bac58-0efa-5a2a-bffb-fa44e1dd9ded',
+            '"a2"',
             {
                 "fields": [
                     {
@@ -112,6 +114,7 @@ def mock_result_set():
         ),
         (
             'e53bad8c-2a0c-58ce-b082-6a66f93ca238',
+            '"a3"',
             {
                 "fields": [
                     {
@@ -122,11 +125,12 @@ def mock_result_set():
                         }
                     }
                 ],
-                "leader": "01229cas a2200373 a 450",
+                "leader": "01229cas a2200373 a 4500",
             },
         ),
         (
             'c32aeaa2-4740-5a91-a839-38894720a8df',
+            '"a4"',
             {
                 "fields": [
                     {
@@ -137,11 +141,12 @@ def mock_result_set():
                         }
                     }
                 ],
-                "leader": "00760cam a2200241 i 450",
+                "leader": "00760cam a2200241 i 4500",
             },
         ),
         (
             'd3f5f06a-f5cc-5606-b30e-aa75b1fbbf8s',
+            '"a5"',
             {
                 "fields": [
                     {
@@ -157,6 +162,7 @@ def mock_result_set():
         ),
         (
             'd3f5f2b9-be10-5680-bf86-23abc0eb55fe',
+            '"a6"',
             {
                 "fields": [
                     {
@@ -263,6 +269,12 @@ def test_fetch_full_dump(
     mocker.patch(
         'libsys_airflow.plugins.data_exports.sql_pool.Connection.get',
         return_value=mock_airflow_connection,
+    )
+    mock_variable = mocker.patch(
+        "libsys_airflow.plugins.data_exports.marc.exporter.Variable"
+    )
+    mock_variable.get = lambda key, default=None: (
+        "full-dump" if key == "FULL_DUMP_VENDOR" else "test-bucket"
     )
 
     full_dump_marc.fetch_full_dump_marc(
