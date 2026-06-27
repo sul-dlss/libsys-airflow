@@ -21,6 +21,7 @@ def _ap_report_errors_email_body(
     missing_invoices: pd.DataFrame,
     cancelled_invoices: pd.DataFrame,
     paid_invoices: pd.DataFrame,
+    failed_invoice_updates: pd.DataFrame,
     folio_url: str,
 ) -> str:
     def _generate_folio_url(uuid: str) -> str:
@@ -38,6 +39,7 @@ def _ap_report_errors_email_body(
 
     cancelled_invoices = _update_dataframe(cancelled_invoices)
     paid_invoices = _update_dataframe(paid_invoices)
+    failed_invoice_updates = _update_dataframe(failed_invoice_updates)
 
     template = Template(
         """
@@ -54,11 +56,18 @@ def _ap_report_errors_email_body(
         <h2>Already Paid Invoices</h2>
         {{ paid.to_html(escape=False, index=False)|safe }}
         {% endif %}
+        {% if update_errors|length > 0 %}
+        <h2>Error Updating Invoices</h2>
+        {{ update_errors.to_html(escape=False, index=False)|safe }}
+        {% endif %}
         """
     )
 
     return template.render(
-        missing=missing_invoices, cancelled=cancelled_invoices, paid=paid_invoices
+        missing=missing_invoices,
+        cancelled=cancelled_invoices,
+        paid=paid_invoices,
+        update_errors=failed_invoice_updates,
     )
 
 
@@ -191,25 +200,21 @@ def _group_excluded_invoices(invoices_reasons: list):
     return grouped_acqunits
 
 
-def _group_invoices_by_acqunit(invoices: Union[dict, list, None]) -> dict:
+def _group_invoices_by_acqunit(invoices: list) -> dict:
     """
     Groups invoices by acq unit ID
     """
     grouped_acqunits: dict = {}
-    if invoices:
-        if isinstance(invoices, dict):
-            invoices = [invoices]
-
-        for row in invoices:
-            acq_unit = row["acqUnitIds"][0]
-            if acq_unit in grouped_acqunits:
-                grouped_acqunits[acq_unit].append(row)
-            else:
-                grouped_acqunits[acq_unit] = [row]
+    for row in invoices:
+        acq_unit = row["acqUnitIds"][0]
+        if acq_unit in grouped_acqunits:
+            grouped_acqunits[acq_unit].append(row)
+        else:
+            grouped_acqunits[acq_unit] = [row]
     return grouped_acqunits
 
 
-def generate_excluded_email(invoices_reasons: list, folio_url: str):
+def generate_excluded_email(invoices_reasons: list):
     """
     Generates emails for excluded invoices
     """
@@ -217,6 +222,7 @@ def generate_excluded_email(invoices_reasons: list, folio_url: str):
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    folio_url = Variable.get("FOLIO_URL")
 
     grouped_invoices = _group_excluded_invoices(invoices_reasons)
     bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", {})
@@ -280,126 +286,144 @@ def generate_failed_dag_email(context, airflow_url=None):
     )
 
 
-def generate_invoice_error_email(invoice_id: str, folio_url: str, ti=None):
+def generate_ap_error_report_email(
+    missing: list, cancelled: list, already_paid: list, failed_updates: list
+) -> bool:
     """
-    Retrieves AP report information for invoice that failed to update and
-    emails report
+    Gets lists of missing/cancelled/paid/failed updates errors and emails report
     """
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
-    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
-    ap_report_row = ti.xcom_pull(task_ids="retrieve_invoice_task", key=invoice_id)
-
-    template = Template(
-        """<h1>Error Updating Invoice</h1>
-        <p>
-            Failed to update <a href="{{ folio_url}}/invoice/view/{{invoice_id}}">{{invoice_id}}</a>.
-        </p>
-        From AP Report
-        <table>
-          <tr>
-            <th>Amount Paid</th>
-            <th>Payment Number</th>
-            <th>Payment Date</th>
-          </tr>
-          <tr>
-            <td>{{row["AmountPaid"]}}</td>
-            <td>{{row["PaymentNumber"]}}</td>
-            <td>{{row["PaymentDate"]}}</td>
-          </tr>
-        </table>
-    """
-    )
-
-    html_content = template.render(
-        folio_url=folio_url, invoice_id=invoice_id, row=ap_report_row
-    )
-
-    send_email_with_server_name(
-        to=[
-            sul_to_email_addr,
-            bus_to_email_addr,
-            law_to_email_addr,
-            devs_to_email_addr,
-        ],
-        subject=f"Error Updating Invoice {invoice_id}",
-        html_content=html_content,
-    )
-
-
-def generate_ap_error_report_email(folio_url: str, ti=None) -> int:
-    """
-    Retrieves Errors from upstream tasks and emails report
-    """
-    task_instance = ti
     logger.info("Generating Email Report")
-    missing_invoices = task_instance.xcom_pull(
-        task_ids='retrieve_invoice_task', key='missing'
-    )
-    if missing_invoices is None:
-        missing_invoices = []
-    missing_invoices_df = pd.DataFrame(missing_invoices)
-    logger.info(f"Missing {len(missing_invoices):,}")
-    cancelled_invoices = task_instance.xcom_pull(
-        task_ids='retrieve_invoice_task', key='cancelled'
-    )
-    if cancelled_invoices is None:
-        cancelled_invoices = []
-    cancelled_invoices_df = pd.DataFrame(cancelled_invoices)
-    logger.info(f"Cancelled {len(cancelled_invoices):,}")
-
-    paid_invoices = task_instance.xcom_pull(
-        task_ids='retrieve_invoice_task', key='paid'
-    )
-    if paid_invoices is None:
-        paid_invoices = []
-    paid_invoices_df = pd.DataFrame(paid_invoices)
-    logger.info(f"Paid {len(paid_invoices):,}")
-    total_errors = len(missing_invoices) + len(cancelled_invoices) + len(paid_invoices)
-
-    # No errors, don't send email
-    if total_errors < 1:
-        return total_errors
+    missing_invoices_df = pd.DataFrame(missing)
+    cancelled_invoices_df = pd.DataFrame(cancelled)
+    paid_invoices_df = pd.DataFrame(already_paid)
+    failed_updates_df = pd.DataFrame(failed_updates)
 
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    folio_url = Variable.get("FOLIO_URL")
 
     logger.info(
-        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} for {total_errors} error reports"
+        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} error reports"
     )
 
     html_content = _ap_report_errors_email_body(
-        missing_invoices_df, cancelled_invoices_df, paid_invoices_df, folio_url
+        missing_invoices_df,
+        cancelled_invoices_df,
+        paid_invoices_df,
+        failed_updates_df,
+        folio_url,
     )
 
-    send_email_with_server_name(
-        to=[
-            sul_to_email_addr,
-            law_to_email_addr,
-            bus_to_email_addr,
-            devs_to_email_addr,
-        ],
-        subject="Invoice Errors from AP Report",
-        html_content=html_content,
+    try:
+        send_email_with_server_name(
+            to=[
+                sul_to_email_addr,
+                law_to_email_addr,
+                bus_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Invoice Errors from AP Report",
+            html_content=html_content,
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False
+
+
+def generate_voucher_error_email(
+    missing: list, multiples: list, failed_updates: list
+) -> bool:
+    """
+    Gets lists of missing/multiple/failed updates errors and emails report
+    Lists contain invoice_id's and failed_updates is list of voucher_to_update
+    """
+    logger.info("Generating Email Report")
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    folio_url = Variable.get("FOLIO_URL")
+
+    logger.info(
+        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} error reports"
     )
-    return total_errors
+
+    template = Template(
+        """
+        <h1>Voucher Failures from AP Report</h1>
+        {% if missing|length > 0 %}
+        <h2>Missing Vouchers for Invoice</h2>
+        <ul>
+        {% for invoice_id in missing %}
+        <li>
+              <a href="{{ folio_url}}/invoice/view/{{invoice_id}}">Invoice {{invoice_id}}</a>.
+        </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        {% if multiples|length > 0 %}
+        <h2>Multiple Vouchers Found for Invoice</h2>
+        <ul>
+        {% for invoice_id in multiples %}
+        <li>
+              <a href="{{ folio_url}}/invoice/view/{{invoice_id}}">Invoice {{invoice_id}}</a>.
+        </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        {% if failed_updates|length > 0 %}
+        <h2>Failed to Update Voucher for Invoice</h2>
+        <ul>
+        {% for voucher in failed_updates %}
+        <li>
+              <a href="{{ folio_url}}/invoice/view/{{voucher.invoiceId}}/voucher/{{voucher.id}}/view">Voucher {{voucher.id}}</a>.
+        </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        """
+    )
+
+    html_content = template.render(
+        missing=missing,
+        multiples=multiples,
+        failed_updates=failed_updates,
+        folio_url=folio_url,
+    )
+
+    try:
+        send_email_with_server_name(
+            to=[
+                sul_to_email_addr,
+                law_to_email_addr,
+                bus_to_email_addr,
+                devs_to_email_addr,
+            ],
+            subject="Voucher Errors from AP Report",
+            html_content=html_content,
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False
 
 
-def generate_ap_paid_report_email(folio_url: str, task_instance=None):
+def generate_ap_paid_report_email(invoices: list, report_path: str) -> dict:
     """
     Generates emails for Paid Invoices and Vouchers from AP Report
+    invoices = [{folio_invoice_data}, {folio_invoice_data}]
+    Returns a dictionary for succeeded/failed to send email, e.g.: {"sul": True, "law": True, "bus": True}
     """
-    ap_report_path = task_instance.xcom_pull(task_ids="init_processing_task")
-    invoices = task_instance.xcom_pull(task_ids="retrieve_invoice_task")
-    ap_report_name = pathlib.Path(ap_report_path).name
+    ap_report_name = pathlib.Path(report_path).name
     grouped_invoices = _group_invoices_by_acqunit(invoices)
     devs_to_email_addr = Variable.get("EMAIL_DEVS")
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    folio_url = Variable.get("FOLIO_URL")
 
     bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", [])
     law_invoices = grouped_invoices.get("556eb26f-dbea-41c1-a1de-9a88ad950d95", [])
@@ -411,18 +435,22 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         folio_url,
     )
 
+    email_sent: dict = {}
+
     if len(sul_html_content.strip()) > 0:
         logger.info(
             f"Sending email to {sul_to_email_addr} for {len(sul_invoices):,} invoices"
         )
-        send_email_with_server_name(
-            to=[
-                sul_to_email_addr,
-                devs_to_email_addr,
-            ],
-            subject=f"Paid Invoices from {ap_report_name} for SUL",
-            html_content=sul_html_content,
-        )
+        try:
+            send_email_with_server_name(
+                to=[sul_to_email_addr, devs_to_email_addr],
+                subject=f"Paid Invoices from {ap_report_name} for SUL",
+                html_content=sul_html_content,
+            )
+            email_sent["sul"] = True
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            email_sent["sul"] = False
 
     business_html_content = _ap_report_paid_email_body(
         bus_invoices, ap_report_name, folio_url
@@ -432,11 +460,16 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         logger.info(
             f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
         )
-        send_email_with_server_name(
-            to=[bus_to_email_addr, devs_to_email_addr],
-            subject=f"Paid Invoices from {ap_report_name} for Business",
-            html_content=business_html_content,
-        )
+        try:
+            send_email_with_server_name(
+                to=[bus_to_email_addr, devs_to_email_addr],
+                subject=f"Paid Invoices from {ap_report_name} for Business",
+                html_content=business_html_content,
+            )
+            email_sent["bus"] = True
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            email_sent["bus"] = False
 
     law_html_content = _ap_report_paid_email_body(
         law_invoices,
@@ -447,19 +480,21 @@ def generate_ap_paid_report_email(folio_url: str, task_instance=None):
         logger.info(
             f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
         )
-        send_email_with_server_name(
-            to=[
-                law_to_email_addr,
-                devs_to_email_addr,
-            ],
-            subject=f"Paid Invoices from {ap_report_name} for LAW",
-            html_content=law_html_content,
-        )
+        try:
+            send_email_with_server_name(
+                to=[law_to_email_addr, devs_to_email_addr],
+                subject=f"Paid Invoices from {ap_report_name} for LAW",
+                html_content=law_html_content,
+            )
+            email_sent["law"] = True
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            email_sent["law"] = False
 
-    return len(invoices) if invoices else 0
+    return email_sent
 
 
-def generate_summary_email(invoices: list, folio_url: str):
+def generate_summary_email(invoices: list):
     """
     Generates emails that summarize invoices sent to AP
     """
@@ -467,6 +502,7 @@ def generate_summary_email(invoices: list, folio_url: str):
     sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
     law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
     bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    folio_url = Variable.get("FOLIO_URL")
 
     grouped_invoices = _group_invoices_by_acqunit(invoices)
 
