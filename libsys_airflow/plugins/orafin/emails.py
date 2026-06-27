@@ -4,8 +4,6 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-from typing import Union
-
 from jinja2 import Environment, Template
 
 from airflow.sdk import Variable
