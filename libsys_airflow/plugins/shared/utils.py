@@ -81,11 +81,10 @@ def send_email_with_server_name(**kwargs):
 
 def _subject_with_server_name(**kwargs):
     subject = kwargs.get("subject")
-    folio_url = Variable.get("FOLIO_URL", "folio-test/stage")
+    folio_url = folio_name()
     if is_production():
         return subject
     else:
-        folio_url = re.sub('https?://', '', folio_url)
         return f"{folio_url} - {subject}"
 
 
