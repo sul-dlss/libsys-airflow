@@ -121,7 +121,7 @@ def test_bookplates_metadata_email(
 
     assert (
         mock_send_email.call_args[1]["subject"]
-        == "folio-test - Digital bookplates new and updated metadata"
+        == "Test - Digital bookplates new and updated metadata"
     )
 
     assert mock_send_email.call_args[1]["to"] == ["test@example.com"]
