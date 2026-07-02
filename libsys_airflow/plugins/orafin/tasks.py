@@ -17,6 +17,7 @@ from libsys_airflow.plugins.orafin.emails import (
     generate_excluded_email,
     generate_voucher_error_email,
     generate_summary_email,
+    send_email_report,
 )
 
 from libsys_airflow.plugins.orafin.reports import (
@@ -69,10 +70,14 @@ def email_invoice_errors_task(missing, cancelled, already_paid, failed_updates):
             len(missing) + len(cancelled) + len(already_paid) + len(failed_updates)
         )
         logger.info(f"Emailing {total_errors:,} error reports")
-        email_sent = generate_ap_error_report_email(
+        email_to_send = generate_ap_error_report_email(
             missing, cancelled, already_paid, failed_updates
         )
-        if email_sent is False:
+        subject = "Invoice Errors from AP Report"
+        email_sent = send_email_report("all", subject, email_to_send["all"])
+        if email_sent is True:
+            logger.info("Sent invoice errors from AP report email")
+        else:
             raise AirflowException("Failed to send error report emails.")
         return email_sent
     else:
@@ -84,8 +89,12 @@ def email_vouchers_errors_task(missing, multiple, failed_updates):
     if any([missing, multiple, failed_updates]):
         total_errors = len(missing) + len(multiple) + len(failed_updates)
         logger.info(f"Emailing {total_errors:,} error reports")
-        email_sent = generate_voucher_error_email(missing, multiple, failed_updates)
-        if email_sent is False:
+        email_to_send = generate_voucher_error_email(missing, multiple, failed_updates)
+        subject = "Voucher Errors from AP Report"
+        email_sent = send_email_report("all", subject, email_to_send["all"])
+        if email_sent is True:
+            logger.info("Sent voucher errors from AP report email")
+        else:
             raise AirflowException("Failed to send voucher error report emails.")
         return email_sent
     else:
@@ -96,12 +105,18 @@ def email_vouchers_errors_task(missing, multiple, failed_updates):
 def email_paid_task(paid, report_path):
     if len(paid) > 0:
         logger.info(f"Emailing all {len(paid)} paid invoices")
-        email_sent = generate_ap_paid_report_email(paid, report_path)
-        for lib, result in email_sent.items():
-            if result is False:
-                logger.error(f"Failed to send paid email report to {lib}")
+        emails_to_send = generate_ap_paid_report_email(paid, report_path)
+        ap_report_name = pathlib.Path(report_path).name
+        for lib, email in emails_to_send.items():
+            if len(email.strip()) > 0:
+                subject = f"Paid Invoices from {ap_report_name} for {lib}"
+                email_sent = send_email_report(lib, subject, email)
+                if email_sent is True:
+                    logger.info(f"Sent paid email report for {lib}")
+                else:
+                    logger.error(f"Failed to send paid email report to {lib}")
             else:
-                logger.info(f"Sent paid email report to {lib}")
+                logger.info(f"No paid invoices to report for {lib}")
     else:
         raise AirflowSkipException("No paid invoices to report.")
 

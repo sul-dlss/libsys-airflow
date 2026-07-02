@@ -286,25 +286,17 @@ def generate_failed_dag_email(context, airflow_url=None):
 
 def generate_ap_error_report_email(
     missing: list, cancelled: list, already_paid: list, failed_updates: list
-) -> bool:
+) -> dict:
     """
     Gets lists of missing/cancelled/paid/failed updates errors and emails report
+    Returns a dictionary of library and generated email, e.g. {"all": email_body}
     """
-    logger.info("Generating Email Report")
+    logger.info("Generating invoice errors email report")
     missing_invoices_df = pd.DataFrame(missing)
     cancelled_invoices_df = pd.DataFrame(cancelled)
     paid_invoices_df = pd.DataFrame(already_paid)
     failed_updates_df = pd.DataFrame(failed_updates)
-
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
-    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
     folio_url = Variable.get("FOLIO_URL")
-
-    logger.info(
-        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} error reports"
-    )
 
     html_content = _ap_report_errors_email_body(
         missing_invoices_df,
@@ -313,41 +305,21 @@ def generate_ap_error_report_email(
         failed_updates_df,
         folio_url,
     )
-
-    try:
-        send_email_with_server_name(
-            to=[
-                sul_to_email_addr,
-                law_to_email_addr,
-                bus_to_email_addr,
-                devs_to_email_addr,
-            ],
-            subject="Invoice Errors from AP Report",
-            html_content=html_content,
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send email: {e}")
-        return False
+    logger.info("Generated invoice errors from AP Report email for all libraries.")
+    email_to_send: dict = {"all": html_content}
+    return email_to_send
 
 
 def generate_voucher_error_email(
     missing: list, multiples: list, failed_updates: list
-) -> bool:
+) -> dict:
     """
     Gets lists of missing/multiple/failed updates errors and emails report
     Lists contain invoice_id's and failed_updates is list of voucher_to_update
+    Returns a dictionary of library and generated email, e.g. {"all": email_body}
     """
-    logger.info("Generating Email Report")
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
-    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    logger.info("Generating voucher errors email report")
     folio_url = Variable.get("FOLIO_URL")
-
-    logger.info(
-        f"Sending email to {sul_to_email_addr}, {bus_to_email_addr}, and {law_to_email_addr} error reports"
-    )
 
     template = Template(
         """
@@ -391,36 +363,19 @@ def generate_voucher_error_email(
         failed_updates=failed_updates,
         folio_url=folio_url,
     )
-
-    try:
-        send_email_with_server_name(
-            to=[
-                sul_to_email_addr,
-                law_to_email_addr,
-                bus_to_email_addr,
-                devs_to_email_addr,
-            ],
-            subject="Voucher Errors from AP Report",
-            html_content=html_content,
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send email: {e}")
-        return False
+    logger.info("Generated voucher errors from AP Report email for all libraries.")
+    email_to_send: dict = {"all": html_content}
+    return email_to_send
 
 
 def generate_ap_paid_report_email(invoices: list, report_path: str) -> dict:
     """
     Generates emails for Paid Invoices and Vouchers from AP Report
     invoices = [{folio_invoice_data}, {folio_invoice_data}]
-    Returns a dictionary for succeeded/failed to send email, e.g.: {"sul": True, "law": True, "bus": True}
+    Returns a dictionary of library and generated email, e.g. {"SUL": email_body, "LAW": email_body, "Business": email_body}
     """
     ap_report_name = pathlib.Path(report_path).name
     grouped_invoices = _group_invoices_by_acqunit(invoices)
-    devs_to_email_addr = Variable.get("EMAIL_DEVS")
-    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
-    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
-    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
     folio_url = Variable.get("FOLIO_URL")
 
     bus_invoices = grouped_invoices.get("c74ceb20-33fb-4b50-914e-a056db67feea", [])
@@ -432,64 +387,24 @@ def generate_ap_paid_report_email(invoices: list, report_path: str) -> dict:
         ap_report_name,
         folio_url,
     )
-
-    email_sent: dict = {}
-
-    if len(sul_html_content.strip()) > 0:
-        logger.info(
-            f"Sending email to {sul_to_email_addr} for {len(sul_invoices):,} invoices"
-        )
-        try:
-            send_email_with_server_name(
-                to=[sul_to_email_addr, devs_to_email_addr],
-                subject=f"Paid Invoices from {ap_report_name} for SUL",
-                html_content=sul_html_content,
-            )
-            email_sent["sul"] = True
-        except Exception as e:
-            logger.error(f"Failed to send email: {e}")
-            email_sent["sul"] = False
-
     business_html_content = _ap_report_paid_email_body(
         bus_invoices, ap_report_name, folio_url
     )
-
-    if len(business_html_content.strip()) > 0:
-        logger.info(
-            f"Sending email to {bus_to_email_addr} for {len(bus_invoices):,} invoices"
-        )
-        try:
-            send_email_with_server_name(
-                to=[bus_to_email_addr, devs_to_email_addr],
-                subject=f"Paid Invoices from {ap_report_name} for Business",
-                html_content=business_html_content,
-            )
-            email_sent["bus"] = True
-        except Exception as e:
-            logger.error(f"Failed to send email: {e}")
-            email_sent["bus"] = False
-
     law_html_content = _ap_report_paid_email_body(
         law_invoices,
         ap_report_name,
         folio_url,
     )
-    if len(law_html_content.strip()) > 0:
-        logger.info(
-            f"Sending email to {law_to_email_addr} for {len(law_invoices):,} invoices"
-        )
-        try:
-            send_email_with_server_name(
-                to=[law_to_email_addr, devs_to_email_addr],
-                subject=f"Paid Invoices from {ap_report_name} for LAW",
-                html_content=law_html_content,
-            )
-            email_sent["law"] = True
-        except Exception as e:
-            logger.error(f"Failed to send email: {e}")
-            email_sent["law"] = False
 
-    return email_sent
+    logger.info(f"Generated paid {len(sul_invoices):,} invoices email for sul")
+    logger.info(f"Generated paid {len(bus_invoices):,} invoices email for business")
+    logger.info(f"Generated paid {len(law_invoices):,} invoices email for law")
+    emails_to_send: dict = {
+        "SUL": sul_html_content,
+        "Business": business_html_content,
+        "LAW": law_html_content,
+    }
+    return emails_to_send
 
 
 def generate_summary_email(invoices: list):
@@ -548,3 +463,34 @@ def generate_summary_email(invoices: list):
             subject="Approved Invoices Sent to AP for LAW",
             html_content=law_html_content,
         )
+
+
+def send_email_report(lib, subject, email) -> bool:
+    devs_to_email_addr = Variable.get("EMAIL_DEVS")
+    sul_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_SUL")
+    law_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_LAW")
+    bus_to_email_addr = Variable.get("ORAFIN_TO_EMAIL_BUS")
+    to_addr: list = [devs_to_email_addr]
+    match lib:
+        case "SUL":
+            to_addr.append(sul_to_email_addr)
+            logger.info(f"Sending email to {to_addr} for {lib}")
+        case "LAW":
+            to_addr.append(law_to_email_addr)
+            logger.info(f"Sending email to {to_addr} for {lib}")
+        case "Business":
+            to_addr.append(bus_to_email_addr)
+            logger.info(f"Sending email to {to_addr} for {lib}")
+        case _:
+            to_addr.extend([sul_to_email_addr, law_to_email_addr, bus_to_email_addr])
+            logger.info(f"No library-specific email; sending to {to_addr}")
+    try:
+        send_email_with_server_name(
+            to=to_addr,
+            subject=subject,
+            html_content=email,
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False

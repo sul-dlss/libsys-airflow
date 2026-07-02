@@ -804,17 +804,22 @@ def test_email_invoice_errors_task(mocker, caplog):
     ]
     mocker.patch(
         "libsys_airflow.plugins.orafin.tasks.generate_ap_error_report_email",
+        return_value={"all": ""},
+    )
+    mock_email_sent = mocker.patch(
+        "libsys_airflow.plugins.orafin.tasks.send_email_report",
         return_value=True,
     )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="test@stanford.edu",
     )
-    mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
     email_task = email_invoice_errors_task.function(
         missing, cancelled, already_paid, failed_updates
     )
+    assert mock_email_sent.call_args.args[1] == "Invoice Errors from AP Report"
     assert email_task is True
+    assert "Sent invoice errors from AP report email" in caplog.text
     assert "Emailing 4 error reports" in caplog.text
 
 
@@ -830,6 +835,10 @@ def test_failed_email_invoice_errors_task(mocker, caplog):
     ]
     mocker.patch(
         "libsys_airflow.plugins.orafin.tasks.generate_ap_error_report_email",
+        return_value={"all": ""},
+    )
+    mock_email_sent = mocker.patch(
+        "libsys_airflow.plugins.orafin.tasks.send_email_report",
         return_value=False,
     )
     mocker.patch(
@@ -840,6 +849,7 @@ def test_failed_email_invoice_errors_task(mocker, caplog):
         email_invoice_errors_task.function(
             missing, cancelled, already_paid, failed_updates
         )
+    assert mock_email_sent.called
     assert "Failed to send error report emails." in str(exc_info.value)
     assert "Emailing 1 error reports" in caplog.text
 
@@ -868,16 +878,21 @@ def test_email_vouchers_errors_task(mocker, caplog):
     ]
     mocker.patch(
         "libsys_airflow.plugins.orafin.tasks.generate_voucher_error_email",
+        return_value={"all": ""},
+    )
+    mock_email_sent = mocker.patch(
+        "libsys_airflow.plugins.orafin.tasks.send_email_report",
         return_value=True,
     )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="test@stanford.edu",
     )
-    mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
     email_task = email_vouchers_errors_task.function(missing, multiple, failed_updates)
     assert email_task is True
+    assert mock_email_sent.call_args.args[1] == "Voucher Errors from AP Report"
     assert "Emailing 3 error reports" in caplog.text
+    assert "Sent voucher errors from AP report email" in caplog.text
 
 
 def test_failed_email_vouchers_errors_task(mocker, caplog):
@@ -886,6 +901,10 @@ def test_failed_email_vouchers_errors_task(mocker, caplog):
     failed_updates = []
     mocker.patch(
         "libsys_airflow.plugins.orafin.tasks.generate_voucher_error_email",
+        return_value={"all": ""},
+    )
+    mock_email_sent = mocker.patch(
+        "libsys_airflow.plugins.orafin.tasks.send_email_report",
         return_value=False,
     )
     mocker.patch(
@@ -895,6 +914,7 @@ def test_failed_email_vouchers_errors_task(mocker, caplog):
     with pytest.raises(AirflowException) as exc_info:
         email_vouchers_errors_task.function(missing, multiple, failed_updates)
     assert "Failed to send voucher error report emails." in str(exc_info.value)
+    assert mock_email_sent.called
     assert "Emailing 2 error reports" in caplog.text
 
 
@@ -911,21 +931,34 @@ def test_email_paid_task(mocker, caplog):
     paid = [
         {"id": "e4be44c1-f98a-4b19-b61d-09fe095c6fa3", "status": "Paid"},
         {"id": "c7941b2e-ef06-406e-af82-863717ff4ba0", "status": "Paid"},
+        {"id": "adavfgc1-f98a-4b19-b61d-09fe095c6fa3", "status": "Paid"},
     ]
     report_path = "/opt/airflow/orafin-files/reports/xxdl_ap_payment_06162026153000.csv"
     mocker.patch(
         "libsys_airflow.plugins.orafin.tasks.generate_ap_paid_report_email",
-        return_value={"sul": True, "bus": False},
+        return_value={"SUL": "some html content", "LAW": "", "Business": "email body"},
     )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="test@stanford.edu",
     )
-    mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
+    mock_email_sent = mocker.patch(
+        "libsys_airflow.plugins.orafin.tasks.send_email_report",
+        side_effect=[True, False],
+    )
     email_paid_task.function(paid, report_path)
-    assert "Emailing all 2 paid invoices" in caplog.text
-    assert "Failed to send paid email report to bus" in caplog.text
-    assert "Sent paid email report to sul" in caplog.text
+    assert (
+        mock_email_sent.call_args_list[0].args[1]
+        == "Paid Invoices from xxdl_ap_payment_06162026153000.csv for SUL"
+    )
+    assert (
+        mock_email_sent.call_args_list[1].args[1]
+        == "Paid Invoices from xxdl_ap_payment_06162026153000.csv for Business"
+    )
+    assert "Emailing all 3 paid invoices" in caplog.text
+    assert "Failed to send paid email report to Business" in caplog.text
+    assert "Sent paid email report for SUL" in caplog.text
+    assert "No paid invoices to report for LAW"
 
 
 def test_skip_email_paid_task():
