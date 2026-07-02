@@ -286,3 +286,12 @@ def test_folio_name(mocker):
         return_value="https://okapi.edu/",
     )
     assert utils.folio_name() is None
+
+
+def test_subject_with_server_name(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.Variable.get",
+        return_value="https://folio-test-api.stanford.edu/",
+    )
+    email_subject = utils._subject_with_server_name(subject="Random email subject line")
+    assert email_subject == "Test - Random email subject line"

@@ -79,7 +79,7 @@ def test_fix_encumbrances_email_subject(mock_folio_variables):
     from libsys_airflow.plugins.folio.encumbrances.email import subject
 
     subj = _subject_with_server_name(subject=subject(fy_code="SUL2024"))
-    assert subj == "okapi-test - Fix Encumbrances for SUL2024"
+    assert subj == "Test - Fix Encumbrances for SUL2024"
 
 
 def test_email_to(mocker, mock_folio_variables):
