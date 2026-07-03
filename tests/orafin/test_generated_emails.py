@@ -109,20 +109,6 @@ def test_send_email_report_send_failure(mocker, caplog):
 
 
 def test_generate_ap_error_report_email(mocker):
-    # mock_send_email = mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.send_email_with_server_name",
-    #     return_value=True,
-    # )
-    # mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.Variable.get",
-    #     side_effect=lambda key: {
-    #         "EMAIL_DEVS": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_SUL": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_LAW": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_BUS": "test@stanford.edu",
-    #         "FOLIO_URL": "http://folio.stanford.edu",
-    #     }.get(key, "test@stanford.edu"),
-    # )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="http://folio.stanford.edu",
@@ -222,15 +208,6 @@ def test_generate_ap_error_report_email(mocker):
         missing, cancelled, already_paid, failed_updates
     )
 
-    # assert result is True
-    # assert mock_send_email.called
-    # assert mock_send_email.call_args[1]["to"] == [
-    #     "test@stanford.edu",
-    #     "test@stanford.edu",
-    #     "test@stanford.edu",
-    #     "test@stanford.edu",
-    # ]
-
     html_body = BeautifulSoup(email_to_send["all"], "html.parser")
 
     h2s = html_body.find_all("h2")
@@ -268,37 +245,7 @@ def test_generate_ap_error_report_email(mocker):
     )
 
 
-# def test_generate_ap_error_report_email_no_errors(mocker):
-# mock_send_email = mocker.patch(
-#     "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
-# )
-
-# mocker.patch(
-#     "libsys_airflow.plugins.orafin.emails.Variable.get",
-#     return_value="test@stanford.edu",
-# )
-
-# Test with empty lists
-# result = generate_ap_error_report_email([], [], [], [])
-# assert result is True
-# assert mock_send_email.called
-
-
 def test_generate_ap_paid_report_email(mocker):
-    # mock_send_email = mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.send_email_with_server_name"
-    # )
-
-    # mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.Variable.get",
-    #     side_effect=lambda key: {
-    #         "EMAIL_DEVS": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_SUL": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_LAW": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_BUS": "test@stanford.edu",
-    #         "FOLIO_URL": "http://folio.stanford.edu",
-    #     }.get(key, "test@stanford.edu"),
-    # )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="http://folio.stanford.edu",
@@ -319,13 +266,10 @@ def test_generate_ap_paid_report_email(mocker):
     ]
 
     report_path = "/opt/airflow/orafin-data/reports/xxdl_ap_payment_09282023161640.csv"
-
     email_to_send = generate_ap_paid_report_email(invoices, report_path)
-    #  {"SUL": email_body, "LAW": email_body, "Business": email_body}
 
     assert isinstance(email_to_send, dict)
     assert "SUL" in email_to_send.keys()
-    # assert mock_send_email.called
 
     html_body = BeautifulSoup(email_to_send["SUL"], "html.parser")
 
@@ -364,21 +308,6 @@ def test_group_invoices_by_acqunit():
     ]
     grouped_acqunits = _group_invoices_by_acqunit(invoices)
     assert len(grouped_acqunits["bd6c5f05-9ab3-41f7-8361-1c1e847196d3"]) == 2
-
-
-# def test_generate_ap_paid_report_email_no_invoices(mocker):
-#     mocker.patch("libsys_airflow.plugins.orafin.emails.send_email_with_server_name")
-
-#     mocker.patch(
-#         "libsys_airflow.plugins.orafin.emails.Variable.get",
-#         return_value="test@stanford.edu",
-#     )
-
-#     result = generate_ap_paid_report_email(
-#         [], "/opt/airflow/orafin-data/reports/xxdl_ap_payment.csv"
-#     )
-
-#     assert result == {}
 
 
 def test_generate_excluded_email(mocker):
@@ -523,20 +452,6 @@ def test_generate_summary_email(mocker):
 
 
 def test_generate_voucher_error_email(mocker):
-    # mock_send_email = mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.send_email_with_server_name",
-    #     return_value=True,
-    # )
-    # mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.Variable.get",
-    #     side_effect=lambda key: {
-    #         "EMAIL_DEVS": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_SUL": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_LAW": "test@stanford.edu",
-    #         "ORAFIN_TO_EMAIL_BUS": "test@stanford.edu",
-    #         "FOLIO_URL": "http://folio.stanford.edu",
-    #     }.get(key, "test@stanford.edu"),
-    # )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="http://folio.stanford.edu",
@@ -567,9 +482,6 @@ def test_generate_voucher_error_email(mocker):
 
     assert isinstance(email_to_send, dict)
     assert "all" in email_to_send.keys()
-    # assert mock_send_email.called
-    # assert len(mock_send_email.call_args[1]["to"]) == 4
-    # assert mock_send_email.call_args[1]["subject"] == "Voucher Errors from AP Report"
 
     html_body = BeautifulSoup(email_to_send["all"], "html.parser")
 
@@ -619,43 +531,7 @@ def test_generate_voucher_error_email(mocker):
     assert failed_links[1].text == "Voucher voucher-789"
 
 
-# def test_generate_voucher_error_email_empty_lists(mocker):
-#     mock_send_email = mocker.patch(
-#         "libsys_airflow.plugins.orafin.emails.send_email_with_server_name",
-#         return_value=True,
-#     )
-#     mocker.patch(
-#         "libsys_airflow.plugins.orafin.emails.Variable.get",
-#         return_value="test@stanford.edu",
-#     )
-
-#     # Test with all empty lists
-#     result = generate_voucher_error_email([], [], [])
-
-#     assert result is True
-#     assert mock_send_email.called
-
-# Check that email still contains main heading but no section content
-# html_body = BeautifulSoup(
-#     mock_send_email.call_args[1]["html_content"], "html.parser"
-# )
-# h1 = html_body.find("h1")
-# assert h1.text == "Voucher Failures from AP Report"
-
-# # Should have no h2 sections since all lists are empty
-# h2s = html_body.find_all("h2")
-# assert len(h2s) == 0
-
-
 def test_generate_voucher_error_email_only_missing(mocker):
-    # mock_send_email = mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.send_email_with_server_name",
-    #     return_value=True,
-    # )
-    # mocker.patch(
-    #     "libsys_airflow.plugins.orafin.emails.Variable.get",
-    #     return_value="test@stanford.edu",
-    # )
     mocker.patch(
         "libsys_airflow.plugins.orafin.emails.Variable.get",
         return_value="http://folio.stanford.edu",
