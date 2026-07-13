@@ -410,14 +410,14 @@ def _convert_marc_fields(record: pymarc.Record) -> pymarc.Record:
     for field in record.fields:
         if field.is_control_field():
             new_fields.append(
-                pymarc.Field(tag=field.tag, data=field.data.decode('utf8'))
+                pymarc.Field(tag=field.tag, data=field.data.decode('utf8'))  # type: ignore
             )
         else:
             new_subfields = []
             for subfield in field.subfields:
                 new_subfields.append(
                     pymarc.Subfield(
-                        code=subfield.code, value=subfield.value.decode('utf8')
+                        code=subfield.code, value=subfield.value.decode('utf8')  # type: ignore
                     )
                 )
             field.subfields = new_subfields
@@ -448,7 +448,7 @@ def _marc8_to_unicode(record: pymarc.Record) -> pymarc.Record:
         sys.stderr = temp_stderr
         original_leader = record.leader
         modified_leader = record.leader[0:9] + " " + record.leader[10:]
-        record.leader = modified_leader
+        record.leader = modified_leader  # type: ignore
         raw_marc = record.as_marc()
         new_record = pymarc.Record(data=raw_marc, to_unicode=True)  # type: ignore
         # pymarc logs encoding errors to std error
