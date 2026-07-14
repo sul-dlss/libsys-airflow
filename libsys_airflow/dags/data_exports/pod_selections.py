@@ -1,7 +1,5 @@
 import pathlib
-
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from airflow.sdk import DAG, Param, Variable
 from airflow.providers.standard.operators.python import (
@@ -43,9 +41,6 @@ default_args = {
 }
 
 
-pacific_timezone = ZoneInfo("America/Los_Angeles")
-
-
 def missing_marc_records_email(**kwargs):
     fetched_marc_records: dict = kwargs.get("fetched_marc_records", {})
     generate_missing_marc_email.function(
@@ -75,13 +70,13 @@ with DAG(
     tags=["data export", "pod"],
     params={
         "from_date": Param(
-            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
+            "2025-01-01",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
+            "2025-01-01",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
@@ -103,6 +98,7 @@ with DAG(
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
+        op_kwargs={"vendor": "pod"},
     )
 
     save_ids_to_file = PythonOperator(

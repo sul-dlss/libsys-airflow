@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from airflow.sdk import DAG, Param, Variable
 from airflow.providers.standard.operators.python import (
@@ -34,8 +33,6 @@ default_args = {
     "retry_delay": timedelta(minutes=1),
 }
 
-pacific_timezone = ZoneInfo("America/Los_Angeles")
-
 with DAG(
     "select_nielsen_records",
     default_args=default_args,
@@ -47,13 +44,13 @@ with DAG(
     tags=["data export", "nielsen"],
     params={
         "from_date": Param(
-            f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}",
+            "2025-01-01",
             format="date",
             type="string",
             description="The earliest date to select record IDs from FOLIO.",
         ),
         "to_date": Param(
-            f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}",
+            "2025-01-01",
             format="date",
             type="string",
             description="The latest date to select record IDs from FOLIO.",
@@ -75,6 +72,7 @@ with DAG(
     fetch_folio_record_ids = PythonOperator(
         task_id="fetch_record_ids_from_folio",
         python_callable=fetch_record_ids,
+        op_kwargs={"vendor": "nielsen"},
     )
 
     save_ids_to_file = PythonOperator(
@@ -82,7 +80,7 @@ with DAG(
         trigger_rule="none_failed_min_one_success",
         python_callable=save_ids_to_fs,
         op_kwargs={
-            "vendor": "nielson",
+            "vendor": "nielsen",
             "record_id_kind": "{{ params.saved_record_ids_kind }}",
         },
     )
