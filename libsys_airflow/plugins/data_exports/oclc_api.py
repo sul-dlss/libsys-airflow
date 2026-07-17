@@ -398,6 +398,17 @@ class OCLCAPIWrapper(object):
                 failures.add(file_name)
                 return
 
+            if matched_record['briefRecords'][0]['oclcNumber'] is None:
+                output['failures'].append(
+                    {
+                        "uuid": instance_uuid,
+                        "reason": "No OCLC number",
+                        "context": matched_record,
+                    }
+                )
+                failures.add(file_name)
+                return
+
             # Use first brief record's oclcNumber to add to existing MARC
             # record
             control_number = matched_record['briefRecords'][0]['oclcNumber']
