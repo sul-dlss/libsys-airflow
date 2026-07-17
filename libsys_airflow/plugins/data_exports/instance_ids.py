@@ -2,6 +2,7 @@ import ast
 import logging
 import numpy as np
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Union
 
@@ -9,6 +10,22 @@ from airflow.sdk import get_current_context
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 logger = logging.getLogger(__name__)
+pacific_timezone = ZoneInfo("America/Los_Angeles")
+
+
+def _vendor_selection_dates(vendor: str) -> tuple:
+    match vendor:
+        case "backstage":
+            from_date = f"{((datetime.now(pacific_timezone) - timedelta(1)) - timedelta(6)).strftime('%Y-%m-%d')}"
+            to_date = f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}"
+        case "gobi":
+            from_date = f"{(datetime.now(pacific_timezone) - timedelta(8)).strftime('%Y-%m-%d')}"
+            to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
+        case _:
+            from_date = f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}"
+            to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
+
+    return (from_date, to_date)
 
 
 def choose_fetch_folio_ids(**kwargs):
@@ -26,6 +43,7 @@ def fetch_record_ids(**kwargs) -> dict:
     context = get_current_context()
     params = context.get("params", {})  # type: ignore
     airflow = kwargs.get("airflow", "/opt/airflow/libsys_airflow")
+    vendor = kwargs.get("vendor", "default")
     record_kind = kwargs.get("record_kind", ["new", "updates", "deletes"])
     results = {"new": [], "updates": [], "deletes": []}  # type: dict
 
@@ -37,10 +55,7 @@ def fetch_record_ids(**kwargs) -> dict:
             with open(sqlfile) as sqf:
                 query = sqf.read()
 
-            from_date = params.get("from_date", datetime.now().strftime('%Y-%m-%d'))
-            to_date = params.get(
-                "to_date", (datetime.now() + timedelta(1)).strftime('%Y-%m-%d')
-            )
+            from_date, to_date = _vendor_selection_dates(vendor=vendor)
 
             results[kind].extend(
                 SQLExecuteQueryOperator(
