@@ -21,12 +21,6 @@ def _vendor_selection_dates(vendor: str) -> tuple:
         case "gobi":
             from_date = f"{(datetime.now(pacific_timezone) - timedelta(8)).strftime('%Y-%m-%d')}"
             to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
-        case "oclc":
-            from_date = f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}"
-            to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
-        case "pod":
-            from_date = f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}"
-            to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
         case _:
             from_date = f"{(datetime.now(pacific_timezone) - timedelta(1)).strftime('%Y-%m-%d')}"
             to_date = f"{(datetime.now(pacific_timezone)).strftime('%Y-%m-%d')}"
