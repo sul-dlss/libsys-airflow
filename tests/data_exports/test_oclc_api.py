@@ -296,6 +296,9 @@ def mock_metadata_session(authorization=None, timeout=None):
             case "a7340114":
                 payload['briefRecords'].append({'oclcNumber': '39301853'})
 
+            case "a99999":
+                payload['briefRecords'].append({'oclcNumber': None})
+
         mock_response.json = lambda: payload
         return mock_response
 
@@ -1120,3 +1123,38 @@ def test_worldcat_error(mocker, mock_oclc_api, tmp_path):
     result = oclc_api_instance.update([str(marc_file.absolute())])
 
     assert result["failures"][0]["reason"] == "WorldcatRequest Error"
+
+
+def test_match_oclc_number_is_none(mock_oclc_api, tmp_path, caplog):
+    record_with_none_oclc = pymarc.Record()
+    record_with_none_oclc.add_field(
+        pymarc.Field(tag='008', data="a99999"),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='12345678-1234-1234-1234-123456789012')
+            ],
+        ),
+    )
+
+    marc_file = tmp_path / "2024-test-none-oclc.mrc"
+
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record_with_none_oclc)
+
+    oclc_api_instance = oclc_api.OCLCAPIWrapper(
+        client_id="EDIoHuhLbdRvOHDjpEBtcEnBHneNtLUDiPRYtAqfTlpOThrxzUwHDUjMGEakoIJSObKpICwsmYZlmpYK",
+        secret="c867b1dd75e6490f99d1cd1c9252ef22",
+    )
+
+    result = oclc_api_instance.match([str(marc_file)])
+
+    assert result["success"] == []
+    assert len(result["failures"]) == 1
+    assert result["failures"][0] == {
+        "uuid": '12345678-1234-1234-1234-123456789012',
+        "reason": 'No OCLC number',
+        "context": {'numberOfRecords': 1, 'briefRecords': [{'oclcNumber': None}]},
+    }
