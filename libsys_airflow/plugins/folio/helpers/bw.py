@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import logging
 
 import httpx
@@ -9,6 +10,7 @@ from jinja2 import Template
 from airflow.sdk import Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
 logger = logging.getLogger(__name__)
 
 
@@ -112,7 +114,7 @@ def add_admin_notes(note: str, task_instance, folio_client):
 
 
 def create_admin_note(sunid) -> str:
-    date = datetime.datetime.utcnow().strftime("%Y%m%d")
+    date = datetime.now(pacific_timezone).strftime("%Y%m%d")
     return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
 
 

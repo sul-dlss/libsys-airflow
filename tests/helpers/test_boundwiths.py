@@ -1,5 +1,5 @@
-import datetime
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import httpx
 import pytest
 
@@ -21,6 +21,8 @@ from tests.mocks import (  # noqa
     MockFOLIOClient,
     MockTaskInstance,
 )
+
+pacific_timezone = ZoneInfo("America/Los_Angeles")
 
 
 @pytest.fixture
@@ -144,7 +146,7 @@ def test_add_admin_notes(mock_task_instance, mock_folio_client, caplog):
 
 def test_create_admin_note():
     note = create_admin_note("jstanford")
-    date = datetime.datetime.utcnow().strftime("%Y%m%d")
+    date = datetime.now(pacific_timezone).strftime("%Y%m%d")
     assert note == f"SUL/DLSS/LibrarySystems/BWcreatedby/jstanford/{date}"
 
 
