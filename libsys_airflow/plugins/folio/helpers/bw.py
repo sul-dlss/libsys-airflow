@@ -48,14 +48,19 @@ def _bw_error_body(task_instance, params) -> str:
 
 def _bw_summary_body(task_instance, file_name) -> str:
     errors = []
-    for row in task_instance.xcom_pull(
+    error_data = task_instance.xcom_pull(
         task_ids="new_bw_record", key="error", default=[]
-    ):
+    ) or []
+    
+    for row in error_data:
         errors.append(row)
+    
     total_success = 0
-    for _ in task_instance.xcom_pull(
+    success_data = task_instance.xcom_pull(
         task_ids="new_bw_record", key="success", default=[]
-    ):
+    ) or []
+    
+    for _ in success_data:
         total_success += 1
     template = Template(
         """
@@ -79,17 +84,17 @@ def _bw_summary_body(task_instance, file_name) -> str:
     )
 
     return template.render(
-        total_success=total_success, errors=errors, file_name=file_name
+        total_success=total_success, errors=error_data, file_name=file_name
     )
 
 
 def add_admin_notes(note: str, task_instance, folio_client):
     logger.info(f"Adding note {note} to holdings and items")
     count = 0
-    for record in task_instance.xcom_pull(
+    records = task_instance.xcom_pull(
         task_ids="new_bw_record", key="success", default=[]
-    ):
-
+    ) or []
+    for record in records:
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
         holdings_record = folio_client.folio_get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
