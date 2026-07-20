@@ -51,6 +51,9 @@ class BoundWithView(AppBuilderBaseView):
                 if ["part_holdings_hrid", "principle_barcode"] != list(bw_df.columns):
                     flash(f"Invalid columns: {list(bw_df.columns)} for CSV file")
                     rendered_page = self.render_template("boundwith/index.html")
+                elif len(bw_df) < 2:
+                    flash(f"Warning! CSV file only contains one row. Need to include row for the principle's barcode and holdings HRID.")
+                    rendered_page = self.render_template("boundwith/index.html")
                 elif len(bw_df) > 1_000:
                     flash(f"Warning! CSV file has {len(bw_df)} rows, limit is 1,000")
                     rendered_page = self.render_template("boundwith/index.html")

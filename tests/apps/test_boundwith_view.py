@@ -185,7 +185,7 @@ def test_run_bw_creation_success_with_no_email(
     mock_api_client, mock_dag_run_api, test_airflow_client
 ):
     """Test successful boundwith creation when no email is provided."""
-    csv_data = b"part_holdings_hrid,principle_barcode\nHR001,BC001\n"
+    csv_data = b"part_holdings_hrid,principle_barcode\nHR001,BC001\nHR002,BC002\n"
     file = (BytesIO(csv_data), "boundwith_test.csv")
 
     # Setup mocks
