@@ -53,7 +53,7 @@ class BoundWithView(AppBuilderBaseView):
                     rendered_page = self.render_template("boundwith/index.html")
                 elif len(bw_df) < 2:
                     flash(
-                        f"Warning! CSV file only contains one row. Need to include row for the principle's barcode and holdings HRID."
+                        "Warning! CSV file only contains one row. Need to include row for the principle's barcode and holdings HRID."
                     )
                     rendered_page = self.render_template("boundwith/index.html")
                 elif len(bw_df) > 1_000:
