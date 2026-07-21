@@ -2,20 +2,20 @@
 
 {% block content %}
 <div>
-    <h2>Boundwith CSV Creator</h2>
     {% if run_id %}
     <div>
-        <p>
+        <h3>
             DAG add_bw_relationships triggered with
             <a href="/dags/add_bw_relationships/runs/{{ run_id }}">Run ID {{ run_id }}</a>
-        </p>
+        </h3>
         {% if user_email %}
         <p>
             Summary report will be emailed to {{ user_email }}.
         </p>
         {% endif %}
     </div>
-    {% else %}
+    {% endif %}
+    <h2>Boundwith CSV Creator</h2>
     <p>Create boundwith relationships for parts and principle.</p>
     <p class="help-block">CSV should include a row for the principle's barcode and holdings HRID (use part_holdings_hrid column for principle's holdings HRID).</p>
     <form enctype="multipart/form-data" method="POST" action="{{ url_for('BoundWithView.run_bw_creation') }}">
@@ -56,6 +56,5 @@
             </div>
         </div>
     </form>
-    {% endif %}
 </div>
 {% endblock %}
