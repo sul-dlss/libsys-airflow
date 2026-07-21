@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import logging
 
 import httpx
@@ -9,6 +10,7 @@ from jinja2 import Template
 from airflow.sdk import Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
 
+pacific_timezone = ZoneInfo("America/Los_Angeles")
 logger = logging.getLogger(__name__)
 
 
@@ -48,14 +50,20 @@ def _bw_error_body(task_instance, params) -> str:
 
 def _bw_summary_body(task_instance, file_name) -> str:
     errors = []
-    for row in task_instance.xcom_pull(
-        task_ids="new_bw_record", key="error", default=[]
-    ):
+    error_data = (
+        task_instance.xcom_pull(task_ids="new_bw_record", key="error", default=[]) or []
+    )
+
+    for row in error_data:
         errors.append(row)
+
     total_success = 0
-    for _ in task_instance.xcom_pull(
-        task_ids="new_bw_record", key="success", default=[]
-    ):
+    success_data = (
+        task_instance.xcom_pull(task_ids="new_bw_record", key="success", default=[])
+        or []
+    )
+
+    for _ in success_data:
         total_success += 1
     template = Template(
         """
@@ -79,17 +87,18 @@ def _bw_summary_body(task_instance, file_name) -> str:
     )
 
     return template.render(
-        total_success=total_success, errors=errors, file_name=file_name
+        total_success=total_success, errors=error_data, file_name=file_name
     )
 
 
 def add_admin_notes(note: str, task_instance, folio_client):
     logger.info(f"Adding note {note} to holdings and items")
     count = 0
-    for record in task_instance.xcom_pull(
-        task_ids="new_bw_record", key="success", default=[]
-    ):
-
+    records = (
+        task_instance.xcom_pull(task_ids="new_bw_record", key="success", default=[])
+        or []
+    )
+    for record in records:
         holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
         holdings_record = folio_client.folio_get(holdings_endpoint)
         holdings_record["administrativeNotes"].append(note)
@@ -107,7 +116,7 @@ def add_admin_notes(note: str, task_instance, folio_client):
 
 
 def create_admin_note(sunid) -> str:
-    date = datetime.datetime.utcnow().strftime("%Y%m%d")
+    date = datetime.now(pacific_timezone).strftime("%Y%m%d")
     return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
 
 
