@@ -11,8 +11,7 @@ def run_folio_data_import(file_path: str, profile_name: str):
     Run the folio data import
     """
     args = [
-        "python3 -m folio_data_import",
-        "--record-type MARC21",
+        "python3 -m folio_data_import marc",
         "--gateway_url $gateway_url",
         "--tenant_id sul",
         "--username $username",

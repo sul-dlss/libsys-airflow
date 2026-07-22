@@ -27,6 +27,6 @@ def test_data_import(mock_folio_variables):
 
     assert bash_operator.task_id == "run_folio_data_import"
     assert bash_operator.bash_command.startswith(
-        "python3 -m folio_data_import --record-type MARC21 --gateway_url $gateway_url"
+        "python3 -m folio_data_import marc --gateway_url $gateway_url"
     )
     assert bash_operator.env["gateway_url"] == "folio-test"
