@@ -82,72 +82,95 @@ def download_path(tmp_path):
     return str(tmp_path)
 
 
-@pytest.fixture(params=["ftp_error", "ftp_download", "sftp_download", "gobi"])
+@pytest.fixture(params=["ftp_download", "sftp_download", "gobi"])
 def mock_hook(mocker, request):
     test_type = request.param
 
-    def mock_get_mod_time(*args):
-        if args[0] == "0820240402_f.mrc" and test_type == "ftp_error":
-            raise ftplib.error_perm("550 The system cannot find the file specified.")
-        elif args[0].startswith("oclc") and test_type == "ftp_error":
-            return datetime.fromisoformat("2024-04-11T19:31:59")
-        elif args[0] == "3820230411.mrc" and test_type == "ftp_download":  # Downloaded
+    def mock_describe_directory(*args):
+        if test_type == "ftp_download":
             five_days_ago = (
                 datetime.now(timezone.utc) - timedelta(days=int(5))
-            ).isoformat(timespec="seconds")
-            return datetime.fromisoformat(five_days_ago)
-        elif (
-            args[0] == "3820230413.mrc" and test_type == "ftp_download"
-        ):  # Outside download window
-            return datetime.fromisoformat("2013-01-01T00:05:23")
-        elif test_type == "sftp_download":
-            return "blah"
-
-    def mock_get_size(*args):
-        if args[0] == "1120240402_f.mrc":
-            raise ftplib.error_perm("550 The system cannot find the file specified.")
-        elif args[0].startswith("oclc"):
-            return 563
-        elif args[0] == "3820230411.mrc":
-            return 123
-        elif args[0] == "3820230413.mrc":
-            return 678
-
-    def mock_list_directory(*args):
-        if test_type == "ftp_error":
-            return ['0820240402_f.mrc', '1120240402_f.mrc', '1220240402_f.mrc']
-        elif test_type == "ftp_download":
-            return [
-                "3820230411.mrc",  # Downloaded
-                "3820230412.mrc",  # Already fetched
-                "3820230413.mrc",  # Outside download window
-                "3820230412.xxx",  # Does not match regex
-            ]
+            ).replace(microsecond=0)
+            return {
+                "3820230411.mrc": {
+                    "size": "123",
+                    "modify": five_days_ago.strftime("%Y%m%d%H%M%S"),
+                    "type": "file",
+                },
+                "3820230412.mrc": {
+                    "size": "456",
+                    "modify": "20230101000523",
+                    "type": "file",
+                },
+                "3820230413.mrc": {
+                    "size": "678",
+                    "modify": "20130101000523",
+                    "type": "file",
+                },
+                "3820230412.xxx": {
+                    "size": "999",
+                    "modify": "20250101000523",
+                    "type": "file",
+                },
+            }
         elif test_type == "sftp_download":
             return {
-                "3820230411.mrc": {"size": 123, "modify": "20230101000523"},
-                "3820230412.mrc": {"size": 456, "modify": "20230101000523"},
-                "3820230413.mrc": {"size": 678, "modify": "20130101000523"},
-                "3820230412.xxx": {"size": None, "modify": "20250101000523"},
+                "3820230411.mrc": {
+                    "size": "123",
+                    "modify": "20230101000523",
+                    "type": "file",
+                },
+                "3820230412.mrc": {
+                    "size": "456",
+                    "modify": "20230101000523",
+                    "type": "file",
+                },
+                "3820230413.mrc": {
+                    "size": "678",
+                    "modify": "20130101000523",
+                    "type": "file",
+                },
+                "3820230412.xxx": {
+                    "size": None,
+                    "modify": "20250101000523",
+                    "type": "file",
+                },
             }
         elif test_type == "gobi":
-            return [
-                "3820230411.ord",
-                "3820230411.cnt",
-                "3820230412.ord",
-                "3820230412.cnt",
-                "3820230413.cnt",
-            ]
+            return {
+                "3820230411.ord": {
+                    "size": "100",
+                    "modify": "20230411120000",
+                    "type": "file",
+                },
+                "3820230411.cnt": {
+                    "size": "200",
+                    "modify": "20230411120000",
+                    "type": "file",
+                },
+                "3820230412.ord": {
+                    "size": "300",
+                    "modify": "20230412120000",
+                    "type": "file",
+                },
+                "3820230412.cnt": {
+                    "size": "400",
+                    "modify": "20230412120000",
+                    "type": "file",
+                },
+                "3820230413.cnt": {
+                    "size": "500",
+                    "modify": "20230413120000",
+                    "type": "file",
+                },
+            }
 
     def mock_retrieve_file(*args):
         if args[0] == "1220240402_f.mrc":
             raise ftplib.error_perm("550 The system cannot find the file specified.")
 
     mock_hook = mocker.MagicMock()
-    mock_hook.get_mod_time = mock_get_mod_time
-    mock_hook.get_size = mock_get_size
-    mock_hook.list_directory = mock_list_directory
-    mock_hook.describe_directory = mock_list_directory
+    mock_hook.describe_directory = mock_describe_directory
     mock_hook.retrieve_file = mock_retrieve_file
     return mock_hook
 
@@ -245,8 +268,10 @@ def test_download_task(mock_hook, download_path, mocker, caplog):
         "Gobi - Full bibs",
         ["3820230411.mrc"],
     )
-    mod_time = (datetime.now(timezone.utc) - timedelta(days=int(5))).isoformat(
-        timespec="seconds"
+    mod_time = (
+        (datetime.now(timezone.utc) - timedelta(days=int(5)))
+        .replace(tzinfo=None)
+        .isoformat(timespec="seconds")
     )
     assert (
         "Downloading for interface Gobi - Full bibs from oclc with ftp-example.com-user"
@@ -329,24 +354,62 @@ def test_update_vendor_files_table(pg_hook, caplog):
         assert empty_vendor_file.filesize == 0
 
 
-@pytest.mark.parametrize("mock_hook", ["ftp_error"], indirect=True)
-def test_ftp_download_error_handling(mock_hook, mocker, caplog):
+def test_ftp_adapter_fallback_to_list_directory(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.side_effect = ftplib.error_perm(
+        "502 MLSD not implemented"
+    )
+    mock_hook.list_directory.return_value = ["file1.mrc", "file2.mrc"]
+    mock_hook.conn.sendcmd.return_value = None
 
-    adapter = FTPAdapter(hook=mock_hook, remote_path="oclc")
+    # Mock get_mod_time to return datetime objects
+    def mock_get_mod_time(path):
+        return datetime(2024, 1, 15, 10, 30, 0)
 
-    mod_time = adapter.get_mod_time('0820240402_f.mrc')
+    mock_hook.get_mod_time.side_effect = mock_get_mod_time
 
-    assert "Failed to retrieve modified time" in caplog.text
-    assert mod_time == "2024-04-11T19:31:59"
+    # Mock get_size to return integers
+    mock_hook.get_size.return_value = 1234
 
-    file_size = adapter.get_size('1120240402_f.mrc')
+    adapter = FTPAdapter(mock_hook, "/remote/path")
 
-    assert "Failed to retrieve size" in caplog.text
-    assert file_size == 563
+    assert mock_hook.list_directory.called
+    assert adapter.list_directory() == ["file1.mrc", "file2.mrc"]
+    assert adapter.get_size("file1.mrc") == 1234
+    assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
 
-    adapter.retrieve_file("1220240402_f.mrc", "/home/airflow/vendor-files/abded-abcd")
 
-    assert "Failed to retrieve 1220240402_f.mrc" in caplog.text
+def test_build_descriptions_handles_errors(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.side_effect = ftplib.error_perm(
+        "502 MLSD not implemented"
+    )
+    mock_hook.list_directory.return_value = ["good_file.mrc", "bad_file.mrc"]
+    mock_hook.conn.sendcmd.return_value = None
+
+    # First file succeeds, second fails
+    def mock_get_mod_time(path):
+        if "bad_file" in path:
+            raise ftplib.error_perm("550 File not found")
+        return datetime(2024, 1, 15, 10, 30, 0)
+
+    def mock_get_size(path):
+        if "bad_file" in path:
+            raise ftplib.error_perm("550 File not found")
+        return 1234
+
+    mock_hook.get_mod_time.side_effect = mock_get_mod_time
+    mock_hook.get_size.side_effect = mock_get_size
+
+    adapter = FTPAdapter(mock_hook, "/remote/path")
+
+    # Good file has real data
+    assert adapter.get_size("good_file.mrc") == 1234
+    assert adapter.get_mod_time("good_file.mrc") == "2024-01-15T10:30:00"
+
+    # Bad file has defaults
+    assert adapter.get_size("bad_file.mrc") == 0
+    assert adapter.get_mod_time("bad_file.mrc") == "1970-01-01T00:00:00"
 
 
 @pytest.mark.parametrize("mock_hook", ["sftp_download"], indirect=True)
