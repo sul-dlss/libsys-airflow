@@ -28,34 +28,71 @@ class FTPAdapter:
     def __init__(self, hook: FTPHook, remote_path: str):
         self.hook = hook
         self.remote_path = remote_path
-        self._filenames = hook.list_directory(remote_path)
+
+        try:
+            self._file_descriptions = hook.describe_directory(remote_path)
+            logger.info(f"Successfully used MLSD for {remote_path}")
+        except ftplib.error_perm as e:
+            logger.warning(f"MLSD not available for {remote_path}: {e}")
+            logger.info("Using fallback method (NLST + individual queries)")
+            self._file_descriptions = self._build_descriptions_from_list()
+
+    def _build_descriptions_from_list(self) -> dict:
+        """Fallback method when MLSD is not available."""
+        filenames = self.hook.list_directory(self.remote_path)
+        descriptions = {}
+
+        # Set binary mode once for all size queries
+        try:
+            self.hook.conn.sendcmd("TYPE I")  # type: ignore
+        except Exception as e:
+            logger.warning(f"Failed to set binary mode: {e}")
+
+        for filename in filenames:
+            # Normalize the path - handle both cases
+            if filename.startswith(self.remote_path):
+                full_path = filename
+                base_filename = filename.replace(f"{self.remote_path}/", "")
+            else:
+                full_path = f"{self.remote_path}/{filename}"
+                base_filename = filename
+            # Get modification time
+            try:
+                mod_time = self.hook.get_mod_time(full_path)
+                modify_str = mod_time.strftime("%Y%m%d%H%M%S")
+            except ftplib.error_perm as e:
+                logger.warning(f"Failed to get modification time for {full_path}: {e}")
+                modify_str = "19700101000000"
+
+            # Get size
+            try:
+                size = self.hook.get_size(full_path)
+                size_str = str(size) if size is not None else "0"
+            except ftplib.error_perm as e:
+                logger.warning(f"Failed to get size for {full_path}: {e}")
+                size_str = "0"
+
+            descriptions[base_filename] = {
+                "modify": modify_str,
+                "size": size_str,
+                "type": "file",
+            }
+
+        return descriptions
 
     def list_directory(self) -> list[str]:
-        return self._filenames
+        return list(self._file_descriptions.keys())
 
     def get_mod_time(self, filename: str) -> str:
-        try:
-            mod_time = self.hook.get_mod_time(filename)
-        except ftplib.error_perm as e:
-            logger.warning(f"Failed to retrieve modified time for {filename}, {e}.")
-            logger.info(f"Getting modified time for {self.remote_path}/{filename}")
-            mod_time = self.hook.get_mod_time(f"{self.remote_path}/{filename}")
-        return mod_time.isoformat()
+        mod_time_str = self._file_descriptions[filename]["modify"]
+        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S").isoformat()
 
     def get_size(self, filename: str) -> int:
-        try:
-            self.hook.conn.sendcmd("TYPE I")  # type: ignore
-            file_size = self.hook.get_size(filename)
-        except ftplib.error_perm as e:
-            logger.warning(f"Failed to retrieve size for {filename}, {e}")
-            logger.info(f"Getting size for {self.remote_path}/{filename}")
-            self.hook.conn.sendcmd("TYPE I")  # type: ignore
-            file_size = self.hook.get_size(f"{self.remote_path}/{filename}")
-
-        if file_size is None:
+        file_size = self._file_descriptions[filename]["size"]
+        if file_size is None or file_size == "":
             file_size = 0
 
-        return file_size
+        return int(file_size)
 
     def retrieve_file(self, filename: str, download_filepath: str):
         try:
@@ -79,12 +116,12 @@ class SFTPAdapter:
         mod_time_str = self._file_descriptions[filename]["modify"]
         return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S").isoformat()
 
-    def get_size(self, filename: str) -> int | str:
+    def get_size(self, filename: str) -> int:
         file_size = self._file_descriptions[filename]["size"]
         if file_size is None:
             file_size = 0
 
-        return file_size
+        return int(file_size)
 
     def retrieve_file(self, filename: str, download_filepath: str):
         remote_filepath = str(pathlib.Path(self.remote_path) / filename)
@@ -282,7 +319,7 @@ def _filter_remote_path(filename: str, remote_path: str) -> str:
 
 def _record_vendor_file(
     filename: str,
-    filesize: int | str | None,
+    filesize: int | None,
     status: str,
     vendor_uuid: str,
     vendor_interface_uuid: str,
