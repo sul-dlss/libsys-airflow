@@ -8,6 +8,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_marc_tags_to_record,
     instance_id_for_druids,
     retrieve_druids_for_instance_task,
+    update_instance,
 )
 
 
@@ -42,11 +43,14 @@ def digital_bookplate_979():
         instance_uuid=instance_id_for_druids(druid_instances=druids_for_instance_id),
     )
 
+    add_admin_note = update_instance(add_marc_tags)
+
     (
         start
         >> druids_for_instance_id
         >> marc_tags_for_druid_instances
         >> add_marc_tags
+        >> add_admin_note
         >> end
     )
 

@@ -3,13 +3,14 @@ import logging
 from typing import Union
 
 from airflow.sdk import task, Variable
-from airflow.providers.standard.exceptions import AirflowException
+from airflow.sdk.exceptions import AirflowException
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 from libsys_airflow.plugins.shared import utils
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.folio.inventory import add_admin_note_to_record
 
 from folioclient import FolioClient
 from sqlalchemy.orm import Session
@@ -284,7 +285,7 @@ def instance_id_for_druids(**kwargs) -> list:
 
 
 @task
-def add_marc_tags_to_record(**kwargs):
+def add_marc_tags_to_record(**kwargs) -> str:
     # marc_tag:
     """
     {'979':
@@ -302,7 +303,7 @@ def add_marc_tags_to_record(**kwargs):
     instance_id = kwargs["instance_uuid"]
     folio_add_marc_tags = utils.FolioAddMarcTags()
     if folio_add_marc_tags.put_folio_records(marc_tags, instance_id):
-        return True
+        return instance_id
     else:
         raise AirflowException("Failed to add marc tags to record.")
 
@@ -314,6 +315,21 @@ def retrieve_druids_for_instance_task(**kwargs):
     """
     params = kwargs.get("params", {})
     return params.get("druids_for_instance_id", {})
+
+
+@task
+def update_instance(instance_id: str):
+    if instance_id:
+        note = "SUL/DLSS/LibrarySystems/bookplate"
+        update_result = add_admin_note_to_record(
+            note=note, record_type="instance", id=instance_id
+        )
+        if update_result:
+            return True
+        else:
+            raise AirflowException("Failed to add admin note to instance record.")
+    else:
+        return None
 
 
 @task

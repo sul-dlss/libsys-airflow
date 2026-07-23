@@ -4,6 +4,7 @@ import pytest  # noqa
 from unittest.mock import MagicMock
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from pytest_mock_resources import create_sqlite_fixture, Rows
+from airflow.exceptions import AirflowException
 
 from mocks import (  # noqa
     MockAirflowApiClientConfig,
@@ -15,6 +16,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     add_979_marc_tags,
     bookplate_funds_polines,
     instances_from_po_lines,
+    update_instance,
     launch_digital_bookplate_979_dag,
     launch_poll_for_979_dags_email,
     trigger_digital_bookplate_979_task,
@@ -484,6 +486,31 @@ def test_add_979_marc_tags():
     assert marc_979_tags["979"][0]["subfields"][1]["b"] == "druid:kp761xz4568"
     assert marc_979_tags["979"][1]["subfields"][2]["c"] == "gc698jf6425_00_0001.jp2"
     assert marc_979_tags["979"][1]["subfields"][0]["f"] == "gc698jf6425"
+
+
+def test_update_instance(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.add_admin_note_to_record",
+        return_value=True,
+    )
+    result = update_instance.function("b8932bcd-7498-4f7e-a598-de9010561e42")
+    assert result is True
+
+
+def test_update_instance_failed(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.digital_bookplates.bookplates.add_admin_note_to_record",
+        return_value=False,
+    )
+    with pytest.raises(AirflowException) as exc_info:
+        update_instance.function("instance-123")
+
+    assert "Failed to add admin note to instance record." in str(exc_info.value)
+
+
+def test_update_instance_skipped():
+    result = update_instance.function(None)
+    assert result is None
 
 
 @pytest.mark.parametrize("mock_api_instance", ["digital_bookplate_979"], indirect=True)

@@ -1,5 +1,3 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
 import httpx
 import pytest
 
@@ -21,8 +19,6 @@ from tests.mocks import (  # noqa
     MockFOLIOClient,
     MockTaskInstance,
 )
-
-pacific_timezone = ZoneInfo("America/Los_Angeles")
 
 
 @pytest.fixture
@@ -134,20 +130,35 @@ def mock_folio_client(mocker):
     return mock_client
 
 
-def test_add_admin_notes(mock_task_instance, mock_folio_client, caplog):
+def test_add_admin_notes(mocker, mock_task_instance, mock_folio_client, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.add_admin_note_to_record",
+        return_value=True,
+    )
     add_admin_notes(
-        "SUL/DLSS/LibrarySystems/BWcreatedby/jstanford/20231201",
+        "SUL/DLSS/LibrarySystems/BWcreatedby/jstanford",
         mock_task_instance,
         mock_folio_client,
     )
-
     assert "Total 1 Item/Holding pairs administrative notes" in caplog.text
+
+
+def test_add_admin_notes_failed(mocker, mock_task_instance, mock_folio_client, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.folio.helpers.bw.add_admin_note_to_record",
+        return_value=False,
+    )
+    add_admin_notes(
+        "SUL/DLSS/LibrarySystems/BWcreatedby/jstanford",
+        mock_task_instance,
+        mock_folio_client,
+    )
+    assert "Total 0 Item/Holding pairs administrative notes" in caplog.text
 
 
 def test_create_admin_note():
     note = create_admin_note("jstanford")
-    date = datetime.now(pacific_timezone).strftime("%Y%m%d")
-    assert note == f"SUL/DLSS/LibrarySystems/BWcreatedby/jstanford/{date}"
+    assert note == "SUL/DLSS/LibrarySystems/BWcreatedby/jstanford"
 
 
 def test_create_bw_record(mock_folio_client):

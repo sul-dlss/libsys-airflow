@@ -1,5 +1,3 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
 import logging
 
 import httpx
@@ -9,8 +7,8 @@ from jinja2 import Template
 
 from airflow.sdk import Variable
 from libsys_airflow.plugins.shared.utils import send_email_with_server_name
+from libsys_airflow.plugins.folio.inventory import add_admin_note_to_record
 
-pacific_timezone = ZoneInfo("America/Los_Angeles")
 logger = logging.getLogger(__name__)
 
 
@@ -99,25 +97,20 @@ def add_admin_notes(note: str, task_instance, folio_client):
         or []
     )
     for record in records:
-        holdings_endpoint = f"/holdings-storage/holdings/{record['holdingsRecordId']}"
-        holdings_record = folio_client.folio_get(holdings_endpoint)
-        holdings_record["administrativeNotes"].append(note)
-        folio_client.folio_put(holdings_endpoint, holdings_record)
-
-        item_endpoint = f"/item-storage/items/{record['itemId']}"
-        item_record = folio_client.folio_get(item_endpoint)
-        item_record["administrativeNotes"].append(note)
-        folio_client.folio_put(item_endpoint, item_record)
-
+        holdings_result = add_admin_note_to_record(
+            note, "holdings", record["holdingsRecordId"]
+        )
+        item_result = add_admin_note_to_record(note, "item", record["itemId"])
         if not count % 25:
             logger.info(f"Updated {count*2:,} Holdings and Items")
-        count += 1
+
+        if holdings_result and item_result:
+            count += 1
     logger.info(f"Total {count:,} Item/Holding pairs administrative notes")
 
 
 def create_admin_note(sunid) -> str:
-    date = datetime.now(pacific_timezone).strftime("%Y%m%d")
-    return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}/{date}"
+    return f"SUL/DLSS/LibrarySystems/BWcreatedby/{sunid}"
 
 
 def email_bw_summary(devs_email, task_instance):
