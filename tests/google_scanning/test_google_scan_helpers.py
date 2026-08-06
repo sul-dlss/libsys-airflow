@@ -1,3 +1,6 @@
+import json
+import logging
+
 import pytest
 
 from libsys_airflow.plugins.google_scanning.helpers import (
@@ -5,6 +8,7 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     _update_item_for_shipment,
     process_barcode,
     read_staged_barcode_files,
+    write_status_json,
 )
 
 FOUND_BARCODE = "36105000000000"
@@ -242,3 +246,64 @@ def test_read_staged_barcode_files_raises_when_missing(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="does not exist"):
         read_staged_barcode_files(str(missing_file))
+
+
+def test_write_status_json_writes_combined_list(tmp_path):
+    barcode_file = tmp_path / "cart-4.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n")
+    successful_updates = [{"barcode": FOUND_BARCODE}]
+    errors = [{"error": f"not found barcode: {NOT_FOUND_BARCODE}"}]
+
+    result = write_status_json(str(barcode_file), successful_updates, errors)
+
+    assert result is True
+    status_json_path = tmp_path / "status.json"
+    assert json.loads(status_json_path.read_text()) == successful_updates + errors
+
+
+def test_write_status_json_writes_next_to_barcode_file(tmp_path):
+    nested_dir = tmp_path / "cart-5"
+    nested_dir.mkdir()
+    barcode_file = nested_dir / "cart-5.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n")
+
+    write_status_json(str(barcode_file), [], [])
+
+    assert (nested_dir / "status.json").exists()
+    assert not (tmp_path / "status.json").exists()
+
+
+def test_write_status_json_with_empty_lists(tmp_path):
+    barcode_file = tmp_path / "cart-6.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n")
+
+    result = write_status_json(str(barcode_file), [], [])
+
+    assert result is True
+    assert json.loads((tmp_path / "status.json").read_text()) == []
+
+
+def test_write_status_json_overwrites_existing_file(tmp_path):
+    barcode_file = tmp_path / "cart-7.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n")
+    status_json_path = tmp_path / "status.json"
+    status_json_path.write_text(json.dumps({"stale": "data"}))
+
+    write_status_json(str(barcode_file), [{"barcode": FOUND_BARCODE}], [])
+
+    assert json.loads(status_json_path.read_text()) == [{"barcode": FOUND_BARCODE}]
+
+
+def test_write_status_json_returns_false_and_logs_on_error(tmp_path, mocker, caplog):
+    barcode_file = tmp_path / "cart-8.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n")
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.helpers.json.dump",
+        side_effect=TypeError("not serializable"),
+    )
+
+    with caplog.at_level(logging.ERROR):
+        result = write_status_json(str(barcode_file), [], [])
+
+    assert result is False
+    assert "not serializable" in caplog.text
