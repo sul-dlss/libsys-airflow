@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 
 from folioclient import FolioClient
 
@@ -71,3 +72,19 @@ def process_barcode(**kwargs) -> dict:
     kwargs["item"] = lookup_item
     kwargs["date"] = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
     return _update_item_for_shipment(**kwargs)
+
+
+def read_staged_barcode_files(barcode_file: str) -> list:
+    """
+    Reads Staged Barcode File and returns a list of barcodes
+    """
+    barcode_file_path = pathlib.Path(barcode_file)
+    if not barcode_file_path.exists():
+        raise FileNotFoundError(f"{barcode_file} does not exist")
+    barcodes = []
+    for row in barcode_file_path.read_text().splitlines():
+        barcode = row.strip()
+        if len(barcode) == 0:
+            continue
+        barcodes.append(barcode)
+    return barcodes
