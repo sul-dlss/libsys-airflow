@@ -4,6 +4,7 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     _lookup_item_by_barcode,
     _update_item_for_shipment,
     process_barcode,
+    read_staged_barcode_files,
 )
 
 FOUND_BARCODE = "36105000000000"
@@ -207,3 +208,37 @@ def test_uses_current_date_in_note(mock_folio_client, mocker):
 
     updated_item = mock_folio_client.folio_put.call_args.kwargs["payload"]
     assert updated_item["notes"][0]["note"] == "Sent to Google on 2026-08-06"
+
+
+def test_read_staged_barcode_files_returns_barcodes(tmp_path):
+    barcode_file = tmp_path / "cart-1.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n{MULTIPLE_BARCODE}\n")
+
+    result = read_staged_barcode_files(str(barcode_file))
+
+    assert result == [FOUND_BARCODE, MULTIPLE_BARCODE]
+
+
+def test_read_staged_barcode_files_strips_whitespace(tmp_path):
+    barcode_file = tmp_path / "cart-2.txt"
+    barcode_file.write_text(f"  {FOUND_BARCODE}  \n\t{MULTIPLE_BARCODE}\t\n")
+
+    result = read_staged_barcode_files(str(barcode_file))
+
+    assert result == [FOUND_BARCODE, MULTIPLE_BARCODE]
+
+
+def test_read_staged_barcode_files_skips_blank_lines(tmp_path):
+    barcode_file = tmp_path / "cart-3.txt"
+    barcode_file.write_text(f"{FOUND_BARCODE}\n\n   \n{MULTIPLE_BARCODE}\n")
+
+    result = read_staged_barcode_files(str(barcode_file))
+
+    assert result == [FOUND_BARCODE, MULTIPLE_BARCODE]
+
+
+def test_read_staged_barcode_files_raises_when_missing(tmp_path):
+    missing_file = tmp_path / "does-not-exist.txt"
+
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        read_staged_barcode_files(str(missing_file))
