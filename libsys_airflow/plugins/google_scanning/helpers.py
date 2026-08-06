@@ -1,7 +1,11 @@
 import datetime
+import json
+import logging
 import pathlib
 
 from folioclient import FolioClient
+
+logger = logging.getLogger(__name__)
 
 
 def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
@@ -88,3 +92,20 @@ def read_staged_barcode_files(barcode_file: str) -> list:
             continue
         barcodes.append(barcode)
     return barcodes
+
+
+def write_status_json(
+    barcode_file: str, successful_updates: list, errors: list
+) -> bool:
+    """
+    Writes status.json file of updating barcodes next staged barcodes file
+    """
+    barcode_file_path = pathlib.Path(barcode_file)
+    status_json_path = barcode_file_path.parent / "status.json"
+    with status_json_path.open("w+") as fo:
+        try:
+            json.dump(successful_updates + errors, fo, sort_keys=True, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save {status_json_path}, error: {e}")
+            return False
+    return True
