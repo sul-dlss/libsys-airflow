@@ -8,19 +8,27 @@
     h2 { margin-top: 2rem; }
     .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
     .alert-error { background: #f8d7da; color: #842029; }
-    .alert-message { background: #d1e7dd; color: #0f5132; }
+    .alert-warning { background: #fff3cd; color: #664d03; }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
     .form-row { margin-bottom: 1rem; }
     label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
+    .search-row { max-width: 24rem; margin-left: auto; margin-bottom: 1rem; }
+    #table-search { width: 100%; }
+    .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
+    .tables-panel > h2:first-child { margin-top: 1rem; }
   </style>
 </head>
 <body>
   {% if error %}
     <div class="alert alert-error">{{ error }}</div>
   {% endif %}
-  {% if message %}
-    <div class="alert alert-message">{{ message }}</div>
+  {% if warning %}
+    <div class="alert alert-warning">{{ warning }}</div>
+  {% endif %}
+  {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
   {% endif %}
 
   <h2>Stage a Cart</h2>
@@ -36,6 +44,12 @@
     <button type="submit">Stage Cart</button>
   </form>
 
+  <div class="search-row">
+    <label for="table-search">Search Staged &amp; Shipped Carts</label>
+    <input type="text" id="table-search" placeholder="Filter by cart name, filename, date, status...">
+  </div>
+
+  <div class="tables-panel">
   <h2>Review Staged Carts</h2>
   <form method="post" action="ship">
     <table>
@@ -50,12 +64,12 @@
       </thead>
       <tbody>
         {% for cart in staged_carts %}
-        <tr>
+        <tr class="filterable-row">
           <td><input type="checkbox" name="selected_carts" value="{{ cart.cart_name }}/{{ cart.filename }}"></td>
           <td>{{ cart.cart_name }}</td>
           <td>{{ cart.filename }}</td>
           <td>{{ cart.uploaded_at }}</td>
-          <td>{{ cart.status.status }}</td>
+          <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
         </tr>
         {% else %}
         <tr>
@@ -68,7 +82,47 @@
       <label for="user_email">Email for confirmation</label>
       <input type="email" id="user_email" name="user_email">
     </div>
+    <div class="form-row">
+      <label for="shipped_at">Ship Date</label>
+      <input type="date" id="shipped_at" name="shipped_at" value="{{ today }}">
+    </div>
     <button type="submit">Trigger Shipment</button>
   </form>
+
+  <h2>Shipped Items</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Cart Name</th>
+        <th>Filename</th>
+        <th>Shipped At</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cart in shipped_carts %}
+      <tr class="filterable-row">
+        <td>{{ cart.cart_name }}</td>
+        <td>{{ cart.filename }}</td>
+        <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
+        <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4">No items have been shipped yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <script>
+    document.getElementById("table-search").addEventListener("input", function () {
+      var query = this.value.trim().toLowerCase();
+      document.querySelectorAll(".filterable-row").forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
+      });
+    });
+  </script>
 </body>
 </html>
