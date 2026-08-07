@@ -17,19 +17,22 @@ def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
             "/inventory/items", key="items", query=f"barcode=={barcode}"
         )
     except Exception as e:
-        return {"error": f"{e} for barcode: {barcode}"}
+        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
 
     output = {}
     match len(item_result):
 
         case 0:
-            output = {"error": f"not found barcode: {barcode}"}
+            output = {"missing": barcode}
 
         case 1:
             output = item_result[0]
 
         case _:
-            output = {"error": f"multiple items found for barcode: {barcode}"}
+            output = {
+                "barcode": barcode,
+                "reason": f"multiple items found for barcode: {barcode}",
+            }
     return output
 
 
@@ -44,12 +47,12 @@ def _update_item_for_shipment(**kwargs) -> dict:
     note_type_id: str = kwargs["note_type_id"]
     date: str = kwargs["date"]
     item["temporaryLocationId"] = temp_location_id
-    if not digi_sent_id in item["statisticalCodeIds"]:
+    if digi_sent_id not in item["statisticalCodeIds"]:
         item["statisticalCodeIds"].append(digi_sent_id)
     item["notes"].append(
         {
             "itemNoteTypeId": note_type_id,
-            "note": f"Sent to Google on {date}",
+            "note": f"Sent for Google scanning/{date}",
             "staffOnly": True,
         }
     )
@@ -57,10 +60,44 @@ def _update_item_for_shipment(**kwargs) -> dict:
     try:
         folio_client.folio_put(f"/inventory/items/{item['id']}", payload=item)
     except Exception as e:
-        output["error"] = (
+        output["barcode"] = item["barcode"]
+        output["reason"] = (
             f"{item['id']} with barcode: {item['barcode']} failed to update, error: {e}"
         )
     return output
+
+
+def get_folio_uuids(folio_client: FolioClient, temp_location_code) -> tuple:
+    """
+    Returns tuple of FOLIO UUIDs
+    """
+    temp_location_uuids = [
+        row["id"]
+        for row in folio_client.locations
+        if row["code"].startswith(temp_location_code)
+    ]
+    if len(temp_location_uuids) != 1:
+        raise ValueError(
+            f"Missing temp location code or too many locations codes for {temp_location_code}"
+        )
+    temp_location_id = temp_location_uuids[0]
+
+    digi_sent_uuids = [
+        row["id"]
+        for row in folio_client.statistical_codes
+        if row['code'].startswith("DIGI-SENT")
+    ]
+    if len(digi_sent_uuids) != 1:
+        raise ValueError("Missing DIGI-SENT stat code or too many matches")
+    digi_sent_id = digi_sent_uuids[0]
+
+    item_note_types = folio_client.folio_get(
+        "/item-note-types", key="itemNoteTypes", query="name==Reproduction"
+    )
+    if len(item_note_types) != 1:
+        raise ValueError("Missing Item Note types or too many matches")
+    note_type_id = item_note_types[0].get("id")
+    return temp_location_id, digi_sent_id, note_type_id
 
 
 def process_barcode(**kwargs) -> dict:
@@ -70,21 +107,21 @@ def process_barcode(**kwargs) -> dict:
     barcode: str = kwargs["barcode"]
     folio_client: FolioClient = kwargs["folio_client"]
 
-    lookup_item = _lookup_item_by_barcode(barcode, folio_client)
-    if "error" in lookup_item:
-        return lookup_item
-    kwargs["item"] = lookup_item
-    kwargs["date"] = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+    lookup_result = _lookup_item_by_barcode(barcode, folio_client)
+    if "id" not in lookup_result:  # Errors do not have the item uuid
+        return lookup_result
+    kwargs["item"] = lookup_result
+    kwargs["date"] = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d")
     return _update_item_for_shipment(**kwargs)
 
 
-def read_staged_barcode_files(barcode_file: str) -> list:
+def read_staged_barcode_files(staged_file: str) -> list:
     """
     Reads Staged Barcode File and returns a list of barcodes
     """
-    barcode_file_path = pathlib.Path(barcode_file)
+    barcode_file_path = pathlib.Path(staged_file)
     if not barcode_file_path.exists():
-        raise FileNotFoundError(f"{barcode_file} does not exist")
+        raise FileNotFoundError(f"{staged_file} does not exist")
     barcodes = []
     for row in barcode_file_path.read_text().splitlines():
         barcode = row.strip()
@@ -95,16 +132,27 @@ def read_staged_barcode_files(barcode_file: str) -> list:
 
 
 def write_status_json(
-    barcode_file: str, successful_updates: list, errors: list
+    init_params: dict, total_barcodes: int, update_results: dict
 ) -> bool:
     """
     Writes status.json file of updating barcodes next staged barcodes file
     """
-    barcode_file_path = pathlib.Path(barcode_file)
+    barcode_file_path = pathlib.Path(init_params["staged_file_path"])
     status_json_path = barcode_file_path.parent / "status.json"
+    status = {
+        "cart_name": init_params["cart_name"],
+        "staged_at": datetime.datetime.now(datetime.UTC).isoformat(),
+        "total_barcodes": total_barcodes,
+        "updated": update_results["successful_updates"],
+        "missing_barcodes": update_results["missing"],
+        "errors": update_results["errors"],
+        "status": "staged",
+        "shipped_at": None,
+        "shipment_dag_run_id": None,
+    }
     with status_json_path.open("w+") as fo:
         try:
-            json.dump(successful_updates + errors, fo, sort_keys=True, indent=2)
+            json.dump(status, fo, indent=2)
         except Exception as e:
             logger.error(f"Failed to save {status_json_path}, error: {e}")
             return False
