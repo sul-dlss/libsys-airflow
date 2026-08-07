@@ -385,7 +385,7 @@ def test_write_status_json_writes_status_fields(tmp_path, mocker):
     _mock_now(mocker, "2026-08-07T00:00:00+00:00")
     barcode_file = tmp_path / "cart-4.txt"
     barcode_file.write_text(f"{FOUND_BARCODE}\n")
-    init_params = {"staged_file_path": str(barcode_file), "card_name": "Cart 1"}
+    init_params = {"staged_file_path": str(barcode_file), "cart_name": "Cart 1"}
     update_results = {
         "successful_updates": 1,
         "missing": [NOT_FOUND_BARCODE],
@@ -415,7 +415,7 @@ def test_write_status_json_writes_next_to_staged_file(tmp_path, mocker):
     nested_dir.mkdir()
     barcode_file = nested_dir / "cart-5.txt"
     barcode_file.write_text(f"{FOUND_BARCODE}\n")
-    init_params = {"staged_file_path": str(barcode_file), "card_name": "Cart 5"}
+    init_params = {"staged_file_path": str(barcode_file), "cart_name": "Cart 5"}
     update_results = {"successful_updates": [], "missing": [], "errors": []}
 
     write_status_json(init_params, 0, update_results)
@@ -430,7 +430,7 @@ def test_write_status_json_overwrites_existing_file(tmp_path, mocker):
     barcode_file.write_text(f"{FOUND_BARCODE}\n")
     status_json_path = tmp_path / "status.json"
     status_json_path.write_text(json.dumps({"stale": "data"}))
-    init_params = {"staged_file_path": str(barcode_file), "card_name": "Cart 7"}
+    init_params = {"staged_file_path": str(barcode_file), "cart_name": "Cart 7"}
     update_results = {
         "successful_updates": 1,
         "missing": [],
@@ -452,7 +452,7 @@ def test_write_status_json_returns_false_and_logs_on_error(tmp_path, mocker, cap
         "libsys_airflow.plugins.google_scanning.helpers.json.dump",
         side_effect=TypeError("not serializable"),
     )
-    init_params = {"staged_file_path": str(barcode_file), "card_name": "Cart 8"}
+    init_params = {"staged_file_path": str(barcode_file), "cart_name": "Cart 8"}
     update_results = {"successful_updates": 0, "missing": [], "errors": []}
 
     with caplog.at_level(logging.ERROR):
