@@ -14,7 +14,8 @@
     th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
     .form-row { margin-bottom: 1rem; }
     label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
-    .search-row { max-width: 24rem; margin-left: auto; margin-bottom: 1rem; }
+    .search-row { max-width: 28rem; margin-left: auto; margin-bottom: 1rem; display: flex; align-items: flex-end; gap: 0.5rem; }
+    .search-row > div { flex: 1; }
     #table-search { width: 100%; }
     .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
     .tables-panel > h2:first-child { margin-top: 1rem; }
@@ -45,8 +46,11 @@
   </form>
 
   <div class="search-row">
-    <label for="table-search">Search Staged &amp; Shipped Carts</label>
-    <input type="text" id="table-search" placeholder="Filter by cart name, filename, date, status...">
+    <button type="button" id="refresh-tables">Refresh</button>
+    <div>
+      <label for="table-search">Search Staged &amp; Shipped Carts</label>
+      <input type="text" id="table-search" placeholder="Filter by cart name, filename, date, status...">
+    </div>
   </div>
 
   <div class="tables-panel">
@@ -103,7 +107,7 @@
       {% for cart in shipped_carts %}
       <tr class="filterable-row">
         <td>{{ cart.cart_name }}</td>
-        <td>{{ cart.filename }}</td>
+        <td><a href="download/{{ cart.cart_name | urlencode }}/{{ cart.filename | urlencode }}">{{ cart.filename }}</a></td>
         <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
         <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
       </tr>
@@ -122,6 +126,10 @@
       document.querySelectorAll(".filterable-row").forEach(function (row) {
         row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
       });
+    });
+
+    document.getElementById("refresh-tables").addEventListener("click", function () {
+      window.location.reload();
     });
   </script>
 </body>

@@ -6,6 +6,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     STATUS_SHIPPED,
     STATUS_STAGED,
     STATUS_UNKNOWN,
+    archived_file_path,
     list_shipped_carts,
     list_staged_carts,
     save_staged_file,
@@ -144,6 +145,26 @@ def test_list_shipped_carts_unknown_status(mock_archived_files_base):
             "status": {"status": STATUS_UNKNOWN},
         }
     ]
+
+
+def test_archived_file_path(mock_archived_files_base):
+    cart_dir = mock_archived_files_base / "cart-1"
+    cart_dir.mkdir(parents=True)
+    (cart_dir / "barcodes.txt").write_bytes(b"12345\n")
+
+    file_path = archived_file_path("cart-1", "barcodes.txt")
+
+    assert file_path == (mock_archived_files_base / "cart-1" / "barcodes.txt").resolve()
+
+
+def test_archived_file_path_rejects_traversal_via_cart_name(mock_archived_files_base):
+    with pytest.raises(ValueError):
+        archived_file_path("../../etc", "passwd")
+
+
+def test_archived_file_path_rejects_traversal_via_filename(mock_archived_files_base):
+    with pytest.raises(ValueError):
+        archived_file_path("cart-1", "../../../etc/passwd")
 
 
 def test_trigger_stage_cart_items_dag(mocker):
