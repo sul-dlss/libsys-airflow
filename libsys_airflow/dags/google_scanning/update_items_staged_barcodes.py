@@ -44,7 +44,7 @@ def stage_cart_items():
         all_barcodes = read_staged_barcode_files(staged_file_path)
         total_barcodes = len(all_barcodes)
         batches = []
-        # Creates up to 10 batches of barcodes
+        # Creates at least 10 batches of barcodes
         batch_size = int(total_barcodes / 10) if total_barcodes > 10 else 10
         logger.info(f"Total {total_barcodes}")
         for i in range(0, total_barcodes, batch_size):
@@ -57,7 +57,7 @@ def stage_cart_items():
     def folio_uuids() -> dict:
         folio_api_client = folio_client()
         temp_location_code = Variable.get(
-            "GOOGLE_SCANNING_CAMPUS_TEMP_LOCATION_ID", "GRE-GOOGLE-SCANNING-ONCAMPUS"
+            "GOOGLE_SCANNING_CAMPUS_TEMP_LOCATION_CODE", "GRE-GOOGLE-SCANNING-ONCAMPUS"
         )
         temp_location_id, digi_sent_id, note_type_id = get_folio_uuids(
             folio_api_client, temp_location_code
