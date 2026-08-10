@@ -6,31 +6,20 @@ from pathlib import Path
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 
+from libsys_airflow.plugins.google_scanning.constants import (
+    ARCHIVED_FILES_BASE,
+    ON_CAMPUS_SHIPMENT_DAG_ID,
+    STAGE_CART_ITEMS_DAG_ID,
+    STAGED_FILES_BASE,
+    STATUS_FAILED,  # noqa: F401
+    STATUS_FILENAME,
+    STATUS_SHIPPED,  # noqa: F401
+    STATUS_STAGED,  # noqa: F401
+    STATUS_UNKNOWN,
+)
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 logger = logging.getLogger(__name__)
-
-STAGED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/staged")
-# Sibling of STAGED_FILES_BASE, following the archive_transmitted_data_task
-# pattern in plugins/data_exports/transmission_tasks.py (a "transmitted"
-# directory alongside "marc-files"). The on_campus_shipment DAG (#1847) moves
-# a cart's staged file + status.json here once shipped.
-ARCHIVED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/archived")
-
-STAGE_CART_ITEMS_DAG_ID = "stage_cart_items"
-ON_CAMPUS_SHIPMENT_DAG_ID = "on_campus_shipment"
-
-STATUS_FILENAME = "status.json"
-
-# Valid values for a staged cart's status.json "status" field.
-# "staged" is written by the stage_cart_items DAG (#1852);
-# "shipped" and "failed" are written by the on_campus_shipment DAG (#1847).
-STATUS_STAGED = "staged"
-STATUS_SHIPPED = "shipped"
-STATUS_FAILED = "failed"
-# Used only by this view, when status.json is missing or unreadable — never
-# written by processing DAGs.
-STATUS_UNKNOWN = "unknown"
 
 
 def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:
@@ -71,6 +60,19 @@ def staged_cart_status(cart_name: str) -> dict:
 
 def shipped_cart_status(cart_name: str) -> dict:
     return _cart_status(ARCHIVED_FILES_BASE, cart_name)
+
+
+def archived_file_path(cart_name: str, filename: str) -> Path:
+    """
+    Resolves a shipped cart's archived file for download, rejecting any
+    cart_name/filename (e.g. "..") that would resolve outside
+    ARCHIVED_FILES_BASE.
+    """
+    base = ARCHIVED_FILES_BASE.resolve()
+    file_path = (base / cart_name / filename).resolve()
+    if base not in file_path.parents:
+        raise ValueError(f"Invalid archived file path: {cart_name}/{filename}")
+    return file_path
 
 
 def list_staged_carts() -> list[dict]:
