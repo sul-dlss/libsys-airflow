@@ -7,6 +7,12 @@ STAGED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/staged"
 # a cart's staged file + status.json here once shipped.
 ARCHIVED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/archived")
 
+# Directory marc_for_instances/add_holdings_items_to_marc_files/
+# clean_and_serialize_marc_files (plugins/data_exports/marc/) write the
+# on_campus_shipment DAG's (#1847) MARCXML into, under "new" -- the
+# shipment's manifest is written alongside it there too.
+MARC_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/marc-files")
+
 STAGE_CART_ITEMS_DAG_ID = "stage_cart_items"
 ON_CAMPUS_SHIPMENT_DAG_ID = "on_campus_shipment"
 
