@@ -113,6 +113,7 @@ def test_home_renders_shipped_carts(mocker):
     assert "20260807" in response.text
     assert "Shipped" in response.text
     assert 'href="download/cart-3/barcodes.txt"' in response.text
+    assert ">barcodes.csv</a>" in response.text
 
 
 def test_home_renders_unknown_status_for_shipped_cart_missing_status(mocker):
@@ -309,7 +310,7 @@ def test_download_shipped_file(mocker, tmp_path):
 
     assert response.status_code == 200
     assert response.content == b"12345\n67890\n"
-    assert 'filename="barcodes.txt"' in response.headers["content-disposition"]
+    assert 'filename="barcodes.csv"' in response.headers["content-disposition"]
 
 
 def test_download_shipped_file_invalid_path(mocker):
