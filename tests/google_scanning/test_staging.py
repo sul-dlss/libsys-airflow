@@ -151,7 +151,10 @@ def test_list_shipped_carts_unknown_status(mock_archived_files_base):
 
 
 def test_download_filename_renames_extension_to_csv():
-    assert download_filename("cart-Stanford001-barcodes.txt") == "cart-Stanford001-barcodes.csv"
+    assert (
+        download_filename("cart-Stanford001-barcodes.txt")
+        == "cart-Stanford001-barcodes.csv"
+    )
 
 
 def test_download_filename_replaces_existing_csv_extension():
