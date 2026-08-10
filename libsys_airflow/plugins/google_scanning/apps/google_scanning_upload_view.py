@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.google_scanning.staging import (
     archived_file_path,
+    download_filename,
     list_shipped_carts,
     list_staged_carts,
     save_staged_file,
@@ -123,4 +124,4 @@ async def download_shipped_file(cart_name: str, filename: str):
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(file_path, filename=filename)
+    return FileResponse(file_path, filename=download_filename(filename))

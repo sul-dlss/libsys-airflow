@@ -7,6 +7,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     STATUS_STAGED,
     STATUS_UNKNOWN,
     archived_file_path,
+    download_filename,
     list_shipped_carts,
     list_staged_carts,
     save_staged_file,
@@ -124,6 +125,7 @@ def test_list_shipped_carts(mock_archived_files_base):
         {
             "cart_name": "cart-1",
             "filename": "barcodes.txt",
+            "download_filename": "barcodes.csv",
             "shipped_at": "20260807",
             "status": status,
         }
@@ -141,10 +143,19 @@ def test_list_shipped_carts_unknown_status(mock_archived_files_base):
         {
             "cart_name": "cart-1",
             "filename": "barcodes.txt",
+            "download_filename": "barcodes.csv",
             "shipped_at": None,
             "status": {"status": STATUS_UNKNOWN},
         }
     ]
+
+
+def test_download_filename_renames_extension_to_csv():
+    assert download_filename("cart-Stanford001-barcodes.txt") == "cart-Stanford001-barcodes.csv"
+
+
+def test_download_filename_replaces_existing_csv_extension():
+    assert download_filename("barcodes.csv") == "barcodes.csv"
 
 
 def test_archived_file_path(mock_archived_files_base):

@@ -107,7 +107,7 @@
       {% for cart in shipped_carts %}
       <tr class="filterable-row">
         <td>{{ cart.cart_name }}</td>
-        <td><a href="download/{{ cart.cart_name | urlencode }}/{{ cart.filename | urlencode }}">{{ cart.filename }}</a></td>
+        <td><a href="download/{{ cart.cart_name | urlencode }}/{{ cart.filename | urlencode }}">{{ cart.download_filename }}</a></td>
         <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
         <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
       </tr>

@@ -58,6 +58,7 @@ def test_home_renders_shared_table_search(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": "20260807",
                 "status": {"status": "shipped"},
             }
@@ -98,6 +99,7 @@ def test_home_renders_shipped_carts(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": "20260807",
                 "status": {"status": "shipped"},
             }
@@ -120,6 +122,7 @@ def test_home_renders_unknown_status_for_shipped_cart_missing_status(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": None,
                 "status": {},
             }
