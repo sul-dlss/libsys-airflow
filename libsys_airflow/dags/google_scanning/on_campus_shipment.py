@@ -9,6 +9,9 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STAGED_FILES_BASE,
     STATUS_SHIPPED,
 )
+from libsys_airflow.plugins.data_exports.transmission_tasks import (
+    archive_transmitted_data_task,
+)
 from libsys_airflow.plugins.google_scanning.drive import upload_to_drive_task
 from libsys_airflow.plugins.google_scanning.email import (
     send_shipment_failure_email,
@@ -172,6 +175,7 @@ def on_campus_shipment():
     upload_branch = check_upload(upload_result)
 
     shipped_carts = archive_and_mark_shipped(gathered, init_params)
+    archived_shipment_files = archive_transmitted_data_task(upload_result["success"])
     shipment_result = build_shipment_result(
         shipped_carts, gathered, resolved, marc_result, manifest_path
     )
@@ -181,7 +185,7 @@ def on_campus_shipment():
     shipment_failure_email(failure_reason)
     raise_shipment_failure(failure_reason)
 
-    upload_branch >> [shipped_carts, failure_reason]
+    upload_branch >> [shipped_carts, archived_shipment_files, failure_reason]
 
 
 on_campus_shipment()
