@@ -62,19 +62,6 @@ def shipped_cart_status(cart_name: str) -> dict:
     return _cart_status(ARCHIVED_FILES_BASE, cart_name)
 
 
-def archived_file_path(cart_name: str, filename: str) -> Path:
-    """
-    Resolves a shipped cart's archived file for download, rejecting any
-    cart_name/filename (e.g. "..") that would resolve outside
-    ARCHIVED_FILES_BASE.
-    """
-    base = ARCHIVED_FILES_BASE.resolve()
-    file_path = (base / cart_name / filename).resolve()
-    if base not in file_path.parents:
-        raise ValueError(f"Invalid archived file path: {cart_name}/{filename}")
-    return file_path
-
-
 def list_staged_carts() -> list[dict]:
     """
     Lists all currently staged carts for the review/shipment page.
