@@ -18,6 +18,7 @@
     #table-search { width: 100%; }
     .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
     .tables-panel > h2:first-child { margin-top: 1rem; }
+    .hint { font-size: 0.9rem; color: #555; margin-top: 0.5rem; max-width: 40rem; }
   </style>
 </head>
 <body>
@@ -87,6 +88,12 @@
       <input type="date" id="shipped_at" name="shipped_at" value="{{ today }}">
     </div>
     <button type="submit">Trigger Shipment</button>
+    <p class="hint">
+      If a shipment fails, every cart selected above is marked "Failed" and
+      left staged for retry -- check the failure email for details. To
+      isolate which cart caused the problem, retry by selecting and
+      shipping one cart at a time rather than the full batch.
+    </p>
   </form>
 
   <h2>Shipped Items</h2>

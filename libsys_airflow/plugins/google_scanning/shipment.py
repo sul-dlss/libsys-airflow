@@ -7,6 +7,7 @@ from folioclient import FolioClient
 from libsys_airflow.plugins.google_scanning.constants import (
     ARCHIVED_FILES_BASE,
     STAGED_FILES_BASE,
+    STATUS_FAILED,
     STATUS_FILENAME,
 )
 from libsys_airflow.plugins.google_scanning.helpers import read_staged_barcode_files
@@ -140,6 +141,27 @@ def update_cart_status(cart_name: str, base: pathlib.Path, **fields) -> None:
 
     with status_path.open("w") as fo:
         json.dump(status, fo, indent=2)
+
+
+def mark_carts_failed(
+    selected_carts: list[dict], shipment_dag_run_id: str | None
+) -> None:
+    """
+    Marks every selected cart's status.json as failed. Used for any
+    on_campus_shipment failure -- whether Drive upload failed, or an
+    earlier step failed before barcodes could be attributed to a specific
+    cart (e.g. no instance ids resolved) -- since barcodes from all
+    selected carts are merged together before that point, there's no way
+    to tell which cart(s) actually caused it. All selected carts stay in
+    staged/ (not archived) so staff can retry once the issue's fixed.
+    """
+    for cart in selected_carts:
+        update_cart_status(
+            cart["cart_name"],
+            STAGED_FILES_BASE,
+            status=STATUS_FAILED,
+            shipment_dag_run_id=shipment_dag_run_id,
+        )
 
 
 def archive_shipped_cart(cart_name: str) -> pathlib.Path:

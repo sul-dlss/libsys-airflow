@@ -101,18 +101,15 @@ def _failure_email_body(**kwargs) -> str:
     return template.render(**kwargs)
 
 
-@task
-def shipment_failure_email(reason: str, **kwargs) -> None:
+def send_shipment_failure_email(reason: str, dag_run, user_email: str | None) -> None:
     """
-    Sends a failure notification to EMAIL_DEVS (and the triggering staff
-    member, if known) when the on-campus shipment DAG fails before
-    completing. Selected carts are left in staged/ (not archived) so staff
-    can retry once the issue's fixed.
+    Sends the on-campus shipment failure notification to EMAIL_DEVS (and
+    the triggering staff member, if known). Used both by the
+    shipment_failure_email task below (Drive upload failures, handled by
+    the check_upload branch in on_campus_shipment.py) and by that DAG's
+    on-failure callback for tasks upstream of that branch (e.g. no
+    barcodes resolving to an instance, which check_upload never sees).
     """
-    dag_run = kwargs["dag_run"]
-    params = kwargs.get("params", {})
-    user_email = params.get("user_email")
-
     to_emails = [Variable.get("EMAIL_DEVS")]
     if user_email:
         to_emails.append(user_email)
@@ -129,3 +126,15 @@ def shipment_failure_email(reason: str, **kwargs) -> None:
         subject="Google Scanning On-Campus Shipment Failed",
         html_content=html_content,
     )
+
+
+@task
+def shipment_failure_email(reason: str, **kwargs) -> None:
+    """
+    Sends a failure notification when the on-campus shipment DAG fails
+    after uploading to Drive was attempted. Selected carts are left in
+    staged/ (not archived) so staff can retry once the issue's fixed.
+    """
+    dag_run = kwargs["dag_run"]
+    params = kwargs.get("params", {})
+    send_shipment_failure_email(reason, dag_run, params.get("user_email"))
