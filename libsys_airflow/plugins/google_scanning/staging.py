@@ -11,10 +11,7 @@ from libsys_airflow.plugins.google_scanning.constants import (
     ON_CAMPUS_SHIPMENT_DAG_ID,
     STAGE_CART_ITEMS_DAG_ID,
     STAGED_FILES_BASE,
-    STATUS_FAILED,  # noqa: F401
     STATUS_FILENAME,
-    STATUS_SHIPPED,  # noqa: F401
-    STATUS_STAGED,  # noqa: F401
     STATUS_UNKNOWN,
 )
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
