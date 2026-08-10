@@ -1,0 +1,16 @@
+# Airflow's plugin loader recursively execs every .py file under this
+# folder and registers each one in sys.modules keyed by its bare filename
+# stem (no package prefix), just to check whether it defines an
+# AirflowPlugin subclass. A file that happens to share a stdlib module's
+# name -- e.g. any of this project's email.py files -- clobbers
+# sys.modules[<stem>], breaking `import email` (and therefore smtplib,
+# and therefore airflow.utils.email) for every plugin file scanned
+# afterward, in whichever process ran the scan. Verified against Airflow
+# 3.3.0: this is not one file's bug, it's the scan mechanism itself.
+#
+# Only main.py files register AirflowPlugin subclasses in this project;
+# everything else is plain implementation code imported via normal dotted
+# imports elsewhere and was never meant to be exec'd by this scanner.
+# Restricting the scan to main.py avoids the collision entirely.
+*.py
+!main.py
