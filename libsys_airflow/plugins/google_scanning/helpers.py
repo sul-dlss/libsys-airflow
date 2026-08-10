@@ -5,6 +5,11 @@ import pathlib
 
 from folioclient import FolioClient
 
+from libsys_airflow.plugins.google_scanning.constants import (
+    STATUS_FILENAME,
+    STATUS_STAGED,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,7 +143,7 @@ def write_status_json(
     Writes status.json file of updating barcodes next staged barcodes file
     """
     barcode_file_path = pathlib.Path(init_params["staged_file_path"])
-    status_json_path = barcode_file_path.parent / "status.json"
+    status_json_path = barcode_file_path.parent / STATUS_FILENAME
     status = {
         "cart_name": init_params["cart_name"],
         "staged_at": datetime.datetime.now(datetime.UTC).isoformat(),
@@ -146,7 +151,7 @@ def write_status_json(
         "updated": update_results["successful_updates"],
         "missing_barcodes": update_results["missing"],
         "errors": update_results["errors"],
-        "status": "staged",
+        "status": STATUS_STAGED,
         "shipped_at": None,
         "shipment_dag_run_id": None,
     }
