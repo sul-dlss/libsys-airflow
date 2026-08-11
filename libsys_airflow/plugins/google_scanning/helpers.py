@@ -6,6 +6,7 @@ import pathlib
 from folioclient import FolioClient
 
 from libsys_airflow.plugins.google_scanning.constants import (
+    STATUS_FAILED,
     STATUS_FILENAME,
     STATUS_STAGED,
 )
@@ -144,6 +145,13 @@ def write_status_json(
     """
     barcode_file_path = pathlib.Path(init_params["staged_file_path"])
     status_json_path = barcode_file_path.parent / STATUS_FILENAME
+    # No barcodes actually updated -- every one was missing or errored --
+    # means this cart never got staged successfully at all, so flag it as
+    # failed rather than staged. Staff can then re-address the cart instead
+    # of it silently sitting in the staged list looking normal.
+    status_value = (
+        STATUS_FAILED if update_results["successful_updates"] == 0 else STATUS_STAGED
+    )
     status = {
         "cart_name": init_params["cart_name"],
         "staged_at": datetime.datetime.now(datetime.UTC).isoformat(),
@@ -151,7 +159,7 @@ def write_status_json(
         "updated": update_results["successful_updates"],
         "missing_barcodes": update_results["missing"],
         "errors": update_results["errors"],
-        "status": STATUS_STAGED,
+        "status": status_value,
         "shipped_at": None,
         "shipment_dag_run_id": None,
     }

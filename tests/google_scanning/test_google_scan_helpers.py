@@ -409,6 +409,23 @@ def test_write_status_json_writes_status_fields(tmp_path, mocker):
     }
 
 
+def test_write_status_json_marks_failed_when_nothing_updated(tmp_path, mocker):
+    _mock_now(mocker, "2026-08-07T00:00:00+00:00")
+    barcode_file = tmp_path / "cart-9.txt"
+    barcode_file.write_text(f"{NOT_FOUND_BARCODE}\n")
+    init_params = {"staged_file_path": str(barcode_file), "cart_name": "Cart 9"}
+    update_results = {
+        "successful_updates": 0,
+        "missing": [NOT_FOUND_BARCODE],
+        "errors": [],
+    }
+
+    write_status_json(init_params, 1, update_results)
+
+    status = json.loads((tmp_path / "status.json").read_text())
+    assert status["status"] == "failed"
+
+
 def test_write_status_json_writes_next_to_staged_file(tmp_path, mocker):
     _mock_now(mocker, "2026-08-07T00:00:00+00:00")
     nested_dir = tmp_path / "cart-5"
