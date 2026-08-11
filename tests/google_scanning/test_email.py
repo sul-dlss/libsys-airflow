@@ -30,7 +30,17 @@ def shipment_result():
     return {
         "shipped_carts": ["cart-1", "cart-2"],
         "shipped_barcode_count": 42,
-        "skipped": [{"cart_name": "cart-1", "barcodes": ["999"]}],
+        "skipped": [
+            {
+                "cart_name": "cart-1",
+                "barcodes": [
+                    {
+                        "barcode": "999",
+                        "reason": "No FOLIO item found during staging",
+                    }
+                ],
+            }
+        ],
         "instance_id_failures": [
             {
                 "barcode": "888",
@@ -63,9 +73,10 @@ def test_shipment_confirmation_email(mocker, mock_dag_run, shipment_result):
     html_body = BeautifulSoup(call_kwargs["html_content"], "html.parser")
     assert "42" in html_body.find("p").text
     list_items = [li.text for li in html_body.find_all("li")]
-    assert "cart-1" in list_items
+    assert any("cart-1" in item for item in list_items)
     assert "cart-2" in list_items
     assert shipment_result["marc_xml_path"] in list_items
+    assert any("999: No FOLIO item found during staging" in item for item in list_items)
     assert any("888" in item for item in list_items)
     assert any("8576f36e-0ab5-4146-9b6b-9f0b84f7fc74" in item for item in list_items)
 

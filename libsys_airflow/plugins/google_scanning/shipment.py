@@ -24,7 +24,9 @@ def barcodes_for_shipment(
     stage_cart_items DAG (#1852) already flagged as missing or erroring
     during item updates -- there's no valid FOLIO item to resolve an
     instance id from for those. Returns (barcode, cart_name) pairs to
-    include in the shipment, plus a per-cart skip report for the
+    include in the shipment, plus a per-cart skip report -- each skipped
+    barcode paired with why it was skipped (staging's missing_barcodes get
+    a fixed reason; errors keep their own reason text) -- for the
     confirmation email.
     """
     to_ship: list[tuple[str, str]] = []
@@ -38,9 +40,16 @@ def barcodes_for_shipment(
         barcodes = read_staged_barcode_files(str(staged_file))
 
         status = staged_cart_status(cart_name)
-        excluded = set(status.get("missing_barcodes", []))
+        excluded: dict[str, str] = {
+            barcode: "No FOLIO item found during staging"
+            for barcode in status.get("missing_barcodes", [])
+        }
         excluded.update(
-            error["barcode"] for error in status.get("errors", []) if "barcode" in error
+            {
+                error["barcode"]: error.get("reason", "Unknown error during staging")
+                for error in status.get("errors", [])
+                if "barcode" in error
+            }
         )
 
         for barcode in barcodes:
@@ -49,7 +58,15 @@ def barcodes_for_shipment(
             to_ship.append((barcode, cart_name))
 
         if excluded:
-            skipped.append({"cart_name": cart_name, "barcodes": sorted(excluded)})
+            skipped.append(
+                {
+                    "cart_name": cart_name,
+                    "barcodes": [
+                        {"barcode": barcode, "reason": reason}
+                        for barcode, reason in sorted(excluded.items())
+                    ],
+                }
+            )
 
     return to_ship, skipped
 

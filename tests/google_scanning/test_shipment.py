@@ -79,7 +79,40 @@ def test_barcodes_for_shipment_excludes_missing_and_errored(mock_staged_files_ba
     )
 
     assert to_ship == [("111", "cart-1")]
-    assert skipped == [{"cart_name": "cart-1", "barcodes": ["222", "333"]}]
+    assert skipped == [
+        {
+            "cart_name": "cart-1",
+            "barcodes": [
+                {
+                    "barcode": "222",
+                    "reason": "No FOLIO item found during staging",
+                },
+                {"barcode": "333", "reason": "boom"},
+            ],
+        }
+    ]
+
+
+def test_barcodes_for_shipment_defaults_reason_when_error_missing_one(
+    mock_staged_files_base,
+):
+    _stage_cart(
+        mock_staged_files_base,
+        "cart-1",
+        "111\n",
+        status={"missing_barcodes": [], "errors": [{"barcode": "111"}]},
+    )
+
+    _, skipped = barcodes_for_shipment(
+        [{"cart_name": "cart-1", "filename": "barcodes.txt"}]
+    )
+
+    assert skipped == [
+        {
+            "cart_name": "cart-1",
+            "barcodes": [{"barcode": "111", "reason": "Unknown error during staging"}],
+        }
+    ]
 
 
 def test_barcodes_for_shipment_merges_multiple_carts(mock_staged_files_base):

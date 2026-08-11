@@ -32,7 +32,13 @@ def _confirmation_email_body(**kwargs) -> str:
         <h3>Barcodes skipped (already flagged missing or erroring during staging)</h3>
         <ul>
         {% for cart in skipped %}
-        <li>{{ cart.cart_name }}: {{ cart.barcodes|join(", ") }}</li>
+        <li>{{ cart.cart_name }}
+          <ul>
+          {% for skip in cart.barcodes %}
+          <li>{{ skip.barcode }}: {{ skip.reason }}</li>
+          {% endfor %}
+          </ul>
+        </li>
         {% endfor %}
         </ul>
         {% endif %}
