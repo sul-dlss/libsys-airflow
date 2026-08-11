@@ -3,6 +3,11 @@ FROM apache/airflow:3.3.0-python3.12
 USER root
 RUN usermod -u 214 airflow
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libmagic1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONPATH="${PYTHONPATH}:/opt/airflow/"
 ENV SLUGIFY_USES_TEXT_UNIDECODE="yes"
 
