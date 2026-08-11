@@ -18,7 +18,7 @@ VENDOR = "google_scanning"
 def shipment_filestamp(shipped_at: str) -> str:
     """
     Builds this run's unique file stem for the shipment's MARCXML/manifest
-    e.g. "stanford_20260810-campus-143022". 
+    e.g. "stanford_20260810-campus-143022".
     The current time disambiguates same-day runs.
     """
     return f"stanford_{shipped_at}-campus-{datetime.now().strftime('%H%M%S')}"

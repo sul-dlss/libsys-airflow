@@ -34,7 +34,7 @@ def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:
 def _cart_status(base: Path, cart_name: str) -> dict:
     """
     Returns the processing outcome for a cart under the given base directory
-    (staged or archived), written by the stage_cart_items and on_campus_shipment 
+    (staged or archived), written by the stage_cart_items and on_campus_shipment
     DAGs. Defaults to STATUS_UNKNOWN whenever status.json can't be read.
     """
     status_path = base / cart_name / STATUS_FILENAME
@@ -135,8 +135,8 @@ def trigger_on_campus_shipment_dag(
 ) -> str:
     """
     Triggers the on_campus_shipment DAG for the selected staged carts.
-    shipped_at is the staff-chosen ship date from the UI datepicker since 
-    a shipment may be triggered on a different date than when the carts 
+    shipped_at is the staff-chosen ship date from the UI datepicker since
+    a shipment may be triggered on a different date than when the carts
     were actually staged, reformatted to YYYYMMDD.
     """
     with api_client() as airflow_api_client:
