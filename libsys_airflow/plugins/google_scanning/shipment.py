@@ -21,13 +21,9 @@ def barcodes_for_shipment(
 ) -> tuple[list[tuple[str, str]], list[dict]]:
     """
     Reads each selected cart's staged barcode file and excludes barcodes the
-    stage_cart_items DAG (#1852) already flagged as missing or erroring
-    during item updates -- there's no valid FOLIO item to resolve an
-    instance id from for those. Returns (barcode, cart_name) pairs to
-    include in the shipment, plus a per-cart skip report -- each skipped
-    barcode paired with why it was skipped (staging's missing_barcodes get
-    a fixed reason; errors keep their own reason text) -- for the
-    confirmation email.
+    stage_cart_items DAG flags as missing or erroring during item updates.
+    Returns (barcode, cart_name) pairs to include in the shipment, plus a
+    per-cart skip report for the confirmation email.
     """
     to_ship: list[tuple[str, str]] = []
     skipped: list[dict] = []
@@ -74,13 +70,6 @@ def barcodes_for_shipment(
 def _lookup_dereferenced_item_by_barcode(
     barcode: str, folio_client: FolioClient
 ) -> dict:
-    """
-    Looks up an item by barcode via item-storage-dereferenced, which embeds
-    the full instance record on the item so the shipment's instance id can
-    be read directly off the result, without a separate holdings-storage
-    lookup.
-    https://s3.amazonaws.com/foliodocs/api/mod-inventory-storage/p/item-storage-dereferenced.html
-    """
     try:
         items = folio_client.folio_get(
             "/item-storage-dereferenced/items",
@@ -107,9 +96,8 @@ def resolve_instance_ids(
 ) -> tuple[dict[str, str], list[dict]]:
     """
     Resolves each barcode to its instance id for building the shipment's
-    MARCXML, via item-storage-dereferenced. Returns a barcode ->
-    instance_id map plus a list of resolution failures for the confirmation
-    email.
+    MARCXML. Returns a barcode -> instance_id map plus a list of resolution
+    failures for the confirmation email.
     """
     instance_ids: dict[str, str] = {}
     failures: list[dict] = []
@@ -142,7 +130,7 @@ def resolve_instance_ids(
 def update_cart_status(cart_name: str, base: pathlib.Path, **fields) -> None:
     """
     Partial-updates an existing cart's status.json in place, preserving the
-    counts/missing_barcodes/errors written by stage_cart_items (#1852),
+    counts/missing_barcodes/errors written by stage_cart_items
     rather than overwriting the whole file the way write_status_json does
     for a fresh staging run.
     """
@@ -165,9 +153,7 @@ def mark_carts_failed(
 ) -> None:
     """
     Marks every selected cart's status.json as failed. Used for any
-    on_campus_shipment failure -- whether Drive upload failed, or an
-    earlier step failed before barcodes could be attributed to a specific
-    cart (e.g. no instance ids resolved) -- since barcodes from all
+    on_campus_shipment failure since barcodes from all
     selected carts are merged together before that point, there's no way
     to tell which cart(s) actually caused it. All selected carts stay in
     staged/ (not archived) so staff can retry once the issue's fixed.
@@ -181,20 +167,39 @@ def mark_carts_failed(
         )
 
 
+def _next_archive_dir(cart_name: str) -> pathlib.Path:
+    """
+    Returns the destination directory for archiving this cart. Cart names
+    (booktrucks) get reused across different shipments over time, so a
+    repeat gets a "_n" suffix -- "cart_name_2", "cart_name_3", etc. --
+    rather than colliding with an earlier shipment's archive. The
+    filesystem itself is the source of truth for which n is next; nothing
+    tracks a counter anywhere else.
+    """
+    dest_dir = ARCHIVED_FILES_BASE / cart_name
+    if not dest_dir.exists():
+        return dest_dir
+
+    n = 2
+    while (ARCHIVED_FILES_BASE / f"{cart_name}_{n}").exists():
+        n += 1
+    return ARCHIVED_FILES_BASE / f"{cart_name}_{n}"
+
+
 def archive_shipped_cart(cart_name: str) -> pathlib.Path:
     """
     Moves a shipped cart's staged directory (barcode file + status.json)
-    from STAGED_FILES_BASE to ARCHIVED_FILES_BASE, following the
-    archive_transmitted_data_task pattern in
-    plugins/data_exports/transmission_tasks.py. Only called once a shipment
-    succeeds -- carts stay in staged/ on failure so staff can retry.
+    from STAGED_FILES_BASE to ARCHIVED_FILES_BASE. Only called once a
+    shipment succeeds -- carts stay in staged/ on failure so staff can
+    retry.
 
-    Assumes a cart name isn't shipped more than once: if ARCHIVED_FILES_BASE
-    already has a directory for this cart_name, the move raises rather than
-    silently overwriting or merging a prior shipment's files.
+    The destination directory's name (not status.json's own "cart_name"
+    field, which still reflects the original name from staging) is what
+    list_shipped_carts() displays, so a "_n"-suffixed repeat still shows up
+    correctly as e.g. "Stanford001_2" in the Shipped Items table.
     """
     source_dir = STAGED_FILES_BASE / cart_name
-    dest_dir = ARCHIVED_FILES_BASE / cart_name
+    dest_dir = _next_archive_dir(cart_name)
     dest_dir.parent.mkdir(parents=True, exist_ok=True)
     source_dir.replace(dest_dir)
     return dest_dir

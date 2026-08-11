@@ -294,13 +294,29 @@ def test_archive_shipped_cart_moves_directory(
     assert json.loads((dest / "status.json").read_text()) == {"status": "shipped"}
 
 
-def test_archive_shipped_cart_raises_if_already_archived(
+def test_archive_shipped_cart_suffixes_a_reused_cart_name(
     mock_staged_files_base, mock_archived_files_base
 ):
-    _stage_cart(mock_staged_files_base, "cart-1", "111\n")
+    _stage_cart(mock_staged_files_base, "cart-1", "222\n")
     existing_dest = mock_archived_files_base / "cart-1"
     existing_dest.mkdir(parents=True)
     (existing_dest / "barcodes.txt").write_text("old\n")
 
-    with pytest.raises(OSError):
-        archive_shipped_cart("cart-1")
+    dest = archive_shipped_cart("cart-1")
+
+    assert dest == mock_archived_files_base / "cart-1_2"
+    assert (dest / "barcodes.txt").read_text() == "222\n"
+    # the earlier shipment's archive is untouched
+    assert (existing_dest / "barcodes.txt").read_text() == "old\n"
+
+
+def test_archive_shipped_cart_suffixes_a_third_shipment(
+    mock_staged_files_base, mock_archived_files_base
+):
+    _stage_cart(mock_staged_files_base, "cart-1", "333\n")
+    (mock_archived_files_base / "cart-1").mkdir(parents=True)
+    (mock_archived_files_base / "cart-1_2").mkdir(parents=True)
+
+    dest = archive_shipped_cart("cart-1")
+
+    assert dest == mock_archived_files_base / "cart-1_3"
