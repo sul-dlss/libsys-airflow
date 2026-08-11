@@ -70,7 +70,12 @@
           <td>{{ cart.cart_name }}</td>
           <td>{{ cart.filename }}</td>
           <td>{{ cart.uploaded_at }}</td>
-          <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
+          <td>
+            {{ cart.status.status | default("unknown", true) | capitalize }}
+            {% if cart.status.total_barcodes is defined %}
+            <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr>
@@ -112,7 +117,12 @@
         <td>{{ cart.cart_name }}</td>
         <td>{{ cart.filename }}</td>
         <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
-        <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
+        <td>
+          {{ cart.status.status | default("unknown", true) | capitalize }}
+          {% if cart.status.total_barcodes is defined %}
+          <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
       <tr>
