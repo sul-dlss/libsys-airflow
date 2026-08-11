@@ -34,11 +34,8 @@ def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:
 def _cart_status(base: Path, cart_name: str) -> dict:
     """
     Returns the processing outcome for a cart under the given base directory
-    (staged or archived), written by the stage_cart_items (#1852) and
-    on_campus_shipment (#1847) DAGs. Defaults to STATUS_UNKNOWN whenever
-    status.json can't be read, whether because it doesn't exist yet, or
-    because it's unparseable — the UI should never show anything else in
-    that case.
+    (staged or archived), written by the stage_cart_items and on_campus_shipment 
+    DAGs. Defaults to STATUS_UNKNOWN whenever status.json can't be read.
     """
     status_path = base / cart_name / STATUS_FILENAME
     if not status_path.exists():
@@ -90,11 +87,8 @@ def list_staged_carts() -> list[dict]:
 
 def list_shipped_carts() -> list[dict]:
     """
-    Lists all shipped carts, archived by the on_campus_shipment DAG (#1847)
-    once a shipment succeeds. Draws from ARCHIVED_FILES_BASE rather than
-    STAGED_FILES_BASE, since #1847 moves a cart's staged file + status.json
-    there as part of shipping it, which is also what removes it from
-    list_staged_carts()'s results.
+    Lists all shipped carts, archived by the on_campus_shipment DAG
+    once a shipment succeeds. Draws from ARCHIVED_FILES_BASE.
     """
     shipped_carts: list[dict] = []
     if not ARCHIVED_FILES_BASE.exists():
@@ -122,7 +116,7 @@ def list_shipped_carts() -> list[dict]:
 
 def trigger_stage_cart_items_dag(staged_file_path: str, cart_name: str) -> str:
     """
-    Triggers the stage_cart_items DAG (#1852) to update FOLIO items for a
+    Triggers the stage_cart_items DAG to update FOLIO items for a
     newly staged cart.
     """
     with api_client() as airflow_api_client:
@@ -141,12 +135,9 @@ def trigger_on_campus_shipment_dag(
 ) -> str:
     """
     Triggers the on_campus_shipment DAG for the selected staged carts.
-    shipped_at is the staff-chosen ship date from the review page's
-    datepicker (YYYY-MM-DD, defaulting to today), since a shipment may be
-    triggered a day before or after the carts were actually staged. It's
-    reformatted to YYYYMMDD to match the stanford_YYYYMMDD-campus.* file
-    naming convention and is also written into each shipped cart's status.json
-    "shipped_at" field.
+    shipped_at is the staff-chosen ship date from the UI datepicker since 
+    a shipment may be triggered on a different date than when the carts 
+    were actually staged, reformatted to YYYYMMDD.
     """
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)

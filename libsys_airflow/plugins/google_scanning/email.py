@@ -114,7 +114,7 @@ def send_shipment_failure_email(reason: str, dag_run, user_email: str | None) ->
     shipment_failure_email task below (Drive upload failures, handled by
     the check_upload branch in on_campus_shipment.py) and by that DAG's
     on-failure callback for tasks upstream of that branch (e.g. no
-    barcodes resolving to an instance, which check_upload never sees).
+    barcodes resolving to an instance).
     """
     to_emails = [Variable.get("EMAIL_DEVS")]
     if user_email:

@@ -35,12 +35,10 @@ logger = logging.getLogger(__name__)
 def _mark_failed_and_notify(context: dict) -> None:
     """
     on_failure_callback for tasks that can fail before the check_upload
-    branch runs (gather_barcodes, resolve_instances below) -- there's no
-    upload result yet at that point, so the branch's own failure path
-    (mark_failed_status/shipment_failure_email) never fires for these.
-    Marks every selected cart failed, since barcodes from all selected
-    carts are merged together before this point, so there's no way to
-    tell which one(s) actually caused the failure.
+    branch runs. If there are no barcodes available in FOLIO or none that 
+    resolve to an instance, marks every selected cart failed, since barcodes 
+    from all selected carts are merged together before this point, so there 
+    is no way to tell which one(s) actually caused the failure.
     """
     ti = context["task_instance"]
     dag_run = context.get("dag_run")

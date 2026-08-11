@@ -17,12 +17,9 @@ VENDOR = "google_scanning"
 
 def shipment_filestamp(shipped_at: str) -> str:
     """
-    Builds this run's unique file stem for the shipment's MARCXML/manifest,
-    e.g. "stanford_20260810-campus-143022". shipped_at (YYYYMMDD) alone
-    isn't unique -- staff can trigger more than one shipment on the same
-    date -- so the current time disambiguates same-day runs. Google's spec
-    for the stanford_YYYYMMDD-campus.* naming allows additional suffixes,
-    so this doesn't conflict with it.
+    Builds this run's unique file stem for the shipment's MARCXML/manifest
+    e.g. "stanford_20260810-campus-143022". 
+    The current time disambiguates same-day runs.
     """
     return f"stanford_{shipped_at}-campus-{datetime.now().strftime('%H%M%S')}"
 
@@ -30,11 +27,8 @@ def shipment_filestamp(shipped_at: str) -> str:
 def generate_shipment_marc(instance_ids: list[str], shipped_at: str) -> dict:
     """
     Generates the shipment's MARCXML from the resolved instance ids,
-    reusing the marc_for_instances / add_holdings_items_to_marc_files /
-    clean_and_serialize_marc_files pipeline from plugins/data_exports/marc/.
     Must run inside a task context, since retrieve_marc_for_instances reads
     Airflow params via get_current_context().
-
     Returns the generated MARCXML path, the filestamp used (so
     generate_manifest can reuse the exact same one), and any instance ids
     that had no SRS record, for the shipment confirmation email.
