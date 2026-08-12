@@ -460,7 +460,7 @@ def file_update(
     message = None
 
     expected_processing_time = form.get('expected-processing-time')
-    if expected_processing_time:
+    if expected_processing_time and isinstance(expected_processing_time, str):
         try:
             file.expected_processing_time = datetime.fromisoformat(
                 expected_processing_time

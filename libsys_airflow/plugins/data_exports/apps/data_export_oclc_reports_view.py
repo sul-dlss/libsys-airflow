@@ -34,7 +34,8 @@ LOOKUP_REPORT_NAME = {
 @app.get("/")
 def data_export_oclc_reports_home(request: Request):
     oclc_reports_home = files_base / "oclc" / "reports"
-    libraries, no_holdings = {}, []
+    libraries: dict[str, dict] = {}
+    no_holdings: list = []
     for library in oclc_reports_home.iterdir():
         if library.name.startswith("missing_holdings"):
             no_holdings = [report for report in library.glob("*.html")]
