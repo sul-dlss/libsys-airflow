@@ -167,7 +167,7 @@ def test_combine_upload_files(dag):
 
 def test_check_upload_success(dag):
     result = dag.task_dict["check_upload"].python_callable({"failures": []})
-    assert result == "archive_and_mark_shipped"
+    assert result == ["archive_and_mark_shipped", "archive_transmitted_data_task"]
 
 
 def test_check_upload_failure(dag):

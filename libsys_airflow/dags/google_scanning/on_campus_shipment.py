@@ -112,10 +112,10 @@ def on_campus_shipment():
         return [marc_result["marc_xml_path"], manifest_path]
 
     @task.branch
-    def check_upload(upload_result: dict) -> str:
+    def check_upload(upload_result: dict) -> list[str] | str:
         if upload_result["failures"]:
             return "mark_failed_status"
-        return "archive_and_mark_shipped"
+        return ["archive_and_mark_shipped", "archive_transmitted_data_task"]
 
     @task
     def archive_and_mark_shipped(gathered: dict, init_params: dict, **kwargs) -> list:
