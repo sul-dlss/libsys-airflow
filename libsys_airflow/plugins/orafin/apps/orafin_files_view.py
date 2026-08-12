@@ -8,7 +8,10 @@ from fastapi.templating import Jinja2Templates
 app = FastAPI()
 
 templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent.parent / "templates" / "orafin"
+    directory=[
+        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
+        pathlib.Path(__file__).resolve().parent.parent / "templates" / "orafin",
+    ]
 )
 
 files_base = pathlib.Path("/opt/airflow/orafin-files")

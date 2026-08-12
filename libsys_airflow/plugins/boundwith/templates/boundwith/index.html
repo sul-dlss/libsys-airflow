@@ -1,16 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Boundwith CSV Upload</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
-    .form-row { margin-bottom: 1rem; }
-    label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}Boundwith CSV Upload{% endblock %}
+
+{% block body %}
   {% if message %}
   <div class="alert-message">{{ message }}</div>
   {% endif %}
@@ -50,5 +42,4 @@
     </div>
     <button type="submit">Create Boundwith Relationships</button>
   </form>
-</body>
-</html>
+{% endblock %}

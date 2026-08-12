@@ -13,7 +13,10 @@ from libsys_airflow.plugins.shared.airflow_api_client import api_client
 app = FastAPI()
 
 templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent / "templates" / "boundwith"
+    directory=[
+        pathlib.Path(__file__).resolve().parent.parent / "templates",
+        pathlib.Path(__file__).resolve().parent / "templates" / "boundwith",
+    ]
 )
 
 

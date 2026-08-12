@@ -25,9 +25,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent.parent
-    / "templates"
-    / "digital_bookplates"
+    directory=[
+        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
+        pathlib.Path(__file__).resolve().parent.parent
+        / "templates"
+        / "digital_bookplates",
+    ]
 )
 
 files_base = "digital-bookplates"

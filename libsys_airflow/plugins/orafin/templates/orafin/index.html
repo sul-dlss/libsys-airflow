@@ -1,18 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Orafin Feeder-files and AP Reports</title>
+{% extends "base.html" %}
+
+{% block head_title %}Orafin Feeder-files and AP Reports{% endblock %}
+
+{% block extra_head %}
   <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
     h2 { margin-top: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
   </style>
-</head>
-<body>
+{% endblock %}
+
+{% block body %}
   <h1>Orafin Feeder-files and AP Reports</h1>
   <h2>Feeder-files sent to AP</h2>
   <table id="feederFileDownloads">
@@ -52,7 +50,9 @@
       {% endfor %}
     </tbody>
   </table>
+{% endblock %}
 
+{% block extra_scripts %}
   <script type="text/javascript">
     let feederFilesDownloadsTable = document.querySelector("#feederFileDownloads");
     let feederFilesDownloadsDataTable = new simpleDatatables.DataTable(feederFilesDownloadsTable, {
@@ -69,5 +69,4 @@
       perPageSelect: false
     });
   </script>
-</body>
-</html>
+{% endblock %}

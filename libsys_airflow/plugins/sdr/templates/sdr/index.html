@@ -1,15 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>SDR Reports</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}SDR Reports{% endblock %}
+
+{% block body %}
   <h1>SDR Reports</h1>
   <h2>Missing Barcodes Reports</h2>
   <table>
@@ -34,5 +27,4 @@
       {% endfor %}
     </tbody>
   </table>
-</body>
-</html>
+{% endblock %}

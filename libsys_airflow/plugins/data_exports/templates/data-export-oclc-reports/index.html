@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>OCLC Data Export Reports</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}OCLC Data Export Reports{% endblock %}
+
+{% block body %}
   <h2>OCLC Data Export Reports</h2>
   <ul>
     <li><a href="#S7Z">Graduate School of Business</a></li>
@@ -146,5 +144,4 @@
       </tr>
     </table>
   </div>
-</body>
-</html>
+{% endblock %}

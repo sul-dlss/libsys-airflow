@@ -1,15 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>{{ title }}</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}{{ title }}{% endblock %}
+
+{% block body %}
   <h2>{{ title }}</h2>
 {% if not reference_df.empty %}
    <p>
@@ -24,5 +17,4 @@
         <li><a href="reference/patron_group">Patron Group</a></li>
     </ul>
 {% endif %}
-</body>
-</html>
+{% endblock %}

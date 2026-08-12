@@ -1,17 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>FOLIO Circ Rules Tester</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
-    .columns { display: flex; gap: 2rem; }
-    .column { flex: 1; }
-    label { display: block; font-weight: bold; margin-bottom: 0.25rem; margin-top: 0.75rem; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}FOLIO Circ Rules Tester{% endblock %}
+
+{% block body %}
   <h2>FOLIO Circ Rules Tester</h2>
   {% if message %}
   <div class="alert-message">{{ message }}</div>
@@ -65,5 +56,4 @@
           </form>
       </div>
   </div>
-</body>
-</html>
+{% endblock %}

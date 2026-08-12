@@ -1,17 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Data Export MARC Downloads</title>
+{% extends "base.html" %}
+
+{% block head_title %}Data Export MARC Downloads{% endblock %}
+
+{% block extra_head %}
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
   <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  </style>
-</head>
-<body>
+{% endblock %}
+
+{% block body %}
   <table id="marcDownloads">
     <thead>
       <tr>
@@ -34,10 +30,12 @@
       {% endfor %}
     </tbody>
   </table>
+{% endblock %}
+
+{% block extra_scripts %}
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       new DataTable('#marcDownloads');
     });
   </script>
-</body>
-</html>
+{% endblock %}

@@ -1,15 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>FOLIO Circ Rules Tester Report</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
-    .list-item { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block head_title %}FOLIO Circ Rules Tester Report{% endblock %}
+
+{% block body %}
   <h2>FOLIO Circ Rules Tester Report</h2>
   <h3>Report from <a href="/dags/circ_rules_scenario_tests/runs/{{ dag_run }}" target="_blank">{{ dag_run }}</a></h3>
   {% if message %}
@@ -27,5 +20,4 @@
   {% else %}
   <button onclick="location.reload(); return false">Check for Report</button>
   {% endif %}
-</body>
-</html>
+{% endblock %}

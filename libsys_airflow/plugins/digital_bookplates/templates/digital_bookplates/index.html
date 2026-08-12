@@ -1,18 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Digital Bookplates Batches</title>
+{% extends "base.html" %}
+
+{% block head_title %}Digital Bookplates Batches{% endblock %}
+
+{% block extra_head %}
   <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  </style>
-</head>
-<body>
+{% endblock %}
+
+{% block body %}
   <header>
     <h1>Digital Bookplates Batches</h1>
   </header>
@@ -68,7 +63,9 @@
       </div>
     </form>
   </main>
+{% endblock %}
 
+{% block extra_scripts %}
   <script type="text/javascript">
       let fundsTable = document.querySelector("#fundsTable");
       let dataTable = new simpleDatatables.DataTable(fundsTable, {
@@ -78,5 +75,4 @@
         perPageSelect: false
       });
      </script>
-</body>
-</html>
+{% endblock %}

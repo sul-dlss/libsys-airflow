@@ -8,7 +8,10 @@ from fastapi.templating import Jinja2Templates
 app = FastAPI()
 
 templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent.parent / "templates" / "sdr"
+    directory=[
+        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
+        pathlib.Path(__file__).resolve().parent.parent / "templates" / "sdr",
+    ]
 )
 
 reports_base = pathlib.Path("/opt/airflow/sdr-files/reports")

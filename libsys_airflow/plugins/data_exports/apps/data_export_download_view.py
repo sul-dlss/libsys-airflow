@@ -8,9 +8,12 @@ from fastapi.templating import Jinja2Templates
 app = FastAPI()
 
 templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent.parent
-    / "templates"
-    / "data-export-download"
+    directory=[
+        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
+        pathlib.Path(__file__).resolve().parent.parent
+        / "templates"
+        / "data-export-download",
+    ]
 )
 
 parent = pathlib.Path(__file__).resolve().parent
