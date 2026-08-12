@@ -1,21 +1,28 @@
-{% extends "appbuilder/base.html" %}
-
-{% block content %}
-<div>
-    <h2>{{ title }}</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
+  <h2>{{ title }}</h2>
 {% if not reference_df.empty %}
    <p>
-   <a class="btn btn-primary" 
-      href="{{ url_for('CircRulesTester.reference_data', data_type='loan_type', download=True) }}">Download CSV</a>
+   <a href="?download=true">Download CSV</a>
    </p>
-   {{ reference_df.to_html(index=False)|safe }} 
+   {{ reference_df.to_html(index=False)|safe }}
 {% else %}
     <ul id="ref-data-list">
-        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='loan_type') }}">Loan Types</a></li>
-        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='material_type') }}">Material Types</a></li>
-        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='locations') }}">Locations</a></li>
-        <li><a href="{{ url_for('CircRulesTester.reference_data', data_type='patron_group') }}">Patron Group</a></li>
+        <li><a href="reference/loan_type">Loan Types</a></li>
+        <li><a href="reference/material_type">Material Types</a></li>
+        <li><a href="reference/locations">Locations</a></li>
+        <li><a href="reference/patron_group">Patron Group</a></li>
     </ul>
 {% endif %}
-</div>
-{% endblock %}
+</body>
+</html>

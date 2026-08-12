@@ -1,10 +1,13 @@
-{% extends "appbuilder/base.html" %}
-
-{% block content %}
-<div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ library_name }}</title>
+</head>
+<body>
   <h3>{{ library_name }}</h3>
   <div>
     {{ contents|safe }}
   </div>
-</div>
-{% endblock %}
+</body>
+</html>

@@ -1,12 +1,13 @@
-{% extends "appbuilder/base.html" %}
-
-{% block head_css %}
-{{ super() }}
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
-{% endblock %}
-
-{% block content %}
-{{ super() }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edit Vendor Interface{% if folio_name %} - {{ folio_name }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/vendor_management/static/main.css">
+</head>
+<body>
+<div class="container-fluid">
 
 <header class="page-header">
   <h1>Edit Vendor Interface{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
@@ -14,25 +15,24 @@
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li><a href="/vendor_management/">Dashboard</a></li>
+    <li class="active"><a href="/vendor_management/vendors">Vendors</a></li>
   </ul>
 
   <ol class="breadcrumb">
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
-    <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></li>
-    <li><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a></li>
+    <li><a href="/vendor_management/vendors">All</a></li>
+    <li><a href="/vendor_management/vendors/{{ interface.vendor.id }}">{{ interface.vendor.display_name }}</a></li>
+    <li><a href="/vendor_management/interfaces/{{ interface.id }}">{{ interface.display_name }}</a></li>
     <li class="active">Edit</li>
   </ol>
 </nav>
 
 <main>
-  <form class="form-horizontal" method="post" action="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <form class="form-horizontal" method="post" action="/vendor_management/interfaces/{{ interface.id }}/edit">
     <div class="form-group">
       <label for="vendor" class="col-sm-2 col-form-label">Vendor</label>
       <div class="col-sm-8" id="vendor">
-        <a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">
+        <a href="/vendor_management/vendors/{{ interface.vendor.id }}">
           {{ interface.vendor.display_name }}
         </a>
       </div>
@@ -43,7 +43,7 @@
         {% if interface.upload_only %}
          <input type="text"  class="form-control" id="display-name" name="display-name" value="{{ interface.display_name }}">
         {% else %}
-        <a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">
+        <a href="/vendor_management/interfaces/{{ interface.id }}">
           {{ interface.display_name }}
         </a>
         {% endif %}
@@ -252,7 +252,7 @@
         <button class="btn btn-success">Save</button>
       </div>
       <div class="col-sm-1">
-        <a class="btn btn-default" href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">Cancel</a>
+        <a class="btn btn-default" href="/vendor_management/interfaces/{{ interface.id }}">Cancel</a>
       </div>
     </div>
   </form>
@@ -386,5 +386,6 @@
  addEventListener("load", main);
 
 </script>
-
-{% endblock %}
+</div>
+</body>
+</html>

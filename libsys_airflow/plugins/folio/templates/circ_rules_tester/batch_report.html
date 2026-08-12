@@ -1,15 +1,28 @@
-{% extends "appbuilder/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FOLIO Circ Rules Tester Report</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
+  <h2>FOLIO Circ Rules Tester Report</h2>
+  <h3>Report from <a href="/dags/circ_rules_batch_tests/runs/{{ dag_run }}" target="_blank">{{ dag_run }}</a></h3>
 
-{% block content %}
-<div>
-    <h2>FOLIO Circ Rules Tester Report</h2>
-    <h3>Report from <a href="/dags/circ_rules_batch_tests/runs/{{ dag_run }}" target="_blank">{{ dag_run }}</a></a></h3>
-    
-    {% if report is none %}
-    <button class="btn btn-default" onclick="location.reload(); return false">Check for Report</button>
-    {% else %}
-    <a class="btn btn-default" href="{{ url_for('CircRulesTester.download_report', dag_run=dag_run) }}" download>Download</a>
-    {{ report.to_html(index=False, classes=['table', 'table-striped'])|safe }}
-    {% endif %}
-</div>
-{% endblock %}
+  {% if message %}
+  <div class="alert-message">{{ message }}</div>
+  {% endif %}
+
+  {% if report is none %}
+  <button onclick="location.reload(); return false">Check for Report</button>
+  {% else %}
+  <a href="../download/{{ dag_run }}" download>Download</a>
+  {{ report.to_html(index=False)|safe }}
+  {% endif %}
+</body>
+</html>

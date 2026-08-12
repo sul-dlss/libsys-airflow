@@ -1,7 +1,17 @@
 import pathlib
 
-from flask_appbuilder import expose, BaseView as AppBuilderBaseView
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
 
+app = FastAPI()
+
+templates = Jinja2Templates(
+    directory=pathlib.Path(__file__).resolve().parent.parent
+    / "templates"
+    / "data-export-oclc-reports"
+)
+
+files_base = pathlib.Path("/opt/airflow/data-export-files")
 
 LOOKUP_LIBRARY_CODE = {
     "CASUM": "Lane Medical Library",
@@ -21,63 +31,65 @@ LOOKUP_REPORT_NAME = {
 }
 
 
-class DataExportOCLCReportsView(AppBuilderBaseView):
-    default_view = "data_export_oclc_reports_home"
-    route_base = "/data_export_oclc_reports"
-    files_base = "/opt/airflow/data-export-files"
+@app.get("/")
+def data_export_oclc_reports_home(request: Request):
+    oclc_reports_home = files_base / "oclc" / "reports"
+    libraries, no_holdings = {}, []
+    for library in oclc_reports_home.iterdir():
+        if library.name.startswith("missing_holdings"):
+            no_holdings = [report for report in library.glob("*.html")]
+            continue
+        if not library.is_dir():
+            continue
+        libraries[library.name] = {
+            "name": LOOKUP_LIBRARY_CODE[library.name],
+        }
 
-    @expose("/")
-    def data_export_oclc_reports_home(self):
-        oclc_reports_home = pathlib.Path(f"{self.files_base}/oclc/reports")
-        libraries, no_holdings = {}, []
-        for library in oclc_reports_home.iterdir():
-            if library.name.startswith("missing_holdings"):
-                no_holdings = [report for report in library.glob("*.html")]
+        for report_type in library.iterdir():
+            if not report_type.is_dir():
                 continue
-            if not library.is_dir():
-                continue
-            libraries[library.name] = {
-                "name": LOOKUP_LIBRARY_CODE[library.name],
+            libraries[library.name][report_type.name] = {
+                "name": LOOKUP_REPORT_NAME[report_type.name],
+                "reports": [],
             }
+            for report in report_type.glob("*.html"):
+                libraries[library.name][report_type.name]["reports"].append(report)
 
-            for report_type in library.iterdir():
-                if not report_type.is_dir():
-                    continue
-                libraries[library.name][report_type.name] = {
-                    "name": LOOKUP_REPORT_NAME[report_type.name],
-                    "reports": [],
-                }
-                for report in report_type.glob("*.html"):
-                    libraries[library.name][report_type.name]["reports"].append(report)
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "libraries": libraries,
+            "sortlibs": sorted(libraries, key=lambda x: (libraries[x]['name'])),
+            "no_holdings_instances": sorted(no_holdings),
+        },
+    )
 
-        return self.render_template(
-            "data-export-oclc-reports/index.html",
-            libraries=libraries,
-            sortlibs=sorted(libraries, key=lambda x: (libraries[x]['name'])),
-            no_holdings_instances=sorted(no_holdings),
-        )
 
-    @expose("/<library_code>/<report_type>/<report_name>")
-    def oclc_report(self, library_code, report_type, report_name):
-        report_path = pathlib.Path(
-            f"/opt/airflow/data-export-files/oclc/reports/{library_code}/{report_type}/{report_name}"
-        )
+@app.get("/{library_code}/{report_type}/{report_name}")
+def oclc_report(
+    library_code: str, report_type: str, report_name: str, request: Request
+):
+    report_path = (
+        files_base / "oclc" / "reports" / library_code / report_type / report_name
+    )
 
-        return self.render_template(
-            "data-export-oclc-reports/report.html",
-            library_name=LOOKUP_LIBRARY_CODE[library_code],
-            report_name=LOOKUP_REPORT_NAME[report_type],
-            contents=report_path.read_text(),
-        )
+    return templates.TemplateResponse(
+        request,
+        "report.html",
+        {
+            "library_name": LOOKUP_LIBRARY_CODE[library_code],
+            "contents": report_path.read_text(),
+        },
+    )
 
-    @expose("/missing_holdings/<report_name>")
-    def oclc_missing_holdings(self, report_name):
-        report_path = pathlib.Path(
-            f"/opt/airflow/data-export-files/oclc/reports/missing_holdings/{report_name}"
-        )
 
-        return self.render_template(
-            "data-export-oclc-reports/report.html",
-            library_name="All Libraries",
-            contents=report_path.read_text(),
-        )
+@app.get("/missing_holdings/{report_name}")
+def oclc_missing_holdings(report_name: str, request: Request):
+    report_path = files_base / "oclc" / "reports" / "missing_holdings" / report_name
+
+    return templates.TemplateResponse(
+        request,
+        "report.html",
+        {"library_name": "All Libraries", "contents": report_path.read_text()},
+    )

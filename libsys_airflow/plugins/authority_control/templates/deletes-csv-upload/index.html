@@ -1,49 +1,44 @@
-{% extends "appbuilder/base.html" %}
-
-{% block content %}
-<div>
-    <h2> FOLIO Authority Deletes Upload</h2>
-    {% if run_id %}
-        <p>
-            DAG <strong>delete_authority_records</strong> triggered with
-            <a href="/dags/delete_authority_records/runs/{{ run_id }}">Run ID {{ run_id }}</a>
-        </p>
-        {% if email %}
-            Report email will be sent to {{ email }} when DAG is completed.
-        {% endif %}
-    {% else %}
-    <p>
-        To delete FOLIO Authority records, create a csv file with a single column 
-        of record IDs from the MARC 001 field and upload the csv file.
-    </p>
-    <form enctype="multipart/form-data" method="POST" action="{{ url_for('AuthorityRecordsDeleteUploadView.upload_csv') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group">
-                    <p class="help-block">
-                       Upload a csv file with a single column of MARC 001 values
-                    </p>
-                    <input type="file" class="form-control" id="upload-deletes" name="upload-deletes">
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group">
-                    <p class="help-block">
-                        Email (Optional) to receive an report.
-                    </p>
-                    <input id="email" name="email" class="form-control"></input>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-4">
-                <input type="submit" class="btn btn-primary" value="Delete FOLIO Authority JSON Records">
-            </div>
-        </div>
-    </form>
-    {% endif %}
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FOLIO Authority Deletes Upload</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    .form-row { margin-bottom: 1rem; }
+    label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h2>FOLIO Authority Deletes Upload</h2>
+  {% if message %}
+  <div class="alert-message">{{ message }}</div>
+  {% endif %}
+  {% if run_id %}
+  <p>
+    DAG <strong>delete_authority_records</strong> triggered with
+    <a href="/dags/delete_authority_records/runs/{{ run_id }}">Run ID {{ run_id }}</a>
+  </p>
+  {% if email %}
+  <p>Report email will be sent to {{ email }} when DAG is completed.</p>
+  {% endif %}
+  {% else %}
+  <p>
+    To delete FOLIO Authority records, create a csv file with a single column
+    of record IDs from the MARC 001 field and upload the csv file.
+  </p>
+  <form enctype="multipart/form-data" method="POST" action="upload">
+    <div class="form-row">
+      <label for="upload_deletes">Upload a csv file with a single column of MARC 001 values</label>
+      <input type="file" id="upload_deletes" name="upload_deletes">
+    </div>
+    <div class="form-row">
+      <label for="email">Email (Optional) to receive an report.</label>
+      <input id="email" name="email">
+    </div>
+    <button type="submit">Delete FOLIO Authority JSON Records</button>
+  </form>
+  {% endif %}
+</body>
+</html>

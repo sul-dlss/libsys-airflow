@@ -1,28 +1,22 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
 
-from libsys_airflow.plugins.authority_control.apps.deletes_upload_view import (
-    AuthorityRecordsDeleteUploadView,
-)
+from libsys_airflow.plugins.authority_control.apps.deletes_upload_view import app
 
-authority_deletes_upload_bp = Blueprint(
-    "authority_deletes", __name__, template_folder="templates"
-)
+authority_deletes_upload_app = {
+    "app": app,
+    "url_prefix": "/delete_authority_records",
+    "name": "FOLIO Authority Deletes Upload",
+}
 
-authority_deletes_view = AuthorityRecordsDeleteUploadView()
-authority_deletes_view_package = {
+authority_deletes_view = {
     "name": "FOLIO Authority Deletes Upload",
     "category": "FOLIO",
-    "view": authority_deletes_view,
+    "href": "/delete_authority_records/",
+    "url_route": "delete_authority_records",
 }
 
 
 class AuthorityDeletesPlugin(AirflowPlugin):
     name = "FOLIO Authority Deletes Upload"
-    operators = []  # type: ignore
-    flask_blueprints = [authority_deletes_upload_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [authority_deletes_view_package]
-    appbuilder_menu_items = []
+    fastapi_apps = [authority_deletes_upload_app]
+    external_views = [authority_deletes_view]

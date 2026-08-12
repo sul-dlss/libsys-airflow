@@ -1,103 +1,88 @@
-{% extends "appbuilder/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Data Export CSV Upload</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    .form-row { margin-bottom: 1rem; }
+    label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
+  </style>
+  <script>
+    function toggleRecordTypes() {
+      const vendorSelect = document.getElementById("vendor");
+      const vendor = vendorSelect.value;
+      const radioButtons = document.querySelectorAll('input[type="radio"][name="kind"]');
 
-{% block head_js %}
-{{ super() }}
-<script>
-function toggleRecordTypes() {
-  const vendorSelect = document.getElementById("vendor");
-  const vendor = vendorSelect.value;
-  const radioButtons = document.querySelectorAll('input[type="radio"][name="kind"]');
+      switch(vendor) {
+        case "gobi":
+        case "backstage":
+          radioButtons.forEach(radio => {
+            if (radio.value == "updates" || radio.value == "deletes") {
+              radio.disabled = true;
+              radio.checked = false;
+            } else {
+              radio.disabled = false;
+              radio.checked = true;
+            }
+          });
+          break;
 
-  switch(vendor) {
-    case "gobi":
-    case "backstage":
-      radioButtons.forEach(radio => {
-        if (radio.value == "updates" || radio.value == "deletes") {
-          radio.disabled = true;
-          radio.checked = false;
-        } else {
-          radio.disabled = false;
-          radio.checked = true;
-        }
-      });
-      break;
+        case "oclc":
+          radioButtons.forEach(radio => {
+            if (radio.value == "updates") {
+              radio.disabled = true;
+              radio.checked = false;
+            } else {
+              radio.disabled = false;
+              radio.checked = false;
+            }
+          });
+          break;
 
-    case "oclc":
-      radioButtons.forEach(radio => {
-        if (radio.value == "updates") {
-          radio.disabled = true;
-          radio.checked = false;
-        } else {
-          radio.disabled = false;
-          radio.checked = false;
-        }
-      });
-      break;
-
-    default:
-      radioButtons.forEach(radio => {
-         radio.disabled = false;
-         radio.checked = false;
-      });
-  }
-}
-</script>
-{% endblock %}
-
-{% block content %}
-<div>
+        default:
+          radioButtons.forEach(radio => {
+             radio.disabled = false;
+             radio.checked = false;
+          });
+      }
+    }
+  </script>
+</head>
+<body>
   <h2>Data Export CSV Upload</h2>
-  <form enctype="multipart/form-data" method="POST" action="{{ url_for('DataExportUploadView.run_data_export_upload') }}">
-    <div class="row">
-      <div class="col-md-3">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <div class="form-group">
-          <p class="help-block">
-            Upload a csv file with a single column of instance UUIDs
-          </p>
-          <input type="file" class="form-control" id="upload-data-export-ids" name="upload-data-export-ids">
-        </div>
-      </div>
+  {% for message in messages %}
+  <div class="alert-message">{{ message }}</div>
+  {% endfor %}
+  <form enctype="multipart/form-data" method="POST" action="create">
+    <div class="form-row">
+      <label for="ids_file">Upload a csv file with a single column of instance UUIDs</label>
+      <input type="file" id="ids_file" name="ids_file">
     </div>
-    <div class="row">
-      <div class="col-md-3">
-        <div class="form-group">
-          <p class="help-block">
-            Select Export Vendor (required)
-          </p>
-          <select class="form-control" onchange="toggleRecordTypes()" id="vendor" name="vendor">
-            <option value="">--Choose vendor--</option>
-            {%for v in vendors%}
-              <option value="{{v}}">{{v}}</option>
-            {%endfor%}
-          </select>
-          <p class="help-block">Select for New records, Updates or Deletes:</p>
-          <fieldset id="kind">
-              <input type="radio" name="kind" id="new" value="new" />
-              <label for="new">New records</label>
-              <input type="radio" name="kind" id="updates" value="updates" />
-              <label for="updates">Updates</label>
-              <input type="radio" name="kind" id="deletes" value="deletes" />
-              <label for="deletes">Deletes</label>
-          </fieldset>
-        </div>
-      </div>
+    <div class="form-row">
+      <label for="vendor">Select Export Vendor (required)</label>
+      <select onchange="toggleRecordTypes()" id="vendor" name="vendor">
+        <option value="">--Choose vendor--</option>
+        {% for v in vendors %}
+          <option value="{{ v }}">{{ v }}</option>
+        {% endfor %}
+      </select>
+      <p>Select for New records, Updates or Deletes:</p>
+      <fieldset id="kind">
+          <input type="radio" name="kind" id="new" value="new" />
+          <label for="new">New records</label>
+          <input type="radio" name="kind" id="updates" value="updates" />
+          <label for="updates">Updates</label>
+          <input type="radio" name="kind" id="deletes" value="deletes" />
+          <label for="deletes">Deletes</label>
+      </fieldset>
     </div>
-    <div class="row">
-      <div class="col-md-3">
-        <div class="form-group">
-          <p class="help-block">
-            Enter an email to receive upload confirmation:
-          </p>
-          <input type="email" class="form-control" id="user_email" name="user_email" multiple>
-        </div>
-      </div>
+    <div class="form-row">
+      <label for="user_email">Enter an email to receive upload confirmation:</label>
+      <input type="email" id="user_email" name="user_email">
     </div>
-    <div class="row">
-      <div class="col-md-9">
-        <input type="submit" class="btn btn-default" value="Upload UUID file">
-      </div>
-    </div>
+    <button type="submit">Upload UUID file</button>
   </form>
-</div>
-{% endblock %}
+</body>
+</html>

@@ -1,31 +1,37 @@
-{% extends "airflow/main.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Interface: {{ interface.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" type="text/css" href="/vendor_management/static/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+  <style>
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
 {% import "vendors/_macros.html" as _macros -%}
 
-{% block head_css %}
-{{ super() }}
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
-{% endblock %}
+{% if message %}
+<div class="alert-message">{{ message }}</div>
+{% endif %}
 
-{% block head_js %}
-{{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
-{% endblock %}
-
-{% block content %}
 <header class="page-header">
   <h1>Interface: {{ interface.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
 </header>
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li><a href="/vendor_management/">Dashboard</a></li>
+    <li class="active"><a href="/vendor_management/vendors">Vendors</a></li>
   </ul>
 
   <ol class="breadcrumb">
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
-    <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></li>
+    <li><a href="/vendor_management/vendors">All</a></li>
+    <li><a href="/vendor_management/vendors/{{ interface.vendor.id }}">{{ interface.vendor.display_name }}</a></li>
     <li class="active">{{ interface.display_name }}</li>
   </ol>
 </nav>
@@ -34,7 +40,7 @@
   <section>
     <dl class="dl-horizontal dl-wide">
       <dt>Vendor</dt>
-      <dd><a href="{{ url_for('VendorManagementView.vendor', vendor_id=interface.vendor.id) }}">{{ interface.vendor.display_name }}</a></dd>
+      <dd><a href="/vendor_management/vendors/{{ interface.vendor.id }}">{{ interface.vendor.display_name }}</a></dd>
       <dt>Interface ID</dt>
       <dd>{{ interface.folio_interface_uuid or 'Upload only' }}</dd>
       <dt>Interface Display Name</dt>
@@ -96,30 +102,27 @@
 
     <div class="row">
       <div class="col-md-1">
-        <a href="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
+        <a href="/vendor_management/interfaces/{{ interface.id }}/edit">
           <button class="btn btn-default">Edit</button>
         </a>
       </div>
       {% if interface.upload_only and not interface.vendor_files|length %}
         <div class="col-md-1">
-          <form method="POST" action="{{ url_for('VendorManagementView.interface_delete', interface_id=interface.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <form method="POST" action="/vendor_management/interfaces/{{ interface.id }}/delete">
             <input type="submit" class="btn btn-default" value="Delete">
           </form>
         </div>
       {% endif %}
       {% if interface.assigned_in_folio or interface.upload_only %}
         <div class="col-md-1">
-          <form method="POST" action="{{ url_for('VendorManagementView.interface_fetch', interface_id=interface.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <form method="POST" action="/vendor_management/interfaces/{{ interface.id }}/fetch">
             <input type="submit" class="btn btn-default" value="Process now">
           </form>
         </div>
       {% endif %}
       {% if interface.assigned_in_folio and interface.folio_interface_uuid %}
         <div class="col-md-1">
-          <form method="POST" action="{{ url_for('VendorManagementView.interface_test', interface_id=interface.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <form method="POST" action="/vendor_management/interfaces/{{ interface.id }}/test">
             <input type="submit" class="btn btn-default" value="Test Connection">
           </form>
         </div>
@@ -130,8 +133,7 @@
   <section>
     {% if interface.assigned_in_folio or interface.upload_only %}
     <h2>File Upload</h2>
-    <form enctype="multipart/form-data" method="POST" action="{{ url_for('VendorManagementView.file_upload', interface_id=interface.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <form enctype="multipart/form-data" method="POST" action="/vendor_management/interfaces/{{ interface.id }}/file">
       <div class="form-group">
           <p class="help-block">
               Upload and process a file for this interface.
@@ -161,7 +163,7 @@
       <tbody>
         {% for file in interface.pending_files %}
         <tr>
-          <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
+          <td><a href="/vendor_management/files/{{ file.id }}">{{ file.id }}</a></td>
           <td>{{ file.created }}</td>
           <td>{{ file.updated }}</td>
           <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
@@ -193,7 +195,7 @@
       <tbody>
         {% for file in interface.processed_files %}
         <tr>
-          <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
+          <td><a href="/vendor_management/files/{{ file.id }}">{{ file.id }}</a></td>
           <td>{{ file.created }}</td>
           <td>{{ file.updated }}</td>
           <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
@@ -203,8 +205,7 @@
           <td>{{ file.status.value }}</td>
           <td>
             {% if interface.assigned_in_folio or interface.upload_only %}
-            <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <form action="/vendor_management/files/{{ file.id }}/load?redirect_url={{ request.url | urlencode }}" method="POST">
               <input class="btn btn-link p-0" type="submit" value="Reload">
             </form>
             {% endif %}
@@ -232,4 +233,6 @@
     document.querySelector(".datatable-selector").classList.add("form-control");
     document.querySelector(".datatable-input").classList.add("form-control");
 </script>
-{% endblock %}
+</div>
+</body>
+</html>

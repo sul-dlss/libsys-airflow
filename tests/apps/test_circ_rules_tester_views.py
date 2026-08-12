@@ -1,70 +1,29 @@
-# from airflow.www import app as application
-# from airflow.www.extensions.init_appbuilder import create_app
-from airflow.providers.fab.www import app as application
-from bs4 import BeautifulSoup
-from flask.wrappers import Response
-import pytest
+from fastapi.testclient import TestClient
+import pytest  # noqa
 
-from conftest import root_directory
+from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import app
 
-from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
+client = TestClient(app, follow_redirects=False)
 
 
-@pytest.fixture
-def test_airflow_client():
-    templates_folder = f"{root_directory}/libsys_airflow/plugins/folio/templates"
-
-    app = application.create_app(enable_plugins=False)
-    app.config['WTF_CSRF_ENABLED'] = False
-
-    with app.app_context():
-        app.appbuilder.add_view(
-            CircRulesTester,
-            "CircRulesTester",
-            category="Circ Rules Tests",
-        )
-
-        app.blueprints["CircRulesTester"].template_folder = templates_folder
-
-    app.response_class = HTMLResponse
-
-    with app.test_client() as client:
-        yield client
-
-
-class HTMLResponse(Response):
-    @property
-    def html(self):
-        return BeautifulSoup(self.get_data(), "html.parser")
-
-
-def test_circ_rules_tester_main_page(test_airflow_client):
-    response = test_airflow_client.get("/circ_rule_tester/")
+def test_circ_rules_tester_main_page():
+    response = client.get("/")
 
     assert response.status_code == 200
-
-    title = response.html.find("h2")
-
-    assert title.text == "FOLIO Circ Rules Tester"
+    assert "<h2>FOLIO Circ Rules Tester</h2>" in response.text
 
 
-def test_circ_rules_tester_reference_home(mocker, test_airflow_client):
+def test_circ_rules_tester_reference_home(mocker):
     mocker.patch(
         'libsys_airflow.plugins.folio.apps.circ_rules_tester_view.folio_client'
     )
 
-    response = test_airflow_client.get("/circ_rule_tester/reference")
+    response = client.get("/reference")
 
     assert response.status_code == 200
+    assert "<h2>Reference Data</h2>" in response.text
 
-    title = response.html.find("h2")
-
-    assert title.text == "Reference Data"
-
-    reference_list = response.html.find(id="ref-data-list")
-    reference_list_items = reference_list.find_all("li")
-
-    assert len(reference_list_items) == 4
+    assert response.text.count('<li><a href="reference/') == 4
 
 
 mock_patron_groups = [
@@ -99,7 +58,7 @@ mock_patron_groups = [
 ]
 
 
-def test_circ_rules_tester_patron_group(mocker, test_airflow_client):
+def test_circ_rules_tester_patron_group(mocker):
     mock_folio_client = mocker.MagicMock()
     mock_folio_client.folio_get = lambda *args, **kwargs: mock_patron_groups
 
@@ -108,18 +67,13 @@ def test_circ_rules_tester_patron_group(mocker, test_airflow_client):
         return_value=mock_folio_client,
     )
 
-    response = test_airflow_client.get("/circ_rule_tester/reference/patron_group")
+    response = client.get("/reference/patron_group")
 
-    title = response.html.find("h2")
+    assert response.status_code == 200
+    assert "<h2>Patron Groups</h2>" in response.text
 
-    assert title.text == "Patron Groups"
+    assert response.text.count("<tr>") == 3
 
-    table_rows = response.html.find_all("tr")
-
-    assert len(table_rows) == 4
-
-    first_row_data = table_rows[1].find_all("td")
-
-    assert first_row_data[0].text.startswith("graduate")
-    assert first_row_data[1].text.startswith("Graduate Student")
-    assert first_row_data[2].text.startswith("ad0bc554")
+    assert "graduate" in response.text
+    assert "Graduate Student" in response.text
+    assert "ad0bc554" in response.text

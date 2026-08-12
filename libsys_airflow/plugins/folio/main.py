@@ -1,44 +1,36 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
-from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
-from libsys_airflow.plugins.folio.apps.healthcheck_view import Healthcheck
 
-
-bp = Blueprint(
-    "folio_plugin",
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    static_url_path="/static/folio_plugin",
+from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import (
+    app as circ_rules_tester_app,
 )
+from libsys_airflow.plugins.folio.apps.healthcheck_view import app as healthcheck_app
 
-
-# Circ Rules Tester App
-circ_rules_tester_view = CircRulesTester()
-circ_rules_tester_package = {
+circ_rules_tester_fastapi_app = {
+    "app": circ_rules_tester_app,
+    "url_prefix": "/circ_rule_tester",
+    "name": "Circ Rules Tester",
+}
+circ_rules_tester_view = {
     "name": "Circ Rules Tester",
     "category": "FOLIO",
-    "view": circ_rules_tester_view,
+    "href": "/circ_rule_tester/",
+    "url_route": "circ_rule_tester",
 }
 
-# Healthcheck App
-healthcheck_view = Healthcheck()
-healthcheck_package = {
+healthcheck_fastapi_app = {
+    "app": healthcheck_app,
+    "url_prefix": "/healthcheck",
+    "name": "Healthcheck",
+}
+healthcheck_view = {
     "name": "Healthcheck",
     "category": "FOLIO",
-    "view": healthcheck_view,
+    "href": "/healthcheck/",
+    "url_route": "healthcheck",
 }
 
 
 class FOLIOPlugin(AirflowPlugin):
     name = "FOLIOInformation"
-    operators = []  # type: ignore
-    flask_blueprints = [bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [
-        circ_rules_tester_package,
-        healthcheck_package,
-    ]
-    appbuilder_menu_items = []
+    fastapi_apps = [circ_rules_tester_fastapi_app, healthcheck_fastapi_app]
+    external_views = [circ_rules_tester_view, healthcheck_view]

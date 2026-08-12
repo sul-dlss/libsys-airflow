@@ -1,26 +1,22 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
 
-from libsys_airflow.plugins.sdr.apps.sdr_missing_barcodes_view import (
-    SdrMissingBarcodesView,
-)
+from libsys_airflow.plugins.sdr.apps.sdr_missing_barcodes_view import app
 
-sdr_missing_barcodes_bp = Blueprint("sdr", __name__, template_folder="templates")
+sdr_missing_barcodes_app = {
+    "app": app,
+    "url_prefix": "/sdr",
+    "name": "SDR Missing Barcodes Reports",
+}
 
-sdr_missing_barcodes_view = SdrMissingBarcodesView()
-
-sdr_missing_barcodes_package = {
+sdr_missing_barcodes_view = {
     "name": "SDR Missing Barcodes Reports",
     "category": "FOLIO",
-    "view": sdr_missing_barcodes_view,
+    "href": "/sdr/",
+    "url_route": "sdr",
 }
 
 
 class SdrPlugin(AirflowPlugin):
     name = "SDR Reports"
-    operators = []  # type: ignore
-    flask_blueprints = [sdr_missing_barcodes_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [sdr_missing_barcodes_package]
+    fastapi_apps = [sdr_missing_barcodes_app]
+    external_views = [sdr_missing_barcodes_view]

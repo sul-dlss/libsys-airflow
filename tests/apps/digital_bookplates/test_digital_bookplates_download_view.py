@@ -1,54 +1,34 @@
-from airflow.providers.fab.www import app as application
+import pathlib
 
-from bs4 import BeautifulSoup
-from flask.wrappers import Response
-import pytest
+from fastapi.testclient import TestClient
+import pytest  # noqa
 
 from conftest import root_directory
+
+from libsys_airflow.plugins.digital_bookplates.apps import (
+    digital_bookplates_download_view,
+)
 from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_download_view import (
-    DigitalBookplatesDownloadView,
+    app,
 )
 
+client = TestClient(app)
 
-@pytest.fixture
-def test_airflow_client():
-    templates_folder = (
-        f"{root_directory}/libsys_airflow/plugins/digital_bookplates/templates"
+
+@pytest.fixture(autouse=True)
+def mock_files_base(mocker):
+    files_base = pathlib.Path(
+        f"{root_directory}/tests/apps/digital_bookplates/digital_bookplates_file_fixtures"
     )
-    files_base = f"{root_directory}/tests/apps/digital_bookplates/digital_bookplates_file_fixtures"
-
-    app = application.create_app(enable_plugins=False)
-    app.config['WTF_CSRF_ENABLED'] = False
-    setattr(DigitalBookplatesDownloadView, "files_base", files_base)  # noqa
-
-    with app.app_context():
-        app.appbuilder.add_view(
-            DigitalBookplatesDownloadView,
-            "DigitalBookplates",
-            category="Digital bookplates",
-        )
-        app.blueprints['DigitalBookplatesDownloadView'].template_folder = (
-            templates_folder
-        )
-
-    app.response_class = HTMLResponse
-
-    with app.test_client() as client:
-        yield client
+    mocker.patch.object(digital_bookplates_download_view, "files_base", files_base)
+    return files_base
 
 
-class HTMLResponse(Response):
-    @property
-    def html(self):
-        return BeautifulSoup(self.get_data(), "html.parser")
-
-
-def test_download_view(test_airflow_client):
-    response = test_airflow_client.get('/digital_bookplates_download/')
+def test_download_view():
+    response = client.get('/')
     assert response.status_code == 200
 
-    csv_download = response.html.find(id="2024-10-22").get('href')
     assert (
-        csv_download
-        == "/digital_bookplates_download/2024/10/22/SearchInstanceUUIDs2024-10-16T16_39_11-06_00.csv"
+        'id="2024-10-22" href="2024/10/22/SearchInstanceUUIDs2024-10-16T16_39_11-06_00.csv"'
+        in response.text
     )

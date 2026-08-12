@@ -1,70 +1,69 @@
-{% extends "appbuilder/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FOLIO Circ Rules Tester</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    .columns { display: flex; gap: 2rem; }
+    .column { flex: 1; }
+    label { display: block; font-weight: bold; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h2>FOLIO Circ Rules Tester</h2>
+  {% if message %}
+  <div class="alert-message">{{ message }}</div>
+  {% endif %}
+  <p>
+      <a href="reference">Reference Data</a>
+  </p>
+  <div class="columns">
+      <div class="column">
+          <h3>CSV Batch</h3>
 
-{% block content %}
-<div>
-    <h2>FOLIO Circ Rules Tester</h2>
-    <p>
-        <a href="{{ url_for('CircRulesTester.reference_data') }}">Reference Data</a>
-    </p>
-    <div class="row">
-        <div class="col-md-6">
-            <h3>CSV Batch</h3>
+          <form enctype="multipart/form-data" method="POST" action="batch_test">
+              <p>
+                  Upload csv file with uuids with the following columns:
+                  <ul>
+                      <li>patron_group_id</li>
+                      <li>material_type_id</li>
+                      <li>loan_type_id</li>
+                      <li>location_id</li>
+                  </ul>
+              </p>
+              <input type="file" id="upload_scenarios" name="upload_scenarios">
 
-            <form enctype="multipart/form-data" method="POST" action="{{ url_for('CircRulesTester.run_batch_test') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <div class="form-group">
-                    <p class="help-block">
-                        Upload csv file with uuids with the following columns:
-                        <ul>
-                            <li>patron_group_id</li>
-                            <li>material_type_id</li>
-                            <li>loan_type_id</li>
-                            <li>location_id</li>
-                            <!-- <li>status_name</li> -->
-                        </ul> 
-                    </p>
-                    <input type="file" id="upload-scenarios" name="upload-scenarios">
+              <p><input type="submit" value="Run Batch Test"></p>
+          </form>
+      </div>
+      <div class="column">
+          <h3>Single Scenario</h3>
+          <form method="POST" action="test">
+              <label for="patron_group_id">
+                  Patron Group
+              </label>
+              <input name="patron_group_id" id="patron_group_id" placeholder="Patron Group UUID">
 
-                </div>
-                <input type="submit" class="btn btn-default" value="Run Batch Test">
-            </form>
-        </div>
-        <div class="col-md-6" class="form-horizontal" >
-            <h3>Single Scenario</h3>
-            <form method="POST" action="{{ url_for('CircRulesTester.run_test') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <div class="form-group">
-                    <label for="patron_type" class="col-sm-2 control-label">
-                        Patron Group
-                    </label>
-                    <input name="patron_group_id" id="patron_group_id" class="form-control" placeholder="Patron Group UUID">
-                </div>
-                <div class="form-group">
-                    <label for="material_type_id" class="col-sm-2 control-label">
-                        Material Type
-                    </label>
-                    <input name="material_type_id" id="material_type_id" class="form-control" placeholder="Material Type UUID">
-                </div>
-                <div class="form-group">
-                    <label for="loan_type_id" class="col-sm-2 control-label">
-                        Loan Type
-                    </label>
-                    <input name="loan_type_id" id="loan_type_id" class="form-control" placeholder="Loan Type UUID">
-                </div>
-                <div class="form-group">
-                    <label for="location_id" class="col-sm-2 control-label">
-                        Location
-                    </label>
-                    <input name="location_id" id="location_id" class="form-control" placeholder="Location UUID">
-                </div>
-                <div class="form-group">
-                    <div class="col-sm-offset-2 col-sm-10">
-                        <button type="submit" class="btn btn-default">Run Test</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    
-    </div>
-</div>
-{% endblock %}
+              <label for="material_type_id">
+                  Material Type
+              </label>
+              <input name="material_type_id" id="material_type_id" placeholder="Material Type UUID">
+
+              <label for="loan_type_id">
+                  Loan Type
+              </label>
+              <input name="loan_type_id" id="loan_type_id" placeholder="Loan Type UUID">
+
+              <label for="location_id">
+                  Location
+              </label>
+              <input name="location_id" id="location_id" placeholder="Location UUID">
+
+              <p><button type="submit">Run Test</button></p>
+          </form>
+      </div>
+  </div>
+</body>
+</html>

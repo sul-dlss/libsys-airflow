@@ -1,16 +1,21 @@
 from datetime import datetime, timedelta, UTC
 
 import pytest
-from pytest_mock_resources import create_sqlite_fixture, Rows
+from bs4 import BeautifulSoup
+from fastapi.testclient import TestClient
+from pytest_mock_resources import Rows
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from libsys_airflow.plugins.vendor.models import (
+    Model,
     Vendor,
     VendorInterface,
     VendorFile,
     FileStatus,
 )
-from tests.test_airflow_client import test_airflow_client  # noqa: F401
+from libsys_airflow.plugins.vendor_app.vendor_management import app
 
 now = datetime.now(UTC)
 
@@ -52,7 +57,21 @@ rows = Rows(
     ),
 )
 
-engine = create_sqlite_fixture(rows)
+client = TestClient(app, follow_redirects=False)
+
+
+@pytest.fixture
+def engine():
+    # FastAPI's TestClient dispatches requests on a background thread, so the
+    # sqlite connection must be shared (StaticPool) and thread-unsafe checks
+    # disabled, otherwise the view's DB session can't see the seeded rows.
+    test_engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Model.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        rows.apply(session)
+    return test_engine
 
 
 @pytest.fixture
@@ -72,18 +91,17 @@ def mock_variable(mocker):
     )
 
 
-def test_file_view(test_airflow_client, mock_db, mock_variable, mocker):  # noqa: F811
+def test_file_view(mock_db, mock_variable, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.get('/vendor_management/files/1')
+        response = client.get('/files/1')
         assert response.status_code == 200
 
-        expected_processing_time = response.html.select_one(
-            '#expected-processing-time input'
-        )
+        html = BeautifulSoup(response.text, "html.parser")
+        expected_processing_time = html.select_one('#expected-processing-time input')
         assert expected_processing_time
         expected_processing_time = expected_processing_time.attrs['value']
         expected_processing_time = datetime.fromisoformat(expected_processing_time)
@@ -93,19 +111,17 @@ def test_file_view(test_airflow_client, mock_db, mock_variable, mocker):  # noqa
         assert expected_processing_time.time() == then.time()
 
 
-def test_missing_file(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_missing_file(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.get('/vendor_management/files/1990')
+        response = client.get('/files/1990')
         assert response.status_code == 404
 
 
-def test_expected_processing_time(
-    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
-):
+def test_expected_processing_time(mock_variable, mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -115,16 +131,15 @@ def test_expected_processing_time(
         # update the expected_processing_time with a POST
         # the <input type=timelocal> doesn't do microseconds
         tomorrow = (now + timedelta(days=1)).replace(microsecond=0)
-        response = test_airflow_client.post(
-            '/vendor_management/files/1',
+        response = client.post(
+            '/files/1',
             data={'expected-processing-time': tomorrow.isoformat()},
         )
         assert response.status_code == 200
 
         # ensure HTML response includes the updated expected-processing-time
-        expected_processing_time = response.html.select_one(
-            '#expected-processing-time input'
-        )
+        html = BeautifulSoup(response.text, "html.parser")
+        expected_processing_time = html.select_one('#expected-processing-time input')
         assert expected_processing_time
         expected_processing_time = expected_processing_time.attrs['value']
         expected_processing_time = datetime.fromisoformat(expected_processing_time)
@@ -137,7 +152,7 @@ def test_expected_processing_time(
         assert vendor_file.expected_processing_time.time() == tomorrow.time()
 
 
-def test_set_status(test_airflow_client, mock_variable, mock_db, mocker):  # noqa: F811
+def test_set_status(mock_variable, mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -146,14 +161,15 @@ def test_set_status(test_airflow_client, mock_variable, mock_db, mocker):  # noq
 
         # update the expected_processing_time with a POST
         # the <input type=timelocal> doesn't do microseconds
-        response = test_airflow_client.post(
-            '/vendor_management/files/1',
+        response = client.post(
+            '/files/1',
             data={'status': FileStatus.loaded.value},
         )
         assert response.status_code == 200
 
         # ensure that the ability to set status with the select input is now removed
-        status_input = response.html.select_one('#status select')
+        html = BeautifulSoup(response.text, "html.parser")
+        status_input = html.select_one('#status select')
         assert status_input is None
 
         # peek in the database to see if it was updated there

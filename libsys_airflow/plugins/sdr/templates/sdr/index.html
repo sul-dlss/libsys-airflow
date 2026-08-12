@@ -1,33 +1,38 @@
-{% extends "appbuilder/base.html" %}
-
-{% block content %}
-<div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SDR Reports</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  </style>
+</head>
+<body>
   <h1>SDR Reports</h1>
   <h2>Missing Barcodes Reports</h2>
-  <table class="table table-striped">
+  <table>
     <thead>
-        <tr>
-            <th>Filename</th>
-            <th>Date</th>
-            <th>Size</th>
-        </tr>
+      <tr>
+        <th>Filename</th>
+        <th>Date</th>
+        <th>Size</th>
+      </tr>
     </thead>
     <tbody>
-        {% for report in missing_barcodes_files %}
-
-        <tr>
-            <td>
-                <a href="{{ url_for('SdrMissingBarcodesView.download', type_of='data', file_name=report.name) }}" download>{{ report.name }}</a>
-            </td>
-            <td>
-                {{ report.date_created }}
-            </td>
-            <td>
-                {{ report.size }}
-            </td>
-        </tr>
-        {% endfor %}
+      {% for report in missing_barcodes_files %}
+      <tr>
+        <td><a href="{{ report.name }}" download>{{ report.name }}</a></td>
+        <td>{{ report.date_created }}</td>
+        <td>{{ report.size }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="3">No missing barcode reports found.</td>
+      </tr>
+      {% endfor %}
     </tbody>
   </table>
-</div>
-{% endblock %}
+</body>
+</html>

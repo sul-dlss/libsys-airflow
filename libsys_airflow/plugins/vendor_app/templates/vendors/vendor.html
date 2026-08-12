@@ -1,24 +1,30 @@
-{% extends "airflow/main.html" %}
-
-{% block head_css %}
-{{ super() }}
-<link rel="stylesheet" type="text/css" href="{{ url_for_asset('switch.css') }}">
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
-{% endblock %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ vendor.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/vendor_management/static/main.css">
+  <style>
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    .switch-label { position: relative; display: inline-block; width: 50px; height: 24px; }
+    .switch-input { opacity: 0; width: 0; height: 0; }
+    .switch { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 24px; }
+    .switch:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    .switch-input:checked + .switch { background-color: #2196F3; }
+    .switch-input:checked + .switch:before { transform: translateX(26px); }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
 <script>
  const vendorActivityHandler = () => {
    document
      .querySelectorAll('#vendor_interfaces .switch-input')
      .forEach(switchInput => {
        switchInput.addEventListener('click', (event) => {
-         // The interface endpoint does not currently distinguish between form
-         // POSTs and JSON POSTs, so until we feel it's worth the effort to make
-         // the endpoint more API-friendly, pretend we're a form.
          const form = new FormData()
          form.append("active", event.target.checked)
-         form.append("csrf_token", csrfToken) // NOTE: Airflow sets this variable for us.
 
          fetch(switchInput.dataset.interfaceUrl, {
            method: 'POST',
@@ -52,7 +58,7 @@
       statusElement.style.fontSize = '1.5em';
       statusElement.style.float = 'inline-start';
       statusElement.style.paddingRight = 'inherit';
-      
+
       if (!response.ok) {
         statusElement.textContent = 'Could not verify vendor record in FOLIO';
       }
@@ -65,7 +71,7 @@
       console.dir(error)
     })
   }
- 
+
   if (document.readyState !== 'loading') {
    vendorStatusHandler()
    vendorActivityHandler()
@@ -75,18 +81,22 @@
  }
 </script>
 
+{% if message %}
+<div class="alert-message">{{ message }}</div>
+{% endif %}
+
 <header class="page-header">
   <h1>{{ vendor.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
 </header>
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li><a href="/vendor_management/">Dashboard</a></li>
+    <li class="active"><a href="/vendor_management/vendors">Vendors</a></li>
   </ul>
 
   <ol class="breadcrumb">
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
+    <li><a href="/vendor_management/vendors">All</a></li>
     <li class="active">{{ vendor.display_name }}</li>
   </ol>
 </nav>
@@ -103,8 +113,7 @@
       </div>
       {% if vendor.folio_organization_uuid %}
       <div class="col-md-2">
-        <form method="POST" action="{{ url_for('VendorManagementView.vendor_sync', vendor_id=vendor.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <form method="POST" action="/vendor_management/vendors/{{ vendor.id }}/sync">
           <input id="refresh-button" type="submit" class="btn btn-default" value="Refresh Data from FOLIO">
         </form>
       </div>
@@ -128,7 +137,7 @@
         {% for interface in vendor.vendor_interfaces %}
         <tr>
             <td>
-              <div><a href="{{ url_for('VendorManagementView.interface', interface_id=interface.id) }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
+              <div><a href="/vendor_management/interfaces/{{ interface.id }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
               <div>{{ interface.folio_interface_uuid or "" }}</div>
             </td>
             <td>{{ interface.folio_data_import_processing_name or "Skip import" }}</td>
@@ -141,7 +150,7 @@
                 <p>Not assigned to vendor in FOLIO</p>
               {% else %}
                 <label class="switch-label">
-                    <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_for('VendorManagementView.interface_edit', interface_id=interface.id) }}">
+                    <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="/vendor_management/interfaces/{{ interface.id }}/edit">
                     <span class="switch" aria-hidden="true"></span>
                     <span class="sr-only">Toggle interface between active and inactive</span>
                 </label>
@@ -154,10 +163,11 @@
       {% endif %}
     </table>
 
-    <form method="POST" action="{{ url_for('VendorManagementView.create_vendor_interface', vendor_id=vendor.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <form method="POST" action="/vendor_management/vendors/{{ vendor.id }}/interfaces">
       <input type="submit" class="btn btn-default" value="Add Upload Only Interface">
     </form>
   </section>
 </main>
-{% endblock %}
+</div>
+</body>
+</html>

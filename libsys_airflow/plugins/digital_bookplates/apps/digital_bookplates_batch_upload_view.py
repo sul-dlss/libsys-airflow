@@ -1,13 +1,16 @@
-from datetime import datetime, timezone
 import logging
 import pathlib
+from datetime import datetime, timezone
+from io import BytesIO
+from urllib.parse import urlencode
 
 import pandas as pd
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from flask import flash, redirect, request
-from flask_appbuilder import expose, BaseView as AppBuilderBaseView
+from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
@@ -18,6 +21,16 @@ from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
 
 
 logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+templates = Jinja2Templates(
+    directory=pathlib.Path(__file__).resolve().parent.parent
+    / "templates"
+    / "digital_bookplates"
+)
+
+files_base = "digital-bookplates"
 
 
 def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame):
@@ -48,7 +61,7 @@ def _save_uploaded_file(files_base: str, file_name: str, upload_df: pd.DataFrame
     upload_df.to_csv(report_path, index=False)
 
 
-def _get_fund(fund_id: int) -> dict | None:
+def _get_fund(fund_id) -> dict | None:
     if not fund_id:
         return None
 
@@ -63,74 +76,68 @@ def _get_fund(fund_id: int) -> dict | None:
     }
 
 
-class DigitalBookplatesBatchUploadView(AppBuilderBaseView):
-    default_view = "digital_bookplates_batch_upload_home"
-    route_base = "/digital_bookplates_batch_upload"
-    files_base = "digital-bookplates"
+def _redirect_home(**query_params) -> RedirectResponse:
+    return RedirectResponse(url=f".?{urlencode(query_params)}", status_code=303)
 
-    @expose("/create", methods=["POST"])
-    def trigger_add_979_dags(self):
-        if "upload-instance-uuids" not in request.files:
-            flash("Missing Instance UUIDs file")
-            return redirect(f"/pluginsv2/{self.route_base}/")
 
-        email = request.form.get("email")
-
-        fund_db_id = request.form.get("fundSelect")
-        if not fund_db_id:
-            flash("Fund not selected!")
-            return redirect(f"/pluginsv2/{self.route_base}/")
-
-        fund = _get_fund(fund_db_id)
-        if fund is None:
-            flash("Invalid fund selected")
-            return redirect(f"/pluginsv2/{self.route_base}/")
-
-        raw_upload_instances_file = request.files.get("upload-instance-uuids")
-        if len(raw_upload_instances_file.filename) < 1:
-            flash("Missing Instance UUIDs file")
-            return redirect(f"/pluginsv2/{self.route_base}/")
-        if not raw_upload_instances_file.filename.endswith("csv"):
-            flash("Instance UUIDs file must be a csv")
-            return redirect(f"/pluginsv2/{self.route_base}/")
-
-        try:
-            df = pd.read_csv(raw_upload_instances_file, header=None)
-            if df.empty:
-                flash("Warning! Empty Instance UUID file.")
-                return redirect(f"/pluginsv2/{self.route_base}/")
-
-            upload_instances_df = df.rename(columns={0: 'Instance UUID'})
-            dag_runs = []
-            for row in upload_instances_df.iterrows():
-                instance_uuid = row[1][0]
-                dag_run_id = launch_digital_bookplate_979_dag(
-                    instance_uuid=instance_uuid, funds=[fund]
-                )
-                dag_runs.append(dag_run_id)
-            _save_uploaded_file(
-                DigitalBookplatesBatchUploadView.files_base,
-                raw_upload_instances_file.filename,
-                upload_instances_df,
-            )
-            launch_poll_for_979_dags_email(dag_runs=dag_runs, email=email)
-            flash(
-                f"Triggered {len(dag_runs)} DAG run(s) for {raw_upload_instances_file.filename}"
-            )
-        except pd.errors.EmptyDataError:
-            flash("Warning! Empty Instance UUID file.")
-        return redirect(f"/pluginsv2/{self.route_base}/")
-
-    @expose("/")
-    def digital_bookplates_batch_upload_home(self):
-        pg_hook = PostgresHook("digital_bookplates")
-        with Session(pg_hook.get_sqlalchemy_engine()) as session:
-            digital_bookplates = (
-                session.query(DigitalBookplate)
-                .order_by(DigitalBookplate.fund_name)
-                .all()
-            )
-
-        return self.render_template(
-            "digital_bookplates/index.html", digital_bookplates=digital_bookplates
+@app.get("/")
+def digital_bookplates_batch_upload_home(request: Request):
+    pg_hook = PostgresHook("digital_bookplates")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        digital_bookplates = (
+            session.query(DigitalBookplate).order_by(DigitalBookplate.fund_name).all()
         )
+
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "digital_bookplates": digital_bookplates,
+            "message": request.query_params.get("message"),
+        },
+    )
+
+
+@app.post("/create")
+def trigger_add_979_dags(
+    request: Request,
+    email: str | None = Form(default=None),  # noqa: B008
+    fund_select: str | None = Form(default=None),  # noqa: B008
+    upload_instance_uuids: UploadFile | None = File(default=None),  # noqa: B008
+):
+    if upload_instance_uuids is None or not upload_instance_uuids.filename:
+        return _redirect_home(message="Missing Instance UUIDs file")
+
+    if not fund_select:
+        return _redirect_home(message="Fund not selected!")
+
+    fund = _get_fund(fund_select)
+    if fund is None:
+        return _redirect_home(message="Invalid fund selected")
+
+    if not upload_instance_uuids.filename.endswith("csv"):
+        return _redirect_home(message="Instance UUIDs file must be a csv")
+
+    try:
+        contents = upload_instance_uuids.file.read()
+        df = pd.read_csv(BytesIO(contents), header=None)
+        if df.empty:
+            return _redirect_home(message="Warning! Empty Instance UUID file.")
+
+        upload_instances_df = df.rename(columns={0: 'Instance UUID'})
+        dag_runs = []
+        for row in upload_instances_df.iterrows():
+            instance_uuid = row[1][0]
+            dag_run_id = launch_digital_bookplate_979_dag(
+                instance_uuid=instance_uuid, funds=[fund]
+            )
+            dag_runs.append(dag_run_id)
+        _save_uploaded_file(
+            files_base, upload_instance_uuids.filename, upload_instances_df
+        )
+        launch_poll_for_979_dags_email(dag_runs=dag_runs, email=email)
+        return _redirect_home(
+            message=f"Triggered {len(dag_runs)} DAG run(s) for {upload_instance_uuids.filename}"
+        )
+    except pd.errors.EmptyDataError:
+        return _redirect_home(message="Warning! Empty Instance UUID file.")
