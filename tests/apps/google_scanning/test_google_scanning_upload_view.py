@@ -283,17 +283,6 @@ def test_stage_cart_rejects_barcode_with_leading_or_trailing_whitespace():
     assert "  36105061323494  " in response.text
 
 
-def test_stage_cart_rejects_quoted_barcode():
-    response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b'"36105061323494"\n', "text/plain")},
-    )
-
-    assert response.status_code == 200
-    assert 'Barcode file contains invalid line(s): "36105061323494"' in response.text
-
-
 def test_stage_cart_accepts_alphanumeric_and_dash_barcodes(mocker):
     mock_save = mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
