@@ -14,32 +14,36 @@ from libsys_airflow.plugins.google_scanning.constants import (
 logger = logging.getLogger(__name__)
 
 
+def _lookup_by_barcode(
+    endpoint: str, key: str, barcode: str, folio_client: FolioClient
+) -> dict:
+    """
+    Looks up a FOLIO record by barcode at the given endpoint, returning the
+    matching record, or a dict with "missing"/"reason" if it can't be
+    resolved to exactly one record.
+    """
+    try:
+        results = folio_client.folio_get(endpoint, key=key, query=f"barcode=={barcode}")
+    except Exception as e:
+        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
+
+    match len(results):
+        case 0:
+            return {"missing": barcode}
+        case 1:
+            return results[0]
+        case _:
+            return {
+                "barcode": barcode,
+                "reason": f"multiple items found for barcode: {barcode}",
+            }
+
+
 def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
     """
     Lookup and return Item by barcode
     """
-    try:
-        item_result = folio_client.folio_get(
-            "/inventory/items", key="items", query=f"barcode=={barcode}"
-        )
-    except Exception as e:
-        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
-
-    output = {}
-    match len(item_result):
-
-        case 0:
-            output = {"missing": barcode}
-
-        case 1:
-            output = item_result[0]
-
-        case _:
-            output = {
-                "barcode": barcode,
-                "reason": f"multiple items found for barcode: {barcode}",
-            }
-    return output
+    return _lookup_by_barcode("/inventory/items", "items", barcode, folio_client)
 
 
 def _update_item_for_shipment(**kwargs) -> dict:
