@@ -86,3 +86,59 @@ def test_upload_to_drive_task_failure(mocker, mock_files, caplog):
     assert result["success"] == []
     assert result["failures"] == mock_files
     assert "Error uploading" in caplog.text
+
+
+def test_upload_to_drive_task_partial_failure_rolls_back_uploaded_file(
+    mocker, mock_files, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.drive.is_production",
+        return_value=True,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.__init__",
+        return_value=None,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.upload_file",
+        side_effect=["file-id-1", Exception("boom")],
+    )
+    mock_get_conn = mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.get_conn"
+    )
+    mock_delete = mock_get_conn.return_value.files.return_value.delete
+
+    result = upload_to_drive_task.function(mock_files)
+
+    assert result["success"] == []
+    assert result["failures"] == [mock_files[1]]
+    mock_delete.assert_called_once_with(fileId="file-id-1", supportsAllDrives=True)
+    mock_delete.return_value.execute.assert_called_once()
+    assert "Rolled back partial upload" in caplog.text
+
+
+def test_upload_to_drive_task_rollback_failure_is_logged(mocker, mock_files, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.drive.is_production",
+        return_value=True,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.__init__",
+        return_value=None,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.upload_file",
+        side_effect=["file-id-1", Exception("boom")],
+    )
+    mock_get_conn = mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.get_conn"
+    )
+    mock_get_conn.return_value.files.return_value.delete.return_value.execute.side_effect = Exception(
+        "delete boom"
+    )
+
+    result = upload_to_drive_task.function(mock_files)
+
+    assert result["success"] == []
+    assert result["failures"] == [mock_files[1]]
+    assert "Failed to roll back" in caplog.text

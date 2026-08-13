@@ -7,6 +7,7 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     _lookup_item_by_barcode,
     _update_item_for_shipment,
     get_folio_uuids,
+    parse_barcodes,
     process_barcode,
     read_staged_barcode_files,
     write_status_json,
@@ -250,6 +251,12 @@ def test_read_staged_barcode_files_raises_when_missing(tmp_path):
 
     with pytest.raises(FileNotFoundError, match="does not exist"):
         read_staged_barcode_files(str(missing_file))
+
+
+def test_parse_barcodes_strips_whitespace_and_skips_blank_lines():
+    result = parse_barcodes(f"  {FOUND_BARCODE}  \n\n   \n\t{MULTIPLE_BARCODE}\t\n")
+
+    assert result == [FOUND_BARCODE, MULTIPLE_BARCODE]
 
 
 LOCATION_CODE = "SUL-SEE-OTHER"

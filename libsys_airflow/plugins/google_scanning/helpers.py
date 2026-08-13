@@ -121,6 +121,20 @@ def process_barcode(**kwargs) -> dict:
     return _update_item_for_shipment(**kwargs)
 
 
+def parse_barcodes(text: str) -> list:
+    """
+    Parses one barcode per line from staged barcode file text, stripping
+    whitespace and skipping blank lines.
+    """
+    barcodes = []
+    for row in text.splitlines():
+        barcode = row.strip()
+        if len(barcode) == 0:
+            continue
+        barcodes.append(barcode)
+    return barcodes
+
+
 def read_staged_barcode_files(staged_file: str) -> list:
     """
     Reads Staged Barcode File and returns a list of barcodes
@@ -128,13 +142,7 @@ def read_staged_barcode_files(staged_file: str) -> list:
     barcode_file_path = pathlib.Path(staged_file)
     if not barcode_file_path.exists():
         raise FileNotFoundError(f"{staged_file} does not exist")
-    barcodes = []
-    for row in barcode_file_path.read_text().splitlines():
-        barcode = row.strip()
-        if len(barcode) == 0:
-            continue
-        barcodes.append(barcode)
-    return barcodes
+    return parse_barcodes(barcode_file_path.read_text())
 
 
 def write_status_json(
