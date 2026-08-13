@@ -104,7 +104,9 @@ def on_campus_shipment():
         )
 
     @task(on_failure_callback=_mark_failed_and_notify)
-    def generate_shipment_manifest(gathered: dict, resolved: dict, marc_result: dict) -> str:
+    def generate_shipment_manifest(
+        gathered: dict, resolved: dict, marc_result: dict
+    ) -> str:
         shipped_pairs = [
             (barcode, cart_name)
             for barcode, cart_name in gathered["to_ship"]
