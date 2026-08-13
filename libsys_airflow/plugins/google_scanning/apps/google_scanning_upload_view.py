@@ -48,7 +48,7 @@ def _render_home(
 
 
 @app.get("/")
-async def home(request: Request):
+def home(request: Request):
     return _render_home(
         request,
         error=request.query_params.get("error"),
@@ -62,7 +62,7 @@ def _redirect_home(**query_params: str) -> RedirectResponse:
 
 
 @app.post("/stage")
-async def stage_cart(
+def stage_cart(
     request: Request,
     cart_name: str = Form(...),  # noqa: B008
     barcode_file: UploadFile | None = File(default=None),  # noqa: B008
@@ -72,7 +72,7 @@ async def stage_cart(
     if not barcode_file or not barcode_file.filename:
         return _render_home(request, error="A barcode file is required.")
 
-    contents = await barcode_file.read()
+    contents = barcode_file.file.read()
     staged_file_path = save_staged_file(cart_name, barcode_file.filename, contents)
 
     try:
@@ -87,7 +87,7 @@ async def stage_cart(
 
 
 @app.post("/ship")
-async def trigger_shipment(
+def trigger_shipment(
     request: Request,
     selected_carts: list[str] = Form(default=[]),  # noqa: B008
     user_email: str | None = Form(default=None),  # noqa: B008

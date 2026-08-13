@@ -43,6 +43,64 @@ def test_home_renders_staged_carts():
     assert "Staged" in response.text
 
 
+def test_home_renders_barcode_counts_for_staged_cart(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
+        return_value=[
+            {
+                "cart_name": "cart-1",
+                "filename": "barcodes.txt",
+                "uploaded_at": "2026-01-01T00:00:00",
+                "status": {
+                    "status": "failed",
+                    "total_barcodes": 15,
+                    "updated": 0,
+                    "missing_barcodes": [str(n) for n in range(15)],
+                    "errors": [],
+                },
+            }
+        ],
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "0/15 updated, 15 missing" in response.text
+
+
+def test_home_renders_singular_error_count(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
+        return_value=[
+            {
+                "cart_name": "cart-1",
+                "filename": "barcodes.txt",
+                "uploaded_at": "2026-01-01T00:00:00",
+                "status": {
+                    "status": "staged",
+                    "total_barcodes": 2,
+                    "updated": 1,
+                    "missing_barcodes": [],
+                    "errors": [{"barcode": "1", "reason": "boom"}],
+                },
+            }
+        ],
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "1/2 updated, 1 error" in response.text
+    assert "1 errors" not in response.text
+
+
+def test_home_omits_counts_when_status_has_no_totals():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "updated" not in response.text
+
+
 def test_home_renders_shared_table_search(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_shipped_carts",

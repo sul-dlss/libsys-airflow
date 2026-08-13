@@ -18,6 +18,7 @@
     #table-search { width: 100%; }
     .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
     .tables-panel > h2:first-child { margin-top: 1rem; }
+    .hint { font-size: 0.9rem; color: #555; margin-top: 0.5rem; max-width: 40rem; }
   </style>
 </head>
 <body>
@@ -69,7 +70,12 @@
           <td>{{ cart.cart_name }}</td>
           <td>{{ cart.filename }}</td>
           <td>{{ cart.uploaded_at }}</td>
-          <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
+          <td>
+            {{ cart.status.status | default("unknown", true) | capitalize }}
+            {% if cart.status.total_barcodes is defined %}
+            <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr>
@@ -87,6 +93,12 @@
       <input type="date" id="shipped_at" name="shipped_at" value="{{ today }}">
     </div>
     <button type="submit">Trigger Shipment</button>
+    <p class="hint">
+      If a shipment fails, every cart selected above is marked "Failed" and
+      left staged for retry -- check the failure email for details. To
+      isolate which cart caused the problem, retry by selecting and
+      shipping one cart at a time rather than the full batch.
+    </p>
   </form>
 
   <h2>Shipped Items</h2>
@@ -105,7 +117,12 @@
         <td>{{ cart.cart_name }}</td>
         <td>{{ cart.filename }}</td>
         <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
-        <td>{{ cart.status.status | default("unknown", true) | capitalize }}</td>
+        <td>
+          {{ cart.status.status | default("unknown", true) | capitalize }}
+          {% if cart.status.total_barcodes is defined %}
+          <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
       <tr>
