@@ -1,24 +1,18 @@
 import pathlib
-from io import BytesIO
 
 import pandas as pd
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.templating import Jinja2Templates
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent
-        / "templates"
-        / "deletes-csv-upload",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "deletes-csv-upload"
 )
 
 
@@ -59,8 +53,7 @@ def upload_csv(
         )
 
     try:
-        contents = upload_deletes.file.read()
-        deletes_csv_df = pd.read_csv(BytesIO(contents), names=["001s"])
+        deletes_csv_df = pd.read_csv(upload_deletes.file, names=["001s"])
         deletes_csv_file = _save_deletes_csv(deletes_csv_df, upload_deletes.filename)
         run_id = _trigger_dag_run(deletes_csv_file, email)
         return templates.TemplateResponse(

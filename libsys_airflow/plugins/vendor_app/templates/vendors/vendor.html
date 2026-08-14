@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>{{ vendor.display_name }}{% if folio_name %} - {{ folio_name }}{% endif %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="/vendor_management/static/main.css">
+  <link rel="stylesheet" type="text/css" href="{{ url_prefix }}/static/main.css">
   <style>
     .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
     .switch-label { position: relative; display: inline-block; width: 50px; height: 24px; }
@@ -91,12 +91,12 @@
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="/vendor_management/">Dashboard</a></li>
-    <li class="active"><a href="/vendor_management/vendors">Vendors</a></li>
+    <li><a href="{{ url_prefix }}/">Dashboard</a></li>
+    <li class="active"><a href="{{ url_prefix }}/vendors">Vendors</a></li>
   </ul>
 
   <ol class="breadcrumb">
-    <li><a href="/vendor_management/vendors">All</a></li>
+    <li><a href="{{ url_prefix }}/vendors">All</a></li>
     <li class="active">{{ vendor.display_name }}</li>
   </ol>
 </nav>
@@ -113,7 +113,7 @@
       </div>
       {% if vendor.folio_organization_uuid %}
       <div class="col-md-2">
-        <form method="POST" action="/vendor_management/vendors/{{ vendor.id }}/sync">
+        <form method="POST" action="{{ url_prefix }}/vendors/{{ vendor.id }}/sync">
           <input id="refresh-button" type="submit" class="btn btn-default" value="Refresh Data from FOLIO">
         </form>
       </div>
@@ -137,7 +137,7 @@
         {% for interface in vendor.vendor_interfaces %}
         <tr>
             <td>
-              <div><a href="/vendor_management/interfaces/{{ interface.id }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
+              <div><a href="{{ url_prefix }}/interfaces/{{ interface.id }}">{{ interface.display_name }}</a>{% if interface.upload_only %} <span class="badge">Upload only</span>{% endif %}</div>
               <div>{{ interface.folio_interface_uuid or "" }}</div>
             </td>
             <td>{{ interface.folio_data_import_processing_name or "Skip import" }}</td>
@@ -150,7 +150,7 @@
                 <p>Not assigned to vendor in FOLIO</p>
               {% else %}
                 <label class="switch-label">
-                    <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="/vendor_management/interfaces/{{ interface.id }}/edit">
+                    <input class="switch-input" type="checkbox" {% if interface.active %} checked {% endif %} data-interface-url="{{ url_prefix }}/interfaces/{{ interface.id }}/edit">
                     <span class="switch" aria-hidden="true"></span>
                     <span class="sr-only">Toggle interface between active and inactive</span>
                 </label>
@@ -163,7 +163,7 @@
       {% endif %}
     </table>
 
-    <form method="POST" action="/vendor_management/vendors/{{ vendor.id }}/interfaces">
+    <form method="POST" action="{{ url_prefix }}/vendors/{{ vendor.id }}/interfaces">
       <input type="submit" class="btn btn-default" value="Add Upload Only Interface">
     </form>
   </section>

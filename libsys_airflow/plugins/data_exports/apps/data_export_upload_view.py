@@ -1,27 +1,21 @@
 import json
 import pathlib
 import re
-from io import BytesIO
 from typing import Union
 
 import pandas as pd
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent
-        / "templates"
-        / "data-export-upload",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "data-export-upload"
 )
 
 parent = pathlib.Path(__file__).resolve().parent
@@ -98,8 +92,7 @@ def run_data_export_upload(
 
     filename = ids_file.filename
     try:
-        contents = ids_file.file.read()
-        ids_df = pd.read_csv(BytesIO(contents), header=None)
+        ids_df = pd.read_csv(ids_file.file, header=None)
         if not vendor:
             raise Exception("You must choose a vendor!")
         elif not kind:

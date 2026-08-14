@@ -1,17 +1,13 @@
 import pathlib
 
 from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
+
+from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent
-        / "templates"
-        / "data-export-oclc-reports",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "data-export-oclc-reports"
 )
 
 files_base = pathlib.Path("/opt/airflow/data-export-files")

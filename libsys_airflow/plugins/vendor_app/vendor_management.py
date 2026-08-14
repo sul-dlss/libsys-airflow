@@ -2,8 +2,9 @@ import logging
 import os
 import pathlib
 import re
+import shutil
 from datetime import datetime, UTC
-from urllib.parse import quote, urlencode, urlsplit, urlunsplit, parse_qsl
+from urllib.parse import quote
 
 from airflow.sdk import Variable
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
@@ -34,7 +35,10 @@ from libsys_airflow.plugins.vendor_app.database import Session
 from libsys_airflow.plugins.vendor.archive import archive_file
 from libsys_airflow.plugins.airflow.connections import create_connection
 from libsys_airflow.plugins.vendor.download import create_hook
-from libsys_airflow.plugins.shared.utils import folio_name
+from libsys_airflow.plugins.shared.utils import (
+    folio_name,
+    redirect_with_query_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +50,7 @@ templates = Jinja2Templates(
     directory=pathlib.Path(__file__).resolve().parent / "templates"
 )
 templates.env.filters["urlencode"] = lambda value: quote(str(value), safe="")
+templates.env.globals["url_prefix"] = URL_PREFIX
 
 app.mount(
     "/static",
@@ -71,21 +76,14 @@ def _folio_client():
     )
 
 
-def _append_message(url: str, message: str) -> str:
-    scheme, netloc, path, query, fragment = urlsplit(url)
-    query_pairs = parse_qsl(query)
-    query_pairs.append(("message", message))
-    return urlunsplit((scheme, netloc, path, urlencode(query_pairs), fragment))
+async def _form_data(request: Request) -> FormData:
+    return await request.form()
 
 
 def _redirect(url: str, message: str | None = None) -> RedirectResponse:
     if message:
-        url = _append_message(url, message)
-    return RedirectResponse(url=url, status_code=302)
-
-
-async def _form_data(request: Request) -> FormData:
-    return await request.form()
+        return redirect_with_query_params(url, status_code=302, message=message)
+    return redirect_with_query_params(url, status_code=302)
 
 
 @app.get("/")
@@ -371,7 +369,7 @@ def _save_file(path, file_upload):
     os.makedirs(path, exist_ok=True)
     filepath = os.path.join(path, file_upload.filename)
     with open(filepath, "wb") as out_file:
-        out_file.write(file_upload.file.read())
+        shutil.copyfileobj(file_upload.file, out_file)
     return filepath
 
 
@@ -416,7 +414,8 @@ def interface_test(interface_id: int):
         create_hook(conn_id)
         message = "Test succeeded"
     except Exception as e:
-        message = f"Test failed: {e}"
+        logger.error(f"Test failed for interface {interface.id}: {e}")
+        message = "Test failed"
 
     return _redirect(f"{URL_PREFIX}/interfaces/{interface.id}", message=message)
 
@@ -445,7 +444,7 @@ def file_detail(file_id: int, request: Request):
             "file": file,
             "FileStatus": FileStatus,
             "folio_name": folio_name(),
-            "message": None,
+            "message": request.query_params.get("message"),
         },
     )
 

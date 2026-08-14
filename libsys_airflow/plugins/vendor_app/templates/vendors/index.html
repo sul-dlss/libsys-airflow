@@ -5,7 +5,7 @@
   <title>Vendors{% if folio_name %} - {{ folio_name }}{% endif %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
   <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-  <link rel="stylesheet" type="text/css" href="/vendor_management/static/main.css">
+  <link rel="stylesheet" type="text/css" href="{{ url_prefix }}/static/main.css">
   <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 </head>
 <body>
@@ -16,15 +16,15 @@
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="/vendor_management/">Dashboard</a></li>
-    <li class="active"><a href="/vendor_management/vendors">Vendors</a></li>
+    <li><a href="{{ url_prefix }}/">Dashboard</a></li>
+    <li class="active"><a href="{{ url_prefix }}/vendors">Vendors</a></li>
   </ul>
 
   <ol class="breadcrumb">
     <li class="active">
-      {% if filter == 'all' %}All{% else %}<a href="/vendor_management/vendors">All</a>{% endif %} |
-      {% if filter == 'interfaces' %}With interfaces{% else %}<a href="/vendor_management/vendors?filter=interfaces">With interfaces</a>{% endif %}  |
-      {% if filter == 'active_interfaces' %}With active interfaces{% else %}<a href="/vendor_management/vendors?filter=active_interfaces">With active interfaces</a>{% endif %}
+      {% if filter == 'all' %}All{% else %}<a href="{{ url_prefix }}/vendors">All</a>{% endif %} |
+      {% if filter == 'interfaces' %}With interfaces{% else %}<a href="{{ url_prefix }}/vendors?filter=interfaces">With interfaces</a>{% endif %}  |
+      {% if filter == 'active_interfaces' %}With active interfaces{% else %}<a href="{{ url_prefix }}/vendors?filter=active_interfaces">With active interfaces</a>{% endif %}
     </li>
   </ol>
 </nav>
@@ -41,7 +41,7 @@
       {% for vendor in vendors %}
       <tr>
         <td>
-          <a href="/vendor_management/vendors/{{ vendor.id }}">{{ vendor.display_name }}</a><br>
+          <a href="{{ url_prefix }}/vendors/{{ vendor.id }}">{{ vendor.display_name }}</a><br>
           ID: {{ vendor.folio_organization_uuid }}
         </td>
         <td>

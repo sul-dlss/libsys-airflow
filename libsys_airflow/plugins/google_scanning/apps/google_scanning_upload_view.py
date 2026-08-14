@@ -2,10 +2,8 @@ import logging
 
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlencode
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.google_scanning.staging import (
@@ -15,6 +13,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
+from libsys_airflow.plugins.shared.utils import redirect_with_query_params
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +56,8 @@ def home(request: Request):
     )
 
 
-def _redirect_home(**query_params: str) -> RedirectResponse:
-    return RedirectResponse(url=f".?{urlencode(query_params)}", status_code=303)
+def _redirect_home(**query_params):
+    return redirect_with_query_params(".", **query_params)
 
 
 @app.post("/stage")
@@ -80,7 +79,7 @@ def stage_cart(
     except Exception as e:
         logger.error(f"Error triggering {cart_name} staging DAG run: {e}")
         return _redirect_home(
-            warning=f"Staged {cart_name}, but failed to start item processing: {e}"
+            warning=f"Staged {cart_name}, but failed to start item processing."
         )
 
     return _redirect_home(success=f"Staged {cart_name}.")
@@ -107,6 +106,6 @@ def trigger_shipment(
         dag_run_id = trigger_on_campus_shipment_dag(carts, user_email, shipped_at)
     except Exception as e:
         logger.error(f"Error triggering on-campus shipment DAG run: {e}")
-        return _redirect_home(warning=f"Failed to start shipment: {e}")
+        return _redirect_home(warning="Failed to start shipment.")
 
     return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")

@@ -1,23 +1,17 @@
 import pathlib
-from io import BytesIO
 from typing import Union
 
 import pandas as pd
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.templating import Jinja2Templates
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent / "templates" / "boundwith",
-    ]
-)
+templates = plugin_templates(pathlib.Path(__file__).resolve().parent, "boundwith")
 
 
 def trigger_bw_dag(
@@ -64,8 +58,7 @@ def run_bw_creation(
         )
 
     try:
-        contents = upload_boundwith.file.read()
-        bw_df = pd.read_csv(BytesIO(contents))
+        bw_df = pd.read_csv(upload_boundwith.file)
         if ["part_holdings_hrid", "principle_barcode"] != list(bw_df.columns):
             return templates.TemplateResponse(
                 request,

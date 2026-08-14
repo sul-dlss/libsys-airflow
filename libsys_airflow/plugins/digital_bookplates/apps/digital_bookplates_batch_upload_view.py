@@ -1,16 +1,12 @@
 import logging
 import pathlib
 from datetime import datetime, timezone
-from io import BytesIO
-from urllib.parse import urlencode
 
 import pandas as pd
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
@@ -18,19 +14,18 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_poll_for_979_dags_email,
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
+from libsys_airflow.plugins.shared.utils import (
+    plugin_templates,
+    redirect_with_query_params,
+)
 
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent
-        / "templates"
-        / "digital_bookplates",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "digital_bookplates"
 )
 
 files_base = "digital-bookplates"
@@ -79,8 +74,8 @@ def _get_fund(fund_id) -> dict | None:
     }
 
 
-def _redirect_home(**query_params) -> RedirectResponse:
-    return RedirectResponse(url=f".?{urlencode(query_params)}", status_code=303)
+def _redirect_home(**query_params):
+    return redirect_with_query_params(".", **query_params)
 
 
 @app.get("/")
@@ -122,8 +117,7 @@ def trigger_add_979_dags(
         return _redirect_home(message="Instance UUIDs file must be a csv")
 
     try:
-        contents = upload_instance_uuids.file.read()
-        df = pd.read_csv(BytesIO(contents), header=None)
+        df = pd.read_csv(upload_instance_uuids.file, header=None)
         if df.empty:
             return _redirect_home(message="Warning! Empty Instance UUID file.")
 

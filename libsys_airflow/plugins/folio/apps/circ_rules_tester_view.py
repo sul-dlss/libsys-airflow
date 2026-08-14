@@ -1,25 +1,27 @@
 import json
+import logging
 import pathlib
 from datetime import datetime, timezone
-from urllib.parse import urlencode
 
 import pandas as pd
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import Response
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.utils import (
+    plugin_templates,
+    redirect_with_query_params as _redirect,
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent / "templates",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "circ_rules_tester"
 )
 
 CIRC_HOME = pathlib.Path("/opt/airflow/circ")
@@ -38,17 +40,11 @@ def _trigger_batch_dag_run(scenario_file) -> str:
         return api_response.dag_run_id
 
 
-def _redirect(url: str, **query_params) -> RedirectResponse:
-    if query_params:
-        url = f"{url}?{urlencode(query_params)}"
-    return RedirectResponse(url=url, status_code=303)
-
-
 @app.get("/")
 def circ_home(request: Request):
     return templates.TemplateResponse(
         request,
-        "circ_rules_tester/index.html",
+        "index.html",
         {"message": request.query_params.get("message")},
     )
 
@@ -61,13 +57,13 @@ def run_batch_test(
     if upload_scenarios is None or not upload_scenarios.filename:
         return templates.TemplateResponse(
             request,
-            "circ_rules_tester/index.html",
+            "index.html",
             {"message": "No scenario file uploaded"},
         )
     if not upload_scenarios.filename.endswith("csv"):
         return templates.TemplateResponse(
             request,
-            "circ_rules_tester/index.html",
+            "index.html",
             {"message": "Scenario file must be a csv"},
         )
 
@@ -77,7 +73,7 @@ def run_batch_test(
     except Exception as e:
         return templates.TemplateResponse(
             request,
-            "circ_rules_tester/index.html",
+            "index.html",
             {"message": f"Failed to trigger circ_rules_batch_tests DAG. Error: {e} "},
         )
 
@@ -107,9 +103,10 @@ def run_test(
             run_id = api_response.dag_run_id
             return _redirect(f"report/{run_id}")
         except Exception as e:
+            logger.error(f"Failed to Trigger circ_rules_scenario_test DAG, error:{e}")
             return _redirect(
                 ".",
-                message=f"Failed to Trigger circ_rules_scenario_test DAG, error:{e}",
+                message="Failed to Trigger circ_rules_scenario_test DAG",
             )
 
 
@@ -124,7 +121,7 @@ def report_batch(dag_run: str, request: Request):
         report = pd.read_json(batch_report_path, encoding="utf-8-sig")
     return templates.TemplateResponse(
         request,
-        "circ_rules_tester/batch_report.html",
+        "batch_report.html",
         {"dag_run": dag_run, "report": report, "message": message},
     )
 
@@ -222,7 +219,7 @@ def reference_data(request: Request, data_type: str | None = None):
 
     return templates.TemplateResponse(
         request,
-        "circ_rules_tester/reference-data.html",
+        "reference-data.html",
         {"title": title, "data_type": data_type, "reference_df": reference_df},
     )
 
@@ -239,6 +236,6 @@ def report_scenario(dag_run: str, request: Request):
             report = json.load(report_fo)
     return templates.TemplateResponse(
         request,
-        "circ_rules_tester/report.html",
+        "report.html",
         {"dag_run": dag_run, "report": report, "message": message},
     )

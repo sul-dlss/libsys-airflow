@@ -3,17 +3,13 @@ import pathlib
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
-from fastapi.templating import Jinja2Templates
+
+from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
 
-templates = Jinja2Templates(
-    directory=[
-        pathlib.Path(__file__).resolve().parent.parent.parent / "templates",
-        pathlib.Path(__file__).resolve().parent.parent
-        / "templates"
-        / "data-export-download",
-    ]
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "data-export-download"
 )
 
 parent = pathlib.Path(__file__).resolve().parent
