@@ -379,6 +379,21 @@ def test_ftp_adapter_fallback_to_list_directory(mocker):
     assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
 
 
+def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.return_value = {
+        "file1.mrc": {
+            "size": "123",
+            "modify": "20260729091904.741",
+            "type": "file",
+        }
+    }
+
+    adapter = FTPAdapter(mock_hook, "/remote/path")
+
+    assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04.741000"
+
+
 def test_build_descriptions_handles_errors(mocker):
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory.side_effect = ftplib.error_perm(

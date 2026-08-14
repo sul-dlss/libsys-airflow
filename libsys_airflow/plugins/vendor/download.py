@@ -85,7 +85,11 @@ class FTPAdapter:
 
     def get_mod_time(self, filename: str) -> str:
         mod_time_str = self._file_descriptions[filename]["modify"]
-        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S").isoformat()
+        try:
+            mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S.%f")
+        except ValueError:
+            mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
+        return mod_time.isoformat()
 
     def get_size(self, filename: str) -> int:
         file_size = self._file_descriptions[filename]["size"]
