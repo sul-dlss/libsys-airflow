@@ -43,6 +43,14 @@ def test_home_renders_staged_carts():
     assert "Staged" in response.text
 
 
+def test_home_renders_refresh_button():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="refresh-tables"' in response.text
+    assert "window.location.reload()" in response.text
+
+
 def test_home_renders_barcode_counts_for_staged_cart(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
@@ -108,6 +116,7 @@ def test_home_renders_shared_table_search(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": "20260807",
                 "status": {"status": "shipped"},
             }
@@ -148,6 +157,7 @@ def test_home_renders_shipped_carts(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": "20260807",
                 "status": {"status": "shipped"},
             }
@@ -160,6 +170,8 @@ def test_home_renders_shipped_carts(mocker):
     assert "cart-3" in response.text
     assert "20260807" in response.text
     assert "Shipped" in response.text
+    assert 'href="download/cart-3/barcodes.txt"' in response.text
+    assert ">barcodes.csv</a>" in response.text
 
 
 def test_home_renders_unknown_status_for_shipped_cart_missing_status(mocker):
@@ -169,6 +181,7 @@ def test_home_renders_unknown_status_for_shipped_cart_missing_status(mocker):
             {
                 "cart_name": "cart-3",
                 "filename": "barcodes.txt",
+                "download_filename": "barcodes.csv",
                 "shipped_at": None,
                 "status": {},
             }
@@ -407,3 +420,40 @@ def test_ship_dag_trigger_failure(mocker):
 
     followed = client.get(response.headers["location"])
     assert "alert-warning" in followed.text
+
+
+def test_download_shipped_file(mocker, tmp_path):
+    file_path = tmp_path / "barcodes.txt"
+    file_path.write_bytes(b"12345\n67890\n")
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
+        return_value=file_path,
+    )
+
+    response = client.get("/download/cart-1/barcodes.txt")
+
+    assert response.status_code == 200
+    assert response.content == b"12345\n67890\n"
+    assert 'filename="barcodes.csv"' in response.headers["content-disposition"]
+
+
+def test_download_shipped_file_invalid_path(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
+        side_effect=ValueError("Invalid archived file path"),
+    )
+
+    response = client.get("/download/cart-1/barcodes.txt")
+
+    assert response.status_code == 404
+
+
+def test_download_shipped_file_missing(mocker, tmp_path):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
+        return_value=tmp_path / "does-not-exist.txt",
+    )
+
+    response = client.get("/download/cart-1/does-not-exist.txt")
+
+    assert response.status_code == 404

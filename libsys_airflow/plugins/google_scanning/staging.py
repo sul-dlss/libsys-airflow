@@ -56,6 +56,29 @@ def shipped_cart_status(cart_name: str) -> dict:
     return _cart_status(ARCHIVED_FILES_BASE, cart_name)
 
 
+def archived_file_path(cart_name: str, filename: str) -> Path:
+    """
+    Resolves a shipped cart's archived file for download, rejecting any
+    cart_name/filename (e.g. "..") that would resolve outside
+    ARCHIVED_FILES_BASE.
+    """
+    base = ARCHIVED_FILES_BASE.resolve()
+    file_path = (base / cart_name / filename).resolve()
+    if base not in file_path.parents:
+        raise ValueError(f"Invalid archived file path: {cart_name}/{filename}")
+    return file_path
+
+
+def download_filename(filename: str) -> str:
+    """
+    Returns the filename to present for download, always with a .csv
+    extension. The staged/archived file is a single column of barcodes --
+    effectively a one-column CSV -- regardless of the extension it was
+    originally uploaded with.
+    """
+    return str(Path(filename).with_suffix(".csv"))
+
+
 def list_staged_carts() -> list[dict]:
     """
     Lists all currently staged carts for the review/shipment page.
@@ -106,6 +129,7 @@ def list_shipped_carts() -> list[dict]:
                 {
                     "cart_name": cart_name,
                     "filename": archived_file.name,
+                    "download_filename": download_filename(archived_file.name),
                     "shipped_at": status.get("shipped_at"),
                     "status": status,
                 }

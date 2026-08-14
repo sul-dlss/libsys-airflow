@@ -4,11 +4,14 @@ import re
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
+    archived_file_path,
+    download_filename,
     list_shipped_carts,
     list_staged_carts,
     save_staged_file,
@@ -132,3 +135,16 @@ def trigger_shipment(
         return _redirect_home(warning="Failed to start shipment.")
 
     return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")
+
+
+@app.get("/download/{cart_name}/{filename}")
+async def download_shipped_file(cart_name: str, filename: str):
+    try:
+        file_path = archived_file_path(cart_name, filename)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(file_path, filename=download_filename(filename))
