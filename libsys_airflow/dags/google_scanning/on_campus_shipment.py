@@ -97,17 +97,24 @@ def on_campus_shipment():
             raise AirflowException("No barcodes resolved to a FOLIO instance id")
         return {"instance_ids": instance_ids, "instance_id_failures": failures}
 
-    @task
+    @task(on_failure_callback=_mark_failed_and_notify)
     def generate_marc(resolved: dict, init_params: dict) -> dict:
         return generate_shipment_marc(
             list(resolved["instance_ids"].values()), init_params["shipped_at"]
         )
 
-    @task
-    def generate_shipment_manifest(gathered: dict, marc_result: dict) -> str:
-        return generate_manifest(gathered["to_ship"], marc_result["filestamp"])
+    @task(on_failure_callback=_mark_failed_and_notify)
+    def generate_shipment_manifest(
+        gathered: dict, resolved: dict, marc_result: dict
+    ) -> str:
+        shipped_pairs = [
+            (barcode, cart_name)
+            for barcode, cart_name in gathered["to_ship"]
+            if barcode in resolved["instance_ids"]
+        ]
+        return generate_manifest(shipped_pairs, marc_result["filestamp"])
 
-    @task
+    @task(on_failure_callback=_mark_failed_and_notify)
     def combine_upload_files(marc_result: dict, manifest_path: str) -> list:
         return [marc_result["marc_xml_path"], manifest_path]
 
@@ -123,6 +130,8 @@ def on_campus_shipment():
         shipped_cart_names = sorted({cart_name for _, cart_name in gathered["to_ship"]})
         for cart in init_params["selected_carts"]:
             cart_name = cart["cart_name"]
+            if cart_name not in shipped_cart_names:
+                continue
             update_cart_status(
                 cart_name,
                 STAGED_FILES_BASE,
@@ -166,9 +175,11 @@ def on_campus_shipment():
     gathered = gather_barcodes(init_params)
     resolved = resolve_instances(gathered)
     marc_result = generate_marc(resolved, init_params)
-    manifest_path = generate_shipment_manifest(gathered, marc_result)
+    manifest_path = generate_shipment_manifest(gathered, resolved, marc_result)
     files_to_upload = combine_upload_files(marc_result, manifest_path)
-    upload_result = upload_to_drive_task(files_to_upload)
+    upload_result = upload_to_drive_task.override(
+        on_failure_callback=_mark_failed_and_notify
+    )(files_to_upload)
 
     upload_branch = check_upload(upload_result)
 

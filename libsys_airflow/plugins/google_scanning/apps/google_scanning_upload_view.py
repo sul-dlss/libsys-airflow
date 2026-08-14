@@ -1,4 +1,5 @@
 import logging
+import re
 
 from datetime import date
 from pathlib import Path
@@ -8,6 +9,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
     list_shipped_carts,
     list_staged_carts,
@@ -19,6 +21,8 @@ from libsys_airflow.plugins.google_scanning.staging import (
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 
 templates = Jinja2Templates(
     directory=Path(__file__).resolve().parent.parent
@@ -73,6 +77,25 @@ def stage_cart(
         return _render_home(request, error="A barcode file is required.")
 
     contents = barcode_file.file.read()
+    try:
+        text = contents.decode("utf-8")
+    except UnicodeDecodeError:
+        return _render_home(request, error="Barcode file must be plain text.")
+
+    if not parse_barcodes(text):
+        return _render_home(request, error="Barcode file is empty.")
+
+    # Validate raw (unstripped) lines, not parse_barcodes' output -- a line
+    # with leading/trailing whitespace must be rejected here rather than
+    # silently trimmed and accepted as a valid barcode.
+    raw_lines = [line for line in text.splitlines() if line.strip()]
+    invalid = [line for line in raw_lines if not BARCODE_PATTERN.fullmatch(line)]
+    if invalid:
+        return _render_home(
+            request,
+            error=f"Barcode file contains invalid line(s): {', '.join(invalid[:5])}",
+        )
+
     staged_file_path = save_staged_file(cart_name, barcode_file.filename, contents)
 
     try:

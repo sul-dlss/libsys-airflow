@@ -150,7 +150,9 @@ def test_generate_shipment_manifest_calls_generate_manifest(dag, mocker):
     )
 
     result = dag.task_dict["generate_shipment_manifest"].python_callable(
-        {"to_ship": [("111", "cart-1")]}, {"filestamp": "stamp"}
+        {"to_ship": [("111", "cart-1"), ("222", "cart-2")]},
+        {"instance_ids": {"111": "instance-1"}},
+        {"filestamp": "stamp"},
     )
 
     mock_generate_manifest.assert_called_once_with([("111", "cart-1")], "stamp")
@@ -206,6 +208,36 @@ def test_archive_and_mark_shipped(dag, mocker):
     assert mock_archive.call_count == 2
     mock_archive.assert_any_call("cart-1")
     mock_archive.assert_any_call("cart-2")
+
+
+def test_archive_and_mark_shipped_skips_carts_with_no_shipped_barcodes(dag, mocker):
+    mock_update_status = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.update_cart_status"
+    )
+    mock_archive = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.archive_shipped_cart"
+    )
+    mock_dag_run = MagicMock()
+    mock_dag_run.run_id = "run-123"
+
+    result = dag.task_dict["archive_and_mark_shipped"].python_callable(
+        {"to_ship": [("111", "cart-1")]},
+        {
+            "selected_carts": [{"cart_name": "cart-1"}, {"cart_name": "cart-2"}],
+            "shipped_at": "20260810",
+        },
+        dag_run=mock_dag_run,
+    )
+
+    assert result == ["cart-1"]
+    mock_update_status.assert_called_once_with(
+        "cart-1",
+        STAGED_FILES_BASE,
+        status=STATUS_SHIPPED,
+        shipped_at="20260810",
+        shipment_dag_run_id="run-123",
+    )
+    mock_archive.assert_called_once_with("cart-1")
 
 
 def test_build_shipment_result(dag):
@@ -264,12 +296,16 @@ def test_failure_callback_attached_only_upstream_of_branch(dag):
         _mark_failed_and_notify,
     )
 
-    assert (
-        _mark_failed_and_notify in dag.get_task("gather_barcodes").on_failure_callback
-    )
-    assert (
-        _mark_failed_and_notify in dag.get_task("resolve_instances").on_failure_callback
-    )
+    for task_id in [
+        "gather_barcodes",
+        "resolve_instances",
+        "generate_marc",
+        "generate_shipment_manifest",
+        "combine_upload_files",
+        "upload_to_drive_task",
+    ]:
+        assert _mark_failed_and_notify in dag.get_task(task_id).on_failure_callback
+
     assert not dag.get_task("archive_and_mark_shipped").on_failure_callback
     assert not dag.get_task("mark_failed_status").on_failure_callback
 

@@ -14,32 +14,36 @@ from libsys_airflow.plugins.google_scanning.constants import (
 logger = logging.getLogger(__name__)
 
 
+def _lookup_by_barcode(
+    endpoint: str, key: str, barcode: str, folio_client: FolioClient
+) -> dict:
+    """
+    Looks up a FOLIO record by barcode at the given endpoint, returning the
+    matching record, or a dict with "missing"/"reason" if it can't be
+    resolved to exactly one record.
+    """
+    try:
+        results = folio_client.folio_get(endpoint, key=key, query=f"barcode=={barcode}")
+    except Exception as e:
+        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
+
+    match len(results):
+        case 0:
+            return {"missing": barcode}
+        case 1:
+            return results[0]
+        case _:
+            return {
+                "barcode": barcode,
+                "reason": f"multiple items found for barcode: {barcode}",
+            }
+
+
 def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
     """
     Lookup and return Item by barcode
     """
-    try:
-        item_result = folio_client.folio_get(
-            "/inventory/items", key="items", query=f"barcode=={barcode}"
-        )
-    except Exception as e:
-        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
-
-    output = {}
-    match len(item_result):
-
-        case 0:
-            output = {"missing": barcode}
-
-        case 1:
-            output = item_result[0]
-
-        case _:
-            output = {
-                "barcode": barcode,
-                "reason": f"multiple items found for barcode: {barcode}",
-            }
-    return output
+    return _lookup_by_barcode("/inventory/items", "items", barcode, folio_client)
 
 
 def _update_item_for_shipment(**kwargs) -> dict:
@@ -121,6 +125,20 @@ def process_barcode(**kwargs) -> dict:
     return _update_item_for_shipment(**kwargs)
 
 
+def parse_barcodes(text: str) -> list:
+    """
+    Parses one barcode per line from staged barcode file text, stripping
+    whitespace and skipping blank lines.
+    """
+    barcodes = []
+    for row in text.splitlines():
+        barcode = row.strip()
+        if len(barcode) == 0:
+            continue
+        barcodes.append(barcode)
+    return barcodes
+
+
 def read_staged_barcode_files(staged_file: str) -> list:
     """
     Reads Staged Barcode File and returns a list of barcodes
@@ -128,13 +146,7 @@ def read_staged_barcode_files(staged_file: str) -> list:
     barcode_file_path = pathlib.Path(staged_file)
     if not barcode_file_path.exists():
         raise FileNotFoundError(f"{staged_file} does not exist")
-    barcodes = []
-    for row in barcode_file_path.read_text().splitlines():
-        barcode = row.strip()
-        if len(barcode) == 0:
-            continue
-        barcodes.append(barcode)
-    return barcodes
+    return parse_barcodes(barcode_file_path.read_text())
 
 
 def write_status_json(

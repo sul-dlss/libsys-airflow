@@ -10,7 +10,10 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_FAILED,
     STATUS_FILENAME,
 )
-from libsys_airflow.plugins.google_scanning.helpers import read_staged_barcode_files
+from libsys_airflow.plugins.google_scanning.helpers import (
+    _lookup_by_barcode,
+    read_staged_barcode_files,
+)
 from libsys_airflow.plugins.google_scanning.staging import staged_cart_status
 
 logger = logging.getLogger(__name__)
@@ -70,25 +73,9 @@ def barcodes_for_shipment(
 def _lookup_dereferenced_item_by_barcode(
     barcode: str, folio_client: FolioClient
 ) -> dict:
-    try:
-        items = folio_client.folio_get(
-            "/item-storage-dereferenced/items",
-            key="dereferencedItems",
-            query=f"barcode=={barcode}",
-        )
-    except Exception as e:
-        return {"barcode": barcode, "reason": f"{e} for barcode: {barcode}"}
-
-    match len(items):
-        case 0:
-            return {"missing": barcode}
-        case 1:
-            return items[0]
-        case _:
-            return {
-                "barcode": barcode,
-                "reason": f"multiple items found for barcode: {barcode}",
-            }
+    return _lookup_by_barcode(
+        "/item-storage-dereferenced/items", "dereferencedItems", barcode, folio_client
+    )
 
 
 def resolve_instance_ids(

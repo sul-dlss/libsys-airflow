@@ -12,6 +12,13 @@ from libsys_airflow.plugins.shared.utils import (
 logger = logging.getLogger(__name__)
 
 
+def _to_addresses(user_email: str | None) -> list[str]:
+    to_emails = [Variable.get("EMAIL_DEVS")]
+    if user_email:
+        to_emails.append(user_email)
+    return to_emails
+
+
 def _confirmation_email_body(**kwargs) -> str:
     template = Template(
         """
@@ -75,11 +82,7 @@ def shipment_confirmation_email(shipment_result: dict, **kwargs) -> None:
     """
     dag_run = kwargs["dag_run"]
     params = kwargs.get("params", {})
-    user_email = params.get("user_email")
-
-    to_emails = [Variable.get("EMAIL_DEVS")]
-    if user_email:
-        to_emails.append(user_email)
+    to_emails = _to_addresses(params.get("user_email"))
 
     html_content = _confirmation_email_body(
         dag_run_url=dag_run_url(dag_run=dag_run),
@@ -116,9 +119,7 @@ def send_shipment_failure_email(reason: str, dag_run, user_email: str | None) ->
     on-failure callback for tasks upstream of that branch (e.g. no
     barcodes resolving to an instance).
     """
-    to_emails = [Variable.get("EMAIL_DEVS")]
-    if user_email:
-        to_emails.append(user_email)
+    to_emails = _to_addresses(user_email)
 
     html_content = _failure_email_body(
         dag_run_url=dag_run_url(dag_run=dag_run),
