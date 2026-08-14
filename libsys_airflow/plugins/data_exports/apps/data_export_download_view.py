@@ -1,38 +1,48 @@
 import json
 import pathlib
-from flask import send_file
-from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+
+from libsys_airflow.plugins.shared.utils import plugin_templates
+
+app = FastAPI()
+
+templates = plugin_templates(
+    pathlib.Path(__file__).resolve().parent.parent, "data-export-download"
+)
 
 parent = pathlib.Path(__file__).resolve().parent
 vendor_file = open(parent / "vendors.json")
 vendors = json.load(vendor_file)
 
+files_base = pathlib.Path("/opt/airflow/data-export-files")
 
-class DataExportDownloadView(AppBuilderBaseView):
-    default_view = "data_export_download_home"
-    route_base = "/data_export_download"
-    files_base = "data-export-files"
 
-    @expose("/")
-    def data_export_download_home(self):
-        content = []
-        for vendor in vendors['vendors']:
-            for state in ["marc-files", "transmitted"]:
-                for kind in ["new", "updates", "deletes"]:
-                    for path in pathlib.Path(
-                        f"{DataExportDownloadView.files_base}/{vendor}/{state}/{kind}"
-                    ).glob("*"):
-                        content.append({vendor: [state, kind, path.name]})
+@app.get("/")
+def data_export_download_home(request: Request):
+    content = []
+    for vendor in vendors["vendors"]:
+        for state in ["marc-files", "transmitted"]:
+            for kind in ["new", "updates", "deletes"]:
+                for path in (files_base / vendor / state / kind).glob("*"):
+                    content.append(
+                        {
+                            "vendor": vendor,
+                            "state": state,
+                            "kind": kind,
+                            "filename": path.name,
+                        }
+                    )
 
-        return self.render_template("data-export-download/index.html", content=content)
+    return templates.TemplateResponse(request, "index.html", {"content": content})
 
-    @expose("/downloads/<vendor>/<state>/<folder>/<filename>")
-    def vendor_marc_record(self, vendor, state, folder, filename):
-        folder_file = f"{vendor}-{state}-{folder}-{filename}"
-        return send_file(
-            f"/opt/airflow/{self.files_base}/{vendor}/{state}/{folder}/{filename}",
-            as_attachment=True,
-            mimetype="application/marc",
-            download_name=folder_file,
-        )
+
+@app.get("/downloads/{vendor}/{state}/{folder}/{filename}")
+def vendor_marc_record(vendor: str, state: str, folder: str, filename: str):
+    download_name = f"{vendor}-{state}-{folder}-{filename}"
+    return FileResponse(
+        str(files_base / vendor / state / folder / filename),
+        media_type="application/marc",
+        filename=download_name,
+    )

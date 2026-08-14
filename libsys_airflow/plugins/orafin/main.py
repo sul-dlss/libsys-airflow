@@ -1,23 +1,22 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
 
-from libsys_airflow.plugins.orafin.apps.orafin_files_view import OrafinFilesView
+from libsys_airflow.plugins.orafin.apps.orafin_files_view import app
 
-orafin_bp = Blueprint("orafin", __name__, template_folder="templates")
+orafin_files_app = {
+    "app": app,
+    "url_prefix": "/orafin",
+    "name": "Orafin Feeder-files and Reports",
+}
 
-orafin_view = OrafinFilesView()
-orafin_view_package = {
+orafin_files_view = {
     "name": "Orafin Feeder-files and Reports",
     "category": "FOLIO",
-    "view": orafin_view,
+    "href": "/orafin/",
+    "url_route": "orafin",
 }
 
 
 class OrafinPlugin(AirflowPlugin):
     name = "Orafin Files"
-    operators = []  # type: ignore
-    flask_blueprints = [orafin_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [orafin_view_package]
+    fastapi_apps = [orafin_files_app]
+    external_views = [orafin_files_view]

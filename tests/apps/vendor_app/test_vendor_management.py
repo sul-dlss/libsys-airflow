@@ -1,13 +1,18 @@
 import pytest
 from datetime import datetime, timezone
-from pytest_mock_resources import create_sqlite_fixture, Rows
+
+from fastapi.testclient import TestClient
+from pytest_mock_resources import Rows
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
 from libsys_airflow.plugins.vendor.models import (
+    Model,
     Vendor,
     VendorInterface,
 )
-from tests.test_airflow_client import test_airflow_client  # noqa: F401
+from libsys_airflow.plugins.vendor_app.vendor_management import app
 
 now = datetime.now(timezone.utc)
 
@@ -40,7 +45,21 @@ rows = Rows(
     ),
 )
 
-engine = create_sqlite_fixture(rows)
+client = TestClient(app, follow_redirects=False)
+
+
+@pytest.fixture
+def engine():
+    # FastAPI's TestClient dispatches requests on a background thread, so the
+    # sqlite connection must be shared (StaticPool) and thread-unsafe checks
+    # disabled, otherwise the view's DB session can't see the seeded rows.
+    test_engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Model.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        rows.apply(session)
+    return test_engine
 
 
 @pytest.fixture
@@ -52,16 +71,14 @@ def mock_db(mocker, engine):
     return mock_hook
 
 
-def test_update_vendor_interface_form(
-    test_airflow_client, mock_db, mocker  # noqa: F811
-):
+def test_update_vendor_interface_form(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             "libsys_airflow.plugins.vendor_app.vendor_management.Session",
             return_value=session,
         )
-        response = test_airflow_client.post(
-            "/vendor_management/interfaces/1/edit",
+        response = client.post(
+            "/interfaces/1/edit",
             data={
                 "package-name": "Acme ebooks package",
                 "prepend-001": "eb4",
@@ -113,16 +130,14 @@ def test_update_vendor_interface_form(
         assert interface.processing_options["change_marc"][0]["to"]["indicator2"] == "7"
 
 
-def test_update_vendor_interface_empty_form_values(
-    test_airflow_client, mock_db, mocker  # noqa: F811
-):
+def test_update_vendor_interface_empty_form_values(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             "libsys_airflow.plugins.vendor_app.vendor_management.Session",
             return_value=session,
         )
-        response = test_airflow_client.post(
-            "/vendor_management/interfaces/1/edit",
+        response = client.post(
+            "/interfaces/1/edit",
             data={
                 "package-name": "",
                 "prepend-001": "eb4",

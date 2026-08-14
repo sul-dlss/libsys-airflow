@@ -1,24 +1,22 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
 
-from libsys_airflow.plugins.boundwith.boundwith_view import BoundWithView
+from libsys_airflow.plugins.boundwith.boundwith_view import app
 
-boundwith_bp = Blueprint("boundwith_upload", __name__, template_folder="templates")
+boundwith_app = {
+    "app": app,
+    "url_prefix": "/boundwith",
+    "name": "Boundwith CSV Upload",
+}
 
-boundwith_view = BoundWithView()
-boundwith_view_package = {
+boundwith_view = {
     "name": "Boundwith CSV Upload",
     "category": "FOLIO",
-    "view": boundwith_view,
+    "href": "/boundwith/",
+    "url_route": "boundwith",
 }
 
 
 class BoundwithPlugin(AirflowPlugin):
     name = "Boundwith CSV Upload"
-    operators = []  # type: ignore
-    flask_blueprints = [boundwith_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [boundwith_view_package]
-    appbuilder_menu_items = []
+    fastapi_apps = [boundwith_app]
+    external_views = [boundwith_view]

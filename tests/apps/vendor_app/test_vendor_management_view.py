@@ -3,11 +3,20 @@ from datetime import datetime, timedelta
 import pytest
 
 from unittest.mock import MagicMock
-from pytest_mock_resources import create_sqlite_fixture, Rows
+from bs4 import BeautifulSoup
+from fastapi.testclient import TestClient
+from pytest_mock_resources import Rows
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import StaticPool
 
-from libsys_airflow.plugins.vendor.models import Vendor, VendorInterface, VendorFile
-from tests.test_airflow_client import test_airflow_client  # noqa: F401
+from libsys_airflow.plugins.vendor.models import (
+    Model,
+    Vendor,
+    VendorInterface,
+    VendorFile,
+)
+from libsys_airflow.plugins.vendor_app.vendor_management import app
 
 
 now = datetime.utcnow()
@@ -85,7 +94,21 @@ rows = Rows(
     ),
 )
 
-engine = create_sqlite_fixture(rows)
+client = TestClient(app, follow_redirects=False)
+
+
+@pytest.fixture
+def engine():
+    # FastAPI's TestClient dispatches requests on a background thread, so the
+    # sqlite connection must be shared (StaticPool) and thread-unsafe checks
+    # disabled, otherwise the view's DB session can't see the seeded rows.
+    test_engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Model.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        rows.apply(session)
+    return test_engine
 
 
 @pytest.fixture
@@ -116,18 +139,17 @@ def mock_db(mocker, engine):
     yield mock_hook
 
 
-def test_vendors_dashboard_view(
-    test_airflow_client, mock_db, mocker, mock_okapi_url_variable  # noqa: F811
-):
+def test_vendors_dashboard_view(mock_db, mocker, mock_okapi_url_variable):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.get('/vendor_management/')
+        response = client.get('/')
         assert response.status_code == 200
-        assert response.html.h1.text == "Vendor Management - Test"
-        error_table = response.html.find(id='errorsTable')
+        html = BeautifulSoup(response.text, "html.parser")
+        assert html.h1.text == "Vendor Management - Test"
+        error_table = html.find(id='errorsTable')
         error_rows = error_table.find_all('tr')
         assert len(error_rows) == 2
         retry_cell = error_rows[0].find_all('td')[-1]
@@ -140,19 +162,18 @@ def test_vendors_dashboard_view(
         assert retry_cell2.form["action"].startswith("/vendor_management/files/2/load")
 
 
-def test_vendors_index_view(
-    test_airflow_client, mock_db, mock_okapi_url_variable, mocker  # noqa: F811
-):
+def test_vendors_index_view(mock_db, mock_okapi_url_variable, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.get('/vendor_management/vendors')
+        response = client.get('/vendors')
         assert response.status_code == 200
-        assert response.html.h1.text == "Vendors - Test"
+        html = BeautifulSoup(response.text, "html.parser")
+        assert html.h1.text == "Vendors - Test"
 
-        rows = response.html.find_all('tr')
+        rows = html.find_all('tr')
         assert len(rows) == 2
 
         link = rows[0].find_all('td')[0].a
@@ -164,38 +185,33 @@ def test_vendors_index_view(
         assert link["href"] == "/vendor_management/vendors/2"
 
 
-def test_vendor_show_view(
-    test_airflow_client,  # noqa: F811
-    mock_db,
-    mock_okapi_url_variable,
-    mocker,
-    mock_folio_client,
-):
+def test_vendor_show_view(mock_db, mock_okapi_url_variable, mocker, mock_folio_client):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
         mocker.patch(
-            'libsys_airflow.plugins.vendor_app.vendor_management.VendorManagementView._folio_client',
+            'libsys_airflow.plugins.vendor_app.vendor_management._folio_client',
             return_value=mock_folio_client,
         )
-        response = test_airflow_client.get('/vendor_management/vendors/1')
+        response = client.get('/vendors/1')
         assert response.status_code == 200
-        assert response.html.h1.text == "Acme - Test"
+        html = BeautifulSoup(response.text, "html.parser")
+        assert html.h1.text == "Acme - Test"
 
-        rows = response.html.find_all('tr')
+        rows = html.find_all('tr')
         assert len(rows) == 2
 
         assert 'Acme FTP' in rows[0].text
         assert 'Acme API' in rows[1].text
 
 
-def test_missing_vendor(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_missing_vendor(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.get('/vendor_management/vendors/987')
+        response = client.get('/vendors/987')
         assert response.status_code == 404

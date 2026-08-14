@@ -1,40 +1,49 @@
-{% extends "airflow/main.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Vendor File: {{ file.vendor_filename }}{% if folio_name %} - {{ folio_name }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" type="text/css" href="{{ url_prefix }}/static/main.css">
+  <style>
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
 {% import "vendors/_macros.html" as _macros -%}
 
-{% block head_css %}
-{{ super() }}
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
-{% endblock %}
+{% if message %}
+<div class="alert-message">{{ message }}</div>
+{% endif %}
 
-{% block content %}
 <header class="page-header">
   <h1>Vendor File: {{ file.vendor_filename }}{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
 </header>
 
 <nav>
   <ul class="nav nav-tabs">
-    <li><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li class="active"><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li><a href="{{ url_prefix }}/">Dashboard</a></li>
+    <li class="active"><a href="{{ url_prefix }}/vendors">Vendors</a></li>
   </ul>
 </nav>
 
 <nav>
   <ol class="breadcrumb">
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}">All</a></li>
-    <li><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></li>
-    <li><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></li>
+    <li><a href="{{ url_prefix }}/vendors">All</a></li>
+    <li><a href="{{ url_prefix }}/vendors/{{ file.vendor_interface.vendor.id }}">{{ file.vendor_interface.vendor.display_name }}</a></li>
+    <li><a href="{{ url_prefix }}/interfaces/{{ file.vendor_interface.id }}">{{ file.vendor_interface.display_name }}</a></li>
     <li class="active">{{ file.vendor_filename }}</li>
   </ol>
 </nav>
 
 <main>
-  <form class="form-horizontal" method="post" action="{{ url_for('VendorManagementView.file', file_id=file.id) }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <form class="form-horizontal" method="post" action="{{ url_prefix }}/files/{{ file.id }}">
     <div class="form-group">
       <label for="vendor" class="col-sm-2 col-form-label">Vendor:</label>
       <div class="col-sm-8" id="vendor">
-        <a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">
+        <a href="{{ url_prefix }}/vendors/{{ file.vendor_interface.vendor.id }}">
           {{ file.vendor_interface.vendor.display_name }}
         </a>
       </div>
@@ -42,7 +51,7 @@
     <div class="form-group">
       <label for="interface" class="col-sm-2 col-form-label">Interface:</label>
       <div class="col-sm-8" id="interface">
-        <a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">
+        <a href="{{ url_prefix }}/interfaces/{{ file.vendor_interface.id }}">
           {{ file.vendor_interface.display_name }}
         </a>
       </div>
@@ -95,7 +104,7 @@
           {% for timestamp in file.loaded_history_timestamps | reverse %}
             <li>{{ timestamp }}</li>
           {% endfor %}
-        </ul> 
+        </ul>
       {% endif %}
     </div>
   </div>
@@ -123,5 +132,6 @@
   {% endif %}
   </form>
 </main>
-
-{% endblock %}
+</div>
+</body>
+</html>

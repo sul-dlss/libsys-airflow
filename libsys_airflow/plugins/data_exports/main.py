@@ -1,76 +1,65 @@
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
 
 from libsys_airflow.plugins.data_exports.apps.data_export_upload_view import (
-    DataExportUploadView,
+    app as data_export_upload_app,
 )
 from libsys_airflow.plugins.data_exports.apps.data_export_download_view import (
-    DataExportDownloadView,
+    app as data_export_download_app,
 )
 from libsys_airflow.plugins.data_exports.apps.data_export_oclc_reports_view import (
-    DataExportOCLCReportsView,
+    app as data_export_oclc_reports_app,
 )
 
-data_export_upload_bp = Blueprint(
-    "data_export_upload", __name__, template_folder="templates"
-)
-data_export_download_bp = Blueprint(
-    "data_export_download", __name__, template_folder="templates"
-)
-data_export_oclc_reports_bp = Blueprint(
-    "data_export_oclc_reports", __name__, template_folder="templates"
-)
-
-data_export_upload_view = DataExportUploadView()
-data_export_upload_view_package = {
+data_export_upload_fastapi_app = {
+    "app": data_export_upload_app,
+    "url_prefix": "/data_export_upload",
+    "name": "Data Export CSV Upload",
+}
+data_export_upload_view = {
     "name": "Data Export CSV Upload",
     "category": "FOLIO",
-    "view": data_export_upload_view,
+    "href": "/data_export_upload/",
+    "url_route": "data_export_upload",
 }
 
-data_export_download_view = DataExportDownloadView()
-data_export_download_view_package = {
+data_export_download_fastapi_app = {
+    "app": data_export_download_app,
+    "url_prefix": "/data_export_download",
+    "name": "Data Export MARC Download",
+}
+data_export_download_view = {
     "name": "Data Export MARC Download",
     "category": "FOLIO",
-    "view": data_export_download_view,
+    "href": "/data_export_download/",
+    "url_route": "data_export_download",
 }
 
-data_export_oclc_reports_view = DataExportOCLCReportsView()
-data_export_oclc_reports_view_package = {
+data_export_oclc_reports_fastapi_app = {
+    "app": data_export_oclc_reports_app,
+    "url_prefix": "/data_export_oclc_reports",
+    "name": "Data Export OCLC Reports",
+}
+data_export_oclc_reports_view = {
     "name": "Data Export OCLC Reports",
     "category": "FOLIO",
-    "view": data_export_oclc_reports_view,
+    "href": "/data_export_oclc_reports/",
+    "url_route": "data_export_oclc_reports",
 }
 
 
 class DataExportUploadPlugin(AirflowPlugin):
     name = "Data Export CSV Upload"
-    operators = []  # type: ignore
-    flask_blueprints = [data_export_upload_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [data_export_upload_view_package]
-    appbuilder_menu_items = []
+    fastapi_apps = [data_export_upload_fastapi_app]
+    external_views = [data_export_upload_view]
 
 
 class DataExportDownloadPlugin(AirflowPlugin):
     name = "Data Export MARC Download"
-    operators = []  # type: ignore
-    flask_blueprints = [data_export_download_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [data_export_download_view_package]
-    appbuilder_menu_items = []
+    fastapi_apps = [data_export_download_fastapi_app]
+    external_views = [data_export_download_view]
 
 
 class DataExportOCLCReportsPlugin(AirflowPlugin):
     name = "Data Export OCLC Reports"
-    operators = []  # type: ignore
-    flask_blueprints = [data_export_oclc_reports_bp]
-    hooks = []  # type: ignore
-    executors = []  # type: ignore
-    admin_views = []
-    appbuilder_views = [data_export_oclc_reports_view_package]
-    appbuilder_menu_items = []
+    fastapi_apps = [data_export_oclc_reports_fastapi_app]
+    external_views = [data_export_oclc_reports_view]

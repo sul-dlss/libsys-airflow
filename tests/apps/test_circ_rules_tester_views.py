@@ -1,70 +1,36 @@
-# from airflow.www import app as application
-# from airflow.www.extensions.init_appbuilder import create_app
-from airflow.providers.fab.www import app as application
-from bs4 import BeautifulSoup
-from flask.wrappers import Response
-import pytest
+import json
 
-from conftest import root_directory
+from io import BytesIO
+from unittest.mock import MagicMock, patch
+from urllib.parse import unquote_plus
 
-from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import CircRulesTester
+from fastapi.testclient import TestClient
+import pytest  # noqa
 
+from libsys_airflow.plugins.folio.apps import circ_rules_tester_view
+from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import app
 
-@pytest.fixture
-def test_airflow_client():
-    templates_folder = f"{root_directory}/libsys_airflow/plugins/folio/templates"
-
-    app = application.create_app(enable_plugins=False)
-    app.config['WTF_CSRF_ENABLED'] = False
-
-    with app.app_context():
-        app.appbuilder.add_view(
-            CircRulesTester,
-            "CircRulesTester",
-            category="Circ Rules Tests",
-        )
-
-        app.blueprints["CircRulesTester"].template_folder = templates_folder
-
-    app.response_class = HTMLResponse
-
-    with app.test_client() as client:
-        yield client
+client = TestClient(app, follow_redirects=False)
 
 
-class HTMLResponse(Response):
-    @property
-    def html(self):
-        return BeautifulSoup(self.get_data(), "html.parser")
-
-
-def test_circ_rules_tester_main_page(test_airflow_client):
-    response = test_airflow_client.get("/circ_rule_tester/")
+def test_circ_rules_tester_main_page():
+    response = client.get("/")
 
     assert response.status_code == 200
-
-    title = response.html.find("h2")
-
-    assert title.text == "FOLIO Circ Rules Tester"
+    assert "<h2>FOLIO Circ Rules Tester</h2>" in response.text
 
 
-def test_circ_rules_tester_reference_home(mocker, test_airflow_client):
+def test_circ_rules_tester_reference_home(mocker):
     mocker.patch(
         'libsys_airflow.plugins.folio.apps.circ_rules_tester_view.folio_client'
     )
 
-    response = test_airflow_client.get("/circ_rule_tester/reference")
+    response = client.get("/reference")
 
     assert response.status_code == 200
+    assert "<h2>Reference Data</h2>" in response.text
 
-    title = response.html.find("h2")
-
-    assert title.text == "Reference Data"
-
-    reference_list = response.html.find(id="ref-data-list")
-    reference_list_items = reference_list.find_all("li")
-
-    assert len(reference_list_items) == 4
+    assert response.text.count('<li><a href="reference/') == 4
 
 
 mock_patron_groups = [
@@ -99,7 +65,7 @@ mock_patron_groups = [
 ]
 
 
-def test_circ_rules_tester_patron_group(mocker, test_airflow_client):
+def test_circ_rules_tester_patron_group(mocker):
     mock_folio_client = mocker.MagicMock()
     mock_folio_client.folio_get = lambda *args, **kwargs: mock_patron_groups
 
@@ -108,18 +74,206 @@ def test_circ_rules_tester_patron_group(mocker, test_airflow_client):
         return_value=mock_folio_client,
     )
 
-    response = test_airflow_client.get("/circ_rule_tester/reference/patron_group")
+    response = client.get("/reference/patron_group")
 
-    title = response.html.find("h2")
+    assert response.status_code == 200
+    assert "<h2>Patron Groups</h2>" in response.text
 
-    assert title.text == "Patron Groups"
+    assert response.text.count("<tr>") == 3
 
-    table_rows = response.html.find_all("tr")
+    assert "graduate" in response.text
+    assert "Graduate Student" in response.text
+    assert "ad0bc554" in response.text
 
-    assert len(table_rows) == 4
 
-    first_row_data = table_rows[1].find_all("td")
+def test_run_batch_test_missing_file():
+    response = client.post("/batch_test")
 
-    assert first_row_data[0].text.startswith("graduate")
-    assert first_row_data[1].text.startswith("Graduate Student")
-    assert first_row_data[2].text.startswith("ad0bc554")
+    assert response.status_code == 200
+    assert "No scenario file uploaded" in response.text
+
+
+def test_run_batch_test_invalid_extension():
+    response = client.post(
+        "/batch_test",
+        files={
+            "upload_scenarios": ("scenarios.txt", BytesIO(b"not-a-csv"), "text/plain")
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Scenario file must be a csv" in response.text
+
+
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.DagRunApi')
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.api_client')
+def test_run_batch_test_success(mock_api_client, mock_dag_run_api):
+    mock_api_instance = MagicMock()
+    mock_dag_run_api.return_value = mock_api_instance
+    mock_api_response = MagicMock()
+    mock_api_response.dag_run_id = "batch-run-123"
+    mock_api_instance.trigger_dag_run.return_value = mock_api_response
+
+    csv_data = (
+        b"patron_group_id,material_type_id,loan_type_id,location_id\n"
+        b"pg1,mt1,lt1,loc1\n"
+    )
+    response = client.post(
+        "/batch_test",
+        files={"upload_scenarios": ("scenarios.csv", BytesIO(csv_data), "text/csv")},
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "batch_report/batch-run-123"
+
+    call_args = mock_api_instance.trigger_dag_run.call_args
+    assert call_args[0][0] == "circ_rules_batch_tests"
+
+
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.DagRunApi')
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.api_client')
+def test_run_batch_test_dag_trigger_failure(mock_api_client, mock_dag_run_api):
+    mock_api_instance = MagicMock()
+    mock_dag_run_api.return_value = mock_api_instance
+    mock_api_instance.trigger_dag_run.side_effect = Exception("dag not found")
+
+    csv_data = (
+        b"patron_group_id,material_type_id,loan_type_id,location_id\npg1,mt1,lt1,loc1\n"
+    )
+    response = client.post(
+        "/batch_test",
+        files={"upload_scenarios": ("scenarios.csv", BytesIO(csv_data), "text/csv")},
+    )
+
+    assert response.status_code == 200
+    assert "Failed to trigger circ_rules_batch_tests DAG" in response.text
+
+
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.DagRunApi')
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.api_client')
+def test_run_test_success(mock_api_client, mock_dag_run_api):
+    mock_api_instance = MagicMock()
+    mock_dag_run_api.return_value = mock_api_instance
+    mock_api_response = MagicMock()
+    mock_api_response.dag_run_id = "scenario-run-456"
+    mock_api_instance.trigger_dag_run.return_value = mock_api_response
+
+    response = client.post(
+        "/test",
+        data={
+            "patron_group_id": "pg1",
+            "material_type_id": "mt1",
+            "loan_type_id": "lt1",
+            "location_id": "loc1",
+        },
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "report/scenario-run-456"
+
+    call_args = mock_api_instance.trigger_dag_run.call_args
+    dag_id = call_args[0][0]
+    trigger_body = call_args[0][1]
+    assert dag_id == "circ_rules_scenario_tests"
+    assert trigger_body.conf == {
+        "patron_group_id": "pg1",
+        "material_type_id": "mt1",
+        "loan_type_id": "lt1",
+        "location_id": "loc1",
+    }
+
+
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.DagRunApi')
+@patch('libsys_airflow.plugins.folio.apps.circ_rules_tester_view.api_client')
+def test_run_test_dag_trigger_failure(mock_api_client, mock_dag_run_api):
+    mock_api_instance = MagicMock()
+    mock_dag_run_api.return_value = mock_api_instance
+    mock_api_instance.trigger_dag_run.side_effect = Exception("dag not found")
+
+    response = client.post("/test", data={"patron_group_id": "pg1"})
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(".?")
+    assert "Failed to Trigger circ_rules_scenario_test DAG" in unquote_plus(
+        response.headers["location"]
+    )
+
+
+def test_report_batch_not_found(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+
+    response = client.get("/batch_report/missing-run")
+
+    assert response.status_code == 200
+    assert "Report for DAG Run not completed. DAG ID missing-run" in response.text
+    assert "Check for Report" in response.text
+
+
+def test_report_batch_found(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+    report_path = tmp_path / "batch-run-1.json"
+    report_path.write_text(
+        json.dumps([{"patron_group_id": "pg1", "result": "allowed"}]),
+        encoding="utf-8-sig",
+    )
+
+    response = client.get("/batch_report/batch-run-1")
+
+    assert response.status_code == 200
+    assert "pg1" in response.text
+    assert 'href="../download/batch-run-1"' in response.text
+
+
+def test_download_report_missing(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+
+    response = client.get("/download/missing-run")
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("..?")
+    assert "Batch report DAG ID missing-run doesn't exist" in unquote_plus(
+        response.headers["location"]
+    )
+
+
+def test_download_report_found(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+    report_path = tmp_path / "batch-run-2.json"
+    report_path.write_text(
+        json.dumps([{"patron_group_id": "pg1", "result": "allowed"}]),
+        encoding="utf-8-sig",
+    )
+
+    response = client.get("/download/batch-run-2")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert (
+        "attachment;filename=batch_report_" in response.headers["content-disposition"]
+    )
+    assert "pg1" in response.text
+
+
+def test_report_scenario_not_found(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+
+    response = client.get("/report/missing-run")
+
+    assert response.status_code == 200
+    assert "Report for DAG Run not completed. DAG ID missing-run" in response.text
+    assert "Check for Report" in response.text
+
+
+def test_report_scenario_found(mocker, tmp_path):
+    mocker.patch.object(circ_rules_tester_view, "CIRC_HOME", tmp_path)
+    report_path = tmp_path / "scenario-run-1.json"
+    report_path.write_text(
+        json.dumps({"Loan Policy": "Standard", "Result": "Allowed"}),
+        encoding="utf-8-sig",
+    )
+
+    response = client.get("/report/scenario-run-1")
+
+    assert response.status_code == 200
+    assert "Loan Policy" in response.text
+    assert "Allowed" in response.text
