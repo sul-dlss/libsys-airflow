@@ -85,11 +85,12 @@ class FTPAdapter:
 
     def get_mod_time(self, filename: str) -> str:
         mod_time_str = self._file_descriptions[filename]["modify"]
+        # MLSD's "modify" fact optionally includes fractional seconds
         try:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S.%f")
         except ValueError:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
-        return mod_time.isoformat()
+        return mod_time.replace(microsecond=0).isoformat()
 
     def get_size(self, filename: str) -> int:
         file_size = self._file_descriptions[filename]["size"]

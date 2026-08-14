@@ -391,7 +391,7 @@ def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
 
     adapter = FTPAdapter(mock_hook, "/remote/path")
 
-    assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04.741000"
+    assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04"
 
 
 def test_build_descriptions_handles_errors(mocker):
