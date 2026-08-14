@@ -1,40 +1,32 @@
-import datetime
 import pathlib
 
-from flask import send_file
-from flask_appbuilder import expose, BaseView as AppBuilderBaseView
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+
+from libsys_airflow.plugins.shared.utils import file_info, plugin_templates
+
+app = FastAPI()
+
+templates = plugin_templates(pathlib.Path(__file__).resolve().parent.parent, "sdr")
+
+reports_base = pathlib.Path("/opt/airflow/sdr-files/reports")
 
 
-def _file_info(file: pathlib.Path) -> dict:
-    stats = file.stat()
-    created_date = datetime.datetime.fromtimestamp(stats.st_ctime)
-    return {
-        "name": file.name,
-        "date_created": created_date.isoformat(),
-        "size": f"{stats.st_size:,}",
-    }
+@app.get("/")
+def sdr_missing_barcodes_home(request: Request):
+    missing_barcodes_files = [file_info(row) for row in reports_base.glob("*.csv")]
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {"missing_barcodes_files": missing_barcodes_files},
+    )
 
 
-class SdrMissingBarcodesView(AppBuilderBaseView):
-    default_view = "sdr_missing_barcodes_home"
-    route_base = "/sdr"
-    reports_base = pathlib.Path("/opt/airflow/sdr-files/reports")
-
-    @expose("/")
-    def sdr_missing_barcodes_home(self):
-        missing_barcode_files = [
-            _file_info(row) for row in self.reports_base.glob("*.csv")
-        ]
-        return self.render_template(
-            "sdr/index.html", missing_barcodes_files=missing_barcode_files
-        )
-
-    @expose("/<file_name>")
-    def download(self, file_name):
-        report_path = self.reports_base / file_name
-        return send_file(
-            str(report_path),
-            as_attachment=True,
-            mimetype="application/csv",
-            download_name=file_name,
-        )
+@app.get("/{file_name}")
+def download(file_name: str):
+    report_path = reports_base / file_name
+    return FileResponse(
+        str(report_path),
+        media_type="application/csv",
+        filename=file_name,
+    )

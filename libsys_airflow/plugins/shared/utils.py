@@ -1,22 +1,27 @@
 import httpx
 import json
 import logging
+import pathlib
 import pymarc
 import re
 import time
 
 from typing import Union
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit, parse_qsl
 
 from airflow_client.client import DAGRunResponse
 from airflow.configuration import conf
 from airflow.sdk import Variable
 from airflow.utils.email import send_email
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
+
+SHARED_TEMPLATES_DIR = pathlib.Path(__file__).resolve().parent.parent / "templates"
 
 
 def execution_date() -> str:
@@ -34,6 +39,43 @@ def dag_run_url(**kwargs) -> str:
 
     run_id = getattr(dag_run, 'run_id', '') or getattr(dag_run, 'dag_run_id', '')
     return f"{airflow_url}dags/{dag_run.dag_id}/runs/{quote(run_id)}"
+
+
+def redirect_with_query_params(
+    url: str, status_code: int = 303, **query_params
+) -> RedirectResponse:
+    """
+    Builds a RedirectResponse to url, merging query_params into any
+    existing query string on url.
+    """
+    if query_params:
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        query_pairs = parse_qsl(query) + list(query_params.items())
+        url = urlunsplit((scheme, netloc, path, urlencode(query_pairs), fragment))
+    return RedirectResponse(url=url, status_code=status_code)
+
+
+def plugin_templates(app_dir: pathlib.Path, subfolder: str) -> Jinja2Templates:
+    """
+    Builds a Jinja2Templates that searches the app's own template subfolder
+    first, then falls back to the plugins-wide shared templates directory.
+    """
+    return Jinja2Templates(
+        directory=[
+            SHARED_TEMPLATES_DIR,
+            pathlib.Path(app_dir) / "templates" / subfolder,
+        ]
+    )
+
+
+def file_info(file: pathlib.Path) -> dict:
+    stats = file.stat()
+    created_date = datetime.fromtimestamp(stats.st_ctime)
+    return {
+        "name": file.name,
+        "date_created": created_date.isoformat(),
+        "size": f"{stats.st_size:,}",
+    }
 
 
 def is_production():

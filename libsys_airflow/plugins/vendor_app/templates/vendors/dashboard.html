@@ -1,20 +1,30 @@
-{% extends "airflow/main.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Vendor Management{% if folio_name %} - {{ folio_name }}{% endif %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="{{ url_prefix }}/static/main.css">
+  <style>
+    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
 {% import "vendors/_macros.html" as _macros -%}
 
-{% block head_css %}
-{{ super() }}
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
-{% endblock %}
+{% if message %}
+<div class="alert-message">{{ message }}</div>
+{% endif %}
 
-{% block content %}
 <header class="page-header">
   <h1>Vendor Management{% if folio_name %} - {{ folio_name }}{% endif %}</h1>
 </header>
 
 <nav>
   <ul class="nav nav-tabs">
-    <li class="active"><a href="{{ url_for('VendorManagementView.dashboard') }}">Dashboard</a></li>
-    <li><a href="{{ url_for('VendorManagementView.vendors') }}">Vendors</a></li>
+    <li class="active"><a href="{{ url_prefix }}/">Dashboard</a></li>
+    <li><a href="{{ url_prefix }}/vendors">Vendors</a></li>
   </ul>
 </nav>
 
@@ -34,9 +44,9 @@
         {% if in_progress_files | length > 0 %}
           {% for file in in_progress_files %}
           <tr>
-            <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
-            <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
-            <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
+            <td><a href="{{ url_prefix }}/files/{{ file.id }}">{{ file.id }}</a></td>
+            <td><a href="{{ url_prefix }}/vendors/{{ file.vendor_interface.vendor.id }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
+            <td><a href="{{ url_prefix }}/interfaces/{{ file.vendor_interface.id }}">{{ file.vendor_interface.display_name }}</a></td>
             <td>{{ file.vendor_filename }} {{ _macros.fileDownload(file) }}</td>
             <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
           </tr>
@@ -68,20 +78,18 @@
         {% if errors_files | length > 0 %}
           {% for file in errors_files %}
           <tr>
-            <td><a href="{{ url_for('VendorManagementView.file', file_id=file.id) }}">{{ file.id }}</a></td>
-            <td><a href="{{ url_for('VendorManagementView.vendor', vendor_id=file.vendor_interface.vendor.id) }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
-            <td><a href="{{ url_for('VendorManagementView.interface', interface_id=file.vendor_interface.id) }}">{{ file.vendor_interface.display_name }}</a></td>
+            <td><a href="{{ url_prefix }}/files/{{ file.id }}">{{ file.id }}</a></td>
+            <td><a href="{{ url_prefix }}/vendors/{{ file.vendor_interface.vendor.id }}">{{ file.vendor_interface.vendor.display_name }}</a></td>
+            <td><a href="{{ url_prefix }}/interfaces/{{ file.vendor_interface.id }}">{{ file.vendor_interface.display_name }}</a></td>
             <td>{{ _macros.fileDownload(file) }}</td>
             <td>{{ _macros.renderFileStatus(file, folio_base_url) }}</td>
             <td>
               {% if file.status.value == 'loading_error' %}
-                <form action="{{ url_for('VendorManagementView.load_file', file_id=file.id, redirect_url=request.url) }}" method="POST">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <form action="{{ url_prefix }}/files/{{ file.id }}/load?redirect_url={{ request.url | urlencode }}" method="POST">
                   <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% elif file.status.value == 'fetching_error' %}
-                <form action="{{ url_for('VendorManagementView.reset_fetch', file_id=file.id) }}" method="POST">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <form action="{{ url_prefix }}/files/{{ file.id }}/reset_fetch" method="POST">
                   <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% endif %}
@@ -99,4 +107,6 @@
     </table>
   </div>
 </main>
-{% endblock %}
+</div>
+</body>
+</html>

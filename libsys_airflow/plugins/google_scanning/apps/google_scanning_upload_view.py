@@ -1,13 +1,14 @@
 import logging
+import re
 
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlencode
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 
+from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
     archived_file_path,
     download_filename,
@@ -17,10 +18,13 @@ from libsys_airflow.plugins.google_scanning.staging import (
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
+from libsys_airflow.plugins.shared.utils import redirect_with_query_params
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 
 templates = Jinja2Templates(
     directory=Path(__file__).resolve().parent.parent
@@ -50,7 +54,7 @@ def _render_home(
 
 
 @app.get("/")
-async def home(request: Request):
+def home(request: Request):
     return _render_home(
         request,
         error=request.query_params.get("error"),
@@ -59,12 +63,12 @@ async def home(request: Request):
     )
 
 
-def _redirect_home(**query_params: str) -> RedirectResponse:
-    return RedirectResponse(url=f".?{urlencode(query_params)}", status_code=303)
+def _redirect_home(**query_params):
+    return redirect_with_query_params(".", **query_params)
 
 
 @app.post("/stage")
-async def stage_cart(
+def stage_cart(
     request: Request,
     cart_name: str = Form(...),  # noqa: B008
     barcode_file: UploadFile | None = File(default=None),  # noqa: B008
@@ -74,7 +78,26 @@ async def stage_cart(
     if not barcode_file or not barcode_file.filename:
         return _render_home(request, error="A barcode file is required.")
 
-    contents = await barcode_file.read()
+    contents = barcode_file.file.read()
+    try:
+        text = contents.decode("utf-8")
+    except UnicodeDecodeError:
+        return _render_home(request, error="Barcode file must be plain text.")
+
+    if not parse_barcodes(text):
+        return _render_home(request, error="Barcode file is empty.")
+
+    # Validate raw (unstripped) lines, not parse_barcodes' output -- a line
+    # with leading/trailing whitespace must be rejected here rather than
+    # silently trimmed and accepted as a valid barcode.
+    raw_lines = [line for line in text.splitlines() if line.strip()]
+    invalid = [line for line in raw_lines if not BARCODE_PATTERN.fullmatch(line)]
+    if invalid:
+        return _render_home(
+            request,
+            error=f"Barcode file contains invalid line(s): {', '.join(invalid[:5])}",
+        )
+
     staged_file_path = save_staged_file(cart_name, barcode_file.filename, contents)
 
     try:
@@ -82,14 +105,14 @@ async def stage_cart(
     except Exception as e:
         logger.error(f"Error triggering {cart_name} staging DAG run: {e}")
         return _redirect_home(
-            warning=f"Staged {cart_name}, but failed to start item processing: {e}"
+            warning=f"Staged {cart_name}, but failed to start item processing."
         )
 
     return _redirect_home(success=f"Staged {cart_name}.")
 
 
 @app.post("/ship")
-async def trigger_shipment(
+def trigger_shipment(
     request: Request,
     selected_carts: list[str] = Form(default=[]),  # noqa: B008
     user_email: str | None = Form(default=None),  # noqa: B008
@@ -109,7 +132,7 @@ async def trigger_shipment(
         dag_run_id = trigger_on_campus_shipment_dag(carts, user_email, shipped_at)
     except Exception as e:
         logger.error(f"Error triggering on-campus shipment DAG run: {e}")
-        return _redirect_home(warning=f"Failed to start shipment: {e}")
+        return _redirect_home(warning="Failed to start shipment.")
 
     return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")
 

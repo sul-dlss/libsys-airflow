@@ -1,54 +1,34 @@
-from airflow.providers.fab.www import app as application
-from bs4 import BeautifulSoup
-from flask.wrappers import Response
-import pytest
+import pathlib
+
+from fastapi.testclient import TestClient
+import pytest  # noqa
 
 from conftest import root_directory
-from libsys_airflow.plugins.data_exports.apps.data_export_download_view import (
-    DataExportDownloadView,
-)
+
+from libsys_airflow.plugins.data_exports.apps import data_export_download_view
+from libsys_airflow.plugins.data_exports.apps.data_export_download_view import app
+
+client = TestClient(app)
 
 
-@pytest.fixture
-def test_airflow_client():
-    templates_folder = f"{root_directory}/libsys_airflow/plugins/data_exports/templates"
-    files_base = f"{root_directory}/tests/apps/data_exports/data_export_file_fixtures"
-
-    app = application.create_app(enable_plugins=False)
-    app.config['WTF_CSRF_ENABLED'] = False
-    setattr(DataExportDownloadView, "files_base", files_base)  # noqa
-
-    with app.app_context():
-        app.appbuilder.add_view(
-            DataExportDownloadView, "DataExport", category="Data export"
-        )
-        app.blueprints['DataExportDownloadView'].template_folder = templates_folder
-    app.response_class = HTMLResponse
-
-    with app.test_client() as client:
-        yield client
+@pytest.fixture(autouse=True)
+def mock_files_base(mocker):
+    files_base = pathlib.Path(
+        f"{root_directory}/tests/apps/data_exports/data_export_file_fixtures"
+    )
+    mocker.patch.object(data_export_download_view, "files_base", files_base)
+    return files_base
 
 
-class HTMLResponse(Response):
-    @property
-    def html(self):
-        return BeautifulSoup(self.get_data(), "html.parser")
-
-
-def test_download_view(test_airflow_client):
-    response = test_airflow_client.get('/data_export_download/')
+def test_download_view():
+    response = client.get('/')
     assert response.status_code == 200
 
-    marc_new_download = response.html.find(class_="oclc-marc-files-new").get('href')
     assert (
-        marc_new_download
-        == "/data_export_download/downloads/oclc/marc-files/new/202003131720.mrc"
+        'class="oclc-marc-files-new" href="downloads/oclc/marc-files/new/202003131720.mrc"'
+        in response.text
     )
-
-    transmitted_deletes_download = response.html.find(
-        class_="oclc-transmitted-deletes"
-    ).get('href')
     assert (
-        transmitted_deletes_download
-        == "/data_export_download/downloads/oclc/transmitted/deletes/202103131720.mrc"
+        'class="oclc-transmitted-deletes" href="downloads/oclc/transmitted/deletes/202103131720.mrc"'
+        in response.text
     )

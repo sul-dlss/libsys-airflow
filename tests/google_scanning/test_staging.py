@@ -2,10 +2,12 @@ import json
 
 import pytest  # noqa
 
-from libsys_airflow.plugins.google_scanning.staging import (
+from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_SHIPPED,
     STATUS_STAGED,
     STATUS_UNKNOWN,
+)
+from libsys_airflow.plugins.google_scanning.staging import (
     archived_file_path,
     download_filename,
     list_shipped_carts,

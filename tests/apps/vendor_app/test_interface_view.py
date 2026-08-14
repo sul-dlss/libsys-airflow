@@ -3,17 +3,21 @@ import shutil
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
-from pytest_mock_resources import create_sqlite_fixture, Rows
+from bs4 import BeautifulSoup
+from fastapi.testclient import TestClient
+from pytest_mock_resources import Rows
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy.pool import StaticPool
 
 from libsys_airflow.plugins.vendor.models import (
+    Model,
     Vendor,
     VendorInterface,
     VendorFile,
     FileStatus,
 )
-from tests.test_airflow_client import test_airflow_client  # noqa: F401
+from libsys_airflow.plugins.vendor_app.vendor_management import app
 
 now = datetime.utcnow()
 
@@ -154,7 +158,21 @@ rows = Rows(
     ),
 )
 
-engine = create_sqlite_fixture(rows)
+client = TestClient(app, follow_redirects=False)
+
+
+@pytest.fixture
+def engine():
+    # FastAPI's TestClient dispatches requests on a background thread, so the
+    # sqlite connection must be shared (StaticPool) and thread-unsafe checks
+    # disabled, otherwise the view's DB session can't see the seeded rows.
+    test_engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Model.metadata.create_all(test_engine)
+    with Session(test_engine) as session:
+        rows.apply(session)
+    return test_engine
 
 
 @pytest.fixture
@@ -212,7 +230,7 @@ def mock_variable(mocker):
     )
 
 
-def test_vendor_files(engine):  # noqa: F811
+def test_vendor_files(engine):
     with Session(engine) as session:
         interface = session.get(VendorInterface, 1)
         assert len(interface.vendor_files) == 5
@@ -241,25 +259,24 @@ def test_processed_files(engine):
         ]
 
 
-def test_interface_view(
-    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
-):
+def test_interface_view(mock_variable, mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
 
-        response = test_airflow_client.get('/vendor_management/interfaces/1')
+        response = client.get('/interfaces/1')
         assert response.status_code == 200
-        pending = response.html.find(id='pending-files')
+        html = BeautifulSoup(response.text, "html.parser")
+        pending = html.find(id='pending-files')
         assert pending
         assert len(pending.find_all('tr')) == 3
 
-        loaded = response.html.find(id='loaded-files')
+        loaded = html.find(id='loaded-files')
         assert loaded
         assert len(loaded.find_all('tr')) == 2
-        docdefs = response.html.find_all("dd", "processing_options")
+        docdefs = html.find_all("dd", "processing_options")
         assert docdefs[0].text == "Acme ebooks package"
         assert docdefs[1].text == "666, 667"
         assert docdefs[2].text == "eb4"
@@ -273,37 +290,34 @@ def test_interface_view(
         )
 
 
-def test_interface_view_no_prepend001(
-    test_airflow_client, mock_variable, mock_db, mocker  # noqa: F811
-):
+def test_interface_view_no_prepend001(mock_variable, mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
 
-        response = test_airflow_client.get('/vendor_management/interfaces/3')
+        response = client.get('/interfaces/3')
         assert response.status_code == 200
-        docdefs = response.html.find_all("dd", "processing_options")
+        html = BeautifulSoup(response.text, "html.parser")
+        docdefs = html.find_all("dd", "processing_options")
         assert len(docdefs) == 5
         assert docdefs[0].text == "Acme ebooks package"
         assert docdefs[1].text == "666, 667"
 
 
-def test_missing_interface(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_missing_interface(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
 
-        response = test_airflow_client.get('/vendor_management/interfaces/3007')
+        response = client.get('/interfaces/3007')
         assert response.status_code == 404
 
 
-def test_interface_edit_view(
-    test_airflow_client, mock_db, mocker, mock_variable, job_profiles  # noqa: F811
-):
+def test_interface_edit_view(mock_db, mocker, mock_variable, job_profiles):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -315,17 +329,16 @@ def test_interface_edit_view(
                 {"name": "Acme FTP", "id": "A8635200-F876-46E0-ACF0-8E0EFA542A3F"}
             ],
         )
-        response = test_airflow_client.get('/vendor_management/interfaces/1/edit')
+        response = client.get('/interfaces/1/edit')
         assert response.status_code == 200
-        note = response.html.find("textarea")
+        html = BeautifulSoup(response.text, "html.parser")
+        note = html.find("textarea")
         assert note.text == "A note about Acme FTP Interface"
-        templates = response.html.select("section > template")
+        templates = html.select("section > template")
         assert len(templates) == 3
 
 
-def test_interface_edit_upload_only_view(
-    test_airflow_client, mock_db, mocker, mock_variable, job_profiles  # noqa: F811
-):
+def test_interface_edit_upload_only_view(mock_db, mocker, mock_variable, job_profiles):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -335,16 +348,15 @@ def test_interface_edit_upload_only_view(
             'libsys_airflow.plugins.vendor_app.vendor_management.job_profiles',
             return_value=[],
         )
-        response = test_airflow_client.get("/vendor_management/interfaces/2/edit")
+        response = client.get("/interfaces/2/edit")
         assert response.status_code == 200
-        display_name_input = response.html.find(id="display-name")
+        html = BeautifulSoup(response.text, "html.parser")
+        display_name_input = html.find(id="display-name")
         assert display_name_input.name == "input"
         assert display_name_input.attrs['value'] == "Acme Upload Only"
 
 
-def test_reload_file(
-    test_airflow_client, mock_db, mock_api_dag_response, mocker  # noqa: F811
-):
+def test_reload_file(mock_db, mock_api_dag_response, mocker):
     mock_api_instance = mocker.MagicMock()
     mock_api_instance.trigger_dag_run.return_value = mock_api_dag_response
     mocker.patch(
@@ -360,7 +372,7 @@ def test_reload_file(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.post('/vendor_management/files/1/load')
+        response = client.post('/files/1/load')
         assert response.status_code == 302
 
     with Session(mock_db()) as session:
@@ -387,9 +399,7 @@ def test_reload_file(
     )
 
 
-def test_upload_file(
-    test_airflow_client, mock_db, mock_api_dag_response, tmp_path, mocker  # noqa: F811
-):
+def test_upload_file(mock_db, mock_api_dag_response, tmp_path, mocker):
     mock_api_instance = mocker.MagicMock()
     mock_api_instance.trigger_dag_run.return_value = mock_api_dag_response
     mocker.patch(
@@ -413,16 +423,17 @@ def test_upload_file(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.post(
-            '/vendor_management/interfaces/1/file',
-            data={
-                'file-upload': (
-                    open('tests/vendor/0720230118.mrc', 'rb'),
-                    'acme-extra-strength-marc.dat',
-                    'application/octet-stream',
-                )
-            },
-        )
+        with open('tests/vendor/0720230118.mrc', 'rb') as upload_file:
+            response = client.post(
+                '/interfaces/1/file',
+                files={
+                    'file-upload': (
+                        'acme-extra-strength-marc.dat',
+                        upload_file,
+                        'application/octet-stream',
+                    )
+                },
+            )
         assert response.status_code == 302
 
         assert (
@@ -466,9 +477,7 @@ def test_upload_file(
     )
 
 
-def test_download_original_file(
-    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
-):
+def test_download_original_file(mock_db, tmp_path, mocker):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
         return_value=tmp_path,
@@ -488,17 +497,13 @@ def test_download_original_file(
             return_value=session,
         )
 
-        response = test_airflow_client.get(
-            '/vendor_management/files/1/download/original'
-        )
+        response = client.get('/files/1/download/original')
         assert response.status_code == 200
-        assert response.content_type == 'application/octet-stream'
-        assert response.content_length == 35981
+        assert response.headers['content-type'] == 'application/octet-stream'
+        assert len(response.content) == 35981
 
 
-def test_download_processed_file(
-    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
-):
+def test_download_processed_file(mock_db, tmp_path, mocker):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
         return_value=tmp_path,
@@ -519,17 +524,13 @@ def test_download_processed_file(
             return_value=session,
         )
 
-        response = test_airflow_client.get(
-            '/vendor_management/files/1/download/processed'
-        )
+        response = client.get('/files/1/download/processed')
         assert response.status_code == 200
-        assert response.content_type == 'application/octet-stream'
-        assert response.content_length == 35981
+        assert response.headers['content-type'] == 'application/octet-stream'
+        assert len(response.content) == 35981
 
 
-def test_download_missing_file(
-    test_airflow_client, mock_db, tmp_path, mocker  # noqa: F811
-):
+def test_download_missing_file(mock_db, tmp_path, mocker):
     mocker.patch(
         'libsys_airflow.plugins.vendor.paths.vendor_data_basepath',
         return_value=tmp_path,
@@ -546,14 +547,11 @@ def test_download_missing_file(
             return_value=session,
         )
 
-        response = test_airflow_client.get(
-            '/vendor_management/files/1/download/processed'
-        )
+        response = client.get('/files/1/download/processed')
         assert response.status_code == 302
 
 
-def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
-
+def test_fetch(mock_db, mocker):
     mock_dag_response = MagicMock()
     mock_dag_response.dag_run_id = 'manual__2023-04-25T16:34:12.777715+00:00'
     mock_dag_response.dag_id = 'data_fetcher'
@@ -574,7 +572,7 @@ def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.post('/vendor_management/interfaces/1/fetch')
+        response = client.post('/interfaces/1/fetch')
         assert response.status_code == 302
 
     assert (
@@ -606,15 +604,13 @@ def test_fetch(test_airflow_client, mock_db, mocker):  # noqa: F811
     )
 
 
-def test_create_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_create_upload_only(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
             return_value=session,
         )
-        response = test_airflow_client.post(
-            '/vendor_management/vendors/1/interfaces',
-        )
+        response = client.post('/vendors/1/interfaces')
         assert response.status_code == 302
 
         interface = session.scalars(
@@ -629,7 +625,7 @@ def test_create_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
         assert not interface.assigned_in_folio
 
 
-def test_delete_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
+def test_delete_upload_only(mock_db, mocker):
     with Session(mock_db()) as session:
         mocker.patch(
             'libsys_airflow.plugins.vendor_app.vendor_management.Session',
@@ -647,9 +643,7 @@ def test_delete_upload_only(test_airflow_client, mock_db, mocker):  # noqa: F811
         session.commit()
 
         # This deletes the interface.
-        response = test_airflow_client.post(
-            f"/vendor_management/interfaces/{interface.id}/delete",
-        )
+        response = client.post(f"/interfaces/{interface.id}/delete")
         assert response.status_code == 302
 
         interface = session.scalars(

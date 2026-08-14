@@ -20,6 +20,24 @@ def drive_folder_id() -> str:
     return Variable.get("GOOGLE_SCANNING_DRIVE_FOLDER_ID", DEFAULT_DRIVE_FOLDER_ID)
 
 
+def _rollback_uploads(hook: GoogleDriveHook, uploaded: list[tuple[str, str]]) -> None:
+    """
+    Best-effort delete of files already uploaded in a batch that ended up
+    with at least one failure, so a partial failure doesn't leave an
+    orphaned file behind in Drive.
+    """
+    service = hook.get_conn()
+    for f, file_id in uploaded:
+        try:
+            service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
+            logger.info(f"Rolled back partial upload: deleted {f} (Drive id {file_id})")
+        except Exception as e:
+            logger.error(
+                f"Failed to roll back {f} (Drive id {file_id}) after partial "
+                f"upload failure: {e}"
+            )
+
+
 @task
 def upload_to_drive_task(file_list: list) -> dict:
     """
@@ -27,12 +45,14 @@ def upload_to_drive_task(file_list: list) -> dict:
     shipments, via the libsys_drive Connection.
     Returns lists of files successfully uploaded and failures, following the
     transmit-data task shape in plugins/data_exports/transmission_tasks.py.
+    If any file in the batch fails, rolls back any files from this batch
+    that already uploaded, so success is all-or-nothing for the batch.
     """
     if not is_production():
         logger.info("SKIPPING GOOGLE DRIVE UPLOAD")
         return {"success": file_list, "failures": []}
 
-    success = []
+    uploaded: list[tuple[str, str]] = []
     failures = []
     folder_id = drive_folder_id()
     hook = GoogleDriveHook(gcp_conn_id=DRIVE_CONN_ID)
@@ -40,15 +60,19 @@ def upload_to_drive_task(file_list: list) -> dict:
         remote_location = Path(f).name
         try:
             logger.info(f"Start upload of file {f} to Google Drive")
-            hook.upload_file(
+            file_id = hook.upload_file(
                 local_location=f,
                 remote_location=remote_location,
                 folder_id=folder_id,
             )
-            success.append(f)
+            uploaded.append((f, file_id))
             logger.info(f"Uploaded {f} to Google Drive")
         except Exception as e:
             logger.error(f"Error uploading {f} to Google Drive: {e}")
             failures.append(f)
 
-    return {"success": success, "failures": failures}
+    if failures and uploaded:
+        _rollback_uploads(hook, uploaded)
+        uploaded = []
+
+    return {"success": [f for f, _ in uploaded], "failures": failures}

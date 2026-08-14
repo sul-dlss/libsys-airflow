@@ -1,81 +1,78 @@
-{% extends "appbuilder/base.html" %}
+{% extends "base.html" %}
 
-{% block head_css %}
-{{ super() }}
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-<link rel="stylesheet" type="text/css" href="{{url_for('static',filename='vendor/main.css')}}">
+{% block head_title %}Digital Bookplates Batches{% endblock %}
+
+{% block extra_head %}
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 {% endblock %}
 
-{% block head_js %}
-{{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
-{% endblock %}
-
-{% block content %}
-<header class="page-header">
+{% block body %}
+  <header>
     <h1>Digital Bookplates Batches</h1>
-</header>
+  </header>
 
-<main class="container">
-  <form enctype="multipart/form-data" method="post" action="{{ url_for('DigitalBookplatesBatchUploadView.trigger_add_979_dags') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-  <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
-  <table class="table table-striped" id="fundsTable">
-    <thead>
-        <tr>
-            <th>Selection</th>
-            <th>Fund Name</th>
-            <th>Druid</th>
-            <th>Bookplate Title</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for fund_row in digital_bookplates %}
-     <tr>
-       <td>
-        <input type="radio" name="fundSelect" value="{{ fund_row.id }}"></input>
-       </td>
-       <td>
-         {% if fund_row.fund_name %}{{ fund_row.fund_name }}{% endif %}
-       </td>
-       <td>
-        {{ fund_row.druid }}
-       </td>
-       <td>
-        {{ fund_row.title }}
-       </td>
-     </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-    <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" class="form-control" id="email" name="email">
-    </div>
-    <div class="form-group col-m-4">
-        <label for="upload-instance-uuids">Instance UUIDs File</label>
-        <input type="file" class="form-control" id="upload-instance-uuids" name="upload-instance-uuids">
-        <p class="help-block">
-            Upload a csv file with a single column of Instance UUIDs
-        </p>
-    </div>
-    <div class="form-group">
-        <input type="submit" class="btn btn-primary" value="Submit">
-    </div>
-  </form>
-</main>
+  {% if message %}
+  <div class="alert-message">{{ message }}</div>
+  {% endif %}
 
-<script type="text/javascript">
-    let fundsTable = document.querySelector("#fundsTable");
-    let dataTable = new simpleDatatables.DataTable(fundsTable, {
-      searchable: true,
-      fixedHeight: true,
-      perPage: 100,
-      perPageSelect: false
-    });
-    let vendorTableSelect = document.querySelector(".datatable-selector");
-    vendorTableSelect.classList.add("form-control");
-    let vendorSearchInput = document.querySelector(".datatable-input");
-    vendorSearchInput.classList.add("form-control");
-   </script>
+  <main>
+    <form enctype="multipart/form-data" method="post" action="create">
+      <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
+      <table id="fundsTable">
+        <thead>
+            <tr>
+                <th>Selection</th>
+                <th>Fund Name</th>
+                <th>Druid</th>
+                <th>Bookplate Title</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for fund_row in digital_bookplates %}
+         <tr>
+           <td>
+            <input type="radio" name="fund_select" value="{{ fund_row.id }}"></input>
+           </td>
+           <td>
+             {% if fund_row.fund_name %}{{ fund_row.fund_name }}{% endif %}
+           </td>
+           <td>
+            {{ fund_row.druid }}
+           </td>
+           <td>
+            {{ fund_row.title }}
+           </td>
+         </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div>
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email">
+      </div>
+      <div>
+          <label for="upload_instance_uuids">Instance UUIDs File</label>
+          <input type="file" id="upload_instance_uuids" name="upload_instance_uuids">
+          <p>
+              Upload a csv file with a single column of Instance UUIDs
+          </p>
+      </div>
+      <div>
+          <input type="submit" value="Submit">
+      </div>
+    </form>
+  </main>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script type="text/javascript">
+      let fundsTable = document.querySelector("#fundsTable");
+      let dataTable = new simpleDatatables.DataTable(fundsTable, {
+        searchable: true,
+        fixedHeight: true,
+        perPage: 100,
+        perPageSelect: false
+      });
+     </script>
 {% endblock %}
