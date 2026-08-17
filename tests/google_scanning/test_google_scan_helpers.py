@@ -3,9 +3,11 @@ import logging
 
 import pytest
 
+from folioclient import FolioDataConflictError
+
 from libsys_airflow.plugins.google_scanning.helpers import (
     _lookup_item_by_barcode,
-    _update_item_for_shipment,
+    _update_item_for_staging,
     get_folio_uuids,
     parse_barcodes,
     process_barcode,
@@ -33,6 +35,14 @@ def _item(**overrides) -> dict:
     }
     item.update(overrides)
     return item
+
+
+def _conflict_error(mocker) -> FolioDataConflictError:
+    return FolioDataConflictError(
+        "optimistic locking failure",
+        request=mocker.Mock(),
+        response=mocker.Mock(status_code=409),
+    )
 
 
 @pytest.fixture
@@ -88,7 +98,7 @@ def test_folio_get_barcodes_raises(mock_folio_client):
 def test_sets_temp_location_stat_code_and_note(mock_folio_client):
     item = _item()
 
-    result = _update_item_for_shipment(
+    result = _update_item_for_staging(
         item=item,
         folio_client=mock_folio_client,
         temp_location_id=TEMP_LOCATION_ID,
@@ -115,7 +125,7 @@ def test_sets_temp_location_stat_code_and_note(mock_folio_client):
 def test_does_not_duplicate_existing_stat_code(mock_folio_client):
     item = _item(statisticalCodeIds=[DIGI_SENT_ID])
 
-    _update_item_for_shipment(
+    _update_item_for_staging(
         item=item,
         folio_client=mock_folio_client,
         temp_location_id=TEMP_LOCATION_ID,
@@ -131,7 +141,7 @@ def test_preserves_existing_stat_codes(mock_folio_client):
     existing_stat_code = "aaaa1111-bbbb-2222-cccc-333344445555"
     item = _item(statisticalCodeIds=[existing_stat_code])
 
-    _update_item_for_shipment(
+    _update_item_for_staging(
         item=item,
         folio_client=mock_folio_client,
         temp_location_id=TEMP_LOCATION_ID,
@@ -148,7 +158,7 @@ def test_folio_put_error_reports_id_and_barcode(mocker):
     mock_client = mocker.MagicMock()
     mock_client.folio_put = mocker.Mock(side_effect=ValueError("500: Server Error"))
 
-    result = _update_item_for_shipment(
+    result = _update_item_for_staging(
         item=item,
         folio_client=mock_client,
         temp_location_id=TEMP_LOCATION_ID,
@@ -160,6 +170,67 @@ def test_folio_put_error_reports_id_and_barcode(mocker):
     assert result["barcode"] == item["barcode"]
     assert item["id"] in result["reason"]
     assert "500: Server Error" in result["reason"]
+
+
+def test_retries_once_and_succeeds_after_conflict(mock_folio_client, mocker):
+    item = _item()
+    mock_folio_client.folio_put = mocker.Mock(
+        side_effect=[_conflict_error(mocker), None]
+    )
+
+    result = _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert result == {}
+    assert mock_folio_client.folio_put.call_count == 2
+    retried_item = mock_folio_client.folio_put.call_args.kwargs["payload"]
+    assert retried_item["statisticalCodeIds"] == [DIGI_SENT_ID]
+
+
+def test_reports_error_when_retry_also_conflicts(mock_folio_client, mocker):
+    item = _item()
+    mock_folio_client.folio_put = mocker.Mock(
+        side_effect=[_conflict_error(mocker), _conflict_error(mocker)]
+    )
+
+    result = _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert result["barcode"] == item["barcode"]
+    assert item["id"] in result["reason"]
+    assert mock_folio_client.folio_put.call_count == 2
+
+
+def test_reports_error_when_refetch_finds_nothing(mocker):
+    item = _item()
+    mock_client = mocker.MagicMock()
+    mock_client.folio_get = mocker.Mock(return_value=[])
+    mock_client.folio_put = mocker.Mock(side_effect=_conflict_error(mocker))
+
+    result = _update_item_for_staging(
+        item=item,
+        folio_client=mock_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert result["barcode"] == item["barcode"]
+    assert item["id"] in result["reason"]
+    mock_client.folio_put.assert_called_once()
 
 
 def test_success_updates_item(mock_folio_client):

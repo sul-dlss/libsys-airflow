@@ -3,7 +3,7 @@ import json
 import logging
 import pathlib
 
-from folioclient import FolioClient
+from folioclient import FolioClient, FolioDataConflictError
 
 from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_FAILED,
@@ -46,12 +46,10 @@ def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
     return _lookup_by_barcode("/inventory/items", "items", barcode, folio_client)
 
 
-def _update_item_for_shipment(**kwargs) -> dict:
+def _apply_staging_updates(item: dict, **kwargs) -> dict:
     """
-    Updates item's temp_location_id, note_type, and statistical code
+    Mutates item in place with temp_location_id, note, and statistical code
     """
-    item: dict = kwargs["item"]
-    folio_client: FolioClient = kwargs["folio_client"]
     temp_location_id: str = kwargs["temp_location_id"]
     digi_sent_id: str = kwargs["digi_sent_id"]
     note_type_id: str = kwargs["note_type_id"]
@@ -66,9 +64,38 @@ def _update_item_for_shipment(**kwargs) -> dict:
             "staffOnly": True,
         }
     )
+    return item
+
+
+def _update_item_for_staging(**kwargs) -> dict:
+    """
+    Updates item's temp_location_id, note_type, and statistical code.
+
+    Retries once on a FOLIO optimistic-locking conflict (409), refetching
+    the item by barcode to pick up its current _version before reapplying
+    the updates and retrying the PUT.
+    """
+    item: dict = kwargs.pop("item")
+    folio_client: FolioClient = kwargs["folio_client"]
+    item = _apply_staging_updates(item, **kwargs)
+
     output = {}
     try:
         folio_client.folio_put(f"/inventory/items/{item['id']}", payload=item)
+    except FolioDataConflictError as e:
+        try:
+            fresh_item = _lookup_item_by_barcode(item["barcode"], folio_client)
+            if "id" not in fresh_item:
+                raise ValueError(f"Refetch by barcode failed: {fresh_item}")
+            fresh_item = _apply_staging_updates(fresh_item, **kwargs)
+            folio_client.folio_put(
+                f"/inventory/items/{fresh_item['id']}", payload=fresh_item
+            )
+        except Exception:
+            output["barcode"] = item["barcode"]
+            output["reason"] = (
+                f"{item['id']} with barcode: {item['barcode']} failed to update, error: {e}"
+            )
     except Exception as e:
         output["barcode"] = item["barcode"]
         output["reason"] = (
@@ -122,7 +149,7 @@ def process_barcode(**kwargs) -> dict:
         return lookup_result
     kwargs["item"] = lookup_result
     kwargs["date"] = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d")
-    return _update_item_for_shipment(**kwargs)
+    return _update_item_for_staging(**kwargs)
 
 
 def parse_barcodes(text: str) -> list:
