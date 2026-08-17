@@ -80,25 +80,3 @@ def test_courier_manifest_raises_on_http_error(mocker, mock_caiasoft_connection)
     with pytest.raises(httpx.HTTPStatusError):
         CaiaSoftAPIWrapper().courier_manifest("20260812", "20260813")
 
-
-def test_courier_shipment_requests_expected_url(mocker, mock_caiasoft_connection):
-    mocker.patch(
-        "libsys_airflow.plugins.google_scanning.caiasoft_api.Connection.get",
-        return_value=mock_caiasoft_connection,
-    )
-    mock_get = mocker.patch(
-        "httpx.Client.get",
-        return_value=httpx.Response(
-            200,
-            json={"success": True, "manifest": [{"shipment": "SHIP-1"}]},
-            request=httpx.Request("GET", "https://library.caiasoft.com"),
-        ),
-    )
-
-    result = CaiaSoftAPIWrapper().courier_shipment("SHIP-1")
-
-    mock_get.assert_called_once_with(
-        "https://library.caiasoft.com/api/couriershipment/v1/SHIP-1",
-        timeout=30,
-    )
-    assert result == {"success": True, "manifest": [{"shipment": "SHIP-1"}]}

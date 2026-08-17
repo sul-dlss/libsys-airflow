@@ -36,13 +36,3 @@ class CaiaSoftAPIWrapper:
             response.raise_for_status()
             return response.json()
 
-    def courier_shipment(self, shipment_number: str) -> dict:
-        """
-        Retrieves a single shipment's carts/bins and item barcodes by
-        shipment number.
-        """
-        url = f"{self.base_url}/api/couriershipment/v1/{shipment_number}"
-        with httpx.Client(headers=self.headers) as client:
-            response = client.get(url, timeout=30)
-            response.raise_for_status()
-            return response.json()
