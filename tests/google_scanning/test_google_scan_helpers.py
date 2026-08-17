@@ -174,7 +174,9 @@ def test_folio_put_error_reports_id_and_barcode(mocker):
 
 def test_retries_once_and_succeeds_after_conflict(mock_folio_client, mocker):
     item = _item()
-    mock_folio_client.folio_put = mocker.Mock(side_effect=[_conflict_error(mocker), None])
+    mock_folio_client.folio_put = mocker.Mock(
+        side_effect=[_conflict_error(mocker), None]
+    )
 
     result = _update_item_for_staging(
         item=item,
