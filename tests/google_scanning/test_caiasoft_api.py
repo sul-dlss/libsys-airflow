@@ -79,4 +79,3 @@ def test_courier_manifest_raises_on_http_error(mocker, mock_caiasoft_connection)
 
     with pytest.raises(httpx.HTTPStatusError):
         CaiaSoftAPIWrapper().courier_manifest("20260812", "20260813")
-
