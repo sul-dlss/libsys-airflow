@@ -200,7 +200,10 @@ def test_sal3_confirmation_email(mocker, mock_dag_run, sal3_result):
 
     assert mock_send_email.called
     call_kwargs = mock_send_email.call_args[1]
-    assert call_kwargs["to"] == ["devs@example.com"]
+    assert call_kwargs["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+    ]
     assert (
         call_kwargs["subject"] == "Google Scanning CaiaSoft SAL3 Shipment Confirmation"
     )
@@ -251,7 +254,10 @@ def test_sal3_failure_email(mocker, mock_dag_run):
     assert mock_send_email.called
     call_kwargs = mock_send_email.call_args[1]
     assert call_kwargs["subject"] == "Google Scanning CaiaSoft SAL3 Shipment Failed"
-    assert call_kwargs["to"] == ["devs@example.com"]
+    assert call_kwargs["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+    ]
 
     html_body = BeautifulSoup(call_kwargs["html_content"], "html.parser")
     assert "Failed to upload files to Google Drive" in html_body.text
@@ -265,7 +271,10 @@ def test_send_sal3_failure_email(mocker, mock_dag_run):
 
     send_sal3_failure_email("boom", mock_dag_run)
 
-    assert mock_send_email.call_args[1]["to"] == ["devs@example.com"]
+    assert mock_send_email.call_args[1]["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+    ]
     html_body = BeautifulSoup(
         mock_send_email.call_args[1]["html_content"], "html.parser"
     )
