@@ -67,7 +67,11 @@ def test_shipment_confirmation_email(mocker, mock_dag_run, shipment_result):
 
     assert mock_send_email.called
     call_kwargs = mock_send_email.call_args[1]
-    assert call_kwargs["to"] == ["devs@example.com", "staff@example.com"]
+    assert call_kwargs["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+        "staff@example.com",
+    ]
     assert call_kwargs["subject"] == "Google Scanning On-Campus Shipment Confirmation"
 
     html_body = BeautifulSoup(call_kwargs["html_content"], "html.parser")
@@ -92,7 +96,10 @@ def test_shipment_confirmation_email_no_user_email(
         shipment_result, dag_run=mock_dag_run, params={}
     )
 
-    assert mock_send_email.call_args[1]["to"] == ["devs@example.com"]
+    assert mock_send_email.call_args[1]["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+    ]
 
 
 def test_shipment_confirmation_email_no_skips_or_failures(mocker, mock_dag_run):
@@ -134,7 +141,11 @@ def test_shipment_failure_email(mocker, mock_dag_run):
     assert mock_send_email.called
     call_kwargs = mock_send_email.call_args[1]
     assert call_kwargs["subject"] == "Google Scanning On-Campus Shipment Failed"
-    assert call_kwargs["to"] == ["devs@example.com", "staff@example.com"]
+    assert call_kwargs["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+        "staff@example.com",
+    ]
 
     html_body = BeautifulSoup(call_kwargs["html_content"], "html.parser")
     assert "Failed to upload files to Google Drive" in html_body.text
@@ -152,7 +163,10 @@ def test_send_shipment_failure_email_no_user_email(mocker, mock_dag_run):
 
     send_shipment_failure_email("boom", mock_dag_run, None)
 
-    assert mock_send_email.call_args[1]["to"] == ["devs@example.com"]
+    assert mock_send_email.call_args[1]["to"] == [
+        "devs@example.com",
+        "google-books-2026@lists.stanford.edu",
+    ]
     html_body = BeautifulSoup(
         mock_send_email.call_args[1]["html_content"], "html.parser"
     )
