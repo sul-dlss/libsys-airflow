@@ -26,15 +26,24 @@ def shipment_filestamp(shipped_at: str) -> str:
 
 def generate_shipment_marc(instance_ids: list[str], shipped_at: str) -> dict:
     """
-    Generates the shipment's MARCXML from the resolved instance ids,
-    Must run inside a task context, since retrieve_marc_for_instances reads
-    Airflow params via get_current_context().
+    Generates the on-campus shipment's MARCXML from the resolved instance
+    ids, using shipment_filestamp for the filestamp. See
+    generate_marc_for_instances for the shared implementation (also used by
+    the CaiaSoft SAL3 shipment flow, which computes its own filestamp).
+    """
+    return generate_marc_for_instances(instance_ids, shipment_filestamp(shipped_at))
+
+
+def generate_marc_for_instances(instance_ids: list[str], filestamp: str) -> dict:
+    """
+    Generates a shipment's MARCXML from the resolved instance ids and a
+    caller-supplied filestamp. Must run inside a task context, since
+    retrieve_marc_for_instances reads Airflow params via
+    get_current_context().
     Returns the generated MARCXML path, the filestamp used (so
     generate_manifest can reuse the exact same one), and any instance ids
     that had no SRS record, for the shipment confirmation email.
     """
-    filestamp = shipment_filestamp(shipped_at)
-
     unique_instance_ids = list(dict.fromkeys(instance_ids))
     instanceids_path = save_ids(
         vendor=VENDOR,

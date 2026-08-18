@@ -3,6 +3,7 @@ import re
 import pytest
 
 from libsys_airflow.plugins.google_scanning.marc import (
+    generate_marc_for_instances,
     generate_shipment_marc,
     shipment_filestamp,
 )
@@ -119,3 +120,46 @@ def test_generate_shipment_marc_raises_when_no_marc_generated(mocker):
 
     with pytest.raises(ValueError, match="No MARC records generated"):
         generate_shipment_marc(["instance-1"], "20260810")
+
+
+def test_generate_marc_for_instances_uses_given_filestamp(mocker):
+    mock_save_ids = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.marc.save_ids",
+        return_value=(
+            "/opt/airflow/data-export-files/google_scanning/instanceids/new/"
+            "stanford_20260813-sal3.csv"
+        ),
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.marc.marc_for_instances",
+        return_value={
+            "new": [
+                "/opt/airflow/data-export-files/google_scanning/marc-files/new/"
+                "stanford_20260813-sal3.mrc"
+            ],
+            "not_found": [],
+        },
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.marc.add_holdings_items_to_marc_files"
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.marc.clean_and_serialize_marc_files"
+    )
+
+    result = generate_marc_for_instances(["instance-1"], "stanford_20260813-sal3")
+
+    mock_save_ids.assert_called_once_with(
+        vendor="google_scanning",
+        kind="new",
+        data=["instance-1"],
+        timestamp="stanford_20260813-sal3",
+    )
+    assert result == {
+        "filestamp": "stanford_20260813-sal3",
+        "marc_xml_path": (
+            "/opt/airflow/data-export-files/google_scanning/marc-files/new/"
+            "stanford_20260813-sal3.xml"
+        ),
+        "not_found_instance_ids": [],
+    }

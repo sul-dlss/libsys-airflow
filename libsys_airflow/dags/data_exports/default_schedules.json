@@ -15,4 +15,5 @@
     "transmit_pod": "0 0 * * *",
     "select_sharevde": "0 20 * * *",
     "transmit_sharevde": "0 22 * * *",
+    "google_scanning_caiasoft_check": "0 6 * * *",
 }
