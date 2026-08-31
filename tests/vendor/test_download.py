@@ -393,9 +393,7 @@ def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
     adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
 
     mock_hook.get_conn.return_value.sendcmd.assert_called_once_with("TYPE I")
-    mock_hook.retrieve_file.assert_called_once_with(
-        "file1.mrc", "/downloads/file1.mrc"
-    )
+    mock_hook.retrieve_file.assert_called_once_with("file1.mrc", "/downloads/file1.mrc")
 
 
 def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
