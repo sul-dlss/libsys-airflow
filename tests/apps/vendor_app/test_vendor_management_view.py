@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import MagicMock
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client  # noqa
 from pytest_mock_resources import Rows
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -94,7 +95,7 @@ rows = Rows(
     ),
 )
 
-client = TestClient(app, follow_redirects=False)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture
@@ -215,3 +216,10 @@ def test_missing_vendor(mock_db, mocker):
         )
         response = client.get('/vendors/987')
         assert response.status_code == 404
+
+
+def test_vendor_sync_without_csrf_token():
+    response = TestClient(app, follow_redirects=False).post('/vendors/1/sync')
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"

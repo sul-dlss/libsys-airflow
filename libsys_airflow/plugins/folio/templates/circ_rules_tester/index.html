@@ -15,6 +15,7 @@
           <h3>CSV Batch</h3>
 
           <form enctype="multipart/form-data" method="POST" action="batch_test">
+            {{ csrf_field(request) }}
               <p>
                   Upload csv file with uuids with the following columns:
                   <ul>
@@ -32,6 +33,7 @@
       <div class="column">
           <h3>Single Scenario</h3>
           <form method="POST" action="test">
+            {{ csrf_field(request) }}
               <label for="patron_group_id">
                   Patron Group
               </label>

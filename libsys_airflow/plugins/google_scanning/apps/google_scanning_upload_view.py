@@ -4,9 +4,8 @@ import re
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
-from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
@@ -18,18 +17,21 @@ from libsys_airflow.plugins.google_scanning.staging import (
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
-from libsys_airflow.plugins.shared.utils import redirect_with_query_params
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
+from libsys_airflow.plugins.shared.utils import (
+    plugin_templates,
+    redirect_with_query_params,
+)
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 
-templates = Jinja2Templates(
-    directory=Path(__file__).resolve().parent.parent
-    / "templates"
-    / "google_scanning_upload"
+templates = plugin_templates(
+    Path(__file__).resolve().parent.parent, "google_scanning_upload"
 )
 
 
@@ -67,7 +69,7 @@ def _redirect_home(**query_params):
     return redirect_with_query_params(".", **query_params)
 
 
-@app.post("/stage")
+@app.post("/stage", dependencies=[Depends(csrf_protect)])
 def stage_cart(
     request: Request,
     cart_name: str = Form(...),  # noqa: B008
@@ -111,7 +113,7 @@ def stage_cart(
     return _redirect_home(success=f"Staged {cart_name}.")
 
 
-@app.post("/ship")
+@app.post("/ship", dependencies=[Depends(csrf_protect)])
 def trigger_shipment(
     request: Request,
     selected_carts: list[str] = Form(default=[]),  # noqa: B008

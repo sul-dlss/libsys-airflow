@@ -21,6 +21,7 @@
     of record IDs from the MARC 001 field and upload the csv file.
   </p>
   <form enctype="multipart/form-data" method="POST" action="upload">
+    {{ csrf_field(request) }}
     <div class="form-row">
       <label for="upload_deletes">Upload a csv file with a single column of MARC 001 values</label>
       <input type="file" id="upload_deletes" name="upload_deletes">

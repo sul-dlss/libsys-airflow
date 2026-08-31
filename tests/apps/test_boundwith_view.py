@@ -2,11 +2,12 @@ from io import BytesIO
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client  # noqa
 import pytest  # noqa
 
 from libsys_airflow.plugins.boundwith.boundwith_view import app
 
-client = TestClient(app)
+client = csrf_test_client(app)
 
 
 def test_bw_home():
@@ -181,3 +182,10 @@ def test_run_bw_creation_csv_error(mock_read_csv):
     )
     assert response.status_code == 200
     assert "Error with CSV" in response.text and "CSV parsing failed" in response.text
+
+
+def test_run_bw_creation_without_csrf_token():
+    response = TestClient(app).post('/create', data={'sunid': 'testuser'})
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"

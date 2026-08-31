@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from bs4 import BeautifulSoup
-from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client  # noqa
 from pytest_mock_resources import Rows
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -158,7 +158,7 @@ rows = Rows(
     ),
 )
 
-client = TestClient(app, follow_redirects=False)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ import pandas as pd
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from libsys_airflow.plugins.digital_bookplates.bookplates import (
@@ -14,6 +14,7 @@ from libsys_airflow.plugins.digital_bookplates.bookplates import (
     launch_poll_for_979_dags_email,
 )
 from libsys_airflow.plugins.digital_bookplates.models import DigitalBookplate
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import (
     plugin_templates,
     redirect_with_query_params,
@@ -23,6 +24,7 @@ from libsys_airflow.plugins.shared.utils import (
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "digital_bookplates"
@@ -96,7 +98,7 @@ def digital_bookplates_batch_upload_home(request: Request):
     )
 
 
-@app.post("/create")
+@app.post("/create", dependencies=[Depends(csrf_protect)])
 def trigger_add_979_dags(
     request: Request,
     email: str | None = Form(default=None),  # noqa: B008

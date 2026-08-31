@@ -131,6 +131,51 @@ to see changes in the running Airflow environment.
 
 ## Development
 
+### CSRF protection for plugin apps
+
+Airflow 3 mounts each plugin app as its own FastAPI sub-application and provides no CSRF
+protection, so a new app has to opt in. `libsys_airflow/plugins/shared/csrf.py` wraps
+[fastapi-csrf-protect](https://github.com/aekasitt/fastapi-csrf-protect) (its `flexible` variant,
+which accepts the token from either the form body or a header) so that opting in stays a one-line
+change per app. In the app module:
+
+```python
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
+
+app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
+
+@app.post("/create", dependencies=[Depends(csrf_protect)])
+def create(...):
+    ...
+```
+
+and inside every `<form method="post">` in its templates:
+
+```html
+{{ csrf_field(request) }}
+```
+
+`csrf_field` and `csrf_token` are registered as Jinja globals by
+`libsys_airflow.plugins.shared.utils.plugin_templates`, so apps that build their
+`Jinja2Templates` with that helper get them for free. JavaScript that POSTs on its own must send
+the token too, either as a `csrf_token` form field (`{{ csrf_token(request) }}`) or in an
+`X-CSRFToken` header. In tests, `tests/csrf_helpers.csrf_test_client` returns a `TestClient` that
+presents a valid token on every request; use a plain `TestClient` to assert the rejection path.
+
+The middleware issues two cookies: `csrf_signed_token` is httponly and signed with
+`[api] secret_key` (already set as `AIRFLOW__API__SECRET_KEY` in `compose.prod.yaml`, and it must
+be identical across API server instances), and `csrf_token` holds the matching unsigned value so a
+page render can reproduce the token the form has to submit. Tokens are valid for eight hours.
+
+Tokens are bound to the authenticated user: the signing key is derived from the user's id, so a
+pair minted for one user is rejected for another, and the middleware rolls the pair whenever the
+identity changes. This matters because CSRF cookies can be overwritten from any other
+`stanford.edu` host — same-site as far as cookies are concerned — so without binding an attacker
+could plant a pair they minted for themselves. **Binding only takes effect once the plugin routes
+require authentication**, which they do not yet; until then every request resolves to an empty
+binding and behaves as before.
+
 ### Support for Multiple Databases with Alembic
 We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
 these [directions](https://alembic.sqlalchemy.org/en/latest/cookbook.html#run-multiple-alembic-environments-from-one-ini-file).

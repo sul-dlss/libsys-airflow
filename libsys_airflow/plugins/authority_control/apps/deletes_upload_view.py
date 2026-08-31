@@ -2,14 +2,16 @@ import pathlib
 
 import pandas as pd
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "deletes-csv-upload"
@@ -41,7 +43,7 @@ def authorities_delete_home(request: Request):
     return templates.TemplateResponse(request, "index.html", {})
 
 
-@app.post("/upload")
+@app.post("/upload", dependencies=[Depends(csrf_protect)])
 def upload_csv(
     request: Request,
     email: str | None = Form(default=None),  # noqa: B008

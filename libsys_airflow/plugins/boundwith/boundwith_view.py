@@ -3,13 +3,15 @@ from typing import Union
 
 import pandas as pd
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(pathlib.Path(__file__).resolve().parent, "boundwith")
 
@@ -39,7 +41,7 @@ def bw_home(request: Request):
     return templates.TemplateResponse(request, "index.html", {})
 
 
-@app.post("/create")
+@app.post("/create", dependencies=[Depends(csrf_protect)])
 def run_bw_creation(
     request: Request,
     sunid: str = Form(default=""),  # noqa: B008
