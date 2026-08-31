@@ -360,7 +360,7 @@ def test_ftp_adapter_fallback_to_list_directory(mocker):
         "502 MLSD not implemented"
     )
     mock_hook.list_directory.return_value = ["file1.mrc", "file2.mrc"]
-    mock_hook.conn.sendcmd.return_value = None
+    mock_hook.get_conn.return_value.sendcmd.return_value = None
 
     # Mock get_mod_time to return datetime objects
     def mock_get_mod_time(path):
@@ -377,6 +377,25 @@ def test_ftp_adapter_fallback_to_list_directory(mocker):
     assert adapter.list_directory() == ["file1.mrc", "file2.mrc"]
     assert adapter.get_size("file1.mrc") == 1234
     assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
+
+
+def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.return_value = {
+        "file1.mrc": {
+            "size": "123",
+            "modify": "20240115103000",
+            "type": "file",
+        }
+    }
+
+    adapter = FTPAdapter(mock_hook, "/remote/path")
+    adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
+
+    mock_hook.get_conn.return_value.sendcmd.assert_called_once_with("TYPE I")
+    mock_hook.retrieve_file.assert_called_once_with(
+        "file1.mrc", "/downloads/file1.mrc"
+    )
 
 
 def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
@@ -400,7 +419,7 @@ def test_build_descriptions_handles_errors(mocker):
         "502 MLSD not implemented"
     )
     mock_hook.list_directory.return_value = ["good_file.mrc", "bad_file.mrc"]
-    mock_hook.conn.sendcmd.return_value = None
+    mock_hook.get_conn.return_value.sendcmd.return_value = None
 
     # First file succeeds, second fails
     def mock_get_mod_time(path):

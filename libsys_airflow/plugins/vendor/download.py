@@ -37,16 +37,20 @@ class FTPAdapter:
             logger.info("Using fallback method (NLST + individual queries)")
             self._file_descriptions = self._build_descriptions_from_list()
 
+    def _set_binary_mode(self):
+        """Sets the transfer type to binary so sizes and downloads aren't mangled."""
+        try:
+            self.hook.get_conn().sendcmd("TYPE I")
+        except Exception as e:
+            logger.warning(f"Failed to set binary mode: {e}")
+
     def _build_descriptions_from_list(self) -> dict:
         """Fallback method when MLSD is not available."""
         filenames = self.hook.list_directory(self.remote_path)
         descriptions = {}
 
         # Set binary mode once for all size queries
-        try:
-            self.hook.conn.sendcmd("TYPE I")  # type: ignore
-        except Exception as e:
-            logger.warning(f"Failed to set binary mode: {e}")
+        self._set_binary_mode()
 
         for filename in filenames:
             # Normalize the path - handle both cases
@@ -100,6 +104,7 @@ class FTPAdapter:
         return int(file_size)
 
     def retrieve_file(self, filename: str, download_filepath: str):
+        self._set_binary_mode()
         try:
             self.hook.retrieve_file(filename, download_filepath)
         except ftplib.error_perm as e:
