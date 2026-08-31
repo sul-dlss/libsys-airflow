@@ -5,12 +5,13 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import unquote_plus
 
 from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client  # noqa
 import pytest  # noqa
 
 from libsys_airflow.plugins.folio.apps import circ_rules_tester_view
 from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import app
 
-client = TestClient(app, follow_redirects=False)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 def test_circ_rules_tester_main_page():
@@ -277,3 +278,18 @@ def test_report_scenario_found(mocker, tmp_path):
     assert response.status_code == 200
     assert "Loan Policy" in response.text
     assert "Allowed" in response.text
+
+
+def test_batch_test_without_csrf_token():
+    response = TestClient(app, follow_redirects=False).post("/batch_test")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"
+
+
+def test_single_test_without_csrf_token():
+    response = TestClient(app, follow_redirects=False).post(
+        "/test", data={"patron_group_id": "pg1"}
+    )
+
+    assert response.status_code == 403

@@ -36,6 +36,7 @@
 
   <h2>Stage a Cart</h2>
   <form enctype="multipart/form-data" method="post" action="stage">
+    {{ csrf_field(request) }}
     <div class="form-row">
       <label for="cart_name">Cart Name</label>
       <input type="text" id="cart_name" name="cart_name" required>
@@ -58,6 +59,7 @@
   <div class="tables-panel">
   <h2>Review Staged Carts</h2>
   <form method="post" action="ship">
+    {{ csrf_field(request) }}
     <table>
       <thead>
         <tr>

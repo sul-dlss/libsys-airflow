@@ -3,12 +3,15 @@ from urllib.parse import unquote_plus
 import pytest  # noqa
 
 from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client, token_from_cookie  # noqa
+
+from libsys_airflow.plugins.shared.csrf import CSRF_COOKIE_NAME, CSRF_FIELD_NAME
 
 from libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view import (
     app,
 )
 
-client = TestClient(app, follow_redirects=False)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture(autouse=True)
@@ -457,3 +460,103 @@ def test_download_shipped_file_missing(mocker, tmp_path):
     response = client.get("/download/cart-1/does-not-exist.txt")
 
     assert response.status_code == 404
+
+
+def test_home_renders_csrf_field():
+    fresh_client = TestClient(app, follow_redirects=False)
+
+    response = fresh_client.get("/")
+
+    token = token_from_cookie(response.cookies[CSRF_COOKIE_NAME])
+    assert f'<input type="hidden" name="csrf_token" value="{token}">' in response.text
+    # Both the stage and the ship form carry the token
+    assert response.text.count('name="csrf_token"') == 2
+
+
+def test_stage_cart_with_csrf_token_from_the_form(mocker):
+    """The path a browser takes: token issued in the cookie, submitted in the form."""
+    mock_save = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
+        return_value="/opt/airflow/data-export-files/google_scanning/staged/cart-2/barcodes.txt",
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_stage_cart_items_dag",
+        return_value="run-123",
+    )
+    fresh_client = TestClient(app, follow_redirects=False)
+    fresh_client.get("/")
+    token = token_from_cookie(fresh_client.cookies[CSRF_COOKIE_NAME])
+
+    response = fresh_client.post(
+        "/stage",
+        data={"cart_name": "cart-2", CSRF_FIELD_NAME: token},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 303
+    mock_save.assert_called_once_with("cart-2", "barcodes.txt", b"12345\n")
+
+
+def test_stage_cart_without_csrf_token(mocker):
+    mock_save = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file"
+    )
+
+    response = TestClient(app, follow_redirects=False).post(
+        "/stage",
+        data={"cart_name": "cart-2"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"
+    mock_save.assert_not_called()
+
+
+def test_stage_cart_with_mismatched_csrf_token(mocker):
+    mock_save = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file"
+    )
+    fresh_client = TestClient(app, follow_redirects=False)
+    fresh_client.get("/")
+
+    response = fresh_client.post(
+        "/stage",
+        data={"cart_name": "cart-2", CSRF_FIELD_NAME: "not-the-issued-token"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 403
+    mock_save.assert_not_called()
+
+
+def test_trigger_shipment_with_csrf_token_from_the_form(mocker):
+    mock_trigger = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_on_campus_shipment_dag",
+        return_value="run-456",
+    )
+    fresh_client = TestClient(app, follow_redirects=False)
+    fresh_client.get("/")
+    token = token_from_cookie(fresh_client.cookies[CSRF_COOKIE_NAME])
+
+    response = fresh_client.post(
+        "/ship",
+        data={"selected_carts": ["cart-1/barcodes.txt"], CSRF_FIELD_NAME: token},
+    )
+
+    assert response.status_code == 303
+    mock_trigger.assert_called_once()
+
+
+def test_trigger_shipment_without_csrf_token(mocker):
+    mock_trigger = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_on_campus_shipment_dag"
+    )
+
+    response = TestClient(app, follow_redirects=False).post(
+        "/ship", data={"selected_carts": ["cart-1/barcodes.txt"]}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"
+    mock_trigger.assert_not_called()

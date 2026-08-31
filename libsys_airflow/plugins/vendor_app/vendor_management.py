@@ -18,6 +18,12 @@ from honeybadger.contrib.fastapi import HoneybadgerRoute
 from starlette.datastructures import FormData
 
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.csrf import (
+    CSRFCookieMiddleware,
+    csrf_field,
+    csrf_protect,
+    csrf_token,
+)
 
 from libsys_airflow.plugins.vendor.job_profiles import (
     job_profiles,
@@ -45,12 +51,15 @@ logger = logging.getLogger(__name__)
 URL_PREFIX = "/vendor_management"
 
 app = FastAPI(route_class=HoneybadgerRoute)
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = Jinja2Templates(
     directory=pathlib.Path(__file__).resolve().parent / "templates"
 )
 templates.env.filters["urlencode"] = lambda value: quote(str(value), safe="")
 templates.env.globals["url_prefix"] = URL_PREFIX
+templates.env.globals["csrf_field"] = csrf_field
+templates.env.globals["csrf_token"] = csrf_token
 
 app.mount(
     "/static",
@@ -163,7 +172,7 @@ def vendor(vendor_id: int, request: Request):
     )
 
 
-@app.post("/vendors/{vendor_id}/interfaces")
+@app.post("/vendors/{vendor_id}/interfaces", dependencies=[Depends(csrf_protect)])
 def create_vendor_interface(vendor_id: int):
     session = Session()
     vendor = session.query(Vendor).get(vendor_id)
@@ -178,7 +187,7 @@ def create_vendor_interface(vendor_id: int):
     return _redirect(f"{URL_PREFIX}/interfaces/{interface.id}/edit")
 
 
-@app.post("/vendors/{vendor_id}/sync")
+@app.post("/vendors/{vendor_id}/sync", dependencies=[Depends(csrf_protect)])
 def vendor_sync(vendor_id: int):
     vendor = Session().query(Vendor).get(vendor_id)
     _trigger_folio_vendor_sync_dag(vendor)
@@ -218,7 +227,7 @@ def interface_edit_form(interface_id: int, request: Request):
     )
 
 
-@app.post("/interfaces/{interface_id}/edit")
+@app.post("/interfaces/{interface_id}/edit", dependencies=[Depends(csrf_protect)])
 def interface_edit(
     interface_id: int, form: FormData = Depends(_form_data)  # noqa: B008
 ):
@@ -337,7 +346,7 @@ def _update_vendor_interface_form(interface, form):
 _FILE_UPLOAD_FIELD = File(default=None, alias="file-upload")
 
 
-@app.post("/interfaces/{interface_id}/file")
+@app.post("/interfaces/{interface_id}/file", dependencies=[Depends(csrf_protect)])
 def file_upload(interface_id: int, file_upload: UploadFile | None = _FILE_UPLOAD_FIELD):
     if file_upload is None or not file_upload.filename:
         return _redirect(
@@ -392,7 +401,7 @@ def _create_vendor_file(interface, file_upload, filepath, session):
     return new_vendor_file
 
 
-@app.post("/interfaces/{interface_id}/fetch")
+@app.post("/interfaces/{interface_id}/fetch", dependencies=[Depends(csrf_protect)])
 def interface_fetch(interface_id: int):
     session = Session()
     interface = session.query(VendorInterface).get(interface_id)
@@ -404,7 +413,7 @@ def interface_fetch(interface_id: int):
     )
 
 
-@app.post("/interfaces/{interface_id}/test")
+@app.post("/interfaces/{interface_id}/test", dependencies=[Depends(csrf_protect)])
 def interface_test(interface_id: int):
     session = Session()
     interface = session.query(VendorInterface).get(interface_id)
@@ -420,7 +429,7 @@ def interface_test(interface_id: int):
     return _redirect(f"{URL_PREFIX}/interfaces/{interface.id}", message=message)
 
 
-@app.post("/interfaces/{interface_id}/delete")
+@app.post("/interfaces/{interface_id}/delete", dependencies=[Depends(csrf_protect)])
 def interface_delete(interface_id: int):
     session = Session()
     interface = session.query(VendorInterface).get(interface_id)
@@ -449,7 +458,7 @@ def file_detail(file_id: int, request: Request):
     )
 
 
-@app.post("/files/{file_id}")
+@app.post("/files/{file_id}", dependencies=[Depends(csrf_protect)])
 def file_update(
     file_id: int, request: Request, form: FormData = Depends(_form_data)  # noqa: B008
 ):
@@ -490,7 +499,7 @@ def file_update(
     )
 
 
-@app.post("/files/{file_id}/load")
+@app.post("/files/{file_id}/load", dependencies=[Depends(csrf_protect)])
 def load_file(file_id: int, redirect_url: str | None = None):
     session = Session()
     file = session.query(VendorFile).get(file_id)
@@ -528,7 +537,7 @@ def download_file(type: str, file_id: int, request: Request):
     return FileResponse(os.path.join(path, filename), filename=filename)
 
 
-@app.post("/files/{file_id}/reset_fetch")
+@app.post("/files/{file_id}/reset_fetch", dependencies=[Depends(csrf_protect)])
 def reset_fetch(file_id: int):
     session = Session()
     file = session.query(VendorFile).get(file_id)

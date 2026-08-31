@@ -6,11 +6,12 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import Response
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import (
     plugin_templates,
     redirect_with_query_params as _redirect,
@@ -19,6 +20,7 @@ from libsys_airflow.plugins.shared.utils import (
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "circ_rules_tester"
@@ -49,7 +51,7 @@ def circ_home(request: Request):
     )
 
 
-@app.post("/batch_test")
+@app.post("/batch_test", dependencies=[Depends(csrf_protect)])
 def run_batch_test(
     request: Request,
     upload_scenarios: UploadFile | None = File(default=None),  # noqa: B008
@@ -78,7 +80,7 @@ def run_batch_test(
         )
 
 
-@app.post("/test")
+@app.post("/test", dependencies=[Depends(csrf_protect)])
 def run_test(
     patron_group_id: str = Form(default=""),  # noqa: B008
     material_type_id: str = Form(default=""),  # noqa: B008

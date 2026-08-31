@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from fastapi.testclient import TestClient
+from csrf_helpers import csrf_test_client  # noqa
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as SQLAlchemySession
 from sqlalchemy.pool import StaticPool
@@ -26,7 +27,7 @@ from mocks import (  # noqa
 )
 
 
-client = TestClient(app, follow_redirects=False)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture
@@ -214,3 +215,10 @@ def test_column_header(mocker, mock_api_client, mock_db, tmp_path):
     with open(file) as f:
         first_line = f.readline()
         assert first_line == 'Instance UUID\n'
+
+
+def test_trigger_add_979_dags_without_csrf_token():
+    response = TestClient(app, follow_redirects=False).post("/create")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing or invalid"

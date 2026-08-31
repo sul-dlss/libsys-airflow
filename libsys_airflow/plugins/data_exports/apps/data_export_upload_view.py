@@ -6,13 +6,15 @@ from typing import Union
 import pandas as pd
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI()
+app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "data-export-upload"
@@ -79,7 +81,7 @@ def data_export_upload_home(request: Request):
     return _render_home(request)
 
 
-@app.post("/create")
+@app.post("/create", dependencies=[Depends(csrf_protect)])
 def run_data_export_upload(
     request: Request,
     vendor: str = Form(default=""),  # noqa: B008
