@@ -832,18 +832,19 @@ requests-toolbelt = ">=1.0.0"
 
 [[package]]
 name = "apache-airflow-providers-keycloak"
-version = "0.1.0"
+version = "0.8.2"
 description = "Provider package apache-airflow-providers-keycloak for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "apache_airflow_providers_keycloak-0.1.0-py3-none-any.whl", hash = "sha256:9c400bb5298fa2a2d3189ad2d66cce3150bacd84473259bb5e83ecfb51837057"},
-    {file = "apache_airflow_providers_keycloak-0.1.0.tar.gz", hash = "sha256:d3d52a2a464527595aa07ce7459630ecea5381d4a05e4f3b1cdd84ad0e399709"},
+    {file = "apache_airflow_providers_keycloak-0.8.2-py3-none-any.whl", hash = "sha256:40e550b3a59492a2e593c5f44bea6c30f2897a9c03da408e5a3c3e75c90cec66"},
+    {file = "apache_airflow_providers_keycloak-0.8.2.tar.gz", hash = "sha256:3333e0922a018d5373a37e9b966c855f3fbfa35e56079f743e89c2c2377cfa07"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=3.0.0"
+apache-airflow-providers-common-compat = ">=1.12.0"
 python-keycloak = ">=5.0.0"
 
 [[package]]
@@ -1520,40 +1521,6 @@ urllib3 = ">=1.25.4,<2.2.0 || >2.2.0,<3"
 
 [package.extras]
 crt = ["awscrt (==0.36.0)"]
-
-[[package]]
-name = "cachelib"
-version = "0.14.0"
-description = "A collection of cache libraries in the same API interface."
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-markers = "python_version == \"3.10\""
-files = [
-    {file = "cachelib-0.14.0-py3-none-any.whl", hash = "sha256:4671000b032baa8fac47ad19850f4f522785cee764b4e04c5cfe8955a18d67de"},
-    {file = "cachelib-0.14.0.tar.gz", hash = "sha256:73fedcadd0ba818fb2bb9f3c7cd5fcc2a71e86286f1842f55f28d500faee17f1"},
-]
-
-[[package]]
-name = "cachelib"
-version = "0.17.0"
-description = "A collection of cache libraries in the same API interface."
-optional = false
-python-versions = ">=3.11"
-groups = ["main"]
-markers = "python_version > \"3.10\""
-files = [
-    {file = "cachelib-0.17.0-py3-none-any.whl", hash = "sha256:f83909b6f78741c3a5d76d292d13bf24964ffb13e00ea1d18f92e20599766ce0"},
-    {file = "cachelib-0.17.0.tar.gz", hash = "sha256:f3c7dc8d3c1132ab699681ffdf8a52d341d9425ac1401c538cf0b1d87b1677c8"},
-]
-
-[package.extras]
-dynamodb = ["boto3 (>=1.43.4)"]
-memcached = ["pylibmc (>=1.6.3)"]
-mongodb = ["pymongo (>=4.11)"]
-redis = ["redis (>=6.0.0)"]
-uwsgi = ["uwsgi (>=2.0.28)"]
-valkey = ["valkey (>=6.1.0)"]
 
 [[package]]
 name = "cachetools"
@@ -11082,4 +11049,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "5236b7acfc5981a1ecfa723afce7962cf63a81fb28162fd287f4a87345c85e9e"
+content-hash = "93d105de4e33b58affc03a48d8cbaff0706d689de1e655957bd6d7526195c5c4"
