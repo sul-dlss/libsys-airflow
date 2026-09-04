@@ -32,6 +32,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
+- `AIRFLOW_KEYCLOAK_CLIENT_SECRET` (Login to keycloak-folio-dev, navigate to sul realm, and search for airflow-sso client. Select credentials and copy the client secret for this env var.)
 
   These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
 
