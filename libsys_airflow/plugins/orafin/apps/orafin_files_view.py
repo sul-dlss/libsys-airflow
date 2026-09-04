@@ -1,11 +1,14 @@
 import pathlib
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse
 
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import file_info, plugin_templates
 
-app = FastAPI()
+app = FastAPI(
+    dependencies=[Depends(require_view_access("Orafin Feeder-files and Reports"))]
+)
 
 templates = plugin_templates(pathlib.Path(__file__).resolve().parent.parent, "orafin")
 

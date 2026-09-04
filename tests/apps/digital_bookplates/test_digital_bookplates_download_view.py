@@ -3,6 +3,7 @@ import pathlib
 from fastapi.testclient import TestClient
 import pytest  # noqa
 
+from auth_helpers import authenticate  # noqa
 from conftest import root_directory
 
 from libsys_airflow.plugins.digital_bookplates.apps import (
@@ -12,6 +13,7 @@ from libsys_airflow.plugins.digital_bookplates.apps.digital_bookplates_download_
     app,
 )
 
+authenticate(app)
 client = TestClient(app)
 
 

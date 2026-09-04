@@ -18,6 +18,7 @@ from honeybadger.contrib.fastapi import HoneybadgerRoute
 from starlette.datastructures import FormData
 
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import (
     CSRFCookieMiddleware,
     csrf_field,
@@ -50,7 +51,12 @@ logger = logging.getLogger(__name__)
 
 URL_PREFIX = "/vendor_management"
 
-app = FastAPI(route_class=HoneybadgerRoute)
+app = FastAPI(
+    route_class=HoneybadgerRoute,
+    # "Dashboard" is the name in this plugin's external_views entry, which is what
+    # Airflow itself passes when deciding whether to show the menu item.
+    dependencies=[Depends(require_view_access("Dashboard"))],
+)
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = Jinja2Templates(

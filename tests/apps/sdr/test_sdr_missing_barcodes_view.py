@@ -4,11 +4,13 @@ import pytest  # noqa
 
 from fastapi.testclient import TestClient
 
+from auth_helpers import authenticate  # noqa
 from conftest import root_directory
 
 from libsys_airflow.plugins.sdr.apps import sdr_missing_barcodes_view
 from libsys_airflow.plugins.sdr.apps.sdr_missing_barcodes_view import app
 
+authenticate(app)
 client = TestClient(app)
 
 

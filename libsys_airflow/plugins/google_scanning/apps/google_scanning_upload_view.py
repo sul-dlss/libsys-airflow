@@ -17,6 +17,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import (
     plugin_templates,
@@ -25,7 +26,7 @@ from libsys_airflow.plugins.shared.utils import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(dependencies=[Depends(require_view_access("Google Scanning Upload"))])
 app.add_middleware(CSRFCookieMiddleware)
 
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
