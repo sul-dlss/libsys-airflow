@@ -7,10 +7,11 @@ from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
-app = FastAPI()
+app = FastAPI(dependencies=[Depends(require_view_access("Boundwith CSV Upload"))])
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(pathlib.Path(__file__).resolve().parent, "boundwith")

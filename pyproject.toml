@@ -42,7 +42,13 @@ flask-limiter = "3.12"
 python-crontab = "^3.3.0"
 ruff = "^0.14.1"
 apache-airflow-providers-ftp = "^3.13.2"
-apache-airflow-providers-fab = "^3.2.0"
+# Held below 0.9.0: on Airflow 3.3+ that release stopped embedding the Keycloak
+# access token in the Airflow JWT and moved it to a browser cookie, so
+# get_user_from_token returns None for any non-browser client and the auth
+# manager raises AttributeError instead of authorizing. That breaks every plugin
+# that triggers a DAG run through the public API. See
+# libsys_airflow/plugins/shared/airflow_api_client.py
+apache-airflow-providers-keycloak = "^0.8.2"
 apache-airflow-client = "^3.2.0"
 fastapi-csrf-protect = "^1.0.7"
 

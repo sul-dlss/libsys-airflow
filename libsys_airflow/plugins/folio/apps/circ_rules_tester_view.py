@@ -11,6 +11,7 @@ from fastapi.responses import Response
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import (
     plugin_templates,
@@ -19,7 +20,7 @@ from libsys_airflow.plugins.shared.utils import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(dependencies=[Depends(require_view_access("Circ Rules Tester"))])
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(

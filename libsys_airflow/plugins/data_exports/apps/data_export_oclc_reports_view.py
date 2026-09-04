@@ -1,10 +1,11 @@
 import pathlib
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
-app = FastAPI()
+app = FastAPI(dependencies=[Depends(require_view_access("Data Export OCLC Reports"))])
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "data-export-oclc-reports"
