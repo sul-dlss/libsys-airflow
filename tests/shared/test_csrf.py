@@ -90,6 +90,21 @@ def _request(cookies: dict | None = None) -> Request:
     )
 
 
+def tamper_with_signature(signed_token: str) -> str:
+    """
+    Change one character of a signed token's signature, so that it no longer verifies.
+
+    The character has to be one other than the last. A signature is 20 bytes and its
+    base64 encoding is 27 characters, so only four of the final character's six bits are
+    significant and base64 decoding discards the other two: four different final
+    characters decode to the same signature. Editing the last character therefore leaves
+    the token valid one time in sixteen.
+    """
+    payload, _, signature = signed_token.rpartition(".")
+    replacement = "B" if signature[0] == "A" else "A"
+    return f"{payload}.{replacement}{signature[1:]}"
+
+
 @pytest.fixture
 def csrf_app():
     return build_app()
@@ -298,7 +313,9 @@ def test_post_with_an_unsigned_forged_cookie_is_rejected(csrf_app):
 def test_post_with_a_tampered_signature_is_rejected(csrf_app):
     cookies = csrf_cookies()
     token = token_from_cookie(cookies[CSRF_COOKIE_NAME])
-    cookies[CSRF_SIGNED_COOKIE_NAME] = cookies[CSRF_SIGNED_COOKIE_NAME][:-1] + "x"
+    cookies[CSRF_SIGNED_COOKIE_NAME] = tamper_with_signature(
+        cookies[CSRF_SIGNED_COOKIE_NAME]
+    )
     client = TestClient(csrf_app, cookies=cookies)
 
     response = client.post("/create", data={"name": "a cart", CSRF_FIELD_NAME: token})
