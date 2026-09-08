@@ -122,6 +122,48 @@ Keycloak they authenticate as that service account via the `client_credentials` 
 `libsys_airflow/plugins/shared/airflow_api_client.py`. Without it you can sign in fine, but every
 plugin that triggers a DAG fails.
 
+#### Permission adjustments
+
+`create-all` produces four permissions — `ReadOnly`, `Admin`, `User` and `Op` — and two changes
+on top of them are part of the exported client, so they are made once in dev.
+
+**Let `User` trigger DAG runs without pausing them.** Triggering is `Dag#POST`
+(`POST /api/v2/dags/{dag_id}/dagRuns`) and pausing or unpausing is `Dag#PUT`
+(`PATCH /api/v2/dags/{dag_id}`), so the two are separable by scope. As created, though, `User`
+is *resource*-based on `Dag` and `Asset`, and a resource-based permission covers every scope of
+its resources, `PUT` included. Resource-based cannot exclude a scope, so replace it with a
+scope-based permission (remove Asset, User doesn't need it for now):
+
+- Resources: `Dag`
+- Authorization scopes: `GET`, `POST`, `LIST` — omit `PUT` and `DELETE`
+- Policy: `Allow-User`
+
+Know what else this takes away. `Dag#PUT` also guards clearing a DAG run (`clear_dag_run`) and
+clearing or marking task instances (`patch_task_instance`, `post_clear_task_instances`), so
+`User`s lose those as well. Pausing cannot be separated from them: all of these produce the
+identical `Dag#PUT` permission string and differ only in a pushed `dag_entity` claim, which no
+Keycloak policy type can read.
+
+**Let non-admins use the plugin apps.** The plugin apps check `Custom#<METHOD>`, and `ReadOnly`
+grants `Custom#GET`, so their pages render for anyone holding a role. Nothing grants
+`Custom#POST` except `Admin`, however, so every form submission returns a 403 for everyone
+else. Add a second scope-based permission:
+
+- Name: `User-Custom`
+- Resources: `Custom`
+- Authorization scopes: `GET`, `POST`
+- Policy: `Allow-User`, plus `Allow-Op` if Ops should use the plugins
+
+`GET` and `POST` are all that is needed; they are the only methods the plugin apps declare.
+
+Two notes on creating these in the console. The scope-based form's Resources field is a
+server-side typeahead with a short first page, so type the resource name rather than scrolling
+for it.
+
+Re-running `create-all` reverts the first change, rewriting `User` as resource-based with an
+empty scope list, so re-apply it afterwards. `User-Custom` survives, because `create-all` only
+manages the four permissions it creates by name.
+
 #### Rebuilding the authorization model
 
 Only needed when standing up a realm that has no `airflow-sso` client to import. Create the five
@@ -144,11 +186,6 @@ Unanimous produces a 403 that looks like a missing role:
 Leave the `User` and `Op` permissions at Unanimous; each has a single policy, so it makes no
 difference. Then check each `Allow-<role>` policy is bound to the `airflow-sso` client role
 rather than a same-named realm role.
-
-This is not optional. The plugin apps trigger DAG runs by calling Airflow's public API, and
-under Keycloak they authenticate as that service account via the `client_credentials` grant —
-see `libsys_airflow/plugins/shared/airflow_api_client.py`. Without it you can sign in fine, but
-every plugin that triggers a DAG fails.
 
 ### Simple auth (no identity provider)
 
