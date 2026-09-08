@@ -153,8 +153,15 @@ else. Add a second scope-based permission:
 - Resources: `Custom`
 - Authorization scopes: `GET`, `POST`
 - Policy: `Allow-User`, plus `Allow-Op` if Ops should use the plugins
+- Decision strategy: **Affirmative** whenever more than one policy is attached
 
 `GET` and `POST` are all that is needed; they are the only methods the plugin apps declare.
+
+The decision strategy matters for the same reason it does on the `Admin` permission: at
+Unanimous, a permission carrying both `Allow-User` and `Allow-Op` demands a user hold both
+roles, so a plain `User` gets a 403 on every form submission even though the permission lists
+`POST`. The pages still render, because `Custom#GET` comes from `ReadOnly` instead, which makes
+it look like the scope is missing rather than the strategy.
 
 Two notes on creating these in the console. The scope-based form's Resources field is a
 server-side typeahead with a short first page, so type the resource name rather than scrolling
