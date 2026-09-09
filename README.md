@@ -135,7 +135,7 @@ its resources, `PUT` included. Resource-based cannot exclude a scope, so replace
 scope-based permission (remove Asset, User doesn't need it for now):
 
 - Resources: `Dag`
-- Authorization scopes: `GET`, `POST`, `LIST` — omit `PUT` and `DELETE`
+- Authorization scopes: `GET`, `POST` — omit `LIST`, `PUT` and `DELETE`
 - Policy: `Allow-User`
 
 Know what else this takes away. `Dag#PUT` also guards clearing a DAG run (`clear_dag_run`) and
@@ -144,10 +144,10 @@ clearing or marking task instances (`patch_task_instance`, `post_clear_task_inst
 identical `Dag#PUT` permission string and differ only in a pushed `dag_entity` claim, which no
 Keycloak policy type can read.
 
-**Let non-admins use the plugin apps.** The plugin apps check `Custom#<METHOD>`, and `ReadOnly`
-grants `Custom#GET`, so their pages render for anyone holding a role. Nothing grants
-`Custom#POST` except `Admin`, however, so every form submission returns a 403 for everyone
-else. Add a second scope-based permission:
+**Let non-admins use the plugin apps and plugin navigation menu.** The plugin apps check 
+`Custom#<METHOD>`, and `ReadOnly` grants `Custom#GET`, so their pages render for anyone holding
+a role. Nothing grants `Custom#POST` except `Admin`, however, so every form submission returns 
+a 403 for everyone else. Add second and third scope-based permissions:
 
 - Name: `User-Custom`
 - Resources: `Custom`
@@ -163,13 +163,23 @@ roles, so a plain `User` gets a 403 on every form submission even though the per
 `POST`. The pages still render, because `Custom#GET` comes from `ReadOnly` instead, which makes
 it look like the scope is missing rather than the strategy.
 
+- Name: `User-Views`
+- Resources: `View`
+- Authorization scopes: `GET`, `LIST`
+- Policy: `Allow-User`
+- Decision strategy: **Affirmative** whenever more than one policy is attached
+
+Next, modify the ReadOnly permission by removing the Allow-User policy from it. This is so Users
+do not have the ability to click around the rest of airflow, outside the plugins.
+
 Two notes on creating these in the console. The scope-based form's Resources field is a
 server-side typeahead with a short first page, so type the resource name rather than scrolling
 for it.
 
 Re-running `create-all` reverts the first change, rewriting `User` as resource-based with an
-empty scope list, so re-apply it afterwards. `User-Custom` survives, because `create-all` only
-manages the four permissions it creates by name.
+empty scope list, so re-apply it afterwards, as well as removing Allow-User from ReadOnly.
+`User-Custom` and `User-Views` survives, because `create-all` only manages the four permissions 
+it creates by name.
 
 #### Rebuilding the authorization model
 
