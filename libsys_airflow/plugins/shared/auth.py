@@ -14,8 +14,9 @@ Apply it once per app rather than per route, so a route added later cannot forge
         openapi_url=None,
         dependencies=[Depends(require_view_access("Boundwith CSV Upload"))],
     )
-Each app also needs ``openapi_url=None`` to prevent the next plugin from reintroducing an 
-anonymously readable map of its own routes and from assuming the app-level dependency 
+
+Each app also needs ``openapi_url=None`` to prevent the next plugin from reintroducing an
+anonymously readable map of its own routes and from assuming the app-level dependency
 covers every possible route.
 
 The view name is only a label, matched to the plugin's ``external_views`` entry by
