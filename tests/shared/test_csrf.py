@@ -18,6 +18,7 @@ from libsys_airflow.plugins.shared.csrf import (
     CSRF_SIGNED_COOKIE_NAME,
     CSRFCookieMiddleware,
     binding_fingerprint,
+    cookie_is_secure,
     cookie_path,
     csrf_binding,
     csrf_field,
@@ -118,6 +119,26 @@ def test_secret_key_comes_from_airflow_config():
 def test_cookie_path_from_airflow_base_url():
     # tests/conftest.py sets AIRFLOW__API__BASE_URL to http://localhost:8080
     assert cookie_path() == "/"
+
+
+def test_cookies_are_not_secure_over_plain_http():
+    # tests/conftest.py sets AIRFLOW__API__BASE_URL to http://localhost:8080
+    assert cookie_is_secure() is False
+
+
+def test_cookies_are_secure_when_base_url_is_https(monkeypatch):
+    monkeypatch.setenv(
+        "AIRFLOW__API__BASE_URL", "https://sul-libsys-airflow.stanford.edu"
+    )
+
+    assert cookie_is_secure() is True
+
+
+def test_cookies_are_secure_when_airflow_terminates_tls(monkeypatch):
+    # A deployment where Airflow serves HTTPS itself rather than sitting behind a proxy.
+    monkeypatch.setenv("AIRFLOW__API__SSL_CERT", "/opt/airflow/certs/airflow.crt")
+
+    assert cookie_is_secure() is True
 
 
 def test_generated_tokens_are_a_signed_pair():

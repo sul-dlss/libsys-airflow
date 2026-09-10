@@ -81,6 +81,17 @@ def cookie_path() -> str:
 
 
 def cookie_is_secure() -> bool:
+    """
+    Mark the cookies ``Secure`` whenever the deployment is served over HTTPS.
+
+    ``[api] ssl_cert`` is only set when Airflow terminates TLS itself, which it does not
+    when a proxy terminates it, so fall back to the scheme of ``[api] base_url``. Airflow
+    makes the same allowance for its own ``_token`` cookie, but decides from the request
+    scheme in ``JWTRefreshMiddleware``; the settings here are read once at import, when
+    there is no request to consult.
+    """
+    if urlsplit(conf.get("api", "base_url", fallback="")).scheme == "https":
+        return True
     return bool(conf.get("api", "ssl_cert", fallback=""))
 
 
