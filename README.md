@@ -160,24 +160,22 @@ and inside every `<form method="post">` in its templates:
 `libsys_airflow.plugins.shared.utils.plugin_templates`, so apps that build their
 `Jinja2Templates` with that helper get them for free. JavaScript that POSTs on its own must send
 the token too, either as a `csrf_token` form field (`{{ csrf_token(request) }}`) or in an
-`X-CSRFToken` header. In tests, `tests/csrf_helpers.csrf_test_client` returns a `TestClient` that
-presents a valid token on every request; use a plain `TestClient` to assert the rejection path.
+`X-CSRFToken` header. In tests, `tests/csrf_helpers.csrf_test_client` presents a valid token on
+every request; use a plain `TestClient` to assert the rejection path.
 
-The middleware issues two cookies: `csrf_signed_token` is httponly and signed with
-`[api] secret_key` (already set as `AIRFLOW__API__SECRET_KEY` in `compose.prod.yaml`, and it must
-be identical across API server instances), and `csrf_token` holds the matching unsigned value so a
-page render can reproduce the token the form has to submit. Tokens are valid for eight hours.
-Both cookies are marked `Secure` when `[api] base_url` is an `https://` URL or Airflow terminates
-TLS itself; `[api] ssl_cert` alone is not enough to detect this, because it is empty on the
-deployments where a proxy terminates TLS.
+Two cookies are issued: `csrf_signed_token`, which is httponly and the one actually validated,
+and `csrf_token`, which holds the matching unsigned value so a page render can reproduce the
+token the form has to submit. Both are signed with `[api] secret_key` (set as
+`AIRFLOW__API__SECRET_KEY` in `compose.prod.yaml`), which must be identical across API server
+instances, are valid for eight hours, and are marked `Secure` wherever the deployment serves
+HTTPS.
 
-Tokens are bound to the authenticated user: the signing key is derived from the user's id, so a
-pair minted for one user is rejected for another, and the middleware rolls the pair whenever the
-identity changes. This matters because CSRF cookies can be overwritten from any other
-`stanford.edu` host — same-site as far as cookies are concerned — so without binding an attacker
-could plant a pair they minted for themselves. **Binding only takes effect once the plugin routes
-require authentication**, which they do not yet; until then every request resolves to an empty
-binding and behaves as before.
+Tokens are bound to the authenticated user, so a pair minted for one user is rejected for
+another and the middleware rolls the pair when the identity changes. Without that, an attacker
+could mint a legitimate pair for themselves and overwrite the victim's cookies from any other
+`stanford.edu` host, which is same-site as far as cookies are concerned. **Binding only takes
+effect once the plugin routes require authentication**, which is a later change; until then
+every request resolves to an empty binding and behaves as before.
 
 ### Support for Multiple Databases with Alembic
 We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
