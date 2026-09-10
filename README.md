@@ -66,29 +66,21 @@ to switch.
 
 ### Keycloak (the local default)
 
-Points at the shared `keycloak-folio-dev.stanford.edu` server and its `sul` realm, so you need
-VPN or the campus network. Set `AIRFLOW_KEYCLOAK_CLIENT_SECRET` in your `.env`: log in to
-keycloak-folio-dev, go to the `sul` realm, find the `airflow-sso` client, and copy the secret
-from its Credentials tab.
+Points at the shared FOLIO Keycloak dev server (see `compose.yaml`) and its `sul` realm, so you
+need VPN or the campus network. Set `AIRFLOW_KEYCLOAK_CLIENT_SECRET` in your `.env` from the
+`airflow-sso` client's Credentials tab.
 
-There is no local admin account under Keycloak — signing in redirects you to keycloak-folio-dev,
-and your permissions come from the `sul` realm rather than from Airflow roles.
-
-Airflow shares the `sul` realm with FOLIO rather than having its own, so that a signed-in user's
-token is issued by the realm FOLIO trusts. The `airflow-sso` client carries the whole
-authorization model — roles, resources, scopes, policies, and permissions — and is exported from
-keycloak-folio-dev and imported into the other environments, so it is configured once rather than
-rebuilt per environment.
-
-`apache-airflow-providers-keycloak` is held below 0.9.0 — see the comment in `pyproject.toml`.
-Do not bump it without re-testing a plugin-triggered DAG run end to end.
+Airflow shares the `sul` realm with FOLIO rather than having its own. The `airflow-sso` client
+carries the whole authorization model — roles, resources, scopes, policies, permissions — and is
+exported from dev and imported into the other environments, so it is configured once rather than
+rebuilt per environment. That export is the source of truth; the notes below describe its shape,
+they are not a script to re-run.
 
 #### Assigning roles
 
-The five role names the auth manager recognizes are not configurable. They exist as **client
-roles on `airflow-sso`**, not realm roles, so they cannot collide with FOLIO's — `sul` already
-has a realm `Admin` for FOLIO administrative capabilities that must not confer Airflow admin. In
-non-team mode they grant:
+The five role names the auth manager recognizes are not configurable. They exist as **client roles
+on `airflow-sso`**, not realm roles, so they cannot collide with FOLIO's own. As `create-all`
+builds them, in non-team mode:
 
 | Role | Covers |
 |---|---|
@@ -98,111 +90,79 @@ non-team mode they grant:
 | `Admin` | Viewer, plus all extended methods on everything |
 | `SuperAdmin` | identical to `Admin` unless multi-team mode is enabled |
 
-Assign them under Users → the user → **Role mapping** → Assign role, filtered by clients. Nothing
-does this automatically, in any environment. Permissions are read from the token minted at login,
-so log out and back in after a change; decisions are also cached briefly (`cache_ttl_seconds`,
-`cache_timeout_seconds`).
+`User` and `Op` are adjusted from that — see [Permission adjustments](#permission-adjustments).
+People get `User` or `Admin`; `Op` is reserved for the service account, which is what keeps the
+plugins' permissions independent of any human role.
 
-To debug a 403, use Clients → airflow-sso → Authorization → **Evaluate** with the user, resource,
-and scope in question. It shows each permission's vote and which policy decided it.
+Assign roles under Users → the user → **Role mapping**, filtered by clients. Nothing does this
+automatically, in any environment. Permissions come from the token minted at login, so log out
+and back in after a change; decisions are also cached briefly.
+
+To debug a 403, use Authorization → **Evaluate** on the client with the user, resource, and scope
+in question. It shows each permission's vote and which policy decided it.
 
 #### The service account
 
-The `airflow-sso` client needs **Service accounts roles** enabled, and its service account
-(`service-account-airflow-sso`) is a separate user that needs its own role assignment
-(Clients → airflow-sso → Service accounts roles).
+The `airflow-sso` client needs **Service accounts roles** enabled, and its service account is a
+separate user needing its own role assignment. The plugin apps call Airflow's public API as that
+account through the `client_credentials` grant — see
+`libsys_airflow/plugins/shared/airflow_api_client.py` — so without it every plugin that triggers
+a DAG fails.
 
-Assign it `User` **and** `Op`. `User` covers triggering, reading, and clearing DAG runs; `Op`
-covers the connection reads and writes in `libsys_airflow/plugins/airflow/connections.py`. Both
-include read access to everything else, so `Viewer` is redundant, and nothing in this codebase
-needs what `Admin` adds.
-
-This is not optional. The plugin apps trigger DAG runs by calling Airflow's public API, and under
-Keycloak they authenticate as that service account via the `client_credentials` grant — see
-`libsys_airflow/plugins/shared/airflow_api_client.py`. Without it you can sign in fine, but every
-plugin that triggers a DAG fails.
+Assign it `Op` and nothing else: not `User`, and not `Admin`. The service account is an ordinary
+Keycloak user governed by the same permissions a person is, so any role it shares with people
+couples the two — tightening that role for people silently breaks plugin triggering. `Op` works
+because nobody else is on it.
 
 #### Permission adjustments
 
-`create-all` produces four permissions — `ReadOnly`, `Admin`, `User` and `Op` — and two changes
-on top of them are part of the exported client, so they are made once in dev.
+`create-all` produces four permissions — `ReadOnly`, `Admin`, `User` and `Op`. The exported client
+carries these changes on top of them.
 
-**Let `User` trigger DAG runs without pausing them.** Triggering is `Dag#POST`
-(`POST /api/v2/dags/{dag_id}/dagRuns`) and pausing or unpausing is `Dag#PUT`
-(`PATCH /api/v2/dags/{dag_id}`), so the two are separable by scope. As created, though, `User`
-is *resource*-based on `Dag` and `Asset`, and a resource-based permission covers every scope of
-its resources, `PUT` included. Resource-based cannot exclude a scope, so replace it with a
-scope-based permission (remove Asset, User doesn't need it for now):
+**`User`: read-only on DAGs.** Users reach DAGs through the plugin apps, which trigger runs as the
+service account, so `User` needs no write scope. As created it is *resource*-based on `Dag` and
+`Asset`, and a resource-based permission covers every scope of its resources, so replace it with
+a scope-based one:
 
 - Resources: `Dag`
-- Authorization scopes: `GET`, `POST` — omit `LIST`, `PUT` and `DELETE`
+- Authorization scopes: `GET`, `LIST` — omit `POST`, `PUT` and `DELETE`
 - Policy: `Allow-User`
 
-Know what else this takes away. `Dag#PUT` also guards clearing a DAG run (`clear_dag_run`) and
-clearing or marking task instances (`patch_task_instance`, `post_clear_task_instances`), so
-`User`s lose those as well. Pausing cannot be separated from them: all of these produce the
-identical `Dag#PUT` permission string and differ only in a pushed `dag_entity` claim, which no
-Keycloak policy type can read.
+`LIST` is what makes the home page's Deadlines and History panels render instead of returning 403.
 
-**Let non-admins use the plugin apps and plugin navigation menu.** The plugin apps check 
-`Custom#<METHOD>`, and `ReadOnly` grants `Custom#GET`, so their pages render for anyone holding
-a role. Nothing grants `Custom#POST` except `Admin`, however, so every form submission returns 
-a 403 for everyone else. Add second and third scope-based permissions:
+**`Op`: add the `Dag` resource.** This is where the service account gets the scopes the plugins
+need to trigger, read and clear runs.
 
-- Name: `User-Custom`
-- Resources: `Custom`
-- Authorization scopes: `GET`, `POST`
-- Policy: `Allow-User`, plus `Allow-Op` if Ops should use the plugins
-- Decision strategy: **Affirmative** whenever more than one policy is attached
+**`User-Custom` and `User-Views`:** let non-admins use the plugin apps and their nav entries. Both
+are scope-based, and both need **Affirmative** — at Unanimous a permission with two policies
+demands the user hold both roles.
 
-`GET` and `POST` are all that is needed; they are the only methods the plugin apps declare.
+- `User-Custom`: resource `Custom`, scopes `GET` and `POST`, policies `Allow-User` and `Allow-Op`
+- `User-Views`: resource `View`, scopes `GET` and `LIST`, policy `Allow-User`
 
-The decision strategy matters for the same reason it does on the `Admin` permission: at
-Unanimous, a permission carrying both `Allow-User` and `Allow-Op` demands a user hold both
-roles, so a plain `User` gets a 403 on every form submission even though the permission lists
-`POST`. The pages still render, because `Custom#GET` comes from `ReadOnly` instead, which makes
-it look like the scope is missing rather than the strategy.
+Finally, remove `Allow-User` from `ReadOnly`, so `User`s cannot click around the rest of Airflow
+outside the plugins.
 
-- Name: `User-Views`
-- Resources: `View`
-- Authorization scopes: `GET`, `LIST`
-- Policy: `Allow-User`
-- Decision strategy: **Affirmative** whenever more than one policy is attached
-
-Next, modify the ReadOnly permission by removing the Allow-User policy from it. This is so Users
-do not have the ability to click around the rest of airflow, outside the plugins.
-
-Two notes on creating these in the console. The scope-based form's Resources field is a
-server-side typeahead with a short first page, so type the resource name rather than scrolling
-for it.
-
-Re-running `create-all` reverts the first change, rewriting `User` as resource-based with an
-empty scope list, so re-apply it afterwards, as well as removing Allow-User from ReadOnly.
-`User-Custom` and `User-Views` survives, because `create-all` only manages the four permissions 
-it creates by name.
+Re-running `create-all` reverts every change to the four permissions it owns, `User` and `Op`
+included — which breaks plugin triggering until `Dag` is added back to `Op`. `User-Custom` and
+`User-Views` survive, since `create-all` only manages permissions it creates by name.
 
 #### Rebuilding the authorization model
 
-Only needed when standing up a realm that has no `airflow-sso` client to import. Create the five
-client roles first — the CLI resolves roles by name and fails if they are missing — then:
+Only needed when standing up a realm with no `airflow-sso` client to import. Create the five
+client roles first — the CLI resolves them by name and fails if they are missing — then:
 
 ```
 docker compose run --rm airflow-cli airflow keycloak-auth-manager create-all \
   --username <keycloak-admin> --password <keycloak-admin-password> --dry-run
 ```
 
-Drop `--dry-run` once the output looks right. Afterwards two decision strategies must be set to
-**Affirmative** by hand, because `create-all` does not reliably apply them and either one left at
-Unanimous produces a 403 that looks like a missing role:
-
-- The resource server, under Authorization → Settings. Several permissions match most requests
-  and the roles are meant to be additive.
-- The `Admin` permission, under Authorization → Permissions. It has both `Allow-Admin` and
-  `Allow-SuperAdmin` attached, so at Unanimous it demands a user hold both roles.
-
-Leave the `User` and `Op` permissions at Unanimous; each has a single policy, so it makes no
-difference. Then check each `Allow-<role>` policy is bound to the `airflow-sso` client role
-rather than a same-named realm role.
+Drop `--dry-run` once the output looks right. Then set two decision strategies to **Affirmative**
+by hand, since `create-all` does not reliably apply them and either one left at Unanimous produces
+a 403 that looks like a missing role: the resource server, under Authorization → Settings, and the
+`Admin` permission, which has both `Allow-Admin` and `Allow-SuperAdmin` attached. Finally, check
+each `Allow-<role>` policy is bound to the `airflow-sso` client role rather than a same-named
+realm role.
 
 ### Simple auth (no identity provider)
 
