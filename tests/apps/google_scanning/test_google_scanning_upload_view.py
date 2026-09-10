@@ -3,7 +3,8 @@ from urllib.parse import unquote_plus
 import pytest  # noqa
 
 from fastapi.testclient import TestClient
-from csrf_helpers import csrf_test_client, token_from_cookie  # noqa
+from auth_helpers import authed_test_client  # noqa
+from csrf_helpers import token_from_cookie  # noqa
 
 from libsys_airflow.plugins.shared.csrf import CSRF_COOKIE_NAME, CSRF_FIELD_NAME
 
@@ -11,7 +12,7 @@ from libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view imp
     app,
 )
 
-client = csrf_test_client(app, follow_redirects=False)
+client = authed_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture(autouse=True)

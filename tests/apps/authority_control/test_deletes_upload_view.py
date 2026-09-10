@@ -1,10 +1,10 @@
 from fastapi.testclient import TestClient
-from csrf_helpers import csrf_test_client  # noqa
+from auth_helpers import authed_test_client  # noqa
 import pytest  # noqa
 
 from libsys_airflow.plugins.authority_control.apps.deletes_upload_view import app
 
-client = csrf_test_client(app)
+client = authed_test_client(app)
 
 
 def test_deletes_upload_view():

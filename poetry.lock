@@ -686,41 +686,6 @@ pyiceberg-core = ["pyiceberg-core (>=0.8.0)"]
 sqlalchemy = ["sqlalchemy (>=1.4.54)"]
 
 [[package]]
-name = "apache-airflow-providers-fab"
-version = "3.8.0"
-description = "Provider package apache-airflow-providers-fab for Apache Airflow"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "apache_airflow_providers_fab-3.8.0-py3-none-any.whl", hash = "sha256:d1ee865a23381f4d34126cb0eb23c7dc320fb3a6ba76971d85da523af78b117e"},
-    {file = "apache_airflow_providers_fab-3.8.0.tar.gz", hash = "sha256:1d1a86e040ad3bdadcb0fc56e05ee10d3efca5755fb0e66155288f364c170419"},
-]
-
-[package.dependencies]
-apache-airflow = ">=3.0.2"
-apache-airflow-providers-common-compat = ">=1.18.0"
-blinker = ">=1.6.2"
-cachetools = ">=6.0"
-flask = ">=2.2.1"
-flask-appbuilder = "5.2.2"
-flask-limiter = ">3"
-flask-login = {version = ">=0.6.2", markers = "python_version < \"3.14\""}
-flask-session = ">=0.8.0"
-flask-sqlalchemy = ">=3.0.5"
-flask-wtf = {version = ">=1.1.0", markers = "python_version < \"3.14\""}
-jmespath = ">=0.7.0"
-marshmallow = ">=3"
-msgpack = ">=1.0.0"
-pyjwt = ">=2.11.0"
-werkzeug = {version = ">=2.2", markers = "python_version <= \"3.13\""}
-wtforms = ">=3.0"
-
-[package.extras]
-kerberos = ["kerberos (>=1.3.0)"]
-oauth = ["authlib (>=1.0.0)"]
-
-[[package]]
 name = "apache-airflow-providers-ftp"
 version = "3.15.2"
 description = "Provider package apache-airflow-providers-ftp for Apache Airflow"
@@ -864,6 +829,23 @@ asgiref = {version = ">=2.3.0", markers = "python_version < \"3.14\""}
 pydantic = ">=2.11.0"
 requests = ">=2.32.0,<3"
 requests-toolbelt = ">=1.0.0"
+
+[[package]]
+name = "apache-airflow-providers-keycloak"
+version = "0.8.2"
+description = "Provider package apache-airflow-providers-keycloak for Apache Airflow"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "apache_airflow_providers_keycloak-0.8.2-py3-none-any.whl", hash = "sha256:40e550b3a59492a2e593c5f44bea6c30f2897a9c03da408e5a3c3e75c90cec66"},
+    {file = "apache_airflow_providers_keycloak-0.8.2.tar.gz", hash = "sha256:3333e0922a018d5373a37e9b966c855f3fbfa35e56079f743e89c2c2377cfa07"},
+]
+
+[package.dependencies]
+apache-airflow = ">=3.0.0"
+apache-airflow-providers-common-compat = ">=1.12.0"
+python-keycloak = ">=5.0.0"
 
 [[package]]
 name = "apache-airflow-providers-postgres"
@@ -1012,29 +994,6 @@ datadog = ["datadog (>=0.50.0)"]
 otel = ["opentelemetry-api (>=1.27.0)", "opentelemetry-exporter-otlp (>=1.27.0)", "opentelemetry-proto (>=1.27.0,<9999)"]
 sentry = ["sentry-sdk (>=2.30.0)"]
 statsd = ["statsd (>=3.3.0)"]
-
-[[package]]
-name = "apispec"
-version = "6.10.0"
-description = "A pluggable API specification generator. Currently supports the OpenAPI Specification (f.k.a. the Swagger specification)."
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "apispec-6.10.0-py3-none-any.whl", hash = "sha256:8ff23e0de9a0ceb62ff70047241126315bd17b8d0565a567934c0156f4ddbb43"},
-    {file = "apispec-6.10.0.tar.gz", hash = "sha256:0a888555cd4aa5fb7176041be15684154fd8961055e1672e703abf737e8761bf"},
-]
-
-[package.dependencies]
-packaging = ">=21.3"
-PyYAML = {version = ">=3.10", optional = true, markers = "extra == \"yaml\""}
-
-[package.extras]
-dev = ["apispec[tests]", "pre-commit (>=3.5,<5.0)", "tox"]
-docs = ["apispec[marshmallow]", "pyyaml (==6.0.3)", "sphinx (==9.1.0)", "sphinx-issues (==5.0.1)", "sphinx-rtd-theme (==3.1.0)"]
-marshmallow = ["marshmallow (>=3.18.0)"]
-tests = ["apispec[marshmallow,yaml]", "openapi-spec-validator (==0.8.4)", "pytest"]
-yaml = ["PyYAML (>=3.10)"]
 
 [[package]]
 name = "argcomplete"
@@ -1564,40 +1523,6 @@ urllib3 = ">=1.25.4,<2.2.0 || >2.2.0,<3"
 crt = ["awscrt (==0.36.0)"]
 
 [[package]]
-name = "cachelib"
-version = "0.14.0"
-description = "A collection of cache libraries in the same API interface."
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-markers = "python_version == \"3.10\""
-files = [
-    {file = "cachelib-0.14.0-py3-none-any.whl", hash = "sha256:4671000b032baa8fac47ad19850f4f522785cee764b4e04c5cfe8955a18d67de"},
-    {file = "cachelib-0.14.0.tar.gz", hash = "sha256:73fedcadd0ba818fb2bb9f3c7cd5fcc2a71e86286f1842f55f28d500faee17f1"},
-]
-
-[[package]]
-name = "cachelib"
-version = "0.17.0"
-description = "A collection of cache libraries in the same API interface."
-optional = false
-python-versions = ">=3.11"
-groups = ["main"]
-markers = "python_version > \"3.10\""
-files = [
-    {file = "cachelib-0.17.0-py3-none-any.whl", hash = "sha256:f83909b6f78741c3a5d76d292d13bf24964ffb13e00ea1d18f92e20599766ce0"},
-    {file = "cachelib-0.17.0.tar.gz", hash = "sha256:f3c7dc8d3c1132ab699681ffdf8a52d341d9425ac1401c538cf0b1d87b1677c8"},
-]
-
-[package.extras]
-dynamodb = ["boto3 (>=1.43.4)"]
-memcached = ["pylibmc (>=1.6.3)"]
-mongodb = ["pymongo (>=4.11)"]
-redis = ["redis (>=6.0.0)"]
-uwsgi = ["uwsgi (>=2.0.28)"]
-valkey = ["valkey (>=6.1.0)"]
-
-[[package]]
 name = "cachetools"
 version = "7.1.7"
 description = "Extensible memoizing collections and decorators"
@@ -2061,11 +1986,11 @@ description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 groups = ["main", "test"]
+markers = "platform_system == \"Windows\" or sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {test = "platform_system == \"Windows\" or sys_platform == \"win32\""}
 
 [[package]]
 name = "colorful"
@@ -2392,6 +2317,21 @@ wrapt = ">=1.10,<3"
 
 [package.extras]
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "setuptools ; python_version >= \"3.12\"", "tox"]
+
+[[package]]
+name = "deprecation"
+version = "2.1.0"
+description = "A library to handle automated deprecations"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a"},
+    {file = "deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff"},
+]
+
+[package.dependencies]
+packaging = "*"
 
 [[package]]
 name = "dill"
@@ -2820,85 +2760,6 @@ async = ["asgiref (>=3.2)"]
 dotenv = ["python-dotenv"]
 
 [[package]]
-name = "flask-appbuilder"
-version = "5.2.2"
-description = "Simple and rapid application development framework, built on top of Flask. includes detailed security, auto CRUD generation for your models, google charts and much more."
-optional = false
-python-versions = "~=3.7"
-groups = ["main"]
-files = [
-    {file = "flask_appbuilder-5.2.2-py3-none-any.whl", hash = "sha256:9dcae59cd15e5a284175d65c682529a6a73b7ba9d53d408e4796ec062d05472a"},
-    {file = "flask_appbuilder-5.2.2.tar.gz", hash = "sha256:0527623394b40b859ff47056e3621a61eefaaa16ccf188f272c64294307587ca"},
-]
-
-[package.dependencies]
-apispec = {version = ">=6.0.0,<7", extras = ["yaml"]}
-click = ">=8,<9"
-colorama = ">=0.3.9,<1"
-email-validator = ">=1.0.5"
-Flask = ">=2,<4"
-Flask-Babel = ">=3,<5"
-Flask-JWT-Extended = ">=4.0.0,<5.0.0"
-Flask-Limiter = ">3,<5"
-Flask-Login = ">=0.3,<0.7"
-Flask-SQLAlchemy = ">=2.4.0,<4"
-Flask-WTF = ">=0.14.2,<2"
-jsonschema = ">=3,<5"
-marshmallow = ">=3.18.0,<5"
-marshmallow-sqlalchemy = ">=0.22.0,<3.0.0"
-prison = ">=0.2.1,<1.0.0"
-PyJWT = ">=2.0.0,<3.0.0"
-python-dateutil = ">=2.3,<3"
-SQLAlchemy = ">=1.4.0,<3"
-sqlalchemy-utils = ">=0.32.21,<1"
-werkzeug = "<4"
-WTForms = "<4"
-
-[package.extras]
-jmespath = ["jmespath (>=0.9.5)"]
-oauth = ["Authlib (>=0.14,<2.0.0)"]
-saml = ["python3-saml (>=1.15.0)"]
-talisman = ["flask-talisman (>=1.0.0,<2.0)"]
-
-[[package]]
-name = "flask-babel"
-version = "4.0.0"
-description = "Adds i18n/l10n support for Flask applications."
-optional = false
-python-versions = ">=3.8,<4.0"
-groups = ["main"]
-files = [
-    {file = "flask_babel-4.0.0-py3-none-any.whl", hash = "sha256:638194cf91f8b301380f36d70e2034c77ee25b98cb5d80a1626820df9a6d4625"},
-    {file = "flask_babel-4.0.0.tar.gz", hash = "sha256:dbeab4027a3f4a87678a11686496e98e1492eb793cbdd77ab50f4e9a2602a593"},
-]
-
-[package.dependencies]
-Babel = ">=2.12"
-Flask = ">=2.0"
-Jinja2 = ">=3.1"
-pytz = ">=2022.7"
-
-[[package]]
-name = "flask-jwt-extended"
-version = "4.7.4"
-description = "Extended JWT integration with Flask"
-optional = false
-python-versions = "<4,>=3.10"
-groups = ["main"]
-files = [
-    {file = "flask_jwt_extended-4.7.4-py2.py3-none-any.whl", hash = "sha256:daad1981117f4972d63c363d013f290de307aad781a935921b603b714817393c"},
-    {file = "flask_jwt_extended-4.7.4.tar.gz", hash = "sha256:78fd0f460317facf3a0084a6457ffaf2f1dda9eefbd576f94cea35b0eadd5531"},
-]
-
-[package.dependencies]
-Flask = ">=2.0,<4.0"
-PyJWT = ">=2.11.0,<3.0"
-Werkzeug = ">=0.14"
-
-[package.extras]
-asymmetric-crypto = ["cryptography (>=3.3.1)"]
-
-[[package]]
 name = "flask-limiter"
 version = "3.12"
 description = "Rate limiting for flask applications"
@@ -2921,83 +2782,6 @@ memcached = ["limits[memcached]"]
 mongodb = ["limits[mongodb]"]
 redis = ["limits[redis]"]
 valkey = ["limits[valkey]"]
-
-[[package]]
-name = "flask-login"
-version = "0.6.3"
-description = "User authentication and session management for Flask."
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "Flask-Login-0.6.3.tar.gz", hash = "sha256:5e23d14a607ef12806c699590b89d0f0e0d67baeec599d75947bf9c147330333"},
-    {file = "Flask_Login-0.6.3-py3-none-any.whl", hash = "sha256:849b25b82a436bf830a054e74214074af59097171562ab10bfa999e6b78aae5d"},
-]
-
-[package.dependencies]
-Flask = ">=1.0.4"
-Werkzeug = ">=1.0.1"
-
-[[package]]
-name = "flask-session"
-version = "0.8.0"
-description = "Server-side session support for Flask"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "flask_session-0.8.0-py3-none-any.whl", hash = "sha256:5dae6e9ddab334f8dc4dea4305af37851f4e7dc0f484caf3351184001195e3b7"},
-    {file = "flask_session-0.8.0.tar.gz", hash = "sha256:20e045eb01103694e70be4a49f3a80dbb1b57296a22dc6f44bbf3f83ef0742ff"},
-]
-
-[package.dependencies]
-cachelib = "*"
-flask = ">=2.2"
-msgspec = ">=0.18.6"
-
-[package.extras]
-all = ["Flask-Session[cachelib,memcached,mongodb,redis,sqlalchemy]"]
-cachelib = ["cachelib (>=0.10.2)"]
-memcached = ["pymemcache"]
-mongodb = ["pymongo (>=4.6.2)"]
-redis = ["redis (>=5.0.3)"]
-sqlalchemy = ["flask-sqlalchemy (>=3.0.5)"]
-
-[[package]]
-name = "flask-sqlalchemy"
-version = "3.1.1"
-description = "Add SQLAlchemy support to your Flask application."
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "flask_sqlalchemy-3.1.1-py3-none-any.whl", hash = "sha256:4ba4be7f419dc72f4efd8802d69974803c37259dd42f3913b0dcf75c9447e0a0"},
-    {file = "flask_sqlalchemy-3.1.1.tar.gz", hash = "sha256:e4b68bb881802dda1a7d878b2fc84c06d1ee57fb40b874d3dc97dabfa36b8312"},
-]
-
-[package.dependencies]
-flask = ">=2.2.5"
-sqlalchemy = ">=2.0.16"
-
-[[package]]
-name = "flask-wtf"
-version = "1.3.0"
-description = "Form rendering, validation, and CSRF protection for Flask with WTForms."
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "flask_wtf-1.3.0-py3-none-any.whl", hash = "sha256:dc5e3a4ce97f75c47bf6c1c72ad2c3b7bdf579a2ed13aebcc5d3d81fe2571160"},
-    {file = "flask_wtf-1.3.0.tar.gz", hash = "sha256:61d5dabc50c3df885c297dcbd80810443a5d632106c8a69cab8ce740f0cdd7cc"},
-]
-
-[package.dependencies]
-flask = "*"
-itsdangerous = "*"
-wtforms = "*"
-
-[package.extras]
-email = ["email-validator"]
 
 [[package]]
 name = "folio-data-import"
@@ -5368,6 +5152,22 @@ files = [
 referencing = ">=0.31.0"
 
 [[package]]
+name = "jwcrypto"
+version = "1.5.9"
+description = "Implementation of JOSE Web standards"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "jwcrypto-1.5.9-py3-none-any.whl", hash = "sha256:30b1c9afc898eefd112c31d836eb2d7a4c6febcac95d4aa727e963cd42911d8e"},
+    {file = "jwcrypto-1.5.9.tar.gz", hash = "sha256:dbbbfcdad7a6fc40cf3d5a635b11115fc42591b7ab869a36ad347a516a6e1c5d"},
+]
+
+[package.dependencies]
+cryptography = ">=49.0.0"
+typing_extensions = ">=4.5.0"
+
+[[package]]
 name = "lazy-object-proxy"
 version = "1.12.0"
 description = "A fast and thorough lazy object proxy."
@@ -6131,22 +5931,6 @@ backports-datetime-fromisoformat = {version = "*", markers = "python_version < \
 typing-extensions = {version = "*", markers = "python_version < \"3.11\""}
 
 [[package]]
-name = "marshmallow-sqlalchemy"
-version = "1.5.0"
-description = "SQLAlchemy integration with the marshmallow (de)serialization library"
-optional = false
-python-versions = ">=3.10"
-groups = ["main"]
-files = [
-    {file = "marshmallow_sqlalchemy-1.5.0-py3-none-any.whl", hash = "sha256:3865232672f3dd38c4d5e4e85fdedce76904200742c3594948a2d11d0af93258"},
-    {file = "marshmallow_sqlalchemy-1.5.0.tar.gz", hash = "sha256:e51192c204770645a2fab0d72f44f8789272eef75951f84b1608d6b4b0bfe0e6"},
-]
-
-[package.dependencies]
-marshmallow = ">=3.18.0"
-SQLAlchemy = ">=1.4.40,<3.0"
-
-[[package]]
 name = "mccabe"
 version = "0.7.0"
 description = "McCabe checker, plugin for flake8"
@@ -6332,7 +6116,7 @@ version = "1.2.1"
 description = "MessagePack serializer"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "test"]
+groups = ["test"]
 files = [
     {file = "msgpack-1.2.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:8c7b398c56ff125feae96c2737abfec5595f1fa0aa186df60c56040b8accb95c"},
     {file = "msgpack-1.2.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1548006a91aa93c5da81f3bdcebc1a0d10cea2d25969754fbe848da622b2b895"},
@@ -7398,24 +7182,6 @@ dev = ["pre-commit", "tox"]
 testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
-name = "prison"
-version = "0.2.1"
-description = "Rison encoder/decoder"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "prison-0.2.1-py2.py3-none-any.whl", hash = "sha256:f90bab63fca497aa0819a852f64fb21a4e181ed9f6114deaa5dc04001a7555c5"},
-    {file = "prison-0.2.1.tar.gz", hash = "sha256:e6cd724044afcb1a8a69340cad2f1e3151a5839fd3a8027fd1357571e797c599"},
-]
-
-[package.dependencies]
-six = "*"
-
-[package.extras]
-dev = ["nose", "pipreqs", "twine"]
-
-[[package]]
 name = "prometheus-client"
 version = "0.26.0"
 description = "Python client for the Prometheus monitoring system."
@@ -8440,6 +8206,26 @@ files = [
 
 [package.extras]
 cli = ["click (>=5.0)"]
+
+[[package]]
+name = "python-keycloak"
+version = "7.1.1"
+description = "python-keycloak is a Python package providing access to the Keycloak API."
+optional = false
+python-versions = "<4,>=3.10"
+groups = ["main"]
+files = [
+    {file = "python_keycloak-7.1.1-py3-none-any.whl", hash = "sha256:d8295bec6c4805ab7335b03bc92753c8c6258d5511b080cac061da20ae77f61c"},
+    {file = "python_keycloak-7.1.1.tar.gz", hash = "sha256:38973e54694a656fe6f3f8fc2af0b89c78136863f928261f0d243445e9e486bc"},
+]
+
+[package.dependencies]
+aiofiles = ">=24.1.0"
+deprecation = ">=2.1.0"
+httpx = ">=0.23.2"
+jwcrypto = ">=1.5.4"
+requests = ">=2.20.0"
+requests-toolbelt = ">=0.6.0"
 
 [[package]]
 name = "python-magic"
@@ -9982,35 +9768,6 @@ sqlalchemy = ">=1.1.13"
 tracing = ["opentelemetry-api (>=1.1.0)", "opentelemetry-instrumentation (>=0.20b0)", "opentelemetry-sdk (>=1.1.0)"]
 
 [[package]]
-name = "sqlalchemy-utils"
-version = "0.42.1"
-description = "Various utility functions for SQLAlchemy."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "sqlalchemy_utils-0.42.1-py3-none-any.whl", hash = "sha256:243cfe1b3a1dae3c74118ae633f1d1e0ed8c787387bc33e556e37c990594ac80"},
-    {file = "sqlalchemy_utils-0.42.1.tar.gz", hash = "sha256:881f9cd9e5044dc8f827bccb0425ce2e55490ce44fc0bb848c55cc8ee44cc02e"},
-]
-
-[package.dependencies]
-SQLAlchemy = ">=1.4"
-
-[package.extras]
-arrow = ["arrow (>=0.3.4)"]
-babel = ["Babel (>=1.3)"]
-color = ["colour (>=0.0.4)"]
-encrypted = ["cryptography (>=0.6)"]
-intervals = ["intervals (>=0.7.1)"]
-password = ["passlib (>=1.6,<2.0)"]
-pendulum = ["pendulum (>=2.0.5)"]
-phone = ["phonenumbers (>=5.9.2)"]
-test = ["Jinja2 (>=2.3)", "Pygments (>=1.2)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "isort (>=4.2.2)", "pg8000 (>=1.12.4)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-test-all = ["Babel (>=1.3)", "Jinja2 (>=2.3)", "Pygments (>=1.2)", "arrow (>=0.3.4)", "colour (>=0.0.4)", "cryptography (>=0.6)", "docutils (>=0.10)", "flake8 (>=2.4.0)", "flexmock (>=0.9.7)", "furl (>=0.4.1)", "intervals (>=0.7.1)", "isort (>=4.2.2)", "passlib (>=1.6,<2.0)", "pendulum (>=2.0.5)", "pg8000 (>=1.12.4)", "phonenumbers (>=5.9.2)", "psycopg (>=3.1.8)", "psycopg2 (>=2.5.1)", "psycopg2cffi (>=2.8.1)", "pymysql", "pyodbc", "pytest (==7.4.4)", "python-dateutil", "python-dateutil (>=2.6)", "pytz (>=2014.2)"]
-timezone = ["python-dateutil"]
-url = ["furl (>=0.4.1)"]
-
-[[package]]
 name = "sqlparse"
 version = "0.6.0"
 description = "A non-validating SQL parser."
@@ -11292,4 +11049,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "c728ae6e8b883d96e5330ab319cc9723eac5efe6ec76938169cd35d97c46a948"
+content-hash = "93d105de4e33b58affc03a48d8cbaff0706d689de1e655957bd6d7526195c5c4"

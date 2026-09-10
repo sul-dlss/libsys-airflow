@@ -18,6 +18,7 @@ from honeybadger.contrib.fastapi import HoneybadgerRoute
 from starlette.datastructures import FormData
 
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import (
     CSRFCookieMiddleware,
     csrf_field,
@@ -37,7 +38,7 @@ from libsys_airflow.plugins.vendor.models import (
 )
 from libsys_airflow.plugins.vendor.paths import download_path as get_download_path
 from libsys_airflow.plugins.vendor.paths import archive_path as get_archive_path
-from libsys_airflow.plugins.vendor_app.database import Session
+from libsys_airflow.plugins.vendor_app.database import Session, SessionScopeMiddleware
 from libsys_airflow.plugins.vendor.archive import archive_file
 from libsys_airflow.plugins.airflow.connections import create_connection
 from libsys_airflow.plugins.vendor.download import create_hook
@@ -50,8 +51,17 @@ logger = logging.getLogger(__name__)
 
 URL_PREFIX = "/vendor_management"
 
-app = FastAPI(route_class=HoneybadgerRoute)
+app = FastAPI(
+    route_class=HoneybadgerRoute,
+    openapi_url=None,
+    # "Dashboard" is the name in this plugin's external_views entry, which is what
+    # Airflow itself passes when deciding whether to show the menu item.
+    dependencies=[Depends(require_view_access("Dashboard"))],
+)
 app.add_middleware(CSRFCookieMiddleware)
+# Added last, so it is the outermost middleware and every request below it, CSRF included,
+# shares the session it scopes.
+app.add_middleware(SessionScopeMiddleware)
 
 templates = Jinja2Templates(
     directory=pathlib.Path(__file__).resolve().parent / "templates"
@@ -66,14 +76,6 @@ app.mount(
     StaticFiles(directory=pathlib.Path(__file__).resolve().parent / "static"),
     name="static",
 )
-
-
-@app.middleware("http")
-async def shutdown_session_middleware(request: Request, call_next):
-    try:
-        return await call_next(request)
-    finally:
-        Session.remove()
 
 
 def _folio_client():

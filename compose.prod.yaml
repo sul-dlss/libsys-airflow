@@ -32,10 +32,6 @@
 #                                Default: .
 # Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
 #
-# _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
-#                                Default: airflow
-# _AIRFLOW_WWW_USER_PASSWORD   - Password for the administrator account (if requested).
-#                                Default: airflow
 # _PIP_ADDITIONAL_REQUIREMENTS - Additional PIP requirements to add when starting all containers.
 #                                Use this option ONLY for quick checks. Installing requirements at container
 #                                startup is done EVERY TIME the service is started.
@@ -66,12 +62,11 @@ x-airflow-common:
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API__BASE_URL:-airflow}
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}
     AIRFLOW__API__BASE_URL: ${AIRFLOW__API__BASE_URL}
-    # yamllint disable rule:line-length
-    # Use simple http server on scheduler for health checks
-    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
-    # yamllint enable rule:line-length
-    # logging_config_class is defined in airflow.cfg. Does this need to be here?
-    # AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS: config.log_config.LOGGING_CONFIG
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID: 'airflow-sso'
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET: ${AIRFLOW_KEYCLOAK_CLIENT_SECRET}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__REALM: ${KEYCLOAK_REALM:-sul}
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__SERVER_URL: ${KEYCLOAK_URL}
+    AIRFLOW__CORE__AUTH_MANAGER: ${AIRFLOW__CORE__AUTH_MANAGER:-airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager}
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     AIRFLOW_VAR_FOLIO_URL: ${AIRFLOW_VAR_FOLIO_URL}
     AIRFLOW_VAR_FOLIO_USER: ${AIRFLOW_VAR_FOLIO_USER}
@@ -286,9 +281,8 @@ services:
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'false'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      # See the note in compose.yaml: _AIRFLOW_WWW_USER_CREATE must be absent, not
+      # 'false', now that there is no local admin account to create.
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
     volumes:
