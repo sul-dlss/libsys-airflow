@@ -167,6 +167,9 @@ The middleware issues two cookies: `csrf_signed_token` is httponly and signed wi
 `[api] secret_key` (already set as `AIRFLOW__API__SECRET_KEY` in `compose.prod.yaml`, and it must
 be identical across API server instances), and `csrf_token` holds the matching unsigned value so a
 page render can reproduce the token the form has to submit. Tokens are valid for eight hours.
+Both cookies are marked `Secure` when `[api] base_url` is an `https://` URL or Airflow terminates
+TLS itself; `[api] ssl_cert` alone is not enough to detect this, because it is empty on the
+deployments where a proxy terminates TLS.
 
 Tokens are bound to the authenticated user: the signing key is derived from the user's id, so a
 pair minted for one user is rejected for another, and the middleware rolls the pair whenever the
