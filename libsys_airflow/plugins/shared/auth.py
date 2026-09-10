@@ -1,10 +1,10 @@
 """
 Authorization for the FastAPI plugin apps.
 
-Airflow mounts a plugin's ``fastapi_apps`` as sub-applications and applies no access
-control of its own — ``is_authorized_custom_view`` only governs whether the matching
-``external_views`` entry appears in the navigation, so without a dependency here the
-routes are reachable by anyone who knows the URL.
+Airflow applies no access control to the ``fastapi_apps`` it mounts, so every plugin
+route is open to anyone who knows its URL until an app guards itself. Hiding an app from
+the nav is not a substitute: ``GET /api/v2/plugins`` gates the whole plugins menu on a
+single ``AccessView.PLUGINS`` check and never consults the individual apps.
 
 Apply it once per app rather than per route, so a route added later cannot forget it::
 
@@ -12,16 +12,11 @@ Apply it once per app rather than per route, so a route added later cannot forge
 
     app = FastAPI(dependencies=[Depends(require_view_access("Boundwith CSV Upload"))])
 
-The view name must match the plugin's ``external_views`` entry, since that is the name
-Airflow itself passes when deciding whether to show the menu item. Keeping the two in
-sync means the nav and the routes agree on who has access.
-
-Two things are worth knowing about that name. Only Keycloak looks at it, and it cannot
-currently act on it: every view shares a single ``Custom`` resource with the name pushed
-as a ``resource_id`` claim, and no Keycloak policy type reads a pushed claim without a
-server-side script deployment. ``SimpleAuthManager`` ignores both the name and the
-method, asking only for the ``VIEWER`` role. So what this dependency establishes is that
-the caller is a signed-in user holding an Airflow role, not which plugins they may use.
+The view name is only a label, matched to the plugin's ``external_views`` entry by
+convention. No auth manager can act on it: Keycloak pushes it as a ``resource_id`` claim
+that no policy type can read, and ``SimpleAuthManager`` ignores it. So this establishes
+that the caller is a signed-in user holding an Airflow role, not which plugins they may
+use.
 """
 
 from collections.abc import Callable
