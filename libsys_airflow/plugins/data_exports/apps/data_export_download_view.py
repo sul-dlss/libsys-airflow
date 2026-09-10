@@ -7,7 +7,10 @@ from fastapi.responses import FileResponse
 from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
-app = FastAPI(dependencies=[Depends(require_view_access("Data Export MARC Download"))])
+app = FastAPI(
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Data Export MARC Download"))],
+)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "data-export-download"

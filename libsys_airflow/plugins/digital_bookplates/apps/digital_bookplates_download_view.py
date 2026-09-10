@@ -7,7 +7,8 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI(
-    dependencies=[Depends(require_view_access("Digital Bookplates File Download"))]
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Digital Bookplates File Download"))],
 )
 
 templates = plugin_templates(

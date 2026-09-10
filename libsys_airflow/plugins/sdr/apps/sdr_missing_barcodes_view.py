@@ -7,7 +7,8 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import file_info, plugin_templates
 
 app = FastAPI(
-    dependencies=[Depends(require_view_access("SDR Missing Barcodes Reports"))]
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("SDR Missing Barcodes Reports"))],
 )
 
 templates = plugin_templates(pathlib.Path(__file__).resolve().parent.parent, "sdr")

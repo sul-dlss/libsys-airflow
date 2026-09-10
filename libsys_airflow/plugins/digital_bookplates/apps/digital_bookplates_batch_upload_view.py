@@ -25,7 +25,8 @@ from libsys_airflow.plugins.shared.utils import (
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    dependencies=[Depends(require_view_access("Digital Bookplates Batch Upload"))]
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Digital Bookplates Batch Upload"))],
 )
 app.add_middleware(CSRFCookieMiddleware)
 

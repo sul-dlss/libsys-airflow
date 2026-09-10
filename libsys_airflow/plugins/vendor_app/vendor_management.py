@@ -53,6 +53,7 @@ URL_PREFIX = "/vendor_management"
 
 app = FastAPI(
     route_class=HoneybadgerRoute,
+    openapi_url=None,
     # "Dashboard" is the name in this plugin's external_views entry, which is what
     # Airflow itself passes when deciding whether to show the menu item.
     dependencies=[Depends(require_view_access("Dashboard"))],

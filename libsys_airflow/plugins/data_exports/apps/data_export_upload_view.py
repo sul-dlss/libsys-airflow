@@ -14,7 +14,10 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
-app = FastAPI(dependencies=[Depends(require_view_access("Data Export CSV Upload"))])
+app = FastAPI(
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Data Export CSV Upload"))],
+)
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(

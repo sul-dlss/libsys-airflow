@@ -7,7 +7,8 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.utils import file_info, plugin_templates
 
 app = FastAPI(
-    dependencies=[Depends(require_view_access("Orafin Feeder-files and Reports"))]
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Orafin Feeder-files and Reports"))],
 )
 
 templates = plugin_templates(pathlib.Path(__file__).resolve().parent.parent, "orafin")

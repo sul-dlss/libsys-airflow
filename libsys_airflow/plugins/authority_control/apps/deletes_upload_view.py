@@ -12,7 +12,8 @@ from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protec
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI(
-    dependencies=[Depends(require_view_access("FOLIO Authority Deletes Upload"))]
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("FOLIO Authority Deletes Upload"))],
 )
 app.add_middleware(CSRFCookieMiddleware)
 

@@ -20,7 +20,10 @@ from libsys_airflow.plugins.shared.utils import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(dependencies=[Depends(require_view_access("Circ Rules Tester"))])
+app = FastAPI(
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Circ Rules Tester"))],
+)
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(

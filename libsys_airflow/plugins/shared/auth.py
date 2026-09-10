@@ -10,7 +10,13 @@ Apply it once per app rather than per route, so a route added later cannot forge
 
     from libsys_airflow.plugins.shared.auth import require_view_access
 
-    app = FastAPI(dependencies=[Depends(require_view_access("Boundwith CSV Upload"))])
+    app = FastAPI(
+        openapi_url=None,
+        dependencies=[Depends(require_view_access("Boundwith CSV Upload"))],
+    )
+Each app also needs ``openapi_url=None`` to prevent the next plugin from reintroducing an 
+anonymously readable map of its own routes and from assuming the app-level dependency 
+covers every possible route.
 
 The view name is only a label, matched to the plugin's ``external_views`` entry by
 convention. No auth manager can act on it: Keycloak pushes it as a ``resource_id`` claim

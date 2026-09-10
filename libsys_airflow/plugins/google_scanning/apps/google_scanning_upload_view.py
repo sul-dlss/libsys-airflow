@@ -26,7 +26,10 @@ from libsys_airflow.plugins.shared.utils import (
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(dependencies=[Depends(require_view_access("Google Scanning Upload"))])
+app = FastAPI(
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Google Scanning Upload"))],
+)
 app.add_middleware(CSRFCookieMiddleware)
 
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
