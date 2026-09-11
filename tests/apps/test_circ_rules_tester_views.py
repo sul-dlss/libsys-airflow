@@ -5,13 +5,15 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import unquote_plus
 
 from fastapi.testclient import TestClient
-from auth_helpers import authed_test_client  # noqa
+from auth_helpers import authenticated_app_fixture  # noqa
+from csrf_helpers import csrf_test_client  # noqa
 import pytest  # noqa
 
 from libsys_airflow.plugins.folio.apps import circ_rules_tester_view
 from libsys_airflow.plugins.folio.apps.circ_rules_tester_view import app
 
-client = authed_test_client(app, follow_redirects=False)
+authenticated = authenticated_app_fixture(app)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 def test_circ_rules_tester_main_page():

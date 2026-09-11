@@ -1,9 +1,14 @@
+import pytest
+
 from airflow.api_fastapi.auth.managers.simple.user import SimpleAuthManagerUser
 from airflow.api_fastapi.core_api.security import get_user
 
-from csrf_helpers import csrf_test_client
-
 TEST_USERNAME = "testuser"
+
+# Every app ``authenticate`` has overridden and ``unauthenticate`` has not put back. The
+# apps are module singletons, so tests/conftest.py drains this after each test rather
+# than trusting each caller to undo itself.
+_authenticated_apps: set = set()
 
 
 def authenticate(app, username: str = TEST_USERNAME, role: str = "admin") -> None:
@@ -19,22 +24,46 @@ def authenticate(app, username: str = TEST_USERNAME, role: str = "admin") -> Non
     Tests run under ``SimpleAuthManager``, whose ``is_authorized_custom_view`` only asks
     for the ``VIEWER`` role and ignores the view name, so a real user object is enough
     and nothing needs mocking. Pass ``role=None`` to exercise the unauthorized path.
+
+    Safe to call from inside a test: the override is dropped again after it. Calling it
+    at module level instead makes it outlive the teardown, and pytest runs that during
+    collection, so the app would be authenticated for the whole session.
     """
+    _authenticated_apps.add(app)
     app.dependency_overrides[get_user] = lambda: SimpleAuthManagerUser(
         username=username, role=role
     )
 
 
-def authed_test_client(
-    app, username: str = TEST_USERNAME, role: str = "admin", **kwargs
-):
-    """
-    ``csrf_test_client`` plus authentication, for apps behind ``require_view_access``.
+def unauthenticate(app) -> None:
+    _authenticated_apps.discard(app)
+    app.dependency_overrides.pop(get_user, None)
 
-    Note the CSRF token is still bound to the empty identity. ``csrf_binding`` resolves
-    the user from the request itself — ``request.state.user`` or the JWT cookie — not
-    from FastAPI dependency overrides, so as far as the CSRF module is concerned an
-    overridden request is unauthenticated.
+
+def unauthenticate_all() -> None:
+    while _authenticated_apps:
+        unauthenticate(next(iter(_authenticated_apps)))
+
+
+def authenticated_app_fixture(app, username: str = TEST_USERNAME, role: str = "admin"):
     """
-    authenticate(app, username=username, role=role)
-    return csrf_test_client(app, **kwargs)
+    Build an autouse fixture authenticating ``app`` for the tests in one module.
+
+    Bind it at module level, as in ``authenticated = authenticated_app_fixture(app)``,
+    alongside a plain ``csrf_test_client(app)``. Building the client at import is fine;
+    authenticating at import is not, because the override would outlive the teardown
+    that keeps it from reaching the tests asserting on anonymous requests.
+
+    A ``csrf_test_client`` paired with this is still carrying a token bound to the empty
+    identity. ``csrf_binding`` resolves the user from the request — ``request.state.user``
+    or the JWT cookie — not from FastAPI dependency overrides, so as far as the CSRF
+    module is concerned these requests are unauthenticated.
+    """
+
+    @pytest.fixture(autouse=True)
+    def authenticated():
+        authenticate(app, username=username, role=role)
+        yield
+        unauthenticate(app)
+
+    return authenticated

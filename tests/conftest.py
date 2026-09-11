@@ -5,6 +5,8 @@ import pathlib
 import sys
 import tempfile
 
+import pytest
+
 
 root_directory = pathlib.Path(__file__).parent.parent
 dir = root_directory / "libsys_airflow"
@@ -33,3 +35,19 @@ os.environ.setdefault(
 from airflow.api_fastapi.app import init_auth_manager  # noqa: E402
 
 init_auth_manager()
+
+# Imported down here for the same reason: it reaches Airflow's security module too.
+from auth_helpers import unauthenticate_all  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _unauthenticate_plugin_apps():
+    """
+    Undo every ``authenticate`` call a test made, however it made it.
+
+    The plugin apps are module-level singletons, so a ``get_user`` override installed on
+    one is visible to every later test in the session, including the ones asserting that
+    a route rejects an anonymous request.
+    """
+    yield
+    unauthenticate_all()

@@ -2,12 +2,14 @@ from io import BytesIO
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
-from auth_helpers import authed_test_client  # noqa
+from auth_helpers import authenticated_app_fixture  # noqa
+from csrf_helpers import csrf_test_client  # noqa
 import pytest  # noqa
 
 from libsys_airflow.plugins.boundwith.boundwith_view import app
 
-client = authed_test_client(app)
+authenticated = authenticated_app_fixture(app)
+client = csrf_test_client(app)
 
 
 def test_bw_home():

@@ -61,6 +61,9 @@ def test_plugin_app_docs_are_not_served_anonymously(app):
     """
     Not simply a 404 everywhere: an app whose own routes include a root-level path
     parameter now matches ``/docs`` itself, and answers 401 like any other route.
+
+    Anonymity depends on nothing having authenticated these singleton apps earlier in
+    the session, which ``_unauthenticate_plugin_apps`` in tests/conftest.py guarantees.
     """
     client = TestClient(app)
 

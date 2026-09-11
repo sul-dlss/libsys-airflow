@@ -3,13 +3,13 @@ import pathlib
 from fastapi.testclient import TestClient
 import pytest  # noqa
 
-from auth_helpers import authenticate  # noqa
+from auth_helpers import authenticated_app_fixture  # noqa
 from conftest import root_directory
 
 from libsys_airflow.plugins.data_exports.apps import data_export_download_view
 from libsys_airflow.plugins.data_exports.apps.data_export_download_view import app
 
-authenticate(app)
+authenticated = authenticated_app_fixture(app)
 client = TestClient(app)
 
 

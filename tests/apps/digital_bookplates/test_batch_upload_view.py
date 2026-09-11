@@ -6,7 +6,8 @@ import pandas as pd
 import pytest
 
 from fastapi.testclient import TestClient
-from auth_helpers import authed_test_client  # noqa
+from auth_helpers import authenticated_app_fixture  # noqa
+from csrf_helpers import csrf_test_client  # noqa
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as SQLAlchemySession
 from sqlalchemy.pool import StaticPool
@@ -27,7 +28,8 @@ from mocks import (  # noqa
 )
 
 
-client = authed_test_client(app, follow_redirects=False)
+authenticated = authenticated_app_fixture(app)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture
