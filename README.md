@@ -25,16 +25,19 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
 1. Start up docker locally.
-1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
+1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`.
 1. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
 
 - `AIRFLOW_VAR_OKAPI_URL`
 - `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
-- `AIRFLOW_KEYCLOAK_CLIENT_SECRET` (only needed when running against Keycloak — see [Authentication](#authentication) below)
+(the following are only needed when running against Keycloak locally — see [Authentication](#authentication) below)
+- `AIRFLOW_KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_URL`
+- `AIRFLOW__CORE__AUTH_MANAGER=airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager`
 
-  These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
+They can have placeholder values. The secrets are in vault: `vault kv list puppet/application/libsys_airflow/{env}`.
 
   Example script to quickly populate your .env file for dev:
   ```
@@ -59,28 +62,25 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 ## Authentication
 
-Which auth manager runs is set per environment by `AIRFLOW__CORE__AUTH_MANAGER`, not in
-`airflow.cfg` — that file is baked into the Docker image, so anything set there would apply
-everywhere. `compose.yaml` defaults local development to Keycloak; override it in your `.env`
-to switch.
+Which auth manager runs is set per environment by `AIRFLOW__CORE__AUTH_MANAGER`. 
+`compose.yaml` defaults local development to SimpleAuthManager; override it in your `.env`
+to use KeycloakAuthManager.
 
-### Keycloak (the local default)
+### Keycloak
 
-Points at the shared FOLIO Keycloak dev server (see `compose.yaml`) and its `sul` realm, so you
-need VPN or the campus network. Set `AIRFLOW_KEYCLOAK_CLIENT_SECRET` in your `.env` from the
-`airflow-sso` client's Credentials tab.
+KeycloakAuthManager uses the FOLIO Keycloak server (see `${KEYCLOAK_URL}` set via puppet). To use
+KeycloakAuthManager locally, you need VPN to the campus network. Set `AIRFLOW_KEYCLOAK_CLIENT_SECRET`
+in your `.env` from the `airflow-sso` client's Credentials tab.
 
-Airflow shares the `sul` realm with FOLIO rather than having its own. The `airflow-sso` client
-carries the whole authorization model — roles, resources, scopes, policies, permissions — and is
-exported from dev and imported into the other environments, so it is configured once rather than
-rebuilt per environment. That export is the source of truth; the notes below describe its shape,
-they are not a script to re-run.
+The `airflow-sso` client carries the whole authorization model — roles, resources, scopes, policies,
+permissions. It can be imported to other keycloak environments as needed. The notes below describe how
+the client is setup.
 
 #### Assigning roles
 
-The five role names the auth manager recognizes are not configurable. They exist as **client roles
-on `airflow-sso`**, not realm roles, so they cannot collide with FOLIO's own. As `create-all`
-builds them, in non-team mode:
+The five roles used by KeycloakAuthManager are **client roles on `airflow-sso`**,
+not realm roles, so they do not collide with FOLIO's realm roles. The airflowcli 
+`airflow keycloak-auth-manager create-all` builds the roles, scopes, resources, permissions in Keycloak:
 
 | Role | Covers |
 |---|---|
@@ -90,29 +90,18 @@ builds them, in non-team mode:
 | `Admin` | Viewer, plus all extended methods on everything |
 | `SuperAdmin` | identical to `Admin` unless multi-team mode is enabled |
 
-`User` and `Op` are adjusted from that — see [Permission adjustments](#permission-adjustments).
-People get `User` or `Admin`; `Op` is reserved for the service account, which is what keeps the
-plugins' permissions independent of any human role.
+`User` and `Op` are modified from the default — see [Permission adjustments](#permission-adjustments).
+People get `User` or `Admin`; `Op` is reserved for the service-account-airflow-sso user.
 
-Assign roles under Users → the user → **Role mapping**, filtered by clients. Nothing does this
-automatically, in any environment. Permissions come from the token minted at login, so log out
-and back in after a change; decisions are also cached briefly.
-
-To debug a 403, use Authorization → **Evaluate** on the client with the user, resource, and scope
-in question. It shows each permission's vote and which policy decided it.
+Assign roles under Users → the user → **Role mapping**, filtered by clients. Permissions come from
+the token minted at login, so log out and back in after a change; decisions are also cached briefly.
 
 #### The service account
 
 The `airflow-sso` client needs **Service accounts roles** enabled, and its service account is a
 separate user needing its own role assignment. The plugin apps call Airflow's public API as that
 account through the `client_credentials` grant — see
-`libsys_airflow/plugins/shared/airflow_api_client.py` — so without it every plugin that triggers
-a DAG fails.
-
-Assign it `Op` and nothing else: not `User`, and not `Admin`. The service account is an ordinary
-Keycloak user governed by the same permissions a person is, so any role it shares with people
-couples the two — tightening that role for people silently breaks plugin triggering. `Op` works
-because nobody else is on it.
+`libsys_airflow/plugins/shared/airflow_api_client.py`. Assign service-account-airflow-sso user `Op`.
 
 #### Permission adjustments
 
@@ -133,9 +122,9 @@ a scope-based one:
 **`Op`: add the `Dag` resource.** This is where the service account gets the scopes the plugins
 need to trigger, read and clear runs.
 
+Create these scope-based permissions:
 **`User-Custom` and `User-Views`:** let non-admins use the plugin apps and their nav entries. Both
-are scope-based, and both need **Affirmative** — at Unanimous a permission with two policies
-demands the user hold both roles.
+are scope-based, and both need **Affirmative** for decision strategy.
 
 - `User-Custom`: resource `Custom`, scopes `GET` and `POST`, policies `Allow-User` and `Allow-Op`
 - `User-Views`: resource `View`, scopes `GET` and `LIST`, policy `Allow-User`
@@ -143,8 +132,7 @@ demands the user hold both roles.
 Finally, remove `Allow-User` from `ReadOnly`, so `User`s cannot click around the rest of Airflow
 outside the plugins.
 
-Re-running `create-all` reverts every change to the four permissions it owns, `User` and `Op`
-included — which breaks plugin triggering until `Dag` is added back to `Op`. `User-Custom` and
+Re-running `create-all` reverts the changes we make to, `User` and `Op`. `User-Custom` and
 `User-Views` survive, since `create-all` only manages permissions it creates by name.
 
 #### Rebuilding the authorization model
@@ -157,28 +145,14 @@ docker compose run --rm airflow-cli airflow keycloak-auth-manager create-all \
   --username <keycloak-admin> --password <keycloak-admin-password> --dry-run
 ```
 
-Drop `--dry-run` once the output looks right. Then set two decision strategies to **Affirmative**
-by hand, since `create-all` does not reliably apply them and either one left at Unanimous produces
-a 403 that looks like a missing role: the resource server, under Authorization → Settings, and the
-`Admin` permission, which has both `Allow-Admin` and `Allow-SuperAdmin` attached. Finally, check
-each `Allow-<role>` policy is bound to the `airflow-sso` client role rather than a same-named
-realm role.
+Drop `--dry-run` once the output looks right. Then set the decision strategy to **Affirmative**
+for the `Admin` permission because `create-all` does not reliably apply them. Finally, check
+each `Allow-<role>` policy is bound to the corresponding `airflow-sso` client role.
 
 ### Simple auth (no identity provider)
 
-To develop without VPN or a Keycloak client secret, add to your `.env`:
-
-```
-AIRFLOW__CORE__AUTH_MANAGER=airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
-```
-
-`compose.yaml` already declares an `airflow` admin user via
-`AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS`. Its password is generated on first startup and
-printed in the apiserver logs; it is stored in
-`$AIRFLOW_HOME/simple_auth_manager_passwords.json.generated`, which you can edit directly if you
-want a fixed one. `AIRFLOW_VAR_API_USER` / `AIRFLOW_VAR_API_PASSWORD` (default `airflow` /
-`airflow`) are how the plugin apps authenticate to the API under simple auth, so they need to
-match that file.
+`compose.yaml` sets `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS` to true, which essentially
+disables authentication completely. This is fine for local development.
 
 ## Deploying
 

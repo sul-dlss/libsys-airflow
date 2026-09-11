@@ -60,19 +60,18 @@ x-airflow-common:
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
-    # Signs the plugin apps' CSRF tokens; compose.prod.yaml already sets this.
     AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY:-airflow_secret_key}
     # KeycloakAuthManager builds its OIDC redirect URI from base_url.
     AIRFLOW__API__BASE_URL: ${AIRFLOW__API__BASE_URL:-http://localhost:8080}
-    # Override in .env to develop without an identity provider:
-    #   AIRFLOW__CORE__AUTH_MANAGER=airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager
+    # Override in .env to develop using KeycloakAuthManager:
+    #   AIRFLOW__CORE__AUTH_MANAGER=airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager
     # See the "Authentication" section of the README.
-    AIRFLOW__CORE__AUTH_MANAGER: ${AIRFLOW__CORE__AUTH_MANAGER:-airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager}
-    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: ${AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS:-airflow:admin}
+    AIRFLOW__CORE__AUTH_MANAGER: ${AIRFLOW__CORE__AUTH_MANAGER:-airflow.api_fastapi.auth.managers.simple.simple_auth_manager.SimpleAuthManager}
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: 'true'
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID: 'airflow-sso'
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET: ${AIRFLOW_KEYCLOAK_CLIENT_SECRET}
     AIRFLOW__KEYCLOAK_AUTH_MANAGER__REALM: ${KEYCLOAK_REALM:-sul}
-    AIRFLOW__KEYCLOAK_AUTH_MANAGER__SERVER_URL: 'https://keycloak-folio-dev.stanford.edu'
+    AIRFLOW__KEYCLOAK_AUTH_MANAGER__SERVER_URL: ${KEYCLOAK_URL}
     AIRFLOW_VAR_FOLIO_URL: ${AIRFLOW_VAR_FOLIO_URL}
     AIRFLOW_VAR_FOLIO_USER: ${AIRFLOW_VAR_FOLIO_USER}
     AIRFLOW_VAR_FOLIO_PASSWORD: ${AIRFLOW_VAR_FOLIO_PASSWORD}
