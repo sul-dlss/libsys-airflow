@@ -24,9 +24,9 @@ signed cookie, which cannot be produced without the server's secret key.
 Tokens are also bound to the authenticated user: the signing key is derived from the user's id,
 so a pair minted for one user fails verification for another. Without this, an attacker could
 mint a legitimate pair for themselves, overwrite the victim's CSRF cookies from any other
-``stanford.edu`` host (same-site for cookie purposes) and submit the matching token. Binding only
-takes effect once the routes require authentication, which is a separate change; until then every
-request is unauthenticated, resolves to an empty binding, and behaves as it did before.
+``stanford.edu`` host (same-site for cookie purposes) and submit the matching token. Every app is
+behind ``require_view_access``, so a submission that reaches a route is bound to a real user; the
+empty binding is left for requests carrying no session, which that dependency rejects anyway.
 
 Usage in an app::
 
