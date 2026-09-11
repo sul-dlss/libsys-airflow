@@ -25,15 +25,19 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 
 1. Clone repository `git clone https://github.com/sul-dlss/libsys-airflow.git`
 1. Start up docker locally.
-1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`. (See [Airflow docs](https://airflow.apache.org/docs/apache-airflow/2.5.0/howto/docker-compose/index.html#setting-the-right-airflow-user) for more info.)
+1. Create a `.env` file with the `AIRFLOW_UID` and `AIRFLOW_GROUP` values. For local development these can usually be `AIRFLOW_UID=50000` and `AIRFLOW_GROUP=0`.
 1. Add to the `.env` values for environment variables used by DAGs. (These are usually applied to VMs by puppet.)
 
 - `AIRFLOW_VAR_OKAPI_URL`
 - `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
+(the following are only needed when running against Keycloak locally — see [Authentication](#authentication) below)
+- `AIRFLOW_KEYCLOAK_CLIENT_SECRET`
+- `KEYCLOAK_URL`
+- `AIRFLOW__CORE__AUTH_MANAGER=airflow.providers.keycloak.auth_manager.keycloak_auth_manager.KeycloakAuthManager`
 
-  These environment variables must be prefixed with `AIRFLOW_VAR_` to be accessible to DAGs. (See [Airflow env var documentation](https://airflow.apache.org/docs/apache-airflow/stable/howto/variable.html#storing-variables-in-environment-variables and `docker-compose.yml`).) They can have placeholder values. The secrets are in vault, not prefixed by `AIRFLOW_VAR_`: `vault kv list puppet/application/libsys_airflow/{env}`.
+They can have placeholder values. The secrets are in vault: `vault kv list puppet/application/libsys_airflow/{env}`.
 
   Example script to quickly populate your .env file for dev:
   ```
@@ -51,10 +55,104 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
   ```
 
 7. Run `docker compose build` to build the customized Airflow image. (Note: the `usermod` command may take a while to complete when running the build.)
-8. Run `docker compose up airflow-init` to initialize the Airflow database and create a user the first time you deploy Airflow.
+8. Run `docker compose up airflow-init` to initialize the Airflow database the first time you deploy Airflow.
 9. Bring up Airflow, `docker compose up` to run the containers in the foreground. Use `docker compose up -d` to run as a daemon.
-10. Access Airflow locally at http://localhost:8080. The default username and password are both `airflow`.
+10. Access Airflow locally at http://localhost:8080. See [Authentication](#authentication) for how to sign in.
 11. Log into the worker container using `docker exec -it libsys-airflow-airflow-worker-1 /bin/bash` to view the raw work files.
+
+## Authentication
+
+Which auth manager runs is set per environment by `AIRFLOW__CORE__AUTH_MANAGER`. 
+`compose.yaml` defaults local development to SimpleAuthManager; override it in your `.env`
+to use KeycloakAuthManager.
+
+### Keycloak
+
+KeycloakAuthManager uses the FOLIO Keycloak server (see `${KEYCLOAK_URL}` set via puppet). To use
+KeycloakAuthManager locally, you need VPN to the campus network. Set `AIRFLOW_KEYCLOAK_CLIENT_SECRET`
+in your `.env` from the `airflow-sso` client's Credentials tab.
+
+The `airflow-sso` client carries the whole authorization model — roles, resources, scopes, policies,
+permissions. It can be imported to other keycloak environments as needed. The notes below describe how
+the client is setup.
+
+#### Assigning roles
+
+The five roles used by KeycloakAuthManager are **client roles on `airflow-sso`**,
+not realm roles, so they do not collide with FOLIO's realm roles. The airflowcli 
+`airflow keycloak-auth-manager create-all` builds the roles, scopes, resources, permissions in Keycloak:
+
+| Role | Covers |
+|---|---|
+| `Viewer` | GET, MENU, LIST on everything |
+| `User` | Viewer, plus all methods on `Dag` and `Asset` |
+| `Op` | Viewer, plus all methods on `Connection`, `Pool`, `Variable`, `Backfill` |
+| `Admin` | Viewer, plus all extended methods on everything |
+| `SuperAdmin` | identical to `Admin` unless multi-team mode is enabled |
+
+`User` and `Op` are modified from the default — see [Permission adjustments](#permission-adjustments).
+People get `User` or `Admin`; `Op` is reserved for the service-account-airflow-sso user.
+
+Assign roles under Users → the user → **Role mapping**, filtered by clients. Permissions come from
+the token minted at login, so log out and back in after a change; decisions are also cached briefly.
+
+#### The service account
+
+The `airflow-sso` client needs **Service accounts roles** enabled, and its service account is a
+separate user needing its own role assignment. The plugin apps call Airflow's public API as that
+account through the `client_credentials` grant — see
+`libsys_airflow/plugins/shared/airflow_api_client.py`. Assign service-account-airflow-sso user `Op`.
+
+#### Permission adjustments
+
+`create-all` produces four permissions — `ReadOnly`, `Admin`, `User` and `Op`. The exported client
+carries these changes on top of them.
+
+**`User`: read-only on DAGs.** Users reach DAGs through the plugin apps, which trigger runs as the
+service account, so `User` needs no write scope. As created it is *resource*-based on `Dag` and
+`Asset`, and a resource-based permission covers every scope of its resources, so replace it with
+a scope-based one:
+
+- Resources: `Dag`
+- Authorization scopes: `GET`, `LIST` — omit `POST`, `PUT` and `DELETE`
+- Policy: `Allow-User`
+
+`LIST` is what makes the home page's Deadlines and History panels render instead of returning 403.
+
+**`Op`: add the `Dag` resource.** This is where the service account gets the scopes the plugins
+need to trigger, read and clear runs.
+
+Create these scope-based permissions:
+**`User-Custom` and `User-Views`:** let non-admins use the plugin apps and their nav entries. Both
+are scope-based, and both need **Affirmative** for decision strategy.
+
+- `User-Custom`: resource `Custom`, scopes `GET` and `POST`, policies `Allow-User` and `Allow-Op`
+- `User-Views`: resource `View`, scopes `GET` and `LIST`, policy `Allow-User`
+
+Finally, remove `Allow-User` from `ReadOnly`, so `User`s cannot click around the rest of Airflow
+outside the plugins.
+
+Re-running `create-all` reverts the changes we make to, `User` and `Op`. `User-Custom` and
+`User-Views` survive, since `create-all` only manages permissions it creates by name.
+
+#### Rebuilding the authorization model
+
+Only needed when standing up a realm with no `airflow-sso` client to import. Create the five
+client roles first — the CLI resolves them by name and fails if they are missing — then:
+
+```
+docker compose run --rm airflow-cli airflow keycloak-auth-manager create-all \
+  --username <keycloak-admin> --password <keycloak-admin-password> --dry-run
+```
+
+Drop `--dry-run` once the output looks right. Then set the decision strategy to **Affirmative**
+for the `Admin` permission because `create-all` does not reliably apply them. Finally, check
+each `Allow-<role>` policy is bound to the corresponding `airflow-sso` client role.
+
+### Simple auth (no identity provider)
+
+`compose.yaml` sets `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS` to true, which essentially
+disables authentication completely. This is fine for local development.
 
 ## Deploying
 
@@ -130,6 +228,75 @@ by running `cap {env} airflow:webserver` or ssh into the server and run `docker 
 to see changes in the running Airflow environment.
 
 ## Development
+
+### Authorization for plugin apps
+
+Airflow mounts plugin apps with no access control of its own, and hiding an app from the nav is
+not a substitute: `GET /api/v2/plugins` gates the whole plugins menu on a single check and never
+consults the individual apps. Each app guards itself with one app-level dependency, so a route
+added later cannot forget it:
+
+```python
+from libsys_airflow.plugins.shared.auth import require_view_access
+
+app = FastAPI(
+    openapi_url=None,
+    dependencies=[Depends(require_view_access("Boundwith CSV Upload"))],
+)
+```
+
+`openapi_url=None` belongs with it. App-level dependencies reach only the routes the app
+declares, so leaving the OpenAPI schema enabled leaves `/openapi.json`, `/docs` and `/redoc`
+readable by anyone; these apps are browser views, not public APIs, so the endpoints are removed
+rather than authenticated.
+
+The view name is only a label, matched to the plugin's `external_views` entry by convention — no
+auth manager can act on it. So this establishes that the caller is a signed-in user holding an
+Airflow role, not which plugins they may use. Under Keycloak, non-admins reaching these apps is
+what `User-Custom` and `User-Views` above provide.
+
+### CSRF protection for plugin apps
+
+Airflow 3 mounts each plugin app as its own FastAPI sub-application and provides no CSRF
+protection, so a new app has to opt in. `libsys_airflow/plugins/shared/csrf.py` wraps
+[fastapi-csrf-protect](https://github.com/aekasitt/fastapi-csrf-protect) (its `flexible` variant,
+which accepts the token from either the form body or a header) so that opting in stays a one-line
+change per app. In the app module:
+
+```python
+from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
+
+app.add_middleware(CSRFCookieMiddleware)
+
+@app.post("/create", dependencies=[Depends(csrf_protect)])
+def create(...):
+    ...
+```
+
+and inside every `<form method="post">` in its templates:
+
+```html
+{{ csrf_field(request) }}
+```
+
+`csrf_field` and `csrf_token` are registered as Jinja globals by
+`libsys_airflow.plugins.shared.utils.plugin_templates`, so apps that build their
+`Jinja2Templates` with that helper get them for free. JavaScript that POSTs on its own must send
+the token too, either as a `csrf_token` form field (`{{ csrf_token(request) }}`) or in an
+`X-CSRFToken` header. In tests, `tests/csrf_helpers.csrf_test_client` presents a valid token on
+every request; use a plain `TestClient` to assert the rejection path.
+
+Two cookies are issued: `csrf_signed_token`, which is httponly and the one actually validated,
+and `csrf_token`, which holds the matching unsigned value so a page render can reproduce the
+token the form has to submit. Both are signed with `[api] secret_key` (set as
+`AIRFLOW__API__SECRET_KEY` in `compose.prod.yaml`), which must be identical across API server
+instances, are valid for eight hours, and are marked `Secure` wherever the deployment serves
+HTTPS.
+
+Tokens are bound to the authenticated user, so a pair minted for one user is rejected for
+another and the middleware rolls the pair when the identity changes. Without that, an attacker
+could mint a legitimate pair for themselves and overwrite the victim's cookies from any other
+`stanford.edu` host, which is same-site as far as cookies are concerned.
 
 ### Support for Multiple Databases with Alembic
 We are supporting multiple databases, Vendor Management App and Digital Bookplates, using alembic following
