@@ -28,6 +28,7 @@ set :linked_dirs, %w(.aws config vendor-data vendor-keys data-export-files digit
 set :keep_releases, 2
 
 before 'deploy:cleanup', 'fix_permissions'
+before 'deploy:publishing', 'airflow:preflight'
 before 'deploy:published', 'deploy:restart'
 after 'deploy:finishing', 'honeybadger:notify'
 after 'deploy:finishing_rollback', 'honeybadger:notify'
@@ -63,8 +64,11 @@ namespace :deploy do
   desc 'deploy airflow when an instance is currently running'
   task :restart do
     on roles(:app) do
+      # On a full deploy preflight has already run, before the release was published;
+      # Rake runs a task once, so this invoke is a no-op there and does the work when
+      # deploy:restart is run on its own.
+      invoke 'airflow:preflight'
       invoke 'airflow:stop_release'
-      invoke 'airflow:install'
       invoke 'airflow:start'
     end
   end
@@ -138,6 +142,27 @@ namespace :airflow do
     end
   end
 
+  desc 'prepare a release without disturbing the running one'
+  task :preflight do
+    on roles(:app) do
+      # Hooked before deploy:publishing, so anything that can fail on a missing secret or
+      # a bad build fails while `current` still points at the old release and its
+      # containers are still serving it. Nothing here creates or stops a container.
+      invoke 'airflow:install'
+      invoke 'airflow:check_config'
+      invoke 'airflow:build'
+    end
+  end
+
+  desc 'check compose.prod.yaml resolves, without building or starting anything'
+  task :check_config do
+    on roles(:app) do
+      # compose.prod.yaml requires its secrets via ${VAR:?...}, and Puppet sets those in
+      # the application user's environment, so this fails when one is unset or empty.
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow config -q"
+    end
+  end
+
   desc 'run docker compose build for airflow'
   task :build do
     on roles(:app) do
@@ -164,9 +189,12 @@ namespace :airflow do
     on roles(:app) do
       invoke 'airflow:build'
       invoke 'airflow:init'
-      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow up -d"
+      # Migrate before anything serves. db:create and alembic:migrate run from the host,
+      # not a container, so they fit in the window where the old release is stopped and
+      # the new one has not started: nothing reads a half-migrated schema.
       invoke 'db:create'
       invoke 'alembic:migrate'
+      execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow up -d"
     end
   end
 
