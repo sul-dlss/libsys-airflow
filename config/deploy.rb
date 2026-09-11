@@ -61,15 +61,14 @@ namespace :deploy do
     end
   end
 
+  # airflow:up rather than airflow:start because airflow:preflight, hooked before
+  # deploy:publishing, has already built. Calling start here would invoke the build
+  # twice, which Capistrano skips with a warning and may one day stop skipping.
   desc 'deploy airflow when an instance is currently running'
   task :restart do
     on roles(:app) do
-      # On a full deploy preflight has already run, before the release was published;
-      # Rake runs a task once, so this invoke is a no-op there and does the work when
-      # deploy:restart is run on its own.
-      invoke 'airflow:preflight'
       invoke 'airflow:stop_release'
-      invoke 'airflow:start'
+      invoke 'airflow:up'
     end
   end
 end
@@ -184,10 +183,9 @@ namespace :airflow do
     end
   end
 
-  desc 'start airflow'
-  task :start do
+  desc 'migrate the databases and bring the containers up'
+  task :up do
     on roles(:app) do
-      invoke 'airflow:build'
       invoke 'airflow:init'
       # Migrate before anything serves. db:create and alembic:migrate run from the host,
       # not a container, so they fit in the window where the old release is stopped and
@@ -195,6 +193,14 @@ namespace :airflow do
       invoke 'db:create'
       invoke 'alembic:migrate'
       execute "cd #{release_path} && source #{fetch(:venv)} && docker compose -f compose.prod.yaml -p libsys_airflow up -d"
+    end
+  end
+
+  desc 'start airflow'
+  task :start do
+    on roles(:app) do
+      invoke 'airflow:build'
+      invoke 'airflow:up'
     end
   end
 
