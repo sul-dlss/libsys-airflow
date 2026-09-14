@@ -254,7 +254,10 @@ rather than authenticated.
 The view name is only a label, matched to the plugin's `external_views` entry by convention — no
 auth manager can act on it. So this establishes that the caller is a signed-in user holding an
 Airflow role, not which plugins they may use. Under Keycloak, non-admins reaching these apps is
-what `User-Custom` and `User-Views` above provide.
+what `User-Custom` and `User-Views` above provide. Workgroups provide users access to apps via Apache
+`<Location>` blocks defined in the puppet. Those blocks match the `url_prefix` values in
+`libsys_airflow/plugins/*/main.py`, so renaming one without a matching puppet change moves that app
+out from under its workgroup.
 
 ### CSRF protection for plugin apps
 

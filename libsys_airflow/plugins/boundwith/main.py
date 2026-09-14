@@ -12,7 +12,6 @@ boundwith_view = {
     "name": "Boundwith CSV Upload",
     "category": "FOLIO",
     "href": "/boundwith/",
-    "url_route": "boundwith",
 }
 
 

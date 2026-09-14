@@ -14,7 +14,6 @@ google_scanning_upload_view = {
     "name": "Google Scanning Upload",
     "category": "FOLIO",
     "href": "/google_scanning/",
-    "url_route": "google_scanning",
 }
 
 
