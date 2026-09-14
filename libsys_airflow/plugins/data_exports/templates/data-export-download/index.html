@@ -3,8 +3,8 @@
 {% block head_title %}Data Export MARC Downloads{% endblock %}
 
 {% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
-  <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 {% endblock %}
 
 {% block body %}
@@ -33,9 +33,13 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      new DataTable('#marcDownloads');
+  <script type="text/javascript">
+    let marcDownloadsTable = document.querySelector("#marcDownloads");
+    let marcDownloadsDataTable = new simpleDatatables.DataTable(marcDownloadsTable, {
+      searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
     });
   </script>
 {% endblock %}

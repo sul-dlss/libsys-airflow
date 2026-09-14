@@ -3,8 +3,8 @@
 {% block head_title %}Digital Bookplates Downloads{% endblock %}
 
 {% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
-  <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 {% endblock %}
 
 {% block body %}
@@ -31,9 +31,13 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      new DataTable('#csvDownloads');
+  <script type="text/javascript">
+    let csvDownloadsTable = document.querySelector("#csvDownloads");
+    let csvDownloadsDataTable = new simpleDatatables.DataTable(csvDownloadsTable, {
+      searchable: true,
+      fixedHeight: true,
+      perPage: 100,
+      perPageSelect: false
     });
   </script>
 {% endblock %}
