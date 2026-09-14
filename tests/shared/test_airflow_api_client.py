@@ -19,9 +19,7 @@ def keycloak_auth(mocker, monkeypatch):
 
 
 @pytest.fixture
-def simple_auth(mocker, monkeypatch):
-    monkeypatch.setenv("AIRFLOW_VAR_API_USER", "airflow")
-    monkeypatch.setenv("AIRFLOW_VAR_API_PASSWORD", "airflow")
+def simple_auth(mocker):
     mocker.patch.object(airflow_api_client.conf, "get", return_value=SIMPLE)
 
 
@@ -30,6 +28,15 @@ def token_response(mocker):
     return mocker.patch.object(
         airflow_api_client.httpx,
         "post",
+        return_value=httpx.Response(201, json={"access_token": "abc123"}),
+    )
+
+
+@pytest.fixture
+def token_response_get(mocker):
+    return mocker.patch.object(
+        airflow_api_client.httpx,
+        "get",
         return_value=httpx.Response(201, json={"access_token": "abc123"}),
     )
 
@@ -48,14 +55,16 @@ def test_client_credentials_grant_under_keycloak(keycloak_auth, token_response):
     }
 
 
-def test_password_grant_under_simple_auth(simple_auth, token_response):
+def test_credentialless_token_under_simple_auth(
+    simple_auth, token_response, token_response_get
+):
     token = airflow_api_client.get_access_token(host="http://airflow-apiserver:8080")
 
     assert token == "abc123"
-    assert token_response.call_args.kwargs["json"] == {
-        "username": "airflow",
-        "password": "airflow",
-    }
+    assert token_response_get.call_args.args == (
+        "http://airflow-apiserver:8080/auth/token",
+    )
+    assert not token_response.called
 
 
 def test_get_access_token_rejected(mocker, keycloak_auth):

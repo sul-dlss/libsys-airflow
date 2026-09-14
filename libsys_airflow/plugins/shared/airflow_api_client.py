@@ -13,34 +13,40 @@ class AirflowAccessToken(BaseModel):
     access_token: str
 
 
-def _token_payload() -> dict:
+def _using_keycloak() -> bool:
+    return "keycloak" in conf.get("core", "auth_manager", fallback="").lower()
+
+
+def _token_request(url: str) -> httpx.Response:
     """
-    Builds the /auth/token request body for the configured auth manager.
+    Requests a token from /auth/token for the configured auth manager.
 
     KeycloakAuthManager authenticates the airflow-sso client's service account
-    through Keycloak's client_credentials grant; SimpleAuthManager, which we use
-    for local development without an identity provider, wants a username and
-    password instead.
+    through Keycloak's client_credentials grant. Local development runs
+    SimpleAuthManager with simple_auth_manager_all_admins, where the GET form of
+    the endpoint hands out an anonymous admin token without any credentials.
     """
-    if "keycloak" in conf.get("core", "auth_manager", fallback="").lower():
-        return {
-            "grant_type": "client_credentials",
-            "client_id": os.getenv("AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID"),
-            "client_secret": os.getenv("AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET"),
-        }
+    if _using_keycloak():
+        return httpx.post(
+            url,
+            json={
+                "grant_type": "client_credentials",
+                "client_id": os.getenv("AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_ID"),
+                "client_secret": os.getenv(
+                    "AIRFLOW__KEYCLOAK_AUTH_MANAGER__CLIENT_SECRET"
+                ),
+            },
+            headers={"Content-Type": "application/json"},
+        )
 
-    return {
-        "username": os.getenv("AIRFLOW_VAR_API_USER", "nausername"),
-        "password": os.getenv("AIRFLOW_VAR_API_PASSWORD", "napassword"),
-    }
+    return httpx.get(url)
 
 
 def get_access_token(host: str) -> str:
     url = f"{host}/auth/token"
     logger.info(f"Getting access token from {url}")
-    headers = {"Content-Type": "application/json"}
     try:
-        response = httpx.post(url, json=_token_payload(), headers=headers)
+        response = _token_request(url)
         if response.status_code == 201:
             response_success = AirflowAccessToken(**response.json())
         else:

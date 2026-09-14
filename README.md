@@ -32,6 +32,7 @@ Based on the documentation, [Running Airflow in Docker](https://airflow.apache.o
 - `AIRFLOW_VAR_FOLIO_URL`
 - `AIRFLOW_VAR_FOLIO_USER`
 - `AIRFLOW_VAR_FOLIO_PASSWORD`
+
 (the following are only needed when running against Keycloak locally — see [Authentication](#authentication) below)
 - `AIRFLOW_KEYCLOAK_CLIENT_SECRET`
 - `KEYCLOAK_URL`
@@ -149,7 +150,7 @@ Drop `--dry-run` once the output looks right. Then set the decision strategy to 
 for the `Admin` permission because `create-all` does not reliably apply them. Finally, check
 each `Allow-<role>` policy is bound to the corresponding `airflow-sso` client role.
 
-### Simple auth (no identity provider)
+### Simple auth disabled
 
 `compose.yaml` sets `AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS` to true, which essentially
 disables authentication completely. This is fine for local development.
