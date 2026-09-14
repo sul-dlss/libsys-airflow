@@ -25,6 +25,7 @@
        switchInput.addEventListener('click', (event) => {
          const form = new FormData()
          form.append("active", event.target.checked)
+         form.append("csrf_token", "{{ csrf_token(request) }}")
 
          fetch(switchInput.dataset.interfaceUrl, {
            method: 'POST',
@@ -114,6 +115,7 @@
       {% if vendor.folio_organization_uuid %}
       <div class="col-md-2">
         <form method="POST" action="{{ url_prefix }}/vendors/{{ vendor.id }}/sync">
+          {{ csrf_field(request) }}
           <input id="refresh-button" type="submit" class="btn btn-default" value="Refresh Data from FOLIO">
         </form>
       </div>
@@ -164,6 +166,7 @@
     </table>
 
     <form method="POST" action="{{ url_prefix }}/vendors/{{ vendor.id }}/interfaces">
+      {{ csrf_field(request) }}
       <input type="submit" class="btn btn-default" value="Add Upload Only Interface">
     </form>
   </section>

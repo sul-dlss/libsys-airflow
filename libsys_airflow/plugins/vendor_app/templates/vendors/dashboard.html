@@ -86,10 +86,12 @@
             <td>
               {% if file.status.value == 'loading_error' %}
                 <form action="{{ url_prefix }}/files/{{ file.id }}/load?redirect_url={{ request.url | urlencode }}" method="POST">
+                  {{ csrf_field(request) }}
                   <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% elif file.status.value == 'fetching_error' %}
                 <form action="{{ url_prefix }}/files/{{ file.id }}/reset_fetch" method="POST">
+                  {{ csrf_field(request) }}
                   <input class="btn btn-link p-0" type="submit" value="Retry">
                 </form>
               {% endif %}

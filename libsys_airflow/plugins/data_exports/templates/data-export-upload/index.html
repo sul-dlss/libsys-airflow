@@ -8,6 +8,7 @@
   <div class="alert-message">{{ message }}</div>
   {% endfor %}
   <form enctype="multipart/form-data" method="POST" action="create">
+    {{ csrf_field(request) }}
     <div class="form-row">
       <label for="ids_file">Upload a csv file with a single column of instance UUIDs</label>
       <input type="file" id="ids_file" name="ids_file">

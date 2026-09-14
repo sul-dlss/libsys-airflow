@@ -17,6 +17,7 @@ from airflow.utils.email import send_email
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from libsys_airflow.plugins.shared.csrf import csrf_field, csrf_token
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -59,13 +60,19 @@ def plugin_templates(app_dir: pathlib.Path, subfolder: str) -> Jinja2Templates:
     """
     Builds a Jinja2Templates that searches the app's own template subfolder
     first, then falls back to the plugins-wide shared templates directory.
+
+    Registers csrf_field as a Jinja global so any form can render its hidden
+    CSRF input with {{ csrf_field(request) }}.
     """
-    return Jinja2Templates(
+    templates = Jinja2Templates(
         directory=[
             SHARED_TEMPLATES_DIR,
             pathlib.Path(app_dir) / "templates" / subfolder,
         ]
     )
+    templates.env.globals["csrf_field"] = csrf_field
+    templates.env.globals["csrf_token"] = csrf_token
+    return templates
 
 
 def file_info(file: pathlib.Path) -> dict:

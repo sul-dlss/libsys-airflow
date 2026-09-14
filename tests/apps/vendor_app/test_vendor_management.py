@@ -1,7 +1,8 @@
 import pytest
 from datetime import datetime, timezone
 
-from fastapi.testclient import TestClient
+from auth_helpers import authenticated_app_fixture  # noqa
+from csrf_helpers import csrf_test_client  # noqa
 from pytest_mock_resources import Rows
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -45,7 +46,8 @@ rows = Rows(
     ),
 )
 
-client = TestClient(app, follow_redirects=False)
+authenticated = authenticated_app_fixture(app)
+client = csrf_test_client(app, follow_redirects=False)
 
 
 @pytest.fixture

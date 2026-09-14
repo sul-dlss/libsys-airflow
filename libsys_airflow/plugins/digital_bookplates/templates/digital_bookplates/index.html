@@ -18,6 +18,7 @@
 
   <main>
     <form enctype="multipart/form-data" method="post" action="create">
+      {{ csrf_field(request) }}
       <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
       <table id="fundsTable">
         <thead>

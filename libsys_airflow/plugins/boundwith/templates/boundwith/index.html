@@ -21,6 +21,7 @@
   <p>Create boundwith relationships for parts and principle.</p>
   <p>CSV should include a row for the principle's barcode and holdings HRID (use part_holdings_hrid column for principle's holdings HRID).</p>
   <form enctype="multipart/form-data" method="POST" action="create">
+    {{ csrf_field(request) }}
     <div class="form-row">
       <label for="sunid">SUNID</label>
       <input id="sunid" name="sunid">

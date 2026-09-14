@@ -29,6 +29,7 @@
 
 <main>
   <form class="form-horizontal" method="post" action="{{ url_prefix }}/interfaces/{{ interface.id }}/edit">
+    {{ csrf_field(request) }}
     <div class="form-group">
       <label for="vendor" class="col-sm-2 col-form-label">Vendor</label>
       <div class="col-sm-8" id="vendor">

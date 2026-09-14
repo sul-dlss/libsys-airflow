@@ -4,11 +4,13 @@ import pytest  # noqa
 
 from fastapi.testclient import TestClient
 
+from auth_helpers import authenticated_app_fixture  # noqa
 from conftest import root_directory
 
 from libsys_airflow.plugins.orafin.apps import orafin_files_view
 from libsys_airflow.plugins.orafin.apps.orafin_files_view import app
 
+authenticated = authenticated_app_fixture(app)
 client = TestClient(app)
 
 
