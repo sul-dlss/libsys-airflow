@@ -12,7 +12,6 @@ orafin_files_view = {
     "name": "Orafin Feeder-files and Reports",
     "category": "FOLIO",
     "href": "/orafin/",
-    "url_route": "orafin",
 }
 
 

@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.shared.csrf import csrf_field, csrf_token
 from libsys_airflow.plugins.shared.folio_client import folio_client
+from libsys_airflow.plugins.shared.nav import NAV_GROUPS, current_app
 
 logger = logging.getLogger(__name__)
 
@@ -56,23 +57,38 @@ def redirect_with_query_params(
     return RedirectResponse(url=url, status_code=status_code)
 
 
+def register_template_globals(templates: Jinja2Templates) -> Jinja2Templates:
+    """
+    Registers the globals every plugin app's templates expect, and returns templates
+    so it can wrap a constructor call.
+
+    csrf_field lets any form render its hidden CSRF input with
+    {{ csrf_field(request) }}; _nav.html iterates over plugin_nav_groups and asks
+    plugin_nav_current which app is serving the request.
+
+    Kept separate from plugin_templates because the vendor app builds its own
+    Jinja2Templates and needs the same globals.
+    """
+    templates.env.globals["csrf_field"] = csrf_field
+    templates.env.globals["csrf_token"] = csrf_token
+    templates.env.globals["plugin_nav_groups"] = NAV_GROUPS
+    templates.env.globals["plugin_nav_current"] = current_app
+    return templates
+
+
 def plugin_templates(app_dir: pathlib.Path, subfolder: str) -> Jinja2Templates:
     """
     Builds a Jinja2Templates that searches the app's own template subfolder
     first, then falls back to the plugins-wide shared templates directory.
-
-    Registers csrf_field as a Jinja global so any form can render its hidden
-    CSRF input with {{ csrf_field(request) }}.
     """
-    templates = Jinja2Templates(
-        directory=[
-            SHARED_TEMPLATES_DIR,
-            pathlib.Path(app_dir) / "templates" / subfolder,
-        ]
+    return register_template_globals(
+        Jinja2Templates(
+            directory=[
+                SHARED_TEMPLATES_DIR,
+                pathlib.Path(app_dir) / "templates" / subfolder,
+            ]
+        )
     )
-    templates.env.globals["csrf_field"] = csrf_field
-    templates.env.globals["csrf_token"] = csrf_token
-    return templates
 
 
 def file_info(file: pathlib.Path) -> dict:

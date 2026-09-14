@@ -21,9 +21,7 @@ from libsys_airflow.plugins.shared.airflow_api_client import api_client
 from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import (
     CSRFCookieMiddleware,
-    csrf_field,
     csrf_protect,
-    csrf_token,
 )
 
 from libsys_airflow.plugins.vendor.job_profiles import (
@@ -43,8 +41,10 @@ from libsys_airflow.plugins.vendor.archive import archive_file
 from libsys_airflow.plugins.airflow.connections import create_connection
 from libsys_airflow.plugins.vendor.download import create_hook
 from libsys_airflow.plugins.shared.utils import (
+    SHARED_TEMPLATES_DIR,
     folio_name,
     redirect_with_query_params,
+    register_template_globals,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,13 +63,16 @@ app.add_middleware(CSRFCookieMiddleware)
 # shares the session it scopes.
 app.add_middleware(SessionScopeMiddleware)
 
-templates = Jinja2Templates(
-    directory=pathlib.Path(__file__).resolve().parent / "templates"
+templates = register_template_globals(
+    Jinja2Templates(
+        directory=[
+            pathlib.Path(__file__).resolve().parent / "templates",
+            SHARED_TEMPLATES_DIR,
+        ]
+    )
 )
 templates.env.filters["urlencode"] = lambda value: quote(str(value), safe="")
 templates.env.globals["url_prefix"] = URL_PREFIX
-templates.env.globals["csrf_field"] = csrf_field
-templates.env.globals["csrf_token"] = csrf_token
 
 app.mount(
     "/static",
