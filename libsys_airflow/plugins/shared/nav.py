@@ -52,6 +52,10 @@ APPS: tuple[PluginApp, ...] = (
 )
 
 
+BY_PREFIX: dict[str, PluginApp] = {app.url_prefix: app for app in APPS}
+"""``APPS`` keyed by mount prefix, so ``shared.utils.plugin_app_url`` can check one."""
+
+
 def _grouped() -> tuple[tuple[str, tuple[PluginApp, ...]], ...]:
     """
     Bucket the apps into their menus, each menu's contents sorted by name.

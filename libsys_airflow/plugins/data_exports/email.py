@@ -3,11 +3,13 @@ import pathlib
 
 from jinja2 import Template
 
-from airflow.configuration import conf
 from airflow.sdk import task, Variable
-from libsys_airflow.plugins.shared.utils import send_email_with_server_name
-
-from libsys_airflow.plugins.shared.utils import is_production, dag_run_url
+from libsys_airflow.plugins.shared.utils import (
+    dag_run_url,
+    is_production,
+    plugin_app_url,
+    send_email_with_server_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +58,9 @@ def _oclc_report_html(report: str, library: str):
 
     report_path = pathlib.Path(report)
     report_type = report_path.parent.name
-    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
-
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-
-    report_url = f"{airflow_url}pluginsv2/data_export_oclc_reports/{library}/{report_type}/{report_path.name}"
+    report_url = plugin_app_url(
+        "/data_export_oclc_reports", library, report_type, report_path.name
+    )
 
     return f"""{report_type} link: <a href="{report_url}">{report_path.name}</a>"""
 
@@ -116,11 +115,6 @@ def generate_oclc_new_marc_errors_email(error_reports: dict):
     devs_email = Variable.get("EMAIL_DEVS")
 
     cohort_emails = _cohort_emails()
-
-    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
-
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
 
     subject_template = "OCLC: MARC Errors for New Record"
 
@@ -290,12 +284,9 @@ def failed_transmission_email(files: list, **kwargs):
 
 def _missing_holdings_for_instances(report: str) -> str:
     report_path = pathlib.Path(report)
-    airflow_url = conf.get('webserver', 'base_url')  # type: ignore
-
-    if not airflow_url.endswith("/"):
-        airflow_url = f"{airflow_url}/"
-
-    report_url = f"{airflow_url}pluginsv2/data_export_oclc_reports/missing_holdings/{report_path.name}"
+    report_url = plugin_app_url(
+        "/data_export_oclc_reports", "missing_holdings", report_path.name
+    )
 
     template = Template(
         """
