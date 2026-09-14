@@ -1,0 +1,20 @@
+{#
+  Searching and paging for every table marked data-datatable, so the plugin apps do not
+  each hand-roll an init. Include it from a template's extra_head block. Rows per page
+  defaults to 50 and a table can ask for another with data-per-page.
+#}
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("table[data-datatable]").forEach(function (table) {
+      new simpleDatatables.DataTable(table, {
+        searchable: true,
+        paging: true,
+        perPage: Number(table.dataset.perPage) || 50,
+        perPageSelect: [10, 25, 50, 100],
+        fixedHeight: true
+      });
+    });
+  });
+</script>

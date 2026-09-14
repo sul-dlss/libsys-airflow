@@ -3,12 +3,11 @@
 {% block head_title %}Digital Bookplates Downloads{% endblock %}
 
 {% block extra_head %}
-  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+  {% include "_datatable.html" %}
 {% endblock %}
 
 {% block body %}
-  <table id="csvDownloads">
+  <table id="csvDownloads" data-datatable>
     <thead>
       <tr>
         <th>Date</th>
@@ -28,16 +27,4 @@
       {% endfor %}
     </tbody>
     </table>
-{% endblock %}
-
-{% block extra_scripts %}
-  <script type="text/javascript">
-    let csvDownloadsTable = document.querySelector("#csvDownloads");
-    let csvDownloadsDataTable = new simpleDatatables.DataTable(csvDownloadsTable, {
-      searchable: true,
-      fixedHeight: true,
-      perPage: 100,
-      perPageSelect: false
-    });
-  </script>
 {% endblock %}
