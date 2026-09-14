@@ -1,4 +1,5 @@
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
@@ -100,7 +101,9 @@ def test_run_data_export_upload_success(
     )
 
     mock_upload_data_export_ids.return_value = ["/path/to/ids.txt", 2]
-    mock_trigger_dag_run.return_value = "dag_run_123"
+    mock_trigger_dag_run.return_value = SimpleNamespace(
+        dag_id="select_oclc_records", dag_run_id="dag_run_123"
+    )
 
     response = client.post(
         '/create',
@@ -110,7 +113,11 @@ def test_run_data_export_upload_success(
     assert response.status_code == 200
 
     assert "Sucessfully uploaded ID file with 2 IDs" in response.text
-    assert "Starting oclc DAG run dag_run_123" in response.text
+    assert "Starting oclc DAG run" in response.text
+    assert (
+        '<a href="http://localhost:8080/dags/select_oclc_records/runs/dag_run_123">dag_run_123</a>'
+        in response.text
+    )
 
     mock_upload_data_export_ids.assert_called_once()
     mock_trigger_dag_run.assert_called_once()
@@ -153,9 +160,9 @@ def test_run_data_export_upload_with_dag_config(
     mock_api_instance = MagicMock()
     mock_dag_run_api.return_value = mock_api_instance
 
-    mock_api_response = MagicMock()
-    mock_api_response.dag_run_id = "test_dag_run_123"
-    mock_api_instance.trigger_dag_run.return_value = mock_api_response
+    mock_api_instance.trigger_dag_run.return_value = SimpleNamespace(
+        dag_id="select_oclc_records", dag_run_id="test_dag_run_123"
+    )
 
     response = client.post(
         '/create',

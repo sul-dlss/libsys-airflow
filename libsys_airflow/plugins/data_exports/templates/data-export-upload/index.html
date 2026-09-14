@@ -7,6 +7,11 @@
   {% for message in messages %}
   <div class="alert-message">{{ message }}</div>
   {% endfor %}
+  {% if dag_run_url %}
+  <div class="alert-message">
+    Starting {{ vendor }} DAG run <a href="{{ dag_run_url }}">{{ dag_run_id }}</a>.
+  </div>
+  {% endif %}
   <form enctype="multipart/form-data" method="POST" action="create">
     {{ csrf_field(request) }}
     <div class="form-row">
