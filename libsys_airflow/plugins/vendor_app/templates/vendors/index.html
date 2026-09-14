@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <title>Vendors{% if folio_name %} - {{ folio_name }}{% endif %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css">
-  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
+  {% include "_datatable.html" %}
+  {% include "vendors/_datatable_bootstrap.html" %}
   <link rel="stylesheet" type="text/css" href="{{ url_prefix }}/static/main.css">
-  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
 </head>
 <body>
 {% include "_nav.html" %}
@@ -31,7 +31,7 @@
 </nav>
 
 <main>
-  <table class="table table-striped" id="vendorTable">
+  <table class="table table-striped" id="vendorTable" data-datatable>
     <thead>
       <th>Name</th>
       <th>Code</th>
@@ -58,20 +58,6 @@
       {% endfor %}
     </tbody>
   </table>
-
-  <script type="text/javascript">
-   let vendorTable = document.querySelector("#vendorTable");
-   let dataTable = new simpleDatatables.DataTable(vendorTable, {
-     searchable: true,
-     fixedHeight: true,
-     perPage: 100,
-     perPageSelect: false
-   });
-   let vendorTableSelect = document.querySelector(".datatable-selector");
-   vendorTableSelect.classList.add("form-control");
-   let vendorSearchInput = document.querySelector(".datatable-input");
-   vendorSearchInput.classList.add("form-control");
-  </script>
 </main>
 </div>
 </body>
