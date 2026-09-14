@@ -75,9 +75,7 @@ def current_app(root_path: str) -> PluginApp | None:
 
     ``root_path`` is the mount prefix Airflow gave the app, which is empty when the app
     is unmounted, as it is under a bare test client. Matched by suffix rather than
-    equality so that an API server mounted under a path of its own still resolves; no
-    prefix is a suffix of another, which
-    ``tests/apps/test_plugin_external_views.py`` checks.
+    equality so that an API server mounted under a path of its own still resolves.
     """
     if not root_path:
         return None
