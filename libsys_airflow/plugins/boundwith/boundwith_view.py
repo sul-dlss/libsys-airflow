@@ -3,12 +3,14 @@ from typing import Union
 
 import pandas as pd
 
+from airflow.api_fastapi.core_api.security import GetUserDep
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
-from libsys_airflow.plugins.shared.auth import require_view_access
+from libsys_airflow.plugins.shared.auth import current_access_token, require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
+from libsys_airflow.plugins.shared.user_token import store_user_token
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI(
@@ -21,9 +23,15 @@ templates = plugin_templates(pathlib.Path(__file__).resolve().parent, "boundwith
 
 
 def trigger_bw_dag(
-    bw_df: pd.DataFrame, sunid: str, user_email: Union[str, None], file_name: str
+    bw_df: pd.DataFrame,
+    sunid: str,
+    user_email: Union[str, None],
+    file_name: str,
+    folio_token: Union[str, None],
 ) -> str:
     dag_id = "add_bw_relationships"
+    # Only the key: the token itself would be readable by any user from the run details.
+    folio_token_key = store_user_token(folio_token) if folio_token else None
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)
         trigger_dag_run_post_body = TriggerDAGRunPostBody(
@@ -32,6 +40,7 @@ def trigger_bw_dag(
                 "email": user_email,
                 "sunid": sunid,
                 "file_name": file_name,
+                "folio_token_key": folio_token_key,
             }
         )
 
@@ -48,19 +57,20 @@ def bw_home(request: Request):
 @app.post("/create", dependencies=[Depends(csrf_protect)])
 def run_bw_creation(
     request: Request,
-    sunid: str = Form(default=""),  # noqa: B008
+    user: GetUserDep,
+    folio_token: str | None = Depends(current_access_token),  # noqa: B008
     user_email: str | None = Form(default=None),  # noqa: B008
     upload_boundwith: UploadFile | None = File(default=None),  # noqa: B008
 ):
+    # Taken from the session rather than a form field, which the user could set to
+    # anyone. It is what the DAG writes into the admin note.
+    sunid = user.get_name()
+
     if upload_boundwith is None or not upload_boundwith.filename:
         return templates.TemplateResponse(
             request,
             "index.html",
             {"message": "Missing Boundwith Relationship File"},
-        )
-    if len(sunid.strip()) < 1:
-        return templates.TemplateResponse(
-            request, "index.html", {"message": "SUNID Required"}
         )
 
     try:
@@ -86,7 +96,9 @@ def run_bw_creation(
                 {"message": f"Warning! CSV file has {len(bw_df)} rows, limit is 1,000"},
             )
         else:
-            run_id = trigger_bw_dag(bw_df, sunid, user_email, upload_boundwith.filename)
+            run_id = trigger_bw_dag(
+                bw_df, sunid, user_email, upload_boundwith.filename, folio_token
+            )
             return templates.TemplateResponse(
                 request,
                 "index.html",

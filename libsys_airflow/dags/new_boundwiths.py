@@ -4,8 +4,6 @@ from datetime import datetime
 from airflow.sdk import dag, get_current_context, task, Variable
 from airflow.providers.standard.operators.empty import EmptyOperator
 
-from folioclient import FolioClient
-
 from libsys_airflow.plugins.folio.helpers.bw import (
     add_admin_notes,
     create_admin_note,
@@ -14,17 +12,40 @@ from libsys_airflow.plugins.folio.helpers.bw import (
     email_failure,
     post_bw_record,
 )
+from libsys_airflow.plugins.shared.folio_client import (
+    UserTokenUnusable,
+    folio_client_for_user,
+)
+from libsys_airflow.plugins.shared.user_token import (
+    discard_user_token,
+    read_user_token,
+)
 
 logger = logging.getLogger(__name__)
 
 
+def _folio_token(params: dict) -> str:
+    key = params.get("folio_token_key")
+    if not key:
+        raise UserTokenUnusable(
+            "No FOLIO token for this run. The DAG acts in FOLIO as the user who "
+            "triggered it, so trigger it from the Boundwith CSV Upload app."
+        )
+
+    token = read_user_token(key)
+    if not token:
+        # Discarded once the run ended. Clearing cannot mint another: a task has no
+        # session, and a username alone cannot be exchanged for a token.
+        raise UserTokenUnusable(
+            "The FOLIO token for this run is gone. Clearing a finished run cannot get "
+            "another, so trigger a new run from the Boundwith CSV Upload app."
+        )
+    return token
+
+
 def _folio_client():
-    return FolioClient(
-        Variable.get("OKAPI_URL"),
-        "sul",
-        Variable.get("FOLIO_USER"),
-        Variable.get("FOLIO_PASSWORD"),
-    )
+    params = get_current_context().get("params", {})  # type: ignore
+    return folio_client_for_user(_folio_token(params))
 
 
 @dag(
@@ -48,6 +69,8 @@ def add_bw_relationships(**kwargs):
         task_instance = kwargs["ti"]
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
+        # Fail here rather than after fanning out across every row.
+        _folio_token(params)
         task_instance.xcom_push(key="user_email", value=params.get("email"))
         task_instance.xcom_push(key="sunid", value=params['sunid'])
         task_instance.xcom_push(key="file_name", value=params["file_name"])
@@ -92,6 +115,13 @@ def add_bw_relationships(**kwargs):
         folio_client = _folio_client()
         add_admin_notes(note, task_instance, folio_client)
 
+    @task(trigger_rule="all_done")
+    def discard_folio_token():
+        """Runs however the rest of the run ended, so no token is left behind."""
+        key = get_current_context().get("params", {}).get("folio_token_key")  # type: ignore
+        if key:
+            discard_user_token(key)
+
     start = EmptyOperator(task_id="start-bw-relationships")
 
     finished_bw_relationshps = EmptyOperator(task_id="finished-bw-relationships")
@@ -109,6 +139,10 @@ def add_bw_relationships(**kwargs):
         >> [new_admin_notes(admin_note=admin_note), generate_emails()]
         >> finished_bw_relationshps
     )
+
+    # Hangs off the end rather than sitting in the chain, so finished-bw-relationships
+    # still only succeeds when the work did.
+    finished_bw_relationshps >> discard_folio_token()
 
 
 add_bw_relationships()

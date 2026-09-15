@@ -71,3 +71,15 @@ def require_view_access(view_name: str) -> Callable[[Request, GetUserDep], None]
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden")
 
     return inner
+
+
+def current_access_token(user: GetUserDep) -> str | None:
+    """
+    The signed-in user's Keycloak access token, for acting as them in FOLIO.
+
+    ``KeycloakAuthManagerUser`` carries one; ``SimpleAuthManager``'s user does not, so
+    this is ``None`` under local development. Returning it rather than raising keeps the
+    apps usable there — a DAG that would act in FOLIO is where a missing token has to be
+    fatal, since that is where the misattribution would happen.
+    """
+    return getattr(user, "access_token", None)

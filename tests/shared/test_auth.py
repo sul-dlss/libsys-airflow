@@ -5,7 +5,11 @@ from airflow.api_fastapi.core_api.security import get_user
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 
-from libsys_airflow.plugins.shared.auth import require_view_access, resource_method
+from libsys_airflow.plugins.shared.auth import (
+    current_access_token,
+    require_view_access,
+    resource_method,
+)
 
 
 @pytest.fixture
@@ -77,6 +81,20 @@ def test_unauthorized_user_is_forbidden(app):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden"
+
+
+def test_current_access_token_without_one():
+    """SimpleAuthManager's user carries no Keycloak token, and that is not an error."""
+    user = SimpleAuthManagerUser(username="testuser", role="admin")
+
+    assert current_access_token(user) is None
+
+
+def test_current_access_token_returns_the_users_token():
+    user = SimpleAuthManagerUser(username="testuser", role="admin")
+    user.access_token = "a-keycloak-access-token"
+
+    assert current_access_token(user) == "a-keycloak-access-token"
 
 
 def test_view_name_is_passed_to_the_auth_manager(app, mocker):
