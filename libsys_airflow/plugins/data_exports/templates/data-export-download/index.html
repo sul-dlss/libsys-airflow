@@ -3,12 +3,11 @@
 {% block head_title %}Data Export MARC Downloads{% endblock %}
 
 {% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css" />
-  <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+  {% include "_datatable.html" %}
 {% endblock %}
 
 {% block body %}
-  <table id="marcDownloads">
+  <table id="marcDownloads" data-datatable>
     <thead>
       <tr>
         <th>Vendor</th>
@@ -30,12 +29,4 @@
       {% endfor %}
     </tbody>
   </table>
-{% endblock %}
-
-{% block extra_scripts %}
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      new DataTable('#marcDownloads');
-    });
-  </script>
 {% endblock %}

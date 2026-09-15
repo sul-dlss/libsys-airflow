@@ -46,6 +46,9 @@ def test_home_renders_staged_carts():
     assert "cart-1" in response.text
     assert "barcodes.txt" in response.text
     assert "Staged" in response.text
+    # This app has a standalone template; it needs the shared templates directory on
+    # its loader path to find the navigation partial.
+    assert 'class="plugin-nav"' in response.text
 
 
 def test_home_renders_refresh_button():

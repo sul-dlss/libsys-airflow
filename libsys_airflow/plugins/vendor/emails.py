@@ -2,7 +2,6 @@ from datetime import date
 import logging
 import pathlib
 
-from airflow.configuration import conf
 from airflow.sdk import task, Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
@@ -15,7 +14,10 @@ from libsys_airflow.plugins.vendor.marc import (
     extract_double_zero_one_field_values,
 )
 from libsys_airflow.plugins.vendor.edi import invoice_count
-from libsys_airflow.plugins.shared.utils import send_email_with_server_name
+from libsys_airflow.plugins.shared.utils import (
+    plugin_app_url,
+    send_email_with_server_name,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -93,12 +95,7 @@ def _vendor_interface_url(vendor_uuid, vendor_interface_uuid):
         vendor_interface = VendorInterface.load_with_vendor(
             vendor_uuid, vendor_interface_uuid, session
         )
-        airflow_url = conf.get('webserver', 'base_url')
-        if not airflow_url.endswith("/"):
-            airflow_url = f"{airflow_url}/"
-        return (
-            f"{airflow_url}pluginsv2/vendor_management/interfaces/{vendor_interface.id}"
-        )
+        return plugin_app_url("/vendor_management", "interfaces", vendor_interface.id)
 
 
 @task

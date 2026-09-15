@@ -1,29 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Google Scanning Upload</title>
+{% extends "base.html" %}
+
+{% block head_title %}Google Scanning Upload{% endblock %}
+
+{% block extra_head %}
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
     h2 { margin-top: 2rem; }
-    .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
-    .alert-error { background: #f8d7da; color: #842029; }
-    .alert-warning { background: #fff3cd; color: #664d03; }
-    .alert-success { background: #d1e7dd; color: #0f5132; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-    .form-row { margin-bottom: 1rem; }
-    label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
     .search-row { max-width: 28rem; margin-left: auto; margin-bottom: 1rem; display: flex; align-items: flex-end; gap: 0.5rem; }
     .search-row > div { flex: 1; }
     #table-search { width: 100%; }
     .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
     .tables-panel > h2:first-child { margin-top: 1rem; }
     .hint { font-size: 0.9rem; color: #555; margin-top: 0.5rem; max-width: 40rem; }
-    .tooltip-hint { font-size: 0.85rem; font-weight: normal; color: #555; }
   </style>
-</head>
-<body>
+{% endblock %}
+
+{% block body %}
   {% if error %}
     <div class="alert alert-error">{{ error }}</div>
   {% endif %}
@@ -48,6 +39,7 @@
     <button type="submit">Stage Cart</button>
   </form>
 
+  {# These two tables could probably use the shared _datatable.html partial instead. #}
   <div class="search-row">
     <button type="button" id="refresh-tables">Refresh</button>
     <div>
@@ -113,7 +105,7 @@
     <thead>
       <tr>
         <th>Cart Name</th>
-        <th>Filename <span class="tooltip-hint">(right-click or Cmd/Ctrl-click to open in a new tab and download)</span></th>
+        <th>Filename</th>
         <th>Shipped At</th>
         <th>Status</th>
       </tr>
@@ -139,7 +131,9 @@
     </tbody>
   </table>
   </div>
+{% endblock %}
 
+{% block extra_scripts %}
   <script>
     document.getElementById("table-search").addEventListener("input", function () {
       var query = this.value.trim().toLowerCase();
@@ -152,5 +146,4 @@
       window.location.reload();
     });
   </script>
-</body>
-</html>
+{% endblock %}

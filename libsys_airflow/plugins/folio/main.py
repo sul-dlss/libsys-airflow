@@ -13,7 +13,6 @@ circ_rules_tester_view = {
     "name": "Circ Rules Tester",
     "category": "FOLIO",
     "href": "/circ_rule_tester/",
-    "url_route": "circ_rule_tester",
 }
 
 

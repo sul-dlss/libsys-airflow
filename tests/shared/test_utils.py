@@ -185,6 +185,18 @@ def test_dag_run_response_url(mock_dag_run_response):
     )
 
 
+def test_plugin_app_url():
+    assert (
+        utils.plugin_app_url("/vendor_management", "interfaces", 12)
+        == "http://localhost:8080/vendor_management/interfaces/12"
+    )
+
+
+def test_plugin_app_url_unknown_prefix():
+    with pytest.raises(ValueError, match="not a plugin app prefix"):
+        utils.plugin_app_url("/pluginsv2/vendor_management", "interfaces", 12)
+
+
 def test__marc_json_with_new_tags__(
     mock_folio_add_marc_tags, marc_json, marc_instance_tags, caplog
 ):

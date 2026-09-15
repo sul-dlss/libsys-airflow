@@ -85,6 +85,10 @@ def test_missing_holdings_instances_email(mocker, mock_folio_variables):
 
     report_link = report_body.find("a")
     assert report_link.text == "2025-03-04T23:15:35.345579.html"
+    assert report_link["href"] == (
+        "http://localhost:8080/data_export_oclc_reports/missing_holdings/"
+        "2025-03-04T23%3A15%3A35.345579.html"
+    )
 
 
 def test_no_missing_holdings_instances_email(mocker, mock_folio_variables, caplog):
@@ -126,6 +130,10 @@ def test_multiple_oclc_email(mocker, mock_folio_variables):
     sul_report_link = sul_html_body.find("a")
 
     assert sul_report_link.text == "2024-11-05T23:26:11.316254.html"
+    assert sul_report_link["href"] == (
+        "http://localhost:8080/data_export_oclc_reports/STF/multiple_oclc_numbers/"
+        "2024-11-05T23%3A26%3A11.316254.html"
+    )
 
     assert mock_send_email.call_args_list[1][1]["to"] == ['test@stanford.edu']
     assert mock_send_email.call_args_list[1][1]["subject"].endswith(

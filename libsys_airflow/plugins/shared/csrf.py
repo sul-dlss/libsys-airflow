@@ -209,7 +209,7 @@ def csrf_token(request: Request) -> str:
 def csrf_field(request: Request) -> Markup:
     """
     Hidden input for a form, registered as a Jinja global by
-    libsys_airflow.plugins.shared.utils.plugin_templates.
+    libsys_airflow.plugins.shared.utils.register_template_globals.
 
     Markup wraps a constant template and the values are substituted with Markup.format,
     which escapes them, rather than interpolating them into the string first.

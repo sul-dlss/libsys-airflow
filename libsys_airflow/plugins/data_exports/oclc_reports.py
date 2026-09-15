@@ -78,7 +78,7 @@ no_holdings_for_instances_template = """
 <h1>Instances missing Holdings on {{ date }}</h1>
 
 <p>
- <a href="{{ dag_run_rul }}">DAG Run</a>
+ <a href="{{ dag_run_url }}">DAG Run</a>
 </p>
 
 <ol>
@@ -487,5 +487,6 @@ def no_holdings_task(**kwargs):
     )
     missing_holdings.extend(missing_holdings_update)
     kwargs['instance_missing_holdings'] = missing_holdings
+    kwargs["dag_run_url"] = dag_run_url(dag_run=kwargs["dag_run"])
 
     return _generate_missing_holdings_report(**kwargs)
