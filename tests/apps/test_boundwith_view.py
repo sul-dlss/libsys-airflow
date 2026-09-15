@@ -2,7 +2,9 @@ from io import BytesIO
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
-from auth_helpers import authenticated_app_fixture  # noqa
+from airflow.api_fastapi.auth.managers.simple.user import SimpleAuthManagerUser
+from airflow.api_fastapi.core_api.security import get_user
+from auth_helpers import authenticated_app_fixture, TEST_USERNAME  # noqa
 from csrf_helpers import csrf_test_client  # noqa
 import pytest  # noqa
 
@@ -20,34 +22,9 @@ def test_bw_home():
 
 def test_run_bw_creation_missing_file():
     """Test upload fails when file is not provided."""
-    response = client.post('/create', data={'sunid': 'testuser'})
+    response = client.post('/create')
     assert response.status_code == 200
     assert "Missing Boundwith Relationship File" in response.text
-
-
-def test_run_bw_creation_missing_sunid():
-    """Test upload fails when SUNID is not provided."""
-    csv_data = b"part_holdings_hrid,principle_barcode\nHR001,BC001\n"
-
-    response = client.post(
-        '/create',
-        files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
-    )
-    assert response.status_code == 200
-    assert "SUNID Required" in response.text
-
-
-def test_run_bw_creation_empty_sunid():
-    """Test upload fails when SUNID is empty string."""
-    csv_data = b"part_holdings_hrid,principle_barcode\nHR001,BC001\n"
-
-    response = client.post(
-        '/create',
-        data={'sunid': '   '},
-        files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
-    )
-    assert response.status_code == 200
-    assert "SUNID Required" in response.text
 
 
 def test_run_bw_creation_invalid_columns():
@@ -56,7 +33,6 @@ def test_run_bw_creation_invalid_columns():
 
     response = client.post(
         '/create',
-        data={'sunid': 'testuser'},
         files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
     )
     assert response.status_code == 200
@@ -72,7 +48,6 @@ def test_run_bw_creation_too_many_rows():
 
     response = client.post(
         '/create',
-        data={'sunid': 'testuser'},
         files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
     )
     assert response.status_code == 200
@@ -85,7 +60,6 @@ def test_run_bw_creation_empty_csv():
 
     response = client.post(
         '/create',
-        data={'sunid': 'testuser'},
         files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
     )
     assert response.status_code == 200
@@ -107,7 +81,7 @@ def test_run_bw_creation_success_with_correct_conf(mock_api_client, mock_dag_run
 
     response = client.post(
         '/create',
-        data={'sunid': 'jdoe', 'user_email': 'jdoe@example.com'},
+        data={'user_email': 'jdoe@example.com'},
         files={
             'upload_boundwith': ("boundwith_test.csv", BytesIO(csv_data), "text/csv")
         },
@@ -124,9 +98,12 @@ def test_run_bw_creation_success_with_correct_conf(mock_api_client, mock_dag_run
 
     assert dag_id == "add_bw_relationships"
 
-    assert trigger_body.conf['sunid'] == 'jdoe'
+    # From the session, not a form field the user could set to anyone.
+    assert trigger_body.conf['sunid'] == TEST_USERNAME
     assert trigger_body.conf['email'] == 'jdoe@example.com'
     assert trigger_body.conf['file_name'] == 'boundwith_test.csv'
+    # SimpleAuthManager mints no Keycloak token, so there is none to pass on.
+    assert trigger_body.conf['folio_token_key'] is None
 
     relationships = trigger_body.conf['relationships']
     assert isinstance(relationships, list)
@@ -156,7 +133,6 @@ def test_run_bw_creation_success_with_no_email(mock_api_client, mock_dag_run_api
 
     response = client.post(
         '/create',
-        data={'sunid': 'jdoe'},
         files={
             'upload_boundwith': ("boundwith_test.csv", BytesIO(csv_data), "text/csv")
         },
@@ -167,6 +143,52 @@ def test_run_bw_creation_success_with_no_email(mock_api_client, mock_dag_run_api
     trigger_body = call_args[0][1]
 
     assert trigger_body.conf['email'] is None
+    assert trigger_body.conf['sunid'] == TEST_USERNAME
+
+
+class KeycloakLikeUser(SimpleAuthManagerUser):
+    """
+    Stands in for a KeycloakAuthManagerUser, which carries the access token the DAG
+    needs, while staying a user SimpleAuthManager will still authorize.
+    """
+
+    def __init__(self, username, access_token):
+        super().__init__(username=username, role="admin")
+        self.access_token = access_token
+
+
+@patch('libsys_airflow.plugins.boundwith.boundwith_view.store_user_token')
+@patch('libsys_airflow.plugins.boundwith.boundwith_view.DagRunApi')
+@patch('libsys_airflow.plugins.boundwith.boundwith_view.api_client')
+def test_folio_token_is_stashed_not_passed_in_conf(
+    mock_api_client, mock_dag_run_api, mock_store
+):
+    """
+    Under Keycloak the DAG gets at the user's token, but by key: the token itself in the
+    conf would be readable by any user from the run details.
+    """
+    csv_data = b"part_holdings_hrid,principle_barcode\nHR001,BC001\nHR002,BC002\n"
+    app.dependency_overrides[get_user] = lambda: KeycloakLikeUser(
+        "jdoe", "a-keycloak-access-token"
+    )
+    mock_store.return_value = "folio_user_token_abc123"
+
+    mock_api_instance = MagicMock()
+    mock_dag_run_api.return_value = mock_api_instance
+
+    client.post(
+        '/create',
+        files={
+            'upload_boundwith': ("boundwith_test.csv", BytesIO(csv_data), "text/csv")
+        },
+    )
+
+    mock_store.assert_called_once_with("a-keycloak-access-token")
+
+    trigger_body = mock_api_instance.trigger_dag_run.call_args[0][1]
+
+    assert trigger_body.conf['folio_token_key'] == "folio_user_token_abc123"
+    assert "a-keycloak-access-token" not in str(trigger_body.conf)
     assert trigger_body.conf['sunid'] == 'jdoe'
 
 
@@ -179,7 +201,6 @@ def test_run_bw_creation_csv_error(mock_read_csv):
 
     response = client.post(
         '/create',
-        data={'sunid': 'testuser'},
         files={'upload_boundwith': ("test.csv", BytesIO(csv_data), "text/csv")},
     )
     assert response.status_code == 200
@@ -187,7 +208,7 @@ def test_run_bw_creation_csv_error(mock_read_csv):
 
 
 def test_run_bw_creation_without_csrf_token():
-    response = TestClient(app).post('/create', data={'sunid': 'testuser'})
+    response = TestClient(app).post('/create')
 
     assert response.status_code == 403
     assert response.json()["detail"] == "CSRF token missing or invalid"
