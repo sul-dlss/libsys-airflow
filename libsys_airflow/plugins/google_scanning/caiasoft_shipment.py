@@ -8,12 +8,26 @@ def dispatched_shipments(manifest: dict) -> list[dict]:
     Filters a courier manifest response down to shipments CaiaSoft has
     actually dispatched -- shipments still "LOADING" haven't left CaiaSoft
     yet, so their barcodes aren't ready to ship to Google.
+
+    The API returns "DISPATCH" even though the API guide's field table says
+    "DISPATCHED"; match what the API actually sends.
     """
     return [
         shipment
         for shipment in manifest.get("manifest", [])
-        if shipment.get("shipment_status") == "DISPATCHED"
+        if shipment.get("shipment_status") == "DISPATCH"
     ]
+
+
+def _carts(shipment: dict) -> list[dict]:
+    """
+    CaiaSoft returns carts either as a list or as an object keyed by cart
+    number (e.g. {"1": {...}}); normalize both to a list.
+    """
+    carts = shipment.get("carts") or []
+    if isinstance(carts, dict):
+        return list(carts.values())
+    return carts
 
 
 def barcode_bin_pairs(shipments: list[dict]) -> list[tuple[str, str]]:
@@ -25,7 +39,7 @@ def barcode_bin_pairs(shipments: list[dict]) -> list[tuple[str, str]]:
     """
     pairs: list[tuple[str, str]] = []
     for shipment in shipments:
-        for cart in shipment.get("carts", []):
+        for cart in _carts(shipment):
             bin_id = cart.get("bin") or ""
             for barcode in cart.get("items", []):
                 pairs.append((barcode, bin_id))
