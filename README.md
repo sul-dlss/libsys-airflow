@@ -77,6 +77,17 @@ The `airflow-sso` client carries the whole authorization model — roles, resour
 permissions. It can be imported to other keycloak environments as needed. The notes below describe how
 the client is setup.
 
+#### Skipping the Keycloak login page
+
+Deployed environments sit behind a Shibboleth SP, so users sign in with Stanford SAML before Airflow loads and then are prompted a second time to SSO by Keycloak. The realm's `saml` identity provider is that same Stanford SSO, so redirecting to it instead of rendering the login page makes the second sign-in silent:
+
+1. Duplicate the realm's `browser` flow as `browser-airflow-sso` (Under Authentication > Flows).
+2. Configure its **Identity Provider Redirector** with *Default Identity Provider* `saml`.
+3. Under `airflow-sso` → Advanced → **Authentication flow overrides**, set Browser Flow to that copy.
+
+Doing it as a client override leaves FOLIO's login page alone. Airflow cannot send `kc_idp_hint`
+itself, since the provider builds the authorize URL without it.
+
 #### Assigning roles
 
 The five roles used by KeycloakAuthManager are **client roles on `airflow-sso`**,
