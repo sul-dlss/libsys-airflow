@@ -832,19 +832,19 @@ requests-toolbelt = ">=1.0.0"
 
 [[package]]
 name = "apache-airflow-providers-keycloak"
-version = "0.8.2"
+version = "0.10.0"
 description = "Provider package apache-airflow-providers-keycloak for Apache Airflow"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "apache_airflow_providers_keycloak-0.8.2-py3-none-any.whl", hash = "sha256:40e550b3a59492a2e593c5f44bea6c30f2897a9c03da408e5a3c3e75c90cec66"},
-    {file = "apache_airflow_providers_keycloak-0.8.2.tar.gz", hash = "sha256:3333e0922a018d5373a37e9b966c855f3fbfa35e56079f743e89c2c2377cfa07"},
+    {file = "apache_airflow_providers_keycloak-0.10.0-py3-none-any.whl", hash = "sha256:2f76e2094197c1a22e4acbbea602d1f9c1089f18dfe2388690ad2e06a11d255b"},
+    {file = "apache_airflow_providers_keycloak-0.10.0.tar.gz", hash = "sha256:562110b5c44f8bd159e8a2d94a2bc47fbb14a5112575d24f4c17f7f2d9639f4f"},
 ]
 
 [package.dependencies]
 apache-airflow = ">=3.0.0"
-apache-airflow-providers-common-compat = ">=1.12.0"
+apache-airflow-providers-common-compat = ">=1.18.0"
 python-keycloak = ">=5.0.0"
 
 [[package]]
@@ -8096,7 +8096,7 @@ description = "A pure Python trie data structure implementation."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "test"]
-markers = "python_version >= \"3.11\""
+markers = "python_version > \"3.10\""
 files = [
     {file = "pygtrie-2.6.1-py3-none-any.whl", hash = "sha256:0ad593c596f938f0f468e05c5af174f25a7237b14fae6674843c60d63ae4313c"},
     {file = "pygtrie-2.6.1.tar.gz", hash = "sha256:1934613126070b4ec51a3cefcf0c94cebb0139043b444c0f02486caebd0d8011"},
@@ -11230,4 +11230,4 @@ type = ["pytest-mypy (>=1.0.1) ; platform_python_implementation != \"PyPy\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "93d105de4e33b58affc03a48d8cbaff0706d689de1e655957bd6d7526195c5c4"
+content-hash = "b263cdc8f2c78f6072b65839049acb3c0fc11489250bf812bd034a605c4e2295"

@@ -23,6 +23,7 @@ from libsys_airflow.plugins.shared.csrf import (
     CSRFCookieMiddleware,
     csrf_protect,
 )
+from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
 
 from libsys_airflow.plugins.vendor.job_profiles import (
     job_profiles,
@@ -58,6 +59,7 @@ app = FastAPI(
     # Airflow itself passes when deciding whether to show the menu item.
     dependencies=[Depends(require_view_access("Dashboard"))],
 )
+install_login_redirect(app)
 app.add_middleware(CSRFCookieMiddleware)
 # Added last, so it is the outermost middleware and every request below it, CSRF included,
 # shares the session it scopes.
