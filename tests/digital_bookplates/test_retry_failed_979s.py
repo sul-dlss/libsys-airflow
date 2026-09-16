@@ -1,6 +1,7 @@
 import pytest
 
 from airflow.sdk import Variable
+from airflow_client.client.rest import ApiException
 from unittest.mock import MagicMock
 
 from mocks import (  # noqa
@@ -11,6 +12,7 @@ from mocks import (  # noqa
 from libsys_airflow.plugins.digital_bookplates.dag_979_retries import (
     failed_979_dags,
     clear_dag_runs,
+    get_all_failed_dag_runs,
     poll_for_979s_dags,
 )
 
@@ -94,6 +96,50 @@ def test_find_failed_979_dags(mocker, mock_api_client, mock_api_instance, caplog
     failed_dags = failed_979_dags.function()
     assert len(failed_dags) == 2
     assert "Total number of dag runs fetched: 2" in caplog.text
+
+
+def test_get_all_failed_dag_runs_pages_through_every_run():
+    api_instance = MagicMock()
+    api_instance.get_dag_runs.side_effect = [
+        MagicMock(dag_runs=[MagicMock() for _ in range(100)]),
+        MagicMock(dag_runs=[MagicMock() for _ in range(100)]),
+        MagicMock(dag_runs=[MagicMock() for _ in range(20)]),
+    ]
+
+    dag_runs = get_all_failed_dag_runs(
+        api_instance=api_instance, size=220, initial_limit=100, initial_offset=0
+    )
+
+    assert len(dag_runs) == 220
+    offsets = [
+        call.kwargs["offset"] for call in api_instance.get_dag_runs.call_args_list
+    ]
+    assert offsets == [0, 100, 200]
+
+
+def test_get_all_failed_dag_runs_stops_short_page():
+    api_instance = MagicMock()
+    api_instance.get_dag_runs.return_value = MagicMock(dag_runs=[])
+
+    dag_runs = get_all_failed_dag_runs(
+        api_instance=api_instance, size=500, initial_limit=100, initial_offset=0
+    )
+
+    assert dag_runs == []
+    assert api_instance.get_dag_runs.call_count == 1
+
+
+def test_get_all_failed_dag_runs_stops_on_api_error(caplog):
+    api_instance = MagicMock()
+    api_instance.get_dag_runs.side_effect = ApiException(status=500, reason="boom")
+
+    dag_runs = get_all_failed_dag_runs(
+        api_instance=api_instance, size=500, initial_limit=100, initial_offset=0
+    )
+
+    assert dag_runs == []
+    assert api_instance.get_dag_runs.call_count == 1
+    assert "Exception when calling DagRunApi" in caplog.text
 
 
 @pytest.mark.parametrize("mock_api_instance", ["clear_dag_run"], indirect=True)

@@ -33,14 +33,17 @@ def get_all_failed_dag_runs(
                 limit=limit,
                 offset=offset,
             )
-            all_dag_runs.extend(api_response.dag_runs)
         except ApiException as e:
             logger.warning(f"Exception when calling DagRunApi: {e}")
-            continue
+            break
 
-        # Increment the limit and offset
-        limit = min(limit + 100, size - offset)
-        offset += limit
+        dag_runs = api_response.dag_runs
+        if not dag_runs:
+            break
+
+        all_dag_runs.extend(dag_runs)
+        # Airflow caps a page at [api] maximum_page_limit, so advance by what came back.
+        offset += len(dag_runs)
 
     return all_dag_runs
 
