@@ -95,7 +95,9 @@ def clear_dag_runs(dag_runs: list) -> list:
         dag_run = json.loads(dag_run)
         dag_id = dag_run.get("dag_id", "digital_bookplate_979")
         dag_run_id = dag_run.get("dag_run_id")
-        dag_run_clear_body = DAGRunClearBody(dry_run=False, only_failed=True)
+        dag_run_clear_body = DAGRunClearBody(
+            dry_run=False, only_failed=True, run_on_latest_version=True
+        )
         try:
             logger.info(f"Clearing dag run for {dag_id} {dag_run_id}")
             api_response: ResponseClearDagRun = api_instance.clear_dag_run(

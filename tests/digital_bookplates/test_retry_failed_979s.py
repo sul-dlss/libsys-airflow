@@ -116,6 +116,10 @@ def test_clear_dag_runs(
     assert "state: QUEUED" in caplog.text
     assert len(cleared_dag_runs) == 2
 
+    body = mock_api_instance.clear_dag_run.call_args.args[2]
+    assert body.only_failed is True
+    assert body.run_on_latest_version is True
+
 
 def test_poll_for_979s_dags(mocker, mock_cleared_dag_runs, mock_variable, caplog):
     mock_email = mocker.patch(
