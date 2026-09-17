@@ -26,6 +26,8 @@ that the caller is a signed-in user holding an Airflow role, not which plugins t
 use.
 """
 
+import logging
+
 from collections.abc import Callable
 from typing import Annotated, TYPE_CHECKING
 
@@ -38,6 +40,8 @@ if TYPE_CHECKING:
     # Only a Literal when type checking; at runtime the name is bound to an enum, so
     # importing it for real would annotate these with the wrong thing.
     from airflow.api_fastapi.auth.managers.base_auth_manager import ResourceMethod
+
+logger = logging.getLogger(__name__)
 
 # Airflow's ResourceMethod values that an HTTP verb can map onto. Anything unexpected is
 # treated as POST: of the methods a plugin route might use it is the least permissive
@@ -62,23 +66,53 @@ def resource_method(request: Request) -> "ResourceMethod":
     return _METHODS.get(request.method.upper(), "POST")
 
 
+def session_expired(user: BaseUser) -> bool:
+    """
+    Whether Keycloak has stopped recognising the session behind ``user``.
+
+    ``is_authorized_custom_view`` answers ``False`` both for a user Keycloak declined and
+    for one whose session it has forgotten, and the two need opposite handling: a denial
+    is final, a forgotten session should send the user back through login. RFC 7662
+    introspection separates them, reporting ``active`` false for a token that is expired,
+    revoked, or belongs to a logged out session.
+
+    ``False`` whenever the question cannot be answered -- a different auth manager, a user
+    carrying no Keycloak token, an unreachable Keycloak -- so the caller falls back to the
+    403 that every one of these cases used to produce.
+    """
+    manager = get_auth_manager()
+    access_token = getattr(user, "access_token", None)
+    if not access_token or not hasattr(manager, "get_keycloak_client"):
+        return False
+    try:
+        return not manager.get_keycloak_client().introspect(access_token).get("active")
+    except Exception:
+        logger.warning("Could not introspect the Keycloak token", exc_info=True)
+        return False
+
+
 def require_view_access(view_name: str) -> Callable[[Request, BaseUser | None], None]:
     """
     FastAPI dependency rejecting requests from users without access to ``view_name``.
 
     Unauthenticated requests fail with a 401, which ``install_login_redirect`` turns into
     a trip through Keycloak that reissues the cookies; authenticated but unauthorized ones
-    fail with a 403.
+    fail with a 403. A caller Keycloak has forgotten reaches the auth manager looking
+    unauthorized, so that verdict is checked against ``session_expired`` before it is
+    reported as one, and answered with the 401 instead.
     """
 
     def inner(request: Request, user: MaybeUserDep) -> None:
         if user is None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-        if not get_auth_manager().is_authorized_custom_view(
+        if get_auth_manager().is_authorized_custom_view(
             method=resource_method(request),
             resource_name=view_name,
             user=user,
         ):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden")
+            return
+        if session_expired(user):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden")
 
     return inner
