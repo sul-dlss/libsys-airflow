@@ -19,6 +19,8 @@
     <form enctype="multipart/form-data" method="post" action="create">
       {{ csrf_field(request) }}
       <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
+      {# The fund is submitted from here, never from a radio. See extra_scripts below. #}
+      <input type="hidden" name="fund_select" id="fundSelect">
       <table id="fundsTable" data-datatable>
         <thead>
             <tr>
@@ -32,7 +34,7 @@
         {% for fund_row in digital_bookplates %}
          <tr>
            <td>
-            <input type="radio" name="fund_select" value="{{ fund_row.id }}"></input>
+            <input type="radio" name="fund_choice" value="{{ fund_row.id }}"></input>
            </td>
            <td>
              {% if fund_row.fund_name %}{{ fund_row.fund_name }}{% endif %}
@@ -67,26 +69,28 @@
 
 {% block extra_scripts %}
   <script type="text/javascript">
-    // Paging keeps only the current page's rows in the DOM, so a fund chosen before
-    // searching or turning the page would not be submitted with the form. Remember the
-    // choice and put it back as a hidden field if its radio is gone at submit time.
-    let selectedFund = null;
-    let fundsForm = document.querySelector("#fundsTable").closest("form");
+    let fundsTable = document.querySelector("#fundsTable");
+    let fundSelect = document.getElementById("fundSelect");
 
-    fundsForm.addEventListener("change", function (event) {
-      if (event.target.name === "fund_select") {
-        selectedFund = event.target.value;
+    fundsTable.closest("form").addEventListener("change", function (event) {
+      if (event.target.name === "fund_choice") {
+        fundSelect.value = event.target.value;
       }
     });
 
-    fundsForm.addEventListener("submit", function () {
-      if (selectedFund && !fundsForm.querySelector("input[name=fund_select]:checked")) {
-        let field = document.createElement("input");
-        field.type = "hidden";
-        field.name = "fund_select";
-        field.value = selectedFund;
-        fundsForm.appendChild(field);
-      }
+    // Keeps what the page shows in step with what it will submit, so a reused radio
+    // cannot display a fund the user did not pick. 
+    function syncFundRadios() {
+      fundsTable.querySelectorAll("input[name=fund_choice]").forEach(function (radio) {
+        radio.checked = radio.value === fundSelect.value;
+      });
+    }
+
+    new MutationObserver(syncFundRadios).observe(fundsTable, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["value"],
     });
   </script>
 {% endblock %}

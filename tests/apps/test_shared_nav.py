@@ -16,7 +16,7 @@ import re
 from bs4 import BeautifulSoup
 
 from libsys_airflow.plugins.boundwith.boundwith_view import app
-from libsys_airflow.plugins.shared.nav import APPS, NAV_GROUPS
+from libsys_airflow.plugins.shared.nav import APPS, NAV_GROUPS, current_app
 
 from tests.auth_helpers import authenticated_app_fixture
 from tests.csrf_helpers import csrf_test_client
@@ -107,6 +107,20 @@ def test_nav_marks_the_current_app_and_does_not_link_to_it():
     assert "/boundwith/" not in _hrefs(nav)
     # The rest of the nav still links out.
     assert "/orafin/" in _hrefs(nav)
+
+
+def test_the_current_app_is_matched_by_its_whole_mount():
+    """
+    The nav assumes the API server is at the domain root, which it is: [api] base_url is
+    a bare host in dev, stage and prod. Were Airflow ever mounted under a path of its
+    own, resolving the current app here would not be enough -- PluginApp.href, the link
+    back to Airflow in _nav.html and login_redirect.is_returnable are all root-absolute
+    and would each need the prefix too. So this resolves nothing rather than rendering a
+    page whose every link is wrong.
+    """
+    assert current_app("/boundwith").name == "Boundwith CSV Upload"
+    assert current_app("/airflow/boundwith") is None
+    assert current_app("") is None
 
 
 def test_nav_flags_the_menu_holding_the_current_app():

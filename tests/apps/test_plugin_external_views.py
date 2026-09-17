@@ -111,13 +111,16 @@ def test_no_url_prefix_is_a_prefix_of_another():
 
 
 def test_no_url_prefix_is_reserved_by_airflow():
+    """
+    Matched the way ``init_plugins`` matches, with a bare startswith and no path
+    boundary, so ``/uix`` counts as reserved by ``/ui``. Airflow declines to mount a
+    plugin that claims one and logs an error rather than raising, so a stricter reading
+    here would pass the suite and then produce an app that simply is not there.
+    """
     assert [
         prefix
         for prefix in URL_PREFIXES
-        if any(
-            prefix == reserved or prefix.startswith(f"{reserved}/")
-            for reserved in RESERVED_URL_PREFIXES
-        )
+        if any(prefix.startswith(reserved) for reserved in RESERVED_URL_PREFIXES)
     ] == []
 
 

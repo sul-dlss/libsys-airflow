@@ -78,12 +78,13 @@ def current_app(root_path: str) -> PluginApp | None:
     The app serving this request, or None.
 
     ``root_path`` is the mount prefix Airflow gave the app, which is empty when the app
-    is unmounted, as it is under a bare test client. Matched by suffix rather than
-    equality so that an API server mounted under a path of its own still resolves.
+    is unmounted, as it is under a bare test client, and which then finds nothing here.
+
+    Matched by equality, so the whole nav assumes one thing rather than three: that the
+    API server is at the domain root. ``PluginApp.href``, the link back to Airflow in
+    ``templates/_nav.html`` and ``login_redirect.is_returnable`` are all root-absolute
+    and would each need the prefix threaded through to serve an API server mounted under
+    a path of its own. None is, because ``[api] base_url`` is a bare host in dev, stage
+    and prod alike.
     """
-    if not root_path:
-        return None
-    for app in APPS:
-        if root_path.endswith(app.url_prefix):
-            return app
-    return None
+    return BY_PREFIX.get(root_path)

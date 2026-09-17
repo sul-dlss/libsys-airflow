@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 from auth_helpers import authenticated_app_fixture  # noqa
 from csrf_helpers import csrf_test_client  # noqa
@@ -109,6 +110,21 @@ def test_digital_bookplates_batch_upload_view(mock_db):
     assert response.status_code == 200
     assert "kp761xz4568" in response.text
     assert "ab123xy4567" in response.text
+
+
+def test_the_fund_is_submitted_from_a_hidden_field_not_a_radio(mock_db):
+    """
+    Ensures that a radio the user checked isn't reused for another fund's row
+    because of the way simple-datatables patches the rows it keeps when the table
+    is search or paged.
+    """
+    soup = BeautifulSoup(client.get('/').text, "html.parser")
+    fund_inputs = soup.find_all("input", attrs={"name": "fund_select"})
+
+    assert [input_["type"] for input_ in fund_inputs] == ["hidden"]
+    # Grouped, so the browser still enforces a single selection.
+    radios = soup.select("#fundsTable input[type=radio]")
+    assert radios and {radio["name"] for radio in radios} == {"fund_choice"}
 
 
 def test_missing_filename(mock_db):
