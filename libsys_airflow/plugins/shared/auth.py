@@ -27,11 +27,12 @@ use.
 """
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 
 from airflow.api_fastapi.app import get_auth_manager
-from airflow.api_fastapi.core_api.security import GetUserDep
-from fastapi import HTTPException, Request, status
+from airflow.api_fastapi.auth.managers.models.base_user import BaseUser
+from airflow.api_fastapi.core_api.security import get_user
+from fastapi import Depends, HTTPException, Request, status
 
 if TYPE_CHECKING:
     # Only a Literal when type checking; at runtime the name is bound to an enum, so
@@ -49,20 +50,30 @@ _METHODS: "dict[str, ResourceMethod]" = {
     "DELETE": "DELETE",
 }
 
+# Airflow's own GetUserDep promises a user, but KeycloakAuthManager.get_user_from_token
+# returns None for a browser whose Keycloak access token has expired and whose refresh
+# token Keycloak no longer accepts, and neither resolve_user_from_token nor get_user turns
+# that into a 401. Declaring the None keeps it from reaching the auth manager, which
+# dereferences it and answers a 500.
+MaybeUserDep = Annotated[BaseUser | None, Depends(get_user)]
+
 
 def resource_method(request: Request) -> "ResourceMethod":
     return _METHODS.get(request.method.upper(), "POST")
 
 
-def require_view_access(view_name: str) -> Callable[[Request, GetUserDep], None]:
+def require_view_access(view_name: str) -> Callable[[Request, BaseUser | None], None]:
     """
     FastAPI dependency rejecting requests from users without access to ``view_name``.
 
-    Unauthenticated requests fail with a 401 raised by Airflow's own ``get_user``;
-    authenticated but unauthorized ones fail with a 403.
+    Unauthenticated requests fail with a 401, which ``install_login_redirect`` turns into
+    a trip through Keycloak that reissues the cookies; authenticated but unauthorized ones
+    fail with a 403.
     """
 
-    def inner(request: Request, user: GetUserDep) -> None:
+    def inner(request: Request, user: MaybeUserDep) -> None:
+        if user is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
         if not get_auth_manager().is_authorized_custom_view(
             method=resource_method(request),
             resource_name=view_name,

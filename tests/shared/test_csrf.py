@@ -166,6 +166,27 @@ def test_binding_is_empty_without_a_session():
     assert asyncio.run(csrf_binding(_request())) == ""
 
 
+def test_binding_is_empty_when_the_auth_manager_returns_no_user(mocker):
+    """
+    KeycloakAuthManager.get_user_from_token returns None, rather than raising, for a
+    browser whose Keycloak tokens are gone, and resolve_user_from_token passes that
+    through. This middleware runs ahead of require_view_access, so dereferencing the None
+    here answered a 500 before the request could be rejected.
+    """
+    from airflow.api_fastapi.auth.managers.base_auth_manager import (
+        COOKIE_NAME_JWT_TOKEN,
+    )
+
+    mocker.patch(
+        "airflow.api_fastapi.core_api.security.resolve_user_from_token",
+        return_value=None,
+    )
+
+    binding = asyncio.run(csrf_binding(_request({COOKIE_NAME_JWT_TOKEN: "a.b.c"})))
+
+    assert binding == ""
+
+
 def test_binding_is_the_authenticated_user_id():
     response = TestClient(build_app(user_id="alice")).get("/binding")
 

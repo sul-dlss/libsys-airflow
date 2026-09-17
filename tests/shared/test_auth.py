@@ -69,6 +69,21 @@ def test_authorized_user_is_allowed(app):
     assert response.json() == {"ok": True}
 
 
+def test_user_without_keycloak_tokens_is_rejected(app):
+    """
+    KeycloakAuthManager.get_user_from_token returns None, rather than raising, for a
+    browser whose Keycloak access token has expired and whose refresh token Keycloak no
+    longer accepts. A 401 sends them back through login; passing the None on reached the
+    auth manager as an AttributeError and a 500.
+    """
+    app.dependency_overrides[get_user] = lambda: None
+
+    response = TestClient(app).get("/")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+
+
 def test_unauthorized_user_is_forbidden(app):
     """A signed-in user the auth manager declines: 403 rather than 401."""
     authenticate_as(app, None)

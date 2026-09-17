@@ -46,6 +46,7 @@ import hmac
 import logging
 
 from hashlib import sha256
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlsplit
 
 from airflow.configuration import conf
@@ -54,6 +55,11 @@ from fastapi_csrf_protect.exceptions import CsrfProtectError
 from fastapi_csrf_protect.flexible import CsrfProtect
 from markupsafe import Markup
 from starlette.middleware.base import BaseHTTPMiddleware
+
+if TYPE_CHECKING:
+    # Only needed to name the type the cast in csrf_binding widens; importing it for real
+    # would pull the API server stack into every DAG module that reaches this file.
+    from airflow.api_fastapi.auth.managers.models.base_user import BaseUser
 
 logger = logging.getLogger(__name__)
 
@@ -131,11 +137,15 @@ async def csrf_binding(request: Request) -> str:
     if not jwt_token:
         return ""
     try:
-        return (await resolve_user_from_token(jwt_token)).get_id()
+        # Typed as returning a user, but KeycloakAuthManager hands back None when the
+        # Keycloak tokens are gone, and this middleware runs ahead of the dependency that
+        # would reject the request, so the None has to be handled rather than dereferenced.
+        token_user = cast("BaseUser | None", await resolve_user_from_token(jwt_token))
     except HTTPException:
         # An expired or otherwise unusable session is simply unbound. Rejecting the request
         # is the auth dependency's job, not this module's.
         return ""
+    return token_user.get_id() if token_user else ""
 
 
 def signing_key(binding: str) -> str:
