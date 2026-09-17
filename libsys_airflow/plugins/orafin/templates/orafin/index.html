@@ -3,8 +3,7 @@
 {% block head_title %}Orafin Feeder-files and AP Reports{% endblock %}
 
 {% block extra_head %}
-  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+  {% include "_datatable.html" %}
   <style>
     h2 { margin-top: 2rem; }
   </style>
@@ -13,7 +12,7 @@
 {% block body %}
   <h1>Orafin Feeder-files and AP Reports</h1>
   <h2>Feeder-files sent to AP</h2>
-  <table id="feederFileDownloads">
+  <table id="feederFileDownloads" data-datatable>
     <thead>
       <tr>
         <th>Filename</th>
@@ -32,7 +31,7 @@
     </tbody>
   </table>
   <h2>AP Reports</h2>
-  <table id="apReportsDownloads">
+  <table id="apReportsDownloads" data-datatable>
     <thead>
       <tr>
         <th>Filename</th>
@@ -50,23 +49,4 @@
       {% endfor %}
     </tbody>
   </table>
-{% endblock %}
-
-{% block extra_scripts %}
-  <script type="text/javascript">
-    let feederFilesDownloadsTable = document.querySelector("#feederFileDownloads");
-    let feederFilesDownloadsDataTable = new simpleDatatables.DataTable(feederFilesDownloadsTable, {
-      searchable: true,
-      fixedHeight: true,
-      perPage: 100,
-      perPageSelect: false
-    });
-    let apReportsDownloadsTable = document.querySelector("#apReportsDownloads");
-    let apReportsDownloadsTableDataTable = new simpleDatatables.DataTable(apReportsDownloadsTable, {
-      searchable: true,
-      fixedHeight: true,
-      perPage: 100,
-      perPageSelect: false
-    });
-  </script>
 {% endblock %}

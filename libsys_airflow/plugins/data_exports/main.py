@@ -19,7 +19,6 @@ data_export_upload_view = {
     "name": "Data Export CSV Upload",
     "category": "FOLIO",
     "href": "/data_export_upload/",
-    "url_route": "data_export_upload",
 }
 
 data_export_download_fastapi_app = {
@@ -31,7 +30,6 @@ data_export_download_view = {
     "name": "Data Export MARC Download",
     "category": "FOLIO",
     "href": "/data_export_download/",
-    "url_route": "data_export_download",
 }
 
 data_export_oclc_reports_fastapi_app = {
@@ -43,7 +41,6 @@ data_export_oclc_reports_view = {
     "name": "Data Export OCLC Reports",
     "category": "FOLIO",
     "href": "/data_export_oclc_reports/",
-    "url_route": "data_export_oclc_reports",
 }
 
 

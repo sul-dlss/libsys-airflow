@@ -5,9 +5,18 @@
     <title>{% block head_title%}{% endblock %}</title>
     <style>
     body { font-family: sans-serif; margin: 2rem; }
-    .alert-message { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; background: #fff3cd; color: #664d03; }
+    .alert-message, .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .alert-message, .alert-warning { background: #fff3cd; color: #664d03; }
+    .alert-error { background: #f8d7da; color: #842029; }
+    .alert-success { background: #d1e7dd; color: #0f5132; }
     .form-row { margin-bottom: 1rem; }
-    label { display: block; font-weight: bold; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+    label { display: block; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+    input:not([type="radio"]):not([type="checkbox"]), select, button { font-size: 1rem; padding: 0.4rem 0.5rem; box-sizing: border-box; }
+    input[type="file"] { padding-left: 0; }
+    input[type="file"]::file-selector-button { font-size: 1rem; padding: 0.4rem 0.5rem; margin-right: 0.5rem; }
+    input:disabled, input:disabled + label { cursor: not-allowed; color: #767676; }
+    fieldset { border: 0; margin: 0; padding: 0; }
+    fieldset label { display: inline; margin: 0 1.25rem 0 0.35rem; }
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
     .columns { display: flex; gap: 2rem; }
@@ -17,6 +26,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    {% include "_nav.html" %}
     {% block body %}{% endblock %}
     {% block extra_scripts %}{% endblock %}
 </body>

@@ -16,7 +16,6 @@ digital_bookplates_batch_upload_view = {
     "name": "Digital Bookplates Batch Upload",
     "category": "FOLIO",
     "href": "/digital_bookplates_batch_upload/",
-    "url_route": "digital_bookplates_batch_upload",
 }
 
 digital_bookplates_download_fastapi_app = {
@@ -28,7 +27,6 @@ digital_bookplates_download_view = {
     "name": "Digital Bookplates File Download",
     "category": "FOLIO",
     "href": "/digital_bookplates_download/",
-    "url_route": "digital_bookplates_download",
 }
 
 

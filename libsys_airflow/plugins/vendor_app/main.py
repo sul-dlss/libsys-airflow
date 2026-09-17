@@ -12,7 +12,6 @@ vendor_management_view = {
     "name": "Dashboard",
     "category": "Vendor Management",
     "href": "/vendor_management/",
-    "url_route": "vendor_management",
 }
 
 

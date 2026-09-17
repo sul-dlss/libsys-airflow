@@ -1,0 +1,15 @@
+{#
+  Bootstrap styling for the search and rows-per-page controls simple-datatables adds.
+  Include it after _datatable.html: that partial registers its DOMContentLoaded listener
+  first, so the controls exist by the time this one runs. Styles every table on the page,
+  since a template may have more than one.
+#}
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".datatable-selector, .datatable-input").forEach(
+      function (control) {
+        control.classList.add("form-control");
+      }
+    );
+  });
+</script>

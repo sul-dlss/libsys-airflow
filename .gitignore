@@ -1,5 +1,5 @@
-log*
-!log_config.py
+log/
+logs/
 .aws
 .env
 __pycache__/

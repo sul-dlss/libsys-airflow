@@ -3,8 +3,7 @@
 {% block head_title %}Digital Bookplates Batches{% endblock %}
 
 {% block extra_head %}
-  <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7/dist/style.css" rel="stylesheet" type="text/css">
-  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7" type="text/javascript"></script>
+  {% include "_datatable.html" %}
 {% endblock %}
 
 {% block body %}
@@ -20,7 +19,9 @@
     <form enctype="multipart/form-data" method="post" action="create">
       {{ csrf_field(request) }}
       <h2>Add digital bookplates metadata to FOLIO Instance MARC Records</h2>
-      <table id="fundsTable">
+      {# The fund is submitted from here, never from a radio. See extra_scripts below. #}
+      <input type="hidden" name="fund_select" id="fundSelect">
+      <table id="fundsTable" data-datatable>
         <thead>
             <tr>
                 <th>Selection</th>
@@ -33,7 +34,7 @@
         {% for fund_row in digital_bookplates %}
          <tr>
            <td>
-            <input type="radio" name="fund_select" value="{{ fund_row.id }}"></input>
+            <input type="radio" name="fund_choice" value="{{ fund_row.id }}"></input>
            </td>
            <td>
              {% if fund_row.fund_name %}{{ fund_row.fund_name }}{% endif %}
@@ -68,12 +69,28 @@
 
 {% block extra_scripts %}
   <script type="text/javascript">
-      let fundsTable = document.querySelector("#fundsTable");
-      let dataTable = new simpleDatatables.DataTable(fundsTable, {
-        searchable: true,
-        fixedHeight: true,
-        perPage: 100,
-        perPageSelect: false
+    let fundsTable = document.querySelector("#fundsTable");
+    let fundSelect = document.getElementById("fundSelect");
+
+    fundsTable.closest("form").addEventListener("change", function (event) {
+      if (event.target.name === "fund_choice") {
+        fundSelect.value = event.target.value;
+      }
+    });
+
+    // Keeps what the page shows in step with what it will submit, so a reused radio
+    // cannot display a fund the user did not pick. 
+    function syncFundRadios() {
+      fundsTable.querySelectorAll("input[name=fund_choice]").forEach(function (radio) {
+        radio.checked = radio.value === fundSelect.value;
       });
-     </script>
+    }
+
+    new MutationObserver(syncFundRadios).observe(fundsTable, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["value"],
+    });
+  </script>
 {% endblock %}
