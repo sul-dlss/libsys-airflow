@@ -30,6 +30,7 @@ set :keep_releases, 2
 before 'deploy:cleanup', 'fix_permissions'
 before 'deploy:publishing', 'airflow:preflight'
 before 'deploy:published', 'deploy:restart'
+after 'deploy:published', 'write_crontab'
 after 'deploy:finishing', 'honeybadger:notify'
 after 'deploy:finishing_rollback', 'honeybadger:notify'
 
