@@ -21,15 +21,36 @@ MULTIPLE_BARCODE = "11111111111111"
 ERROR_BARCODE = "99999999999999"
 
 ITEM_ID = "de17bd82-7ba7-4dc7-a4e0-1e28e6f4b5c7"
+HOLDINGS_RECORD_ID = "c4a15834-0e9c-4f5d-9a4a-1a4e9d0b7f31"
 TEMP_LOCATION_ID = "5f5f5f5f-6666-7777-8888-999999999999"
+PERMANENT_LOCATION_ID = "a8676073-7520-4f26-8573-55976301ab5d"
+OTHER_TEMP_LOCATION_ID = "cccccccc-dddd-eeee-ffff-000011112222"
+MATERIAL_TYPE_ID = "1a54b431-2e4f-452d-9cae-9cee66c9a892"
+LOAN_TYPE_ID = "2b94c631-fca9-4892-a730-03ee529ffe27"
 DIGI_SENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 NOTE_TYPE_ID = "11112222-3333-4444-5555-666677778888"
 
 
 def _item(**overrides) -> dict:
+    """
+    An item shaped like a real GET /inventory/items response.
+
+    mod-inventory emits locations as nested {id, name} objects and does not
+    include the flat permanentLocationId/temporaryLocationId keys that the
+    item-storage schema uses, so this fixture must not carry them either --
+    that asymmetry is exactly what _apply_staging_updates has to respect.
+    """
     item = {
         "id": ITEM_ID,
+        "_version": 1,
+        "hrid": "ai1234567",
         "barcode": FOUND_BARCODE,
+        "holdingsRecordId": HOLDINGS_RECORD_ID,
+        "status": {"name": "Available"},
+        "materialType": {"id": MATERIAL_TYPE_ID, "name": "book"},
+        "permanentLoanType": {"id": LOAN_TYPE_ID, "name": "Can circulate"},
+        "permanentLocation": {"id": PERMANENT_LOCATION_ID, "name": "SAL3 Stacks"},
+        "effectiveLocation": {"id": PERMANENT_LOCATION_ID, "name": "SAL3 Stacks"},
         "statisticalCodeIds": [],
         "notes": [],
     }
@@ -108,7 +129,7 @@ def test_sets_temp_location_stat_code_and_note(mock_folio_client):
     )
 
     assert result == {}
-    assert item["temporaryLocationId"] == TEMP_LOCATION_ID
+    assert item["temporaryLocation"] == {"id": TEMP_LOCATION_ID}
     assert item["statisticalCodeIds"] == [DIGI_SENT_ID]
     assert item["notes"] == [
         {
@@ -120,6 +141,67 @@ def test_sets_temp_location_stat_code_and_note(mock_folio_client):
     mock_folio_client.folio_put.assert_called_once_with(
         f"/inventory/items/{ITEM_ID}", payload=item
     )
+
+
+def test_temp_location_sent_as_nested_object_not_flat_id(mock_folio_client):
+    """
+    mod-inventory's PUT /inventory/items reads temporaryLocation.id and
+    ignores a flat temporaryLocationId, so a payload carrying only the flat
+    key is accepted with a 200 but silently leaves the location unchanged.
+    """
+    item = _item()
+
+    _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    payload = mock_folio_client.folio_put.call_args.kwargs["payload"]
+    assert payload["temporaryLocation"] == {"id": TEMP_LOCATION_ID}
+    assert "temporaryLocationId" not in payload
+
+
+def test_replaces_existing_temp_location(mock_folio_client):
+    """
+    An item already sitting in some other temporary location has to be moved
+    to the Google scanning location, not left where it was.
+    """
+    item = _item(
+        temporaryLocation={"id": OTHER_TEMP_LOCATION_ID, "name": "SAL3 Rehousing"}
+    )
+
+    _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert item["temporaryLocation"] == {"id": TEMP_LOCATION_ID}
+
+
+def test_leaves_permanent_location_untouched(mock_folio_client):
+    item = _item()
+
+    _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert item["permanentLocation"] == {
+        "id": PERMANENT_LOCATION_ID,
+        "name": "SAL3 Stacks",
+    }
 
 
 def test_does_not_duplicate_existing_stat_code(mock_folio_client):
@@ -190,6 +272,7 @@ def test_retries_once_and_succeeds_after_conflict(mock_folio_client, mocker):
     assert result == {}
     assert mock_folio_client.folio_put.call_count == 2
     retried_item = mock_folio_client.folio_put.call_args.kwargs["payload"]
+    assert retried_item["temporaryLocation"] == {"id": TEMP_LOCATION_ID}
     assert retried_item["statisticalCodeIds"] == [DIGI_SENT_ID]
 
 
