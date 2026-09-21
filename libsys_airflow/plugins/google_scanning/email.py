@@ -11,7 +11,7 @@ from libsys_airflow.plugins.shared.utils import (
 
 logger = logging.getLogger(__name__)
 
-GOOGLE_SCANNING_DEFAULT_EMAIL = "google-books-2026@lists.stanford.edu"
+GOOGLE_SCANNING_DEFAULT_EMAIL = "google_books_2026@lists.stanford.edu"
 
 
 def _to_addresses(user_email: str | None) -> list[str]:
