@@ -79,4 +79,25 @@ authority_files.dow.on('SUN')
 authority_files.hour.on(0)
 authority_files.minute.on(45)
 
+authority_dirs = cron.new(
+    command=f"find /home/libsys/libsys-airflow/shared/authorities -type d -empty -delete"
+)
+authority_dirs.dow.on('SUN')
+authority_dirs.hour.on(0)
+authority_dirs.minute.on(50)
+
+sdr_files = cron.new(
+    command=f"find /home/libsys/libsys-airflow/shared/sdr-files -type f -mtime +{max_age_days} -delete"
+)
+sdr_files.dow.on('SUN')
+sdr_files.hour.on(0)
+sdr_files.minute.on(55)
+
+sdr_dirs = cron.new(
+    command=f"find /home/libsys/libsys-airflow/shared/sdr-files -type d -empty -delete"
+)
+sdr_dirs.dow.on('SUN')
+sdr_dirs.hour.on(1)
+sdr_dirs.minute.on(0)
+
 cron.write()
