@@ -19,12 +19,38 @@ from libsys_airflow.plugins.shared.airflow_api_client import api_client
 logger = logging.getLogger(__name__)
 
 
+def safe_staged_filename(filename: str, cart_name: str) -> str:
+    """
+    Returns a filename safe to write inside a cart's staged directory.
+
+    The barcode file's name now arrives as a plain form field (the browser
+    reads the file and appends its contents into the textarea, so nothing is
+    uploaded), which makes it entirely caller-controlled. Reduce it to a bare
+    name so it cannot traverse out of the cart directory, and fall back to
+    "{cart_name}.txt" for barcodes that were typed rather than dropped.
+    STATUS_FILENAME is excluded because list_staged_carts treats a file by
+    that name as the cart's status rather than its barcodes.
+    """
+    candidate = Path(filename or "").name.strip()
+    if not candidate or candidate.startswith(".") or candidate == STATUS_FILENAME:
+        candidate = f"{Path(cart_name).name.strip()}.txt"
+    return candidate
+
+
 def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:
     """
-    Saves an uploaded cart's barcode file to
+    Saves a cart's barcode file to
     data-export-files/google_scanning/staged/{cart_name}/{filename}
+
+    cart_name comes straight off the submitted form, so resolve the
+    destination and confirm it still sits under STAGED_FILES_BASE before
+    writing, the same guard archived_file_path applies on the way back out.
     """
-    cart_dir = STAGED_FILES_BASE / cart_name
+    base = STAGED_FILES_BASE.resolve()
+    cart_dir = (base / cart_name).resolve()
+    if base not in cart_dir.parents:
+        raise ValueError(f"Invalid cart name: {cart_name}")
+
     cart_dir.mkdir(parents=True, exist_ok=True)
     staged_file_path = cart_dir / filename
     staged_file_path.write_bytes(contents)
