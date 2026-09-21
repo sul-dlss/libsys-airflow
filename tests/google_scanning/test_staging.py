@@ -12,6 +12,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     download_filename,
     list_shipped_carts,
     list_staged_carts,
+    safe_staged_filename,
     save_staged_file,
     shipped_cart_status,
     staged_cart_status,
@@ -43,6 +44,40 @@ def test_save_staged_file(mock_staged_files_base):
 
     assert staged_path == mock_staged_files_base / "cart-1" / "barcodes.txt"
     assert staged_path.read_bytes() == b"12345\n67890\n"
+
+
+def test_save_staged_file_rejects_traversing_cart_name(mock_staged_files_base):
+    with pytest.raises(ValueError, match="Invalid cart name"):
+        save_staged_file("../../../../tmp/evil", "barcodes.txt", b"12345\n")
+
+    assert not (mock_staged_files_base.parent.parent / "tmp" / "evil").exists()
+
+
+def test_safe_staged_filename_keeps_a_plain_name():
+    assert safe_staged_filename("cart-1-shelflist.txt", "cart-1") == (
+        "cart-1-shelflist.txt"
+    )
+
+
+def test_safe_staged_filename_strips_directories():
+    assert safe_staged_filename("../../../../tmp/evil.txt", "cart-1") == "evil.txt"
+
+
+def test_safe_staged_filename_falls_back_to_the_cart_name():
+    for filename in ["", "   ", "..", ".", "/", ".hidden"]:
+        assert safe_staged_filename(filename, "cart-1") == "cart-1.txt"
+
+
+def test_safe_staged_filename_refuses_to_shadow_the_status_file():
+    """
+    list_staged_carts reads a file called status.json as the cart's status,
+    so a barcode file by that name would make the cart unshippable.
+    """
+    assert safe_staged_filename("status.json", "cart-1") == "cart-1.txt"
+
+
+def test_safe_staged_filename_sanitizes_the_cart_name_fallback():
+    assert safe_staged_filename("", "../../etc") == "etc.txt"
 
 
 def test_staged_cart_status_defaults_to_unknown(mock_staged_files_base):

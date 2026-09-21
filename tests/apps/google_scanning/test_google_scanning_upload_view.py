@@ -234,114 +234,206 @@ def test_home_renders_shipped_at_defaulting_to_today(mocker):
     assert 'id="shipped_at" name="shipped_at" value="2026-08-07"' in response.text
 
 
+def test_home_renders_barcode_textarea():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert '<textarea id="barcodes" name="barcodes"' in response.text
+    assert 'name="source_filename"' in response.text
+
+
+def test_home_file_input_is_not_submitted():
+    """
+    The picker is browser-side sugar that appends into the textarea. Without
+    a name attribute it cannot post a file part, which is what keeps /stage
+    to a single text input to validate.
+    """
+    response = client.get("/")
+
+    assert 'id="barcode_file"' in response.text
+    assert 'name="barcode_file"' not in response.text
+
+
+def test_home_renders_drop_handling_script():
+    response = client.get("/")
+
+    assert 'addEventListener("drop"' in response.text
+    # the client-side mirror of the route's checks
+    assert "TextDecoder" in response.text
+    assert "/^[A-Za-z0-9-]+$/" in response.text
+
+
+@pytest.fixture
+def mock_stage_cart(mocker):
+    """Stubs out the filesystem write and the DAG trigger for a /stage POST."""
+    return {
+        "save": mocker.patch(
+            "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
+            return_value="/opt/airflow/data-export-files/google_scanning/staged/cart-2/barcodes.txt",
+        ),
+        "trigger": mocker.patch(
+            "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_stage_cart_items_dag",
+            return_value="run-123",
+        ),
+    }
+
+
 def test_stage_cart_missing_cart_name():
-    response = client.post(
-        "/stage",
-        data={"cart_name": " "},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
-    )
+    response = client.post("/stage", data={"cart_name": " ", "barcodes": "12345"})
 
     assert response.status_code == 200
     assert "Cart name is required." in response.text
 
 
-def test_stage_cart_missing_file():
+def test_stage_cart_missing_barcodes():
+    response = client.post("/stage", data={"cart_name": "cart-2"})
+
+    assert response.status_code == 200
+    assert "Enter or drop in at least one barcode." in response.text
+
+
+def test_stage_cart_blank_barcodes():
     response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("", b"", "text/plain")},
+        "/stage", data={"cart_name": "cart-2", "barcodes": "\n   \n"}
     )
 
     assert response.status_code == 200
-    assert "A barcode file is required." in response.text
-
-
-def test_stage_cart_empty_file():
-    response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"\n   \n", "text/plain")},
-    )
-
-    assert response.status_code == 200
-    assert "Barcode file is empty." in response.text
-
-
-def test_stage_cart_non_utf8_file():
-    response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"\xff\xfe\x00\x01", "text/plain")},
-    )
-
-    assert response.status_code == 200
-    assert "Barcode file must be plain text." in response.text
+    assert "Enter or drop in at least one barcode." in response.text
 
 
 def test_stage_cart_rejects_barcode_with_spaces():
     response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"36105 061323494\n", "text/plain")},
+        "/stage", data={"cart_name": "cart-2", "barcodes": "36105 061323494\n"}
     )
 
     assert response.status_code == 200
-    assert "Barcode file contains invalid line(s): 36105 061323494" in response.text
+    assert "Barcode list contains invalid line(s): 36105 061323494" in response.text
 
 
 def test_stage_cart_rejects_barcode_with_leading_or_trailing_whitespace():
     response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"  36105061323494  \n", "text/plain")},
+        "/stage", data={"cart_name": "cart-2", "barcodes": "  36105061323494  \n"}
     )
 
     assert response.status_code == 200
-    assert "Barcode file contains invalid line(s):" in response.text
+    assert "Barcode list contains invalid line(s):" in response.text
     assert "  36105061323494  " in response.text
 
 
-def test_stage_cart_accepts_alphanumeric_and_dash_barcodes(mocker):
-    mock_save = mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
-        return_value="/opt/airflow/data-export-files/google_scanning/staged/cart-2/barcodes.txt",
-    )
-    mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_stage_cart_items_dag",
-        return_value="run-123",
-    )
-
-    contents = b"001AMT2225\n5108203-3001\n36105061323494\n"
+def test_stage_cart_redisplays_submitted_values_on_error():
+    """
+    A rejected list has to come back in the form -- staff may have dropped in
+    hundreds of barcodes and should not have to reassemble them.
+    """
     response = client.post(
         "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", contents, "text/plain")},
+        data={"cart_name": "cart-2", "barcodes": "12345\nbad barcode\n67890"},
+    )
+
+    assert response.status_code == 200
+    assert 'name="cart_name" value="cart-2"' in response.text
+    assert "12345\nbad barcode\n67890" in response.text
+
+
+def test_stage_cart_accepts_alphanumeric_and_dash_barcodes(mock_stage_cart):
+    barcodes = "001AMT2225\n5108203-3001\n36105061323494\n"
+
+    response = client.post(
+        "/stage",
+        data={
+            "cart_name": "cart-2",
+            "barcodes": barcodes,
+            "source_filename": "barcodes.txt",
+        },
     )
 
     assert response.status_code == 303
-    mock_save.assert_called_once_with("cart-2", "barcodes.txt", contents)
+    mock_stage_cart["save"].assert_called_once_with(
+        "cart-2", "barcodes.txt", barcodes.encode("utf-8")
+    )
 
 
-def test_stage_cart_success(mocker):
-    mock_save = mocker.patch(
+def test_stage_cart_keeps_the_dropped_files_name(mock_stage_cart):
+    client.post(
+        "/stage",
+        data={
+            "cart_name": "cart-2",
+            "barcodes": "12345\n",
+            "source_filename": "cart-2-shelflist.txt",
+        },
+    )
+
+    assert mock_stage_cart["save"].call_args.args[1] == "cart-2-shelflist.txt"
+
+
+def test_stage_cart_names_typed_barcodes_after_the_cart(mock_stage_cart):
+    """No file was dropped, so there is no filename to carry over."""
+    client.post("/stage", data={"cart_name": "cart-2", "barcodes": "12345\n"})
+
+    assert mock_stage_cart["save"].call_args.args[1] == "cart-2.txt"
+
+
+def test_stage_cart_sanitizes_the_submitted_filename(mock_stage_cart):
+    """
+    source_filename is a plain form field now, so a caller can put anything
+    in it; it must not be able to escape the cart directory.
+    """
+    client.post(
+        "/stage",
+        data={
+            "cart_name": "cart-2",
+            "barcodes": "12345\n",
+            "source_filename": "../../../../tmp/evil.txt",
+        },
+    )
+
+    assert mock_stage_cart["save"].call_args.args[1] == "evil.txt"
+
+
+def test_stage_cart_rejects_a_traversing_cart_name(mocker):
+    mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
-        return_value="/opt/airflow/data-export-files/google_scanning/staged/cart-2/barcodes.txt",
+        side_effect=ValueError("Invalid cart name"),
     )
     mock_trigger = mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_stage_cart_items_dag",
-        return_value="run-123",
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.trigger_stage_cart_items_dag"
     )
 
     response = client.post(
+        "/stage", data={"cart_name": "../../etc", "barcodes": "12345\n"}
+    )
+
+    assert response.status_code == 200
+    assert "Cart name is not valid." in response.text
+    mock_trigger.assert_not_called()
+
+
+def test_stage_cart_normalizes_textarea_line_endings(mock_stage_cart):
+    """Browsers submit textarea content with CRLF; the stored file should not."""
+    client.post(
         "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+        data={"cart_name": "cart-2", "barcodes": "12345\r\n67890\r\n"},
+    )
+
+    assert mock_stage_cart["save"].call_args.args[2] == b"12345\n67890\n"
+
+
+def test_stage_cart_success(mock_stage_cart):
+    response = client.post(
+        "/stage",
+        data={
+            "cart_name": "cart-2",
+            "barcodes": "12345\n",
+            "source_filename": "barcodes.txt",
+        },
     )
 
     assert response.status_code == 303
     assert "Staged cart-2" in unquote_plus(response.headers["location"])
-    mock_save.assert_called_once_with("cart-2", "barcodes.txt", b"12345\n")
-    mock_trigger.assert_called_once()
+    mock_stage_cart["save"].assert_called_once_with(
+        "cart-2", "barcodes.txt", b"12345\n"
+    )
+    mock_stage_cart["trigger"].assert_called_once()
 
     followed = client.get(response.headers["location"])
     assert 'alert-success">Staged cart-2.' in followed.text
@@ -358,9 +450,7 @@ def test_stage_cart_dag_trigger_failure(mocker):
     )
 
     response = client.post(
-        "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+        "/stage", data={"cart_name": "cart-2", "barcodes": "12345\n"}
     )
 
     assert response.status_code == 303
@@ -491,8 +581,12 @@ def test_stage_cart_with_csrf_token_from_the_form(mocker):
 
     response = fresh_client.post(
         "/stage",
-        data={"cart_name": "cart-2", CSRF_FIELD_NAME: token},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+        data={
+            "cart_name": "cart-2",
+            "barcodes": "12345\n",
+            "source_filename": "barcodes.txt",
+            CSRF_FIELD_NAME: token,
+        },
     )
 
     assert response.status_code == 303
@@ -506,8 +600,7 @@ def test_stage_cart_without_csrf_token(mocker):
 
     response = TestClient(app, follow_redirects=False).post(
         "/stage",
-        data={"cart_name": "cart-2"},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+        data={"cart_name": "cart-2", "barcodes": "12345\n"},
     )
 
     assert response.status_code == 403
@@ -524,8 +617,11 @@ def test_stage_cart_with_mismatched_csrf_token(mocker):
 
     response = fresh_client.post(
         "/stage",
-        data={"cart_name": "cart-2", CSRF_FIELD_NAME: "not-the-issued-token"},
-        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+        data={
+            "cart_name": "cart-2",
+            "barcodes": "12345\n",
+            CSRF_FIELD_NAME: "not-the-issued-token",
+        },
     )
 
     assert response.status_code == 403
