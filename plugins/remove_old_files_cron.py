@@ -5,6 +5,24 @@ cron = CronTab(user=True)
 max_age_days = 365
 
 
+# Runs before the file removals below: this drops the task_instance rows and the
+# 00:40 job deletes the log files they point at. The shell computes the timestamp
+# at run time so the cutoff keeps moving. --skip-archive hard-deletes; without it
+# Airflow copies every row into _airflow_deleted__* tables and nothing is reclaimed.
+# Airflow logs to stdout, so discarding it drops both the per-table narration and the
+# warnings about tables this version no longer has; stderr still reaches cron's mail.
+db_clean = cron.new(
+    command=(
+        'docker exec libsys_airflow-airflow-scheduler-1 '
+        'airflow db clean --clean-before-timestamp '
+        f'"$(date -d \'{max_age_days} days ago\' --iso-8601=date)T00:00:00" '
+        '--yes --skip-archive > /dev/null'
+    )
+)
+db_clean.dow.on('SUN')
+db_clean.hour.on(0)
+db_clean.minute.on(0)
+
 data_export_files = cron.new(
     command=f'find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +{max_age_days} -delete'
 )
