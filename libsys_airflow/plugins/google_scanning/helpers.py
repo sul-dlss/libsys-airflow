@@ -48,13 +48,22 @@ def _lookup_item_by_barcode(barcode, folio_client: FolioClient) -> dict:
 
 def _apply_staging_updates(item: dict, **kwargs) -> dict:
     """
-    Mutates item in place with temp_location_id, note, and statistical code
+    Mutates item in place with temp_location_id, note, and statistical code.
+
+    The temporary location has to be set as a nested {"id": ...} object, not
+    a flat temporaryLocationId. mod-inventory's PUT /inventory/items reads
+    temporaryLocation.id off the request body (ItemUtil.jsonToItem) and
+    ignores temporaryLocationId, which only exists on the item-storage
+    schema. Setting the flat key instead returns a 200 while leaving the
+    item's temporary location untouched. Assign the whole object rather than
+    just its "id": the key is absent on items with no temporary location,
+    and a stale one has to be replaced outright.
     """
     temp_location_id: str = kwargs["temp_location_id"]
     digi_sent_id: str = kwargs["digi_sent_id"]
     note_type_id: str = kwargs["note_type_id"]
     date: str = kwargs["date"]
-    item["temporaryLocationId"] = temp_location_id
+    item["temporaryLocation"] = {"id": temp_location_id}
     if digi_sent_id not in item["statisticalCodeIds"]:
         item["statisticalCodeIds"].append(digi_sent_id)
     item["notes"].append(
