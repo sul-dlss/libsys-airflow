@@ -45,9 +45,8 @@ end
 desc 'Install the crontab that removes logs older than 1 year'
 task :write_crontab do
   on roles(:app) do
-    execute "pip install python-crontab"
     execute "crontab -r; true" # clear out any existing crontab
-    execute "python3 #{release_path}/plugins/remove_old_files_cron.py"
+    execute "cd #{release_path} && source #{fetch(:venv)} && poetry run python plugins/remove_old_files_cron.py"
     execute "crontab -l"
   end
 end
