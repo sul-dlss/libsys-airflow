@@ -21,6 +21,12 @@
     .tables-panel > h2:first-child { margin-top: 1rem; }
     .hint { font-size: 0.9rem; color: #555; margin-top: 0.5rem; max-width: 40rem; }
     .tooltip-hint { font-size: 0.85rem; font-weight: normal; color: #555; }
+    .field-hint { font-size: 0.85rem; font-weight: normal; color: #555; }
+    #barcodes { width: 100%; max-width: 40rem; min-height: 12rem; font-family: monospace; padding: 0.5rem; box-sizing: border-box; }
+    #barcodes.drag-over { outline: 2px dashed #0f5132; outline-offset: -2px; background: #f2fbf6; }
+    .file-row { margin-top: 0.5rem; }
+    .file-error { color: #842029; font-size: 0.9rem; margin-top: 0.5rem; max-width: 40rem; }
+    .barcode-count { font-size: 0.85rem; color: #555; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
@@ -39,11 +45,21 @@
     {{ csrf_field(request) }}
     <div class="form-row">
       <label for="cart_name">Cart Name</label>
-      <input type="text" id="cart_name" name="cart_name" required>
+      <input type="text" id="cart_name" name="cart_name" value="{{ form_values.cart_name | default("", true) }}" required>
     </div>
     <div class="form-row">
-      <label for="barcode_file">Barcode File</label>
-      <input type="file" id="barcode_file" name="barcode_file" required>
+      <label for="barcodes">
+        Barcodes
+        <span class="field-hint">(one per line &mdash; type or paste them, or drop a text file onto the box)</span>
+      </label>
+      <textarea id="barcodes" name="barcodes" spellcheck="false" autocomplete="off" required>{{ form_values.barcodes | default("", true) }}</textarea>
+      <div class="barcode-count" id="barcode-count"></div>
+      <div class="file-row">
+        <input type="file" id="barcode_file" accept=".txt,.csv,text/plain" multiple>
+        <span class="field-hint">Adds the file's barcodes to the box above; it is not uploaded on its own.</span>
+      </div>
+      <div class="file-error" id="barcode-file-error" style="display: none;"></div>
+      <input type="hidden" id="source_filename" name="source_filename" value="">
     </div>
     <button type="submit">Stage Cart</button>
   </form>
@@ -141,6 +157,125 @@
   </div>
 
   <script>
+    // Barcode entry. The textarea is the only thing that gets submitted:
+    // picking or dropping a file reads it in the browser, applies the same
+    // checks the /stage route enforces, and appends its barcodes here. The
+    // file input deliberately has no name attribute so nothing is uploaded.
+    (function () {
+      var BARCODE_PATTERN = /^[A-Za-z0-9-]+$/;
+      var textarea = document.getElementById("barcodes");
+      var fileInput = document.getElementById("barcode_file");
+      var sourceFilename = document.getElementById("source_filename");
+      var fileError = document.getElementById("barcode-file-error");
+      var barcodeCount = document.getElementById("barcode-count");
+
+      function showError(message) {
+        fileError.textContent = message || "";
+        fileError.style.display = message ? "block" : "none";
+      }
+
+      function updateCount() {
+        var count = textarea.value.split(/\r\n|\r|\n/).filter(function (line) {
+          return line.trim() !== "";
+        }).length;
+        barcodeCount.textContent = count
+          ? count.toLocaleString() + (count === 1 ? " barcode" : " barcodes")
+          : "";
+      }
+
+      function appendBarcodes(lines) {
+        var current = textarea.value.replace(/\s+$/, "");
+        textarea.value = (current ? current + "\n" : "") + lines.join("\n") + "\n";
+        updateCount();
+      }
+
+      // Mirrors the server's checks in stage_cart: valid UTF-8, at least one
+      // barcode, and every non-blank line matching BARCODE_PATTERN exactly
+      // (unstripped, so stray whitespace is rejected rather than trimmed).
+      function checkAndAppend(file) {
+        return file.arrayBuffer().then(function (buffer) {
+          var text;
+          try {
+            text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+          } catch (e) {
+            showError(file.name + " must be plain text.");
+            return;
+          }
+
+          var lines = text.split(/\r\n|\r|\n/).filter(function (line) {
+            return line.trim() !== "";
+          });
+          if (!lines.length) {
+            showError(file.name + " is empty.");
+            return;
+          }
+
+          var invalid = lines.filter(function (line) {
+            return !BARCODE_PATTERN.test(line);
+          });
+          if (invalid.length) {
+            showError(
+              file.name + " contains invalid line(s): " + invalid.slice(0, 5).join(", ")
+            );
+            return;
+          }
+
+          appendBarcodes(lines);
+          // Keep the first file's name so the staged cart, and the CSV it is
+          // downloaded as, stay recognisable to whoever produced the file.
+          if (!sourceFilename.value) {
+            sourceFilename.value = file.name;
+          }
+        });
+      }
+
+      function addFiles(files) {
+        showError("");
+        Array.prototype.slice.call(files).reduce(function (chain, file) {
+          return chain.then(function () {
+            return checkAndAppend(file);
+          });
+        }, Promise.resolve());
+      }
+
+      fileInput.addEventListener("change", function () {
+        addFiles(this.files);
+        // Reset so re-picking the same file fires change again.
+        this.value = "";
+      });
+
+      textarea.addEventListener("input", updateCount);
+
+      ["dragenter", "dragover"].forEach(function (name) {
+        textarea.addEventListener(name, function (event) {
+          if (!event.dataTransfer || !event.dataTransfer.types.includes("Files")) {
+            return;
+          }
+          // Without this the browser navigates away to the dropped file.
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          textarea.classList.add("drag-over");
+        });
+      });
+
+      ["dragleave", "dragend", "drop"].forEach(function (name) {
+        textarea.addEventListener(name, function () {
+          textarea.classList.remove("drag-over");
+        });
+      });
+
+      textarea.addEventListener("drop", function (event) {
+        if (!event.dataTransfer || !event.dataTransfer.files.length) {
+          // Dropped text, not a file -- let the textarea handle it normally.
+          return;
+        }
+        event.preventDefault();
+        addFiles(event.dataTransfer.files);
+      });
+
+      updateCount();
+    })();
+
     document.getElementById("table-search").addEventListener("input", function () {
       var query = this.value.trim().toLowerCase();
       document.querySelectorAll(".filterable-row").forEach(function (row) {
