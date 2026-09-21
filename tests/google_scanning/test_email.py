@@ -72,7 +72,7 @@ def test_shipment_confirmation_email(mocker, mock_dag_run, shipment_result):
     call_kwargs = mock_send_email.call_args[1]
     assert call_kwargs["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
         "staff@example.com",
     ]
     assert call_kwargs["subject"] == "Google Scanning On-Campus Shipment Confirmation"
@@ -101,7 +101,7 @@ def test_shipment_confirmation_email_no_user_email(
 
     assert mock_send_email.call_args[1]["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
     ]
 
 
@@ -146,7 +146,7 @@ def test_shipment_failure_email(mocker, mock_dag_run):
     assert call_kwargs["subject"] == "Google Scanning On-Campus Shipment Failed"
     assert call_kwargs["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
         "staff@example.com",
     ]
 
@@ -168,7 +168,7 @@ def test_send_shipment_failure_email_no_user_email(mocker, mock_dag_run):
 
     assert mock_send_email.call_args[1]["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
     ]
     html_body = BeautifulSoup(
         mock_send_email.call_args[1]["html_content"], "html.parser"
@@ -202,7 +202,7 @@ def test_sal3_confirmation_email(mocker, mock_dag_run, sal3_result):
     call_kwargs = mock_send_email.call_args[1]
     assert call_kwargs["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
     ]
     assert (
         call_kwargs["subject"] == "Google Scanning CaiaSoft SAL3 Shipment Confirmation"
@@ -256,7 +256,7 @@ def test_sal3_failure_email(mocker, mock_dag_run):
     assert call_kwargs["subject"] == "Google Scanning CaiaSoft SAL3 Shipment Failed"
     assert call_kwargs["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
     ]
 
     html_body = BeautifulSoup(call_kwargs["html_content"], "html.parser")
@@ -273,7 +273,7 @@ def test_send_sal3_failure_email(mocker, mock_dag_run):
 
     assert mock_send_email.call_args[1]["to"] == [
         "devs@example.com",
-        "google-books-2026@lists.stanford.edu",
+        "google_books_2026@lists.stanford.edu",
     ]
     html_body = BeautifulSoup(
         mock_send_email.call_args[1]["html_content"], "html.parser"
