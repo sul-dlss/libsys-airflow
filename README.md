@@ -115,6 +115,27 @@ separate user needing its own role assignment. The plugin apps call Airflow's pu
 account through the `client_credentials` grant — see
 `libsys_airflow/plugins/shared/airflow_api_client.py`. Assign service-account-airflow-sso user `Op`.
 
+#### Acting as the signed-in user in FOLIO
+
+A DAG triggered from a plugin app can call FOLIO as the person who triggered it, so FOLIO records
+them as the actor rather than the `AIRFLOW_VAR_FOLIO_USER`. Airflow and FOLIO share the `sul` realm, so the access
+token minted at login is already usable — but only with the **folio user_id mapper** on
+`airflow-sso-dedicated`, a User Attribute mapper putting the `user_id` attribute into a `user_id`
+claim in the access token, as `sul-application` does. Without that claim FOLIO accepts the request
+but records no actor, leaving `metadata.updatedByUserId` unset and the record reading "Unknown user".
+
+Only provisioned FOLIO users have the `user_id` attribute, and each person's own FOLIO permissions
+apply, so one of these DAGs can succeed for one user and fail for another.
+
+The token reaches the DAG as a short-lived `folio_user_token_*` Variable with only its key in the run
+conf, since a token in the conf would be readable by anyone who can see the run. The Variable is
+discarded however the run ends, so clearing a finished run fails rather than acting as the wrong
+person — trigger a new run instead.
+
+`folio_client_for_user`
+in `libsys_airflow/plugins/shared/folio_client.py` builds the client and never falls back to the
+service account, since a silent fallback would misattribute the work.
+
 #### Permission adjustments
 
 `create-all` produces four permissions — `ReadOnly`, `Admin`, `User` and `Op`. The exported client
