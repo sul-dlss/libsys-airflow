@@ -150,6 +150,10 @@ def test_vendors_dashboard_view(mock_db, mocker, mock_okapi_url_variable):
         )
         response = client.get('/')
         assert response.status_code == 200
+        # This app has standalone templates and builds its own Jinja2Templates, so it
+        # needs the shared templates directory on its loader path and the shared Jinja
+        # globals registered to find and render the navigation partial.
+        assert 'class="plugin-nav"' in response.text
         html = BeautifulSoup(response.text, "html.parser")
         assert html.h1.text == "Vendor Management - Test"
         error_table = html.find(id='errorsTable')

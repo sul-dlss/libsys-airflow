@@ -13,11 +13,10 @@ circ_rules_tester_view = {
     "name": "Circ Rules Tester",
     "category": "FOLIO",
     "href": "/circ_rule_tester/",
-    "url_route": "circ_rule_tester",
 }
 
 
 class FOLIOPlugin(AirflowPlugin):
-    name = "FOLIOInformation"
+    name = "Circ Rules Tester"
     fastapi_apps = [circ_rules_tester_fastapi_app]
     external_views = [circ_rules_tester_view]

@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 
 from libsys_airflow.plugins.shared.csrf import csrf_field, csrf_token
 from libsys_airflow.plugins.shared.folio_client import folio_client
+from libsys_airflow.plugins.shared.nav import BY_PREFIX, NAV_GROUPS, current_app
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +30,37 @@ def execution_date() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def airflow_url() -> str:
+    """
+    ``[api] base_url`` with a trailing slash. Every plugin app is mounted under it.
+    """
+    url = conf.get('api', 'base_url')
+    return url if url.endswith("/") else f"{url}/"
+
+
 def dag_run_url(**kwargs) -> str:
     dag_run: DAGRunResponse = kwargs["dag_run"]
-    airflow_url = kwargs.get("airflow_url")
-
-    if not airflow_url:
-        airflow_url = conf.get('api', 'base_url')
-        if not airflow_url.endswith("/"):
-            airflow_url = f"{airflow_url}/"
+    base_url = kwargs.get("airflow_url") or airflow_url()
+    if not base_url.endswith("/"):
+        base_url = f"{base_url}/"
 
     run_id = getattr(dag_run, 'run_id', '') or getattr(dag_run, 'dag_run_id', '')
-    return f"{airflow_url}dags/{dag_run.dag_id}/runs/{quote(run_id)}"
+    return f"{base_url}dags/{dag_run.dag_id}/runs/{quote(run_id)}"
+
+
+def plugin_app_url(url_prefix: str, *path_segments) -> str:
+    """
+    Absolute URL for a page inside a plugin app, for links in emails and saved reports.
+
+    Airflow 3 mounts each app at its own prefix, not at the Airflow 2 FAB blueprint path
+    ``/pluginsv2/<name>``. url_prefix is checked against shared.nav, which
+    ``tests/apps/test_plugin_external_views.py`` keeps in step with the plugin modules,
+    so a prefix that has moved fails the suite instead of emailing a dead link.
+    """
+    if url_prefix not in BY_PREFIX:
+        raise ValueError(f"{url_prefix} is not a plugin app prefix in shared.nav")
+    path = "/".join(quote(str(segment)) for segment in path_segments)
+    return f"{airflow_url()}{url_prefix.lstrip('/')}/{path}"
 
 
 def redirect_with_query_params(
@@ -56,23 +77,38 @@ def redirect_with_query_params(
     return RedirectResponse(url=url, status_code=status_code)
 
 
+def register_template_globals(templates: Jinja2Templates) -> Jinja2Templates:
+    """
+    Registers the globals every plugin app's templates expect, and returns templates
+    so it can wrap a constructor call.
+
+    csrf_field lets any form render its hidden CSRF input with
+    {{ csrf_field(request) }}; _nav.html iterates over plugin_nav_groups and asks
+    plugin_nav_current which app is serving the request.
+
+    Kept separate from plugin_templates because the vendor app builds its own
+    Jinja2Templates and needs the same globals.
+    """
+    templates.env.globals["csrf_field"] = csrf_field
+    templates.env.globals["csrf_token"] = csrf_token
+    templates.env.globals["plugin_nav_groups"] = NAV_GROUPS
+    templates.env.globals["plugin_nav_current"] = current_app
+    return templates
+
+
 def plugin_templates(app_dir: pathlib.Path, subfolder: str) -> Jinja2Templates:
     """
     Builds a Jinja2Templates that searches the app's own template subfolder
     first, then falls back to the plugins-wide shared templates directory.
-
-    Registers csrf_field as a Jinja global so any form can render its hidden
-    CSRF input with {{ csrf_field(request) }}.
     """
-    templates = Jinja2Templates(
-        directory=[
-            SHARED_TEMPLATES_DIR,
-            pathlib.Path(app_dir) / "templates" / subfolder,
-        ]
+    return register_template_globals(
+        Jinja2Templates(
+            directory=[
+                SHARED_TEMPLATES_DIR,
+                pathlib.Path(app_dir) / "templates" / subfolder,
+            ]
+        )
     )
-    templates.env.globals["csrf_field"] = csrf_field
-    templates.env.globals["csrf_token"] = csrf_token
-    return templates
 
 
 def file_info(file: pathlib.Path) -> dict:

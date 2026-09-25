@@ -12,7 +12,6 @@ authority_deletes_view = {
     "name": "FOLIO Authority Deletes Upload",
     "category": "FOLIO",
     "href": "/delete_authority_records/",
-    "url_route": "delete_authority_records",
 }
 
 

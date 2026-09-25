@@ -5,19 +5,21 @@ from typing import Union
 
 import pandas as pd
 
-from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
+from airflow_client.client import DagRunApi, DAGRunResponse, TriggerDAGRunPostBody
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
 from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
-from libsys_airflow.plugins.shared.utils import plugin_templates
+from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
+from libsys_airflow.plugins.shared.utils import dag_run_url, plugin_templates
 
 app = FastAPI(
     openapi_url=None,
     dependencies=[Depends(require_view_access("Data Export CSV Upload"))],
 )
+install_login_redirect(app)
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(
@@ -54,7 +56,9 @@ def upload_data_export_ids(
     return [ids_path, number_of_ids]
 
 
-def _trigger_dag_run(vendor, kind, user_email, number_of_ids, filename):
+def _trigger_dag_run(
+    vendor, kind, user_email, number_of_ids, filename
+) -> DAGRunResponse:
     dag_id = f"select_{vendor}_records"
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)
@@ -69,14 +73,25 @@ def _trigger_dag_run(vendor, kind, user_email, number_of_ids, filename):
         )
 
         api_response = api_instance.trigger_dag_run(dag_id, trigger_dag_run_post_body)
-    return api_response.dag_run_id
+    return api_response
 
 
-def _render_home(request: Request, messages: list[str] | None = None):
+def _render_home(
+    request: Request,
+    messages: list[str] | None = None,
+    vendor: str | None = None,
+    dag_run: DAGRunResponse | None = None,
+):
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"vendors": vendors["vendors"], "messages": messages or []},
+        {
+            "vendors": vendors["vendors"],
+            "messages": messages or [],
+            "vendor": vendor,
+            "dag_run_id": dag_run.dag_run_id if dag_run else None,
+            "dag_run_url": dag_run_url(dag_run=dag_run) if dag_run else None,
+        },
     )
 
 
@@ -107,9 +122,8 @@ def run_data_export_upload(
             )
         number_of_ids = upload_data_export_ids(ids_df, vendor, kind).pop()
         messages = [f"Sucessfully uploaded ID file with {number_of_ids} IDs."]
-        dag_run_id = _trigger_dag_run(vendor, kind, user_email, number_of_ids, filename)
-        messages.append(f"Starting {vendor} DAG run {dag_run_id}.")
-        return _render_home(request, messages=messages)
+        dag_run = _trigger_dag_run(vendor, kind, user_email, number_of_ids, filename)
+        return _render_home(request, messages=messages, vendor=vendor, dag_run=dag_run)
     except pd.errors.EmptyDataError:
         return _render_home(request, messages=["Warning! Empty UUID file."])
     except Exception as e:

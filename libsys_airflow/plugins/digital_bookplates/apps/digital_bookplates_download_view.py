@@ -4,12 +4,14 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse
 
 from libsys_airflow.plugins.shared.auth import require_view_access
+from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
 from libsys_airflow.plugins.shared.utils import plugin_templates
 
 app = FastAPI(
     openapi_url=None,
     dependencies=[Depends(require_view_access("Digital Bookplates File Download"))],
 )
+install_login_redirect(app)
 
 templates = plugin_templates(
     pathlib.Path(__file__).resolve().parent.parent, "digital_bookplates_download"

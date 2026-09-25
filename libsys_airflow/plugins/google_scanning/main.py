@@ -14,11 +14,10 @@ google_scanning_upload_view = {
     "name": "Google Scanning Upload",
     "category": "FOLIO",
     "href": "/google_scanning/",
-    "url_route": "google_scanning",
 }
 
 
 class GoogleScanningPlugin(AirflowPlugin):
-    name = "google_scanning"
+    name = "Google Scanning Upload"
     fastapi_apps = [google_scanning_upload_app]
     external_views = [google_scanning_upload_view]

@@ -13,6 +13,7 @@ from libsys_airflow.plugins.shared.folio_client import folio_client
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
 from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
+from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
 from libsys_airflow.plugins.shared.utils import (
     plugin_templates,
     redirect_with_query_params as _redirect,
@@ -24,6 +25,7 @@ app = FastAPI(
     openapi_url=None,
     dependencies=[Depends(require_view_access("Circ Rules Tester"))],
 )
+install_login_redirect(app)
 app.add_middleware(CSRFCookieMiddleware)
 
 templates = plugin_templates(

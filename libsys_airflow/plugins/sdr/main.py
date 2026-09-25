@@ -12,7 +12,6 @@ sdr_missing_barcodes_view = {
     "name": "SDR Missing Barcodes Reports",
     "category": "FOLIO",
     "href": "/sdr/",
-    "url_route": "sdr",
 }
 
 
