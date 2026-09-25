@@ -124,6 +124,19 @@ def test_no_url_prefix_is_reserved_by_airflow():
     ] == []
 
 
+def test_airflow_menu_is_alphabetical():
+    """
+    Airflow's plugins API sorts by plugin name, and the menu keeps that order, so each
+    category reads alphabetically only if plugin names sort the same as view names.
+    """
+    by_category: dict[str, list[str]] = {}
+    for plugin in sorted(_plugin_classes(), key=lambda plugin: plugin.name):
+        for view in getattr(plugin, "external_views", None) or []:
+            by_category.setdefault(view["category"], []).append(view["name"])
+    for names in by_category.values():
+        assert names == sorted(names)
+
+
 def test_nav_list_matches_the_registered_views():
     """
     shared.nav.APPS is written by hand so the nav partial does not have to import every

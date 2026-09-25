@@ -18,6 +18,6 @@ google_scanning_upload_view = {
 
 
 class GoogleScanningPlugin(AirflowPlugin):
-    name = "google_scanning"
+    name = "Google Scanning Upload"
     fastapi_apps = [google_scanning_upload_app]
     external_views = [google_scanning_upload_view]

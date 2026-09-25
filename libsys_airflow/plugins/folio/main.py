@@ -17,6 +17,6 @@ circ_rules_tester_view = {
 
 
 class FOLIOPlugin(AirflowPlugin):
-    name = "FOLIOInformation"
+    name = "Circ Rules Tester"
     fastapi_apps = [circ_rules_tester_fastapi_app]
     external_views = [circ_rules_tester_view]
