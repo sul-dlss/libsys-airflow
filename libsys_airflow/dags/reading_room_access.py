@@ -69,7 +69,13 @@ def reading_room_access():
         reading_rooms=reading_rooms,
     ).expand(batch_metadata=batch_metadata_list)
 
-    summarize_results(batch_metadata_list, batch_results)
+    summarize_results(
+        batch_metadata_list,
+        batch_results,
+        usergroups=usergroups,
+        patron_groups=patron_groups,
+        reading_rooms=reading_rooms,
+    )
 
 
 reading_room_access()

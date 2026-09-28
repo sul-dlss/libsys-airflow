@@ -1,5 +1,7 @@
 import json
 
+from typing import Any
+
 import pytest
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -858,14 +860,18 @@ def mock_dag_run():
     return dag_run
 
 
-def _batch_result(offset, updates=0, skipped=0, errors=None):
+LOOKUPS: dict[str, Any] = {"usergroups": {}, "patron_groups": {}, "reading_rooms": {}}
+
+
+def _batch_result(offset, updates=0, skipped=0, errors=None, errors_count=None):
     errors = errors or []
+    errors_count = len(errors) if errors_count is None else errors_count
     return {
-        "batch_size": updates + skipped + len(errors),
+        "batch_size": updates + skipped + errors_count,
         "offset": offset,
         "updates_count": updates,
         "skipped_count": skipped,
-        "errors_count": len(errors),
+        "errors_count": errors_count,
         "errors": errors,
     }
 
@@ -879,7 +885,7 @@ def test_summarize_results_no_errors(mock_send_email, mock_dag_run):
     ]
 
     summary = summarize_results.function(
-        batch_metadata, batch_results, dag_run=mock_dag_run
+        batch_metadata, batch_results, dag_run=mock_dag_run, **LOOKUPS
     )
 
     assert summary == {
@@ -894,7 +900,7 @@ def test_summarize_results_no_errors(mock_send_email, mock_dag_run):
 
 @patch("libsys_airflow.plugins.folio.reading_room.send_email_with_server_name")
 def test_summarize_results_no_batches(mock_send_email, mock_dag_run):
-    summary = summarize_results.function([], [], dag_run=mock_dag_run)
+    summary = summarize_results.function([], [], dag_run=mock_dag_run, **LOOKUPS)
 
     assert summary["users_count"] == 0
     mock_send_email.assert_not_called()
@@ -916,8 +922,13 @@ def test_summarize_results_user_errors(mock_send_email, mock_airflow_url, mock_d
         _batch_result(500, updates=10),
     ]
 
-    with pytest.raises(AirflowFailException, match="1 user errors and 0 failed"):
-        summarize_results.function(batch_metadata, batch_results, dag_run=mock_dag_run)
+    with pytest.raises(
+        AirflowFailException,
+        match="0 failed tasks, 0 unprocessed batches, 1 user error$",
+    ):
+        summarize_results.function(
+            batch_metadata, batch_results, dag_run=mock_dag_run, **LOOKUPS
+        )
 
     mock_send_email.assert_called_once()
     kwargs = mock_send_email.call_args.kwargs
@@ -932,7 +943,8 @@ def test_summarize_results_user_errors(mock_send_email, mock_airflow_url, mock_d
     assert "Skipped (no changes): 499" in html
     assert "Errors: 1" in html
     assert "user_1: Payload must be a dictionary" in html
-    assert "failed outright" not in html
+    assert "Batches not processed" not in html
+    assert "Failed tasks" not in html
 
 
 @patch(
@@ -946,8 +958,102 @@ def test_summarize_results_failed_batch(
     batch_metadata = [{"offset": 0}, {"offset": 500}]
     batch_results = [_batch_result(0, updates=5)]
 
-    with pytest.raises(AirflowFailException, match="0 user errors and 1 failed"):
-        summarize_results.function(batch_metadata, batch_results, dag_run=mock_dag_run)
+    with pytest.raises(AirflowFailException, match="1 unprocessed batch,"):
+        summarize_results.function(
+            batch_metadata, batch_results, dag_run=mock_dag_run, **LOOKUPS
+        )
 
     html = mock_send_email.call_args.kwargs["html_content"]
-    assert "Batch tasks that failed outright: 1" in html
+    assert "Batches not processed: 1" in html
+
+
+@patch(
+    "libsys_airflow.plugins.shared.utils.airflow_url",
+    return_value="https://airflow.example.edu/",
+)
+@patch("libsys_airflow.plugins.folio.reading_room.send_email_with_server_name")
+def test_summarize_results_batch_retrieval_failed(
+    mock_send_email, mock_airflow_url, mock_dag_run
+):
+    """A failed retrieve_user_id_batches resolves to None and must fail the run"""
+    with pytest.raises(AirflowFailException, match="^1 failed task,"):
+        summarize_results.function(None, [], dag_run=mock_dag_run, **LOOKUPS)
+
+    html = mock_send_email.call_args.kwargs["html_content"]
+    assert "Failed tasks: retrieve_user_id_batches" in html
+
+
+@patch(
+    "libsys_airflow.plugins.shared.utils.airflow_url",
+    return_value="https://airflow.example.edu/",
+)
+@patch("libsys_airflow.plugins.folio.reading_room.send_email_with_server_name")
+def test_summarize_results_lookup_failed_with_no_users(
+    mock_send_email, mock_airflow_url, mock_dag_run
+):
+    """A failed lookup fails the run even when there were no batches to process"""
+    lookups: dict[str, Any] = {**LOOKUPS, "patron_groups": None}
+
+    with pytest.raises(AirflowFailException, match="^1 failed task,"):
+        summarize_results.function([], [], dag_run=mock_dag_run, **lookups)
+
+    html = mock_send_email.call_args.kwargs["html_content"]
+    assert "Failed tasks: retrieve_patron_group_lookup" in html
+
+
+@patch(
+    "libsys_airflow.plugins.shared.utils.airflow_url",
+    return_value="https://airflow.example.edu/",
+)
+@patch("libsys_airflow.plugins.folio.reading_room.send_email_with_server_name")
+def test_summarize_results_escapes_errors_and_counts_truncated(
+    mock_send_email, mock_airflow_url, mock_dag_run
+):
+    batch_results = [
+        _batch_result(
+            0,
+            errors=[{"user_id": "user_1", "error": "<html>Bad Gateway</html>"}],
+            errors_count=250,
+        )
+    ]
+
+    with pytest.raises(AirflowFailException, match="250 user errors$"):
+        summarize_results.function(
+            [{"offset": 0}], batch_results, dag_run=mock_dag_run, **LOOKUPS
+        )
+
+    html = mock_send_email.call_args.kwargs["html_content"]
+    assert "&lt;html&gt;Bad Gateway&lt;/html&gt;" in html
+    assert "Errors: 250" in html
+    assert "...and 249 more" in html
+
+
+@patch("libsys_airflow.plugins.folio.reading_room.folio_client")
+def test_process_user_batch_by_offset_caps_errors_and_sorts(
+    mock_client_func, lookup_data, mock_reading_rooms_config
+):
+    mock_client = MagicMock()
+    users = [
+        {"id": f"user_{i}", "patronGroup": "", "customFields": {}} for i in range(150)
+    ]
+    query_params_seen = []
+
+    def mock_get(endpoint, key=None, query_params=None):
+        if endpoint == "users" and key == "users":
+            query_params_seen.append(query_params)
+            return users
+        raise Exception("FOLIO is down")
+
+    mock_client.folio_get.side_effect = mock_get
+    mock_client_func.return_value = mock_client
+
+    result = process_user_batch_by_offset.function(
+        batch_metadata={"from_date": "2024-11-01", "offset": 0, "limit": 150},
+        usergroups=lookup_data["usergroups"],
+        patron_groups=lookup_data["patron_groups"],
+        reading_rooms=lookup_data["reading_rooms"],
+    )
+
+    assert query_params_seen[0]["query"] == 'updatedDate>"2024-11-01" sortBy id'
+    assert result["errors_count"] == 150
+    assert len(result["errors"]) == 100
