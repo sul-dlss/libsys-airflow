@@ -28,7 +28,7 @@ def _folio_client():
 
 
 def _get_bookplate_metadata_with_fund_uuids() -> dict:
-    funds = {}
+    funds: dict[str, str] = {}
     pg_hook = PostgresHook("digital_bookplates")
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
         for f in (
@@ -36,7 +36,7 @@ def _get_bookplate_metadata_with_fund_uuids() -> dict:
             .where(DigitalBookplate.fund_uuid.is_not(None))
             .all()
         ):
-            funds[f.fund_uuid] = {
+            funds[f.fund_uuid] = {  # type: ignore
                 "fund_name": f.fund_name,
                 "druid": f.druid,
                 "image_filename": f.image_filename,

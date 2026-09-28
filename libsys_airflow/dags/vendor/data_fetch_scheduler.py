@@ -42,7 +42,7 @@ with DAG(
                 .filter(VendorInterface.folio_interface_uuid.isnot(None))
                 .join(VendorInterface.vendor)
             ):
-                confs.append(
+                confs.append(  # type: ignore
                     {
                         "vendor_code": vendor_interface.vendor.vendor_code_from_folio,
                         "vendor_uuid": vendor_interface.vendor.folio_organization_uuid,

@@ -242,7 +242,7 @@ def _oauth_state(start_message: dict) -> str | None:
     it is the state of the login being started and not one left over from an earlier
     attempt.
     """
-    from airflow.providers.keycloak.auth_manager.constants import (
+    from airflow.providers.keycloak.auth_manager.constants import (  # type: ignore
         COOKIE_NAME_OAUTH_STATE,
     )
 

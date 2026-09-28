@@ -119,7 +119,7 @@ def dashboard(request: Request):
         .order_by(VendorFile.updated)
         .all()
     )
-    errors_files = (
+    errors_files = (  # type: ignore
         Session()
         .query(VendorFile)
         .filter(
@@ -128,7 +128,6 @@ def dashboard(request: Request):
         .order_by(VendorFile.updated)
         .all()
     )
-
     return templates.TemplateResponse(
         request,
         "vendors/dashboard.html",
