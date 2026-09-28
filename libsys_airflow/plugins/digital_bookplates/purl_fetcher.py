@@ -40,7 +40,7 @@ def check_deleted_from_argo(druid_purls: list):
     pg_hook = PostgresHook("digital_bookplates")
     deleted_info = []
     with Session(pg_hook.get_sqlalchemy_engine()) as session:
-        current_bookplates = (
+        current_bookplates: list[DigitalBookplate] = (
             session.query(DigitalBookplate.druid)
             .where(DigitalBookplate.deleted_from_argo == False)  # noqa
             .all()

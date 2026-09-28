@@ -290,7 +290,7 @@ class VendorFile(Model):  # type: ignore
             )
             # not really needed but explicitly ignore files not assigned a load time
             .filter(VendorFile.expected_processing_time.is_not(None))
-            .filter(VendorFile.expected_processing_time <= datetime.utcnow())
+            .filter(VendorFile.expected_processing_time <= datetime.utcnow())  # type: ignore
             .limit(1000)
             .order_by(VendorFile.created.asc())
         ).all()
