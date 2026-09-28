@@ -11,6 +11,7 @@ from libsys_airflow.plugins.folio.reading_room import (
     retrieve_reading_rooms_lookup,
     retrieve_user_id_batches,
     process_user_batch_by_offset,
+    summarize_results,
 )
 
 
@@ -62,11 +63,13 @@ def reading_room_access():
 
     # Process each batch
     # Each mapped task fetches its own users based on offset/limit
-    process_user_batch_by_offset.partial(
+    batch_results = process_user_batch_by_offset.partial(
         usergroups=usergroups,
         patron_groups=patron_groups,
         reading_rooms=reading_rooms,
     ).expand(batch_metadata=batch_metadata_list)
+
+    summarize_results(batch_metadata_list, batch_results)
 
 
 reading_room_access()
