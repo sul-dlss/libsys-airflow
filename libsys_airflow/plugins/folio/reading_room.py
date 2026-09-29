@@ -1,18 +1,28 @@
+import json
 import logging
 import uuid
 
 from attrs import define
 from datetime import datetime, timedelta
+from jinja2 import Template
 from pathlib import Path
 from typing import Union
 
+from airflow.exceptions import AirflowFailException
 from airflow.sdk import task, get_current_context
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from libsys_airflow.plugins.shared.folio_client import folio_client
+from libsys_airflow.plugins.shared.utils import (
+    dag_run_url,
+    send_email_with_server_name,
+)
 from libsys_airflow.plugins.folio.helpers.constants import reading_rooms_config
 
 logger = logging.getLogger(__name__)
+
+# Caps the errors each batch returns in XCom and the errors listed in the email
+MAX_ERRORS_REPORTED = 100
 
 
 def get_usergroup_sql_path(**kwargs) -> str:
@@ -181,8 +191,9 @@ def process_user_batch_by_offset(
 
     client = folio_client()
 
-    # Fetch users for this batch
-    query = f'updatedDate>"{from_date}"'
+    # Fetch users for this batch. Offset paging needs a stable sort, or
+    # concurrent batches can skip or repeat users.
+    query = f'updatedDate>"{from_date}" sortBy id'
     users = client.folio_get(
         "users",
         key="users",
@@ -194,7 +205,7 @@ def process_user_batch_by_offset(
     # Process these users
     updates_count = 0
     skipped_count = 0
-    errors_count = 0
+    errors: list[dict] = []
 
     # Warn about config/FOLIO room mismatches (only log once on first batch)
     if offset == 0:
@@ -247,7 +258,7 @@ def process_user_batch_by_offset(
                 logger.warning(
                     f"Could not retrieve existing permissions for user {folio_user.id}: {e}"
                 )
-                errors_count += 1
+                errors.append({"user_id": folio_user.id, "error": str(e)})
                 continue  # Skip this user
 
             # Determine access for each reading room in our config
@@ -315,20 +326,21 @@ def process_user_batch_by_offset(
                         f"Invalid permission structure for user {folio_user.id}"
                     )
 
-            # Update permissions in FOLIO
+            # Update permissions in FOLIO. FolioClient only accepts a dict or
+            # str payload, so the list is serialized here.
             client.folio_put(
                 f"reading-room-patron-permission/{folio_user.id}",
-                all_permissions,
+                json.dumps(all_permissions),
             )
             updates_count += 1
 
         except Exception as e:
             logger.error(f"Failed to process user {user['id']}: {e}")
-            errors_count += 1
+            errors.append({"user_id": user["id"], "error": str(e)})
 
     logger.info(
         f"Completed batch (offset={offset}): {updates_count} updated, "
-        f"{skipped_count} skipped, {errors_count} errors"
+        f"{skipped_count} skipped, {len(errors)} errors"
     )
 
     return {
@@ -336,5 +348,102 @@ def process_user_batch_by_offset(
         "offset": offset,
         "updates_count": updates_count,
         "skipped_count": skipped_count,
-        "errors_count": errors_count,
+        "errors_count": len(errors),
+        "errors": errors[:MAX_ERRORS_REPORTED],
     }
+
+
+def _failure_email_body(**kwargs) -> str:
+    template = Template(
+        """
+        <h2>Reading Room Access Failures</h2>
+        <h3>DAG Run: <a href="{{ dag_run_url }}">{{ dag_run_id }}</a></h3>
+        {% if failed_tasks %}
+        <p>Failed tasks: {{ failed_tasks|join(", ") }}</p>
+        {% endif %}
+        <ul>
+          <li>Users fetched: {{ users_count }}</li>
+          <li>Updated: {{ updates_count }}</li>
+          <li>Skipped (no changes): {{ skipped_count }}</li>
+          <li>Errors: {{ errors_count }}</li>
+          {% if failed_batches %}
+          <li>Batches not processed: {{ failed_batches }}</li>
+          {% endif %}
+        </ul>
+        {% if errors %}
+        <h3>Errors</h3>
+        <ul>
+        {% for error in errors %}
+          <li>{{ error.user_id }}: {{ error.error }}</li>
+        {% endfor %}
+        </ul>
+        {% if errors_count > errors|length %}
+        <p>...and {{ errors_count - errors|length }} more. See the task logs.</p>
+        {% endif %}
+        {% endif %}
+        """,
+        autoescape=True,
+    )
+    return template.render(**kwargs)
+
+
+def _plural(count: int, singular: str, plural: str) -> str:
+    return f"{count} {singular if count == 1 else plural}"
+
+
+@task(trigger_rule="all_done")
+def summarize_results(
+    batch_metadata: list,
+    batch_results: list,
+    usergroups: dict,
+    patron_groups: dict,
+    reading_rooms: dict,
+    **kwargs,
+) -> dict:
+    """
+    Totals the batch results. If any task, batch, or user failed, emails
+    EMAIL_DEVS and fails this task, the DAG's only leaf, so the DAG run fails.
+    """
+    # Each upstream returns a dict or list, so None means it failed
+    upstreams = {
+        "retrieve_usergroup_lookup": usergroups,
+        "retrieve_patron_group_lookup": patron_groups,
+        "retrieve_reading_rooms_lookup": reading_rooms,
+        "retrieve_user_id_batches": batch_metadata,
+    }
+    failed_tasks = [name for name, value in upstreams.items() if value is None]
+
+    results = [r for r in (batch_results or []) if r]
+    errors = [e for r in results for e in r.get("errors", [])]
+    summary = {
+        "users_count": sum(r["batch_size"] for r in results),
+        "updates_count": sum(r["updates_count"] for r in results),
+        "skipped_count": sum(r["skipped_count"] for r in results),
+        "errors_count": sum(r["errors_count"] for r in results),
+        "failed_batches": len(batch_metadata or []) - len(results),
+    }
+    logger.info(f"Reading room access summary: {summary}")
+
+    if (
+        not failed_tasks
+        and not summary["errors_count"]
+        and not summary["failed_batches"]
+    ):
+        return summary
+
+    dag_run = kwargs["dag_run"]
+    send_email_with_server_name(
+        subject="Reading Room Access Failures",
+        html_content=_failure_email_body(
+            dag_run_url=dag_run_url(dag_run=dag_run),
+            dag_run_id=dag_run.run_id,
+            failed_tasks=failed_tasks,
+            errors=errors[:MAX_ERRORS_REPORTED],
+            **summary,
+        ),
+    )
+    raise AirflowFailException(
+        f"{_plural(len(failed_tasks), 'failed task', 'failed tasks')}, "
+        f"{_plural(summary['failed_batches'], 'unprocessed batch', 'unprocessed batches')}, "
+        f"{_plural(summary['errors_count'], 'user error', 'user errors')}"
+    )
