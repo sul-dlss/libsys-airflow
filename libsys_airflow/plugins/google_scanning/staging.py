@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
+from airflow_client.client import DagRunApi, TaskInstanceApi, TriggerDAGRunPostBody
 
 from libsys_airflow.plugins.google_scanning.constants import (
     ARCHIVED_FILES_BASE,
@@ -17,6 +17,11 @@ from libsys_airflow.plugins.google_scanning.constants import (
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
 
 logger = logging.getLogger(__name__)
+
+ACTIVE_DAG_RUN_STATES = ["queued", "running"]
+
+# Task instance states that count toward a DAG run's progress indicator.
+FINISHED_TASK_STATES = {"success", "skipped", "failed", "upstream_failed", "removed"}
 
 
 def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:
@@ -178,3 +183,51 @@ def trigger_on_campus_shipment_dag(
             ON_CAMPUS_SHIPMENT_DAG_ID, trigger_body
         )
         return api_response.dag_run_id
+
+
+def _dag_run_cart_names(dag_id: str, conf: dict | None) -> list[str]:
+    conf = conf or {}
+    if dag_id == STAGE_CART_ITEMS_DAG_ID:
+        return [conf["cart_name"]] if conf.get("cart_name") else []
+    return [cart["cart_name"] for cart in conf.get("selected_carts", [])]
+
+
+def active_dag_runs() -> list[dict]:
+    """
+    Lists queued/running stage_cart_items and on_campus_shipment DAG runs
+    with their task progress, for the upload page's progress indicators.
+    Progress counts task instances, so a mapped task (process_barcodes_batch)
+    only adds to the total once it expands.
+    """
+    runs = []
+    with api_client() as airflow_api_client:
+        dag_run_api = DagRunApi(airflow_api_client)
+        task_instance_api = TaskInstanceApi(airflow_api_client)
+        for dag_id in (STAGE_CART_ITEMS_DAG_ID, ON_CAMPUS_SHIPMENT_DAG_ID):
+            dag_runs = dag_run_api.get_dag_runs(dag_id, state=ACTIVE_DAG_RUN_STATES)
+            for dag_run in dag_runs.dag_runs:
+                task_instances = task_instance_api.get_task_instances(
+                    dag_id, dag_run.dag_run_id, limit=100
+                ).task_instances
+                runs.append(
+                    {
+                        "dag_id": dag_id,
+                        "dag_run_id": dag_run.dag_run_id,
+                        "state": dag_run.state.value,
+                        "cart_names": _dag_run_cart_names(dag_id, dag_run.conf),
+                        "finished_tasks": sum(
+                            1
+                            for ti in task_instances
+                            if ti.state in FINISHED_TASK_STATES
+                        ),
+                        "total_tasks": len(task_instances),
+                        "running_tasks": sorted(
+                            {
+                                ti.task_display_name
+                                for ti in task_instances
+                                if ti.state == "running"
+                            }
+                        ),
+                    }
+                )
+    return runs

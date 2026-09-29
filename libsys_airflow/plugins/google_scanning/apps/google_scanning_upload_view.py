@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
+    active_dag_runs,
     archived_file_path,
     download_filename,
     list_shipped_carts,
@@ -143,6 +144,15 @@ def trigger_shipment(
         return _redirect_home(warning="Failed to start shipment.")
 
     return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")
+
+
+@app.get("/progress")
+def dag_run_progress():
+    try:
+        return {"runs": active_dag_runs()}
+    except Exception as e:
+        logger.error(f"Error fetching active DAG runs: {e}")
+        raise HTTPException(status_code=502, detail="Could not fetch DAG run progress")
 
 
 @app.get("/download/{cart_name}/{filename}")

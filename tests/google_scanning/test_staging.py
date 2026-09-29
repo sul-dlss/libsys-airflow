@@ -2,12 +2,15 @@ import json
 
 import pytest  # noqa
 
+from airflow_client.client import DagRunState, TaskInstanceState
+
 from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_SHIPPED,
     STATUS_STAGED,
     STATUS_UNKNOWN,
 )
 from libsys_airflow.plugins.google_scanning.staging import (
+    active_dag_runs,
     archived_file_path,
     download_filename,
     list_shipped_carts,
@@ -227,3 +230,89 @@ def test_trigger_on_campus_shipment_dag(mocker):
         "user_email": "staff@example.com",
         "shipped_at": "20260807",
     }
+
+
+def _task_instance(mocker, task_id, state):
+    return mocker.MagicMock(task_display_name=task_id, state=state)
+
+
+def test_active_dag_runs(mocker):
+    mocker.patch("libsys_airflow.plugins.google_scanning.staging.api_client")
+    mock_dag_run_api = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.DagRunApi"
+    ).return_value
+    mock_task_instance_api = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.TaskInstanceApi"
+    ).return_value
+
+    stage_run = mocker.MagicMock(
+        dag_run_id="stage-run", conf={"cart_name": "cart-1"}, state=DagRunState.RUNNING
+    )
+    ship_run = mocker.MagicMock(
+        dag_run_id="ship-run",
+        conf={
+            "selected_carts": [
+                {"cart_name": "cart-2", "filename": "a.txt"},
+                {"cart_name": "cart-3", "filename": "b.txt"},
+            ]
+        },
+        state=DagRunState.QUEUED,
+    )
+    mock_dag_run_api.get_dag_runs.side_effect = lambda dag_id, **kwargs: (
+        mocker.MagicMock(
+            dag_runs=[stage_run if dag_id == "stage_cart_items" else ship_run]
+        )
+    )
+    task_instances = {
+        "stage-run": [
+            _task_instance(mocker, "setup", TaskInstanceState.SUCCESS),
+            _task_instance(mocker, "process_barcodes_batch", TaskInstanceState.RUNNING),
+            _task_instance(mocker, "process_barcodes_batch", TaskInstanceState.RUNNING),
+            _task_instance(mocker, "generate_status_json", None),
+        ],
+        "ship-run": [],
+    }
+    mock_task_instance_api.get_task_instances.side_effect = (
+        lambda dag_id, run_id, **kwargs: mocker.MagicMock(
+            task_instances=task_instances[run_id]
+        )
+    )
+
+    runs = active_dag_runs()
+
+    assert runs == [
+        {
+            "dag_id": "stage_cart_items",
+            "dag_run_id": "stage-run",
+            "state": "running",
+            "cart_names": ["cart-1"],
+            "finished_tasks": 1,
+            "total_tasks": 4,
+            "running_tasks": ["process_barcodes_batch"],
+        },
+        {
+            "dag_id": "on_campus_shipment",
+            "dag_run_id": "ship-run",
+            "state": "queued",
+            "cart_names": ["cart-2", "cart-3"],
+            "finished_tasks": 0,
+            "total_tasks": 0,
+            "running_tasks": [],
+        },
+    ]
+    for call in mock_dag_run_api.get_dag_runs.call_args_list:
+        assert call.kwargs["state"] == ["queued", "running"]
+
+
+def test_active_dag_runs_none_active(mocker):
+    mocker.patch("libsys_airflow.plugins.google_scanning.staging.api_client")
+    mock_dag_run_api = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.DagRunApi"
+    ).return_value
+    mock_task_instance_api = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.TaskInstanceApi"
+    ).return_value
+    mock_dag_run_api.get_dag_runs.return_value.dag_runs = []
+
+    assert active_dag_runs() == []
+    mock_task_instance_api.get_task_instances.assert_not_called()

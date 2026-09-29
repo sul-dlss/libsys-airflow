@@ -430,6 +430,48 @@ def test_ship_dag_trigger_failure(mocker):
     assert "alert-warning" in followed.text
 
 
+def test_home_tags_staged_rows_for_progress_polling():
+    response = client.get("/")
+
+    assert 'data-cart-name="cart-1"' in response.text
+    assert 'fetch("progress"' in response.text
+
+
+def test_progress_returns_active_runs(mocker):
+    runs = [
+        {
+            "dag_id": "stage_cart_items",
+            "dag_run_id": "run-123",
+            "state": "running",
+            "cart_names": ["cart-1"],
+            "finished_tasks": 2,
+            "total_tasks": 5,
+            "running_tasks": ["process_barcodes_batch"],
+        }
+    ]
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.active_dag_runs",
+        return_value=runs,
+    )
+
+    response = client.get("/progress")
+
+    assert response.status_code == 200
+    assert response.json() == {"runs": runs}
+
+
+def test_progress_api_failure(mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.active_dag_runs",
+        side_effect=Exception("connection refused"),
+    )
+
+    response = client.get("/progress")
+
+    assert response.status_code == 502
+    assert "Error fetching active DAG runs: connection refused" in caplog.text
+
+
 def test_download_shipped_file(mocker, tmp_path):
     file_path = tmp_path / "barcodes.txt"
     file_path.write_bytes(b"12345\n67890\n")
