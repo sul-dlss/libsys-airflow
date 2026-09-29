@@ -244,7 +244,7 @@ def filter_by_mod_date(
     return result
 
 
-@task(max_active_tis_per_dag=2)
+@task(max_active_tis_per_dag=10)
 def download_task(
     conn_id: str,
     remote_path: str,
