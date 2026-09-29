@@ -51,14 +51,6 @@ def test_home_renders_staged_carts():
     assert 'class="plugin-nav"' in response.text
 
 
-def test_home_renders_refresh_button():
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert 'id="refresh-tables"' in response.text
-    assert "window.location.reload()" in response.text
-
-
 def test_home_renders_barcode_counts_for_staged_cart(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
@@ -428,6 +420,74 @@ def test_ship_dag_trigger_failure(mocker):
 
     followed = client.get(response.headers["location"])
     assert "alert-warning" in followed.text
+
+
+def test_home_tags_staged_rows_for_progress_polling():
+    response = client.get("/")
+
+    assert 'data-progress-key="cart-1"' in response.text
+    assert "data-progress-cell" in response.text
+    assert 'fetch("progress"' in response.text
+    assert '"stage_cart_items": "Processing items"' in response.text
+
+
+def test_home_marks_unknown_status_for_in_progress_label(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
+        return_value=[
+            {
+                "cart_name": "cart-1",
+                "filename": "barcodes.txt",
+                "uploaded_at": "2026-01-01T00:00:00",
+                "status": {"status": "unknown"},
+            }
+        ],
+    )
+
+    response = client.get("/")
+
+    assert '<span data-progress-status="In progress">Unknown</span>' in response.text
+
+
+def test_home_leaves_known_status_unmarked():
+    response = client.get("/")
+
+    assert 'data-progress-status="In progress"' not in response.text
+
+
+def test_progress_returns_active_runs(mocker):
+    runs = [
+        {
+            "dag_id": "stage_cart_items",
+            "dag_run_id": "run-123",
+            "state": "running",
+            "progress_keys": ["cart-1"],
+            "finished_tasks": 2,
+            "total_tasks": 5,
+            "running_tasks": ["process_barcodes_batch"],
+        }
+    ]
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.active_dag_runs",
+        return_value=runs,
+    )
+
+    response = client.get("/progress")
+
+    assert response.status_code == 200
+    assert response.json() == {"runs": runs}
+
+
+def test_progress_api_failure(mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.active_dag_runs",
+        side_effect=Exception("connection refused"),
+    )
+
+    response = client.get("/progress")
+
+    assert response.status_code == 502
+    assert "Error fetching active DAG runs: connection refused" in caplog.text
 
 
 def test_download_shipped_file(mocker, tmp_path):

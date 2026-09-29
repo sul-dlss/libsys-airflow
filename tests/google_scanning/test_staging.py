@@ -8,6 +8,7 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_UNKNOWN,
 )
 from libsys_airflow.plugins.google_scanning.staging import (
+    active_dag_runs,
     archived_file_path,
     download_filename,
     list_shipped_carts,
@@ -227,3 +228,69 @@ def test_trigger_on_campus_shipment_dag(mocker):
         "user_email": "staff@example.com",
         "shipped_at": "20260807",
     }
+
+
+def test_active_dag_runs(mocker):
+    mock_shared_active_dag_runs = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.shared_active_dag_runs",
+        return_value=[
+            {
+                "dag_id": "stage_cart_items",
+                "dag_run_id": "stage-run",
+                "state": "running",
+                "conf": {"cart_name": "cart-1"},
+                "finished_tasks": 1,
+                "total_tasks": 4,
+                "running_tasks": ["process_barcodes_batch"],
+            },
+            {
+                "dag_id": "on_campus_shipment",
+                "dag_run_id": "ship-run",
+                "state": "queued",
+                "conf": {
+                    "selected_carts": [
+                        {"cart_name": "cart-2", "filename": "a.txt"},
+                        {"cart_name": "cart-3", "filename": "b.txt"},
+                    ]
+                },
+                "finished_tasks": 0,
+                "total_tasks": 0,
+                "running_tasks": [],
+            },
+        ],
+    )
+
+    runs = active_dag_runs()
+
+    mock_shared_active_dag_runs.assert_called_once_with(
+        ("stage_cart_items", "on_campus_shipment")
+    )
+    assert runs == [
+        {
+            "dag_id": "stage_cart_items",
+            "dag_run_id": "stage-run",
+            "state": "running",
+            "progress_keys": ["cart-1"],
+            "finished_tasks": 1,
+            "total_tasks": 4,
+            "running_tasks": ["process_barcodes_batch"],
+        },
+        {
+            "dag_id": "on_campus_shipment",
+            "dag_run_id": "ship-run",
+            "state": "queued",
+            "progress_keys": ["cart-2", "cart-3"],
+            "finished_tasks": 0,
+            "total_tasks": 0,
+            "running_tasks": [],
+        },
+    ]
+
+
+def test_active_dag_runs_none_active(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.staging.shared_active_dag_runs",
+        return_value=[],
+    )
+
+    assert active_dag_runs() == []

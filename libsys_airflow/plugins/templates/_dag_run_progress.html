@@ -1,0 +1,83 @@
+{#
+  DAG run progress indicators. Polls endpoint (a JSON {"runs": [...]} built from
+  shared.dag_runs.active_dag_runs, with each run's "progress_keys" added) while
+  runs are queued/running, and shows a progress bar in each matching row. Tag
+  rows with data-progress-key="<key>" and the cell that shows the bar with
+  data-progress-cell. Inside that cell, an element with
+  data-progress-status="<text>" has its text replaced with <text> while a run
+  is active (e.g. "Unknown" -> "In progress"). Once a tracked run finishes, the
+  page reloads so the tables pick up the new state.
+  (See for example: libsys_airflow/plugins/google_scanning/templates/google_scanning_upload/index.html)
+
+  labels maps dag_id to the text shown next to the bar; unlisted DAGs show their
+  dag_id.
+#}
+{% macro dag_run_progress(labels={}, endpoint="progress") %}
+  <style>
+    .dag-progress { margin-top: 0.25rem; font-size: 0.85rem; color: #555; }
+    .dag-progress progress { display: block; width: 100%; max-width: 12rem; }
+  </style>
+  <script>
+    (function () {
+      var POLL_MS = 5000;
+      var DAG_LABELS = {{ labels | tojson }};
+      var trackedRunIds = new Set();
+
+      function renderRun(run) {
+        run.progress_keys.forEach(function (key) {
+          var row = document.querySelector('tr[data-progress-key="' + CSS.escape(key) + '"]');
+          if (!row) return;
+          var cell = row.querySelector("[data-progress-cell]");
+          if (!cell) return;
+          var status = cell.querySelector("[data-progress-status]");
+          if (status) status.textContent = status.dataset.progressStatus;
+          var indicator = document.createElement("div");
+          indicator.className = "dag-progress";
+          var bar = document.createElement("progress");
+          // No max/value while queued renders an indeterminate bar.
+          if (run.total_tasks > 0) {
+            bar.max = run.total_tasks;
+            bar.value = run.finished_tasks;
+          }
+          var label = document.createElement("span");
+          label.textContent = (DAG_LABELS[run.dag_id] || run.dag_id) + ": " +
+            (run.state === "queued"
+              ? "queued"
+              : run.finished_tasks + "/" + run.total_tasks + " tasks" +
+                (run.running_tasks.length ? " (" + run.running_tasks.join(", ") + ")" : ""));
+          indicator.appendChild(bar);
+          indicator.appendChild(label);
+          cell.appendChild(indicator);
+        });
+      }
+
+      function poll() {
+        fetch({{ endpoint | tojson }}, { headers: { Accept: "application/json" } })
+          .then(function (response) {
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            return response.json();
+          })
+          .then(function (data) {
+            var activeRunIds = new Set(data.runs.map(function (run) { return run.dag_run_id; }));
+            var finished = Array.from(trackedRunIds).some(function (id) { return !activeRunIds.has(id); });
+            if (finished) {
+              // Drop the flash-message query params from the triggering redirect.
+              window.location.href = window.location.pathname;
+              return;
+            }
+            document.querySelectorAll(".dag-progress").forEach(function (el) { el.remove(); });
+            data.runs.forEach(renderRun);
+            trackedRunIds = activeRunIds;
+            if (trackedRunIds.size) setTimeout(poll, POLL_MS);
+          })
+          .catch(function (error) {
+            // A failed API call or expired session (login redirect) stops polling;
+            // reload the page to pick up the latest tables.
+            console.error("DAG run progress unavailable:", error);
+          });
+      }
+
+      poll();
+    })();
+  </script>
+{% endmacro %}

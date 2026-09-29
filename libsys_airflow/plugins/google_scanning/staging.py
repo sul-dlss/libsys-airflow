@@ -15,6 +15,9 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_UNKNOWN,
 )
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
+from libsys_airflow.plugins.shared.dag_runs import (
+    active_dag_runs as shared_active_dag_runs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,3 +181,23 @@ def trigger_on_campus_shipment_dag(
             ON_CAMPUS_SHIPMENT_DAG_ID, trigger_body
         )
         return api_response.dag_run_id
+
+
+def _dag_run_cart_names(dag_id: str, conf: dict | None) -> list[str]:
+    conf = conf or {}
+    if dag_id == STAGE_CART_ITEMS_DAG_ID:
+        return [conf["cart_name"]] if conf.get("cart_name") else []
+    return [cart["cart_name"] for cart in conf.get("selected_carts", [])]
+
+
+def active_dag_runs() -> list[dict]:
+    """
+    Lists queued/running stage_cart_items and on_campus_shipment DAG runs
+    with their task progress, for the upload page's progress indicators.
+    Progress counts task instances, so a mapped task (process_barcodes_batch)
+    only adds to the total once it expands.
+    """
+    runs = shared_active_dag_runs((STAGE_CART_ITEMS_DAG_ID, ON_CAMPUS_SHIPMENT_DAG_ID))
+    for run in runs:
+        run["progress_keys"] = _dag_run_cart_names(run["dag_id"], run.pop("conf"))
+    return runs

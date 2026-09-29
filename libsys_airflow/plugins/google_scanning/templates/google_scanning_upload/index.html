@@ -41,7 +41,6 @@
 
   {# These two tables could probably use the shared _datatable.html partial instead. #}
   <div class="search-row">
-    <button type="button" id="refresh-tables">Refresh</button>
     <div>
       <label for="table-search">Search Staged &amp; Shipped Carts</label>
       <input type="text" id="table-search" placeholder="Filter by cart name, filename, date, status...">
@@ -64,13 +63,18 @@
       </thead>
       <tbody>
         {% for cart in staged_carts %}
-        <tr class="filterable-row">
+        <tr class="filterable-row" data-progress-key="{{ cart.cart_name }}">
           <td><input type="checkbox" name="selected_carts" value="{{ cart.cart_name }}/{{ cart.filename }}"></td>
           <td>{{ cart.cart_name }}</td>
           <td>{{ cart.filename }}</td>
           <td>{{ cart.uploaded_at }}</td>
-          <td>
-            {{ cart.status.status | default("unknown", true) | capitalize }}
+          <td data-progress-cell>
+            {% set status = cart.status.status | default("unknown", true) %}
+            {% if status == "unknown" %}
+            <span data-progress-status="In progress">{{ status | capitalize }}</span>
+            {% else %}
+            {{ status | capitalize }}
+            {% endif %}
             {% if cart.status.total_barcodes is defined %}
             <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
             {% endif %}
@@ -141,9 +145,9 @@
         row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
       });
     });
-
-    document.getElementById("refresh-tables").addEventListener("click", function () {
-      window.location.reload();
-    });
   </script>
+
+  {# Progress bars for stage_cart_items/on_campus_shipment runs in each staged cart's Status cell. #}
+  {% from "_dag_run_progress.html" import dag_run_progress %}
+  {{ dag_run_progress({"stage_cart_items": "Processing items", "on_campus_shipment": "Shipping"}) }}
 {% endblock %}
