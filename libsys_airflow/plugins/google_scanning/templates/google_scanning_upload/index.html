@@ -11,8 +11,6 @@
     .tables-panel { border: 1px solid #ccc; border-radius: 4px; padding: 0 1rem 1rem; }
     .tables-panel > h2:first-child { margin-top: 1rem; }
     .hint { font-size: 0.9rem; color: #555; margin-top: 0.5rem; max-width: 40rem; }
-    .dag-progress { margin-top: 0.25rem; font-size: 0.85rem; color: #555; }
-    .dag-progress progress { display: block; width: 100%; max-width: 12rem; }
   </style>
 {% endblock %}
 
@@ -65,12 +63,12 @@
       </thead>
       <tbody>
         {% for cart in staged_carts %}
-        <tr class="filterable-row" data-cart-name="{{ cart.cart_name }}">
+        <tr class="filterable-row" data-progress-key="{{ cart.cart_name }}">
           <td><input type="checkbox" name="selected_carts" value="{{ cart.cart_name }}/{{ cart.filename }}"></td>
           <td>{{ cart.cart_name }}</td>
           <td>{{ cart.filename }}</td>
           <td>{{ cart.uploaded_at }}</td>
-          <td class="status-cell">
+          <td data-progress-cell>
             {{ cart.status.status | default("unknown", true) | capitalize }}
             {% if cart.status.total_barcodes is defined %}
             <br><small>{{ cart.status.updated | default(0, true) }}/{{ cart.status.total_barcodes }} updated{% if cart.status.missing_barcodes %}, {{ cart.status.missing_barcodes | length }} missing{% endif %}{% if cart.status.errors %}, {{ cart.status.errors | length }} error{{ "s" if cart.status.errors | length != 1 else "" }}{% endif %}</small>
@@ -142,71 +140,9 @@
         row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
       });
     });
-
-    // DAG run progress. Polls the progress endpoint while stage_cart_items or
-    // on_campus_shipment runs are queued/running and shows a progress bar in
-    // each affected staged cart's Status cell. Once a tracked run finishes,
-    // the page reloads so the tables pick up the new status.json.
-    (function () {
-      var POLL_MS = 5000;
-      var DAG_LABELS = {
-        stage_cart_items: "Processing items",
-        on_campus_shipment: "Shipping"
-      };
-      var trackedRunIds = new Set();
-
-      function renderRun(run) {
-        run.cart_names.forEach(function (cartName) {
-          var row = document.querySelector('tr[data-cart-name="' + CSS.escape(cartName) + '"]');
-          if (!row) return;
-          var cell = row.querySelector(".status-cell");
-          var indicator = document.createElement("div");
-          indicator.className = "dag-progress";
-          var bar = document.createElement("progress");
-          // No max/value while queued renders an indeterminate bar.
-          if (run.total_tasks > 0) {
-            bar.max = run.total_tasks;
-            bar.value = run.finished_tasks;
-          }
-          var label = document.createElement("span");
-          label.textContent = (DAG_LABELS[run.dag_id] || run.dag_id) + ": " +
-            (run.state === "queued"
-              ? "queued"
-              : run.finished_tasks + "/" + run.total_tasks + " tasks" +
-                (run.running_tasks.length ? " (" + run.running_tasks.join(", ") + ")" : ""));
-          indicator.appendChild(bar);
-          indicator.appendChild(label);
-          cell.appendChild(indicator);
-        });
-      }
-
-      function poll() {
-        fetch("progress", { headers: { Accept: "application/json" } })
-          .then(function (response) {
-            if (!response.ok) throw new Error("HTTP " + response.status);
-            return response.json();
-          })
-          .then(function (data) {
-            var activeRunIds = new Set(data.runs.map(function (run) { return run.dag_run_id; }));
-            var finished = Array.from(trackedRunIds).some(function (id) { return !activeRunIds.has(id); });
-            if (finished) {
-              // Drop the flash-message query params from the triggering redirect.
-              window.location.href = window.location.pathname;
-              return;
-            }
-            document.querySelectorAll(".dag-progress").forEach(function (el) { el.remove(); });
-            data.runs.forEach(renderRun);
-            trackedRunIds = activeRunIds;
-            if (trackedRunIds.size) setTimeout(poll, POLL_MS);
-          })
-          .catch(function (error) {
-            // A failed API call or expired session (login redirect) stops polling;
-            // reload the page to pick up the latest tables.
-            console.error("DAG run progress unavailable:", error);
-          });
-      }
-
-      poll();
-    })();
   </script>
+
+  {# Progress bars for stage_cart_items/on_campus_shipment runs in each staged cart's Status cell. #}
+  {% from "_dag_run_progress.html" import dag_run_progress %}
+  {{ dag_run_progress({"stage_cart_items": "Processing items", "on_campus_shipment": "Shipping"}) }}
 {% endblock %}

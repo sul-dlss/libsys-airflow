@@ -425,8 +425,10 @@ def test_ship_dag_trigger_failure(mocker):
 def test_home_tags_staged_rows_for_progress_polling():
     response = client.get("/")
 
-    assert 'data-cart-name="cart-1"' in response.text
+    assert 'data-progress-key="cart-1"' in response.text
+    assert "data-progress-cell" in response.text
     assert 'fetch("progress"' in response.text
+    assert '"stage_cart_items": "Processing items"' in response.text
 
 
 def test_progress_returns_active_runs(mocker):
@@ -435,7 +437,7 @@ def test_progress_returns_active_runs(mocker):
             "dag_id": "stage_cart_items",
             "dag_run_id": "run-123",
             "state": "running",
-            "cart_names": ["cart-1"],
+            "progress_keys": ["cart-1"],
             "finished_tasks": 2,
             "total_tasks": 5,
             "running_tasks": ["process_barcodes_batch"],
