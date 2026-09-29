@@ -3,8 +3,10 @@
   shared.dag_runs.active_dag_runs, with each run's "progress_keys" added) while
   runs are queued/running, and shows a progress bar in each matching row. Tag
   rows with data-progress-key="<key>" and the cell that shows the bar with
-  data-progress-cell. Once a tracked run finishes, the page reloads so the
-  tables pick up the new state.
+  data-progress-cell. Inside that cell, an element with
+  data-progress-status="<text>" has its text replaced with <text> while a run
+  is active (e.g. "Unknown" -> "In progress"). Once a tracked run finishes, the
+  page reloads so the tables pick up the new state.
   (See for example: libsys_airflow/plugins/google_scanning/templates/google_scanning_upload/index.html)
 
   labels maps dag_id to the text shown next to the bar; unlisted DAGs show their
@@ -27,6 +29,8 @@
           if (!row) return;
           var cell = row.querySelector("[data-progress-cell]");
           if (!cell) return;
+          var status = cell.querySelector("[data-progress-status]");
+          if (status) status.textContent = status.dataset.progressStatus;
           var indicator = document.createElement("div");
           indicator.className = "dag-progress";
           var bar = document.createElement("progress");

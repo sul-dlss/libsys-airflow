@@ -431,6 +431,30 @@ def test_home_tags_staged_rows_for_progress_polling():
     assert '"stage_cart_items": "Processing items"' in response.text
 
 
+def test_home_marks_unknown_status_for_in_progress_label(mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",
+        return_value=[
+            {
+                "cart_name": "cart-1",
+                "filename": "barcodes.txt",
+                "uploaded_at": "2026-01-01T00:00:00",
+                "status": {"status": "unknown"},
+            }
+        ],
+    )
+
+    response = client.get("/")
+
+    assert '<span data-progress-status="In progress">Unknown</span>' in response.text
+
+
+def test_home_leaves_known_status_unmarked():
+    response = client.get("/")
+
+    assert 'data-progress-status="In progress"' not in response.text
+
+
 def test_progress_returns_active_runs(mocker):
     runs = [
         {
