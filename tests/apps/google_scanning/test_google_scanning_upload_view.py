@@ -51,14 +51,6 @@ def test_home_renders_staged_carts():
     assert 'class="plugin-nav"' in response.text
 
 
-def test_home_renders_refresh_button():
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert 'id="refresh-tables"' in response.text
-    assert "window.location.reload()" in response.text
-
-
 def test_home_renders_barcode_counts_for_staged_cart(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_staged_carts",

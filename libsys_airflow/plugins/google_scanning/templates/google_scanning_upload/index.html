@@ -43,7 +43,6 @@
 
   {# These two tables could probably use the shared _datatable.html partial instead. #}
   <div class="search-row">
-    <button type="button" id="refresh-tables">Refresh</button>
     <div>
       <label for="table-search">Search Staged &amp; Shipped Carts</label>
       <input type="text" id="table-search" placeholder="Filter by cart name, filename, date, status...">
@@ -144,10 +143,6 @@
       });
     });
 
-    document.getElementById("refresh-tables").addEventListener("click", function () {
-      window.location.reload();
-    });
-
     // DAG run progress. Polls the progress endpoint while stage_cart_items or
     // on_campus_shipment runs are queued/running and shows a progress bar in
     // each affected staged cart's Status cell. Once a tracked run finishes,
@@ -206,7 +201,7 @@
           })
           .catch(function (error) {
             // A failed API call or expired session (login redirect) stops polling;
-            // the Refresh button still reloads the tables.
+            // reload the page to pick up the latest tables.
             console.error("DAG run progress unavailable:", error);
           });
       }
