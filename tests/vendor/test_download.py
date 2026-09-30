@@ -168,6 +168,8 @@ def mock_hook(mocker, request):
     def mock_retrieve_file(*args):
         if args[0] == "1220240402_f.mrc":
             raise ftplib.error_perm("550 The system cannot find the file specified.")
+        with open(args[1], "wb") as fo:
+            fo.write(b"" if args[0] == "empty.mrc" else b"x" * 123)
 
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory = mock_describe_directory
@@ -186,6 +188,21 @@ def test_filter_by_strategy_regex(mock_hook, mocker, caplog):
     )
     assert len(file_list_by_strategy["filtered_files"]) == 3
     assert "Filtered filenames by regex strategy" in caplog.text
+    assert "Found 4 files in oclc, 3 matched the filter strategy" in caplog.text
+
+
+@pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
+def test_filter_by_strategy_no_matches(mock_hook, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.create_hook", return_value=mock_hook
+    )
+
+    file_list_by_strategy = filter_by_strategy.function(
+        "ftp-example.com-user", "oclc", r"^\d+\.pdf$"
+    )
+    assert file_list_by_strategy == {"filtered_files": []}
+    assert "Found 4 files in oclc, 0 matched the filter strategy" in caplog.text
+    assert "No files matched; first 20 files: ['3820230411.mrc'" in caplog.text
 
 
 @pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
@@ -196,9 +213,9 @@ def test_filter_by_strategy_none(mock_hook, mocker, caplog):
     file_list_by_strategy = filter_by_strategy.function(
         "ftp-example.com-user", "oclc", ""
     )
-    assert len(file_list_by_strategy["all_files"]) == 4
     assert len(file_list_by_strategy["filtered_files"]) == 4
     assert "Filenames not filtered" in caplog.text
+    assert "Found 4 files in oclc, 4 matched the filter strategy" in caplog.text
 
 
 @pytest.mark.parametrize("mock_hook", ["gobi"], indirect=True)
@@ -211,8 +228,8 @@ def test_filter_by_strategy_gobi(mock_hook, mocker, caplog):
         "orders",
         "CNT-ORD",
     )
-    assert len(files["all_files"]) == 5
     assert len(files["filtered_files"]) == 2
+    assert "Found 5 files in orders, 2 matched the filter strategy" in caplog.text
     assert "Filtered filenames by gobi order strategy" in caplog.text
 
 
@@ -238,6 +255,11 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
     )
     files_not_yet_downloaded = ["3820230411.mrc", "3820230413.mrc"]
     mod_date_after = datetime.now(timezone.utc) - timedelta(days=int(10))
+    five_days_ago = (
+        (datetime.now(timezone.utc) - timedelta(days=int(5)))
+        .replace(tzinfo=None)
+        .isoformat(timespec="seconds")
+    )
     filtered_by_timestamp = filter_by_mod_date.function(
         "ftp-example.com-user",
         "oclc",
@@ -247,17 +269,41 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
         f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
         in caplog.text
     )
-    assert len(filtered_by_timestamp["filtered_files"]) == 1
-    assert len(filtered_by_timestamp["skipped"]) == 1
-    assert filtered_by_timestamp["skipped"].pop() == (
-        "3820230413.mrc",
-        678,
-        "2013-01-01T00:05:23",
-    )
+    assert filtered_by_timestamp["filtered_files"] == [
+        ("3820230411.mrc", five_days_ago)
+    ]
+    assert filtered_by_timestamp["skipped"] == [
+        ("3820230413.mrc", 0, "2013-01-01T00:05:23")
+    ]
 
 
 @pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
 def test_download_task(mock_hook, download_path, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.create_hook", return_value=mock_hook
+    )
+    mod_time = (
+        (datetime.now(timezone.utc) - timedelta(days=int(5)))
+        .replace(tzinfo=None)
+        .isoformat(timespec="seconds")
+    )
+    file_statuses = download_task.function(
+        "ftp-example.com-user",
+        "oclc",
+        download_path,
+        "Gobi - Full bibs",
+        [("3820230411.mrc", mod_time)],
+    )
+    assert (
+        "Downloading for interface Gobi - Full bibs from oclc with ftp-example.com-user"
+        in caplog.text
+    )
+    assert f"Downloading 3820230411.mrc ({mod_time}) to {download_path}/3820230411.mrc"
+    assert file_statuses["fetched"] == [("3820230411.mrc", 123, mod_time)]
+
+
+@pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
+def test_download_task_empty_file(mock_hook, download_path, mocker):
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.create_hook", return_value=mock_hook
     )
@@ -266,19 +312,12 @@ def test_download_task(mock_hook, download_path, mocker, caplog):
         "oclc",
         download_path,
         "Gobi - Full bibs",
-        ["3820230411.mrc"],
+        [("empty.mrc", "2025-01-01T00:05:23")],
     )
-    mod_time = (
-        (datetime.now(timezone.utc) - timedelta(days=int(5)))
-        .replace(tzinfo=None)
-        .isoformat(timespec="seconds")
-    )
-    assert (
-        "Downloading for interface Gobi - Full bibs from oclc with ftp-example.com-user"
-        in caplog.text
-    )
-    assert f"Downloading 3820230411.mrc ({mod_time}) to {download_path}/3820230411.mrc"
-    assert file_statuses["fetched"] == [("3820230411.mrc", 123, mod_time)]
+    assert file_statuses["fetched"] == []
+    assert file_statuses["empty_file_error"] == [
+        ("empty.mrc", 0, "2025-01-01T00:05:23")
+    ]
 
 
 def test_update_vendor_files_table(pg_hook, caplog):
@@ -354,29 +393,47 @@ def test_update_vendor_files_table(pg_hook, caplog):
         assert empty_vendor_file.filesize == 0
 
 
-def test_ftp_adapter_fallback_to_list_directory(mocker):
+@pytest.fixture
+def mock_no_mlsd_hook(mocker):
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory.side_effect = ftplib.error_perm(
         "502 MLSD not implemented"
     )
-    mock_hook.list_directory.return_value = ["file1.mrc", "file2.mrc"]
-    mock_hook.get_conn.return_value.sendcmd.return_value = None
+    mock_hook.list_directory.return_value = [
+        "file1.mrc",
+        "/remote/path/file2.mrc",
+        "bad_file.mrc",
+    ]
 
-    # Mock get_mod_time to return datetime objects
     def mock_get_mod_time(path):
+        if "bad_file" in path:
+            raise ftplib.error_perm("550 File not found")
         return datetime(2024, 1, 15, 10, 30, 0)
 
     mock_hook.get_mod_time.side_effect = mock_get_mod_time
+    return mock_hook
 
-    # Mock get_size to return integers
-    mock_hook.get_size.return_value = 1234
 
-    adapter = FTPAdapter(mock_hook, "/remote/path")
+def test_ftp_adapter_fallback_to_list_directory(mock_no_mlsd_hook):
+    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
 
-    assert mock_hook.list_directory.called
-    assert adapter.list_directory() == ["file1.mrc", "file2.mrc"]
-    assert adapter.get_size("file1.mrc") == 1234
+    assert adapter.list_directory() == ["file1.mrc", "file2.mrc", "bad_file.mrc"]
+    mock_no_mlsd_hook.get_mod_time.assert_not_called()
+
+
+def test_ftp_adapter_fallback_queries_only_requested_file(mock_no_mlsd_hook):
+    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+
     assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
+    mock_no_mlsd_hook.get_mod_time.assert_called_once_with("/remote/path/file1.mrc")
+    mock_no_mlsd_hook.list_directory.assert_not_called()
+    mock_no_mlsd_hook.describe_directory.assert_called_once()
+
+
+def test_ftp_adapter_fallback_mod_time_error(mock_no_mlsd_hook):
+    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+
+    assert adapter.get_mod_time("bad_file.mrc") == "1970-01-01T00:00:00"
 
 
 def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
@@ -411,39 +468,6 @@ def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
     assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04"
 
 
-def test_build_descriptions_handles_errors(mocker):
-    mock_hook = mocker.MagicMock()
-    mock_hook.describe_directory.side_effect = ftplib.error_perm(
-        "502 MLSD not implemented"
-    )
-    mock_hook.list_directory.return_value = ["good_file.mrc", "bad_file.mrc"]
-    mock_hook.get_conn.return_value.sendcmd.return_value = None
-
-    # First file succeeds, second fails
-    def mock_get_mod_time(path):
-        if "bad_file" in path:
-            raise ftplib.error_perm("550 File not found")
-        return datetime(2024, 1, 15, 10, 30, 0)
-
-    def mock_get_size(path):
-        if "bad_file" in path:
-            raise ftplib.error_perm("550 File not found")
-        return 1234
-
-    mock_hook.get_mod_time.side_effect = mock_get_mod_time
-    mock_hook.get_size.side_effect = mock_get_size
-
-    adapter = FTPAdapter(mock_hook, "/remote/path")
-
-    # Good file has real data
-    assert adapter.get_size("good_file.mrc") == 1234
-    assert adapter.get_mod_time("good_file.mrc") == "2024-01-15T10:30:00"
-
-    # Bad file has defaults
-    assert adapter.get_size("bad_file.mrc") == 0
-    assert adapter.get_mod_time("bad_file.mrc") == "1970-01-01T00:00:00"
-
-
 @pytest.mark.parametrize("mock_hook", ["sftp_download"], indirect=True)
 def test_sftp_adapter(mock_hook):
     adapter = SFTPAdapter(hook=mock_hook, remote_path="oclc")
@@ -451,10 +475,31 @@ def test_sftp_adapter(mock_hook):
     assert len(list_dir) == 4
     mod_time = adapter.get_mod_time("3820230411.mrc")
     assert mod_time == "2023-01-01T00:05:23"
-    file_size = adapter.get_size("3820230411.mrc")
-    assert file_size == 123
-    no_file_size = adapter.get_size("3820230412.xxx")
-    assert no_file_size == 0
+
+
+def test_ftp_adapter_does_not_list_on_init(mocker):
+    mock_hook = mocker.MagicMock()
+
+    adapter = FTPAdapter(mock_hook, "/remote/path")
+    adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
+
+    mock_hook.describe_directory.assert_not_called()
+    mock_hook.list_directory.assert_not_called()
+
+
+def test_sftp_adapter_does_not_list_on_init(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.return_value = {
+        "file1.mrc": {"size": 123, "modify": "20240115103000", "type": "file"}
+    }
+
+    adapter = SFTPAdapter(mock_hook, "/remote/path")
+    adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
+    mock_hook.describe_directory.assert_not_called()
+
+    assert adapter.list_directory() == ["file1.mrc"]
+    assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
+    mock_hook.describe_directory.assert_called_once_with("/remote/path")
 
 
 def test_filter_remote_path():

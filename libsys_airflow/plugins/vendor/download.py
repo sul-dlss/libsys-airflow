@@ -1,5 +1,6 @@
 import logging
 import ftplib  # noqa
+import os
 import pathlib
 import re
 
@@ -28,80 +29,56 @@ class FTPAdapter:
     def __init__(self, hook: FTPHook, remote_path: str):
         self.hook = hook
         self.remote_path = remote_path
-
-        try:
-            self._file_descriptions = hook.describe_directory(remote_path)
-            logger.info(f"Successfully used MLSD for {remote_path}")
-        except ftplib.error_perm as e:
-            logger.warning(f"MLSD not available for {remote_path}: {e}")
-            logger.info("Using fallback method (NLST + individual queries)")
-            self._file_descriptions = self._build_descriptions_from_list()
+        self._mlsd_checked = False
+        self._file_descriptions: Optional[dict] = None
 
     def _set_binary_mode(self):
-        """Sets the transfer type to binary so sizes and downloads aren't mangled."""
+        """Sets the transfer type to binary so downloads aren't mangled."""
         try:
             self.hook.get_conn().sendcmd("TYPE I")
         except Exception as e:
             logger.warning(f"Failed to set binary mode: {e}")
 
-    def _build_descriptions_from_list(self) -> dict:
-        """Fallback method when MLSD is not available."""
-        filenames = self.hook.list_directory(self.remote_path)
-        descriptions = {}
-
-        # Set binary mode once for all size queries
-        self._set_binary_mode()
-
-        for filename in filenames:
-            # Normalize the path - handle both cases
-            if filename.startswith(self.remote_path):
-                full_path = filename
-                base_filename = filename.replace(f"{self.remote_path}/", "")
-            else:
-                full_path = f"{self.remote_path}/{filename}"
-                base_filename = filename
-            # Get modification time
+    def _mlsd_descriptions(self) -> Optional[dict]:
+        """Returns MLSD descriptions of remote_path, or None if MLSD is not available."""
+        if not self._mlsd_checked:
+            self._mlsd_checked = True
             try:
-                mod_time = self.hook.get_mod_time(full_path)
-                modify_str = mod_time.strftime("%Y%m%d%H%M%S")
+                self._file_descriptions = self.hook.describe_directory(self.remote_path)
+                logger.info(f"Successfully used MLSD for {self.remote_path}")
             except ftplib.error_perm as e:
-                logger.warning(f"Failed to get modification time for {full_path}: {e}")
-                modify_str = "19700101000000"
-
-            # Get size
-            try:
-                size = self.hook.get_size(full_path)
-                size_str = str(size) if size is not None else "0"
-            except ftplib.error_perm as e:
-                logger.warning(f"Failed to get size for {full_path}: {e}")
-                size_str = "0"
-
-            descriptions[base_filename] = {
-                "modify": modify_str,
-                "size": size_str,
-                "type": "file",
-            }
-
-        return descriptions
+                logger.warning(f"MLSD not available for {self.remote_path}: {e}")
+        return self._file_descriptions
 
     def list_directory(self) -> list[str]:
-        return list(self._file_descriptions.keys())
+        descriptions = self._mlsd_descriptions()
+        if descriptions is not None:
+            return list(descriptions.keys())
+        logger.info("Using fallback method (NLST)")
+        return [
+            _filter_remote_path(filename, self.remote_path)
+            for filename in self.hook.list_directory(self.remote_path)
+        ]
 
     def get_mod_time(self, filename: str) -> str:
-        mod_time_str = self._file_descriptions[filename]["modify"]
+        descriptions = self._mlsd_descriptions()
+        if descriptions is None:
+            # Without MLSD, query only the requested file rather than the whole directory
+            full_path = f"{self.remote_path}/{filename}"
+            try:
+                mod_time = self.hook.get_mod_time(full_path)
+            except ftplib.error_perm as e:
+                logger.warning(f"Failed to get modification time for {full_path}: {e}")
+                mod_time = datetime(1970, 1, 1)
+            return mod_time.replace(microsecond=0).isoformat()
+
+        mod_time_str = descriptions[filename]["modify"]
         # MLSD's "modify" fact optionally includes fractional seconds
         try:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S.%f")
         except ValueError:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
         return mod_time.replace(microsecond=0).isoformat()
-
-    def get_size(self, filename: str) -> int:
-        file_size = self._file_descriptions[filename]["size"]
-        if file_size is None or file_size == "":
-            file_size = 0
-
-        return int(file_size)
 
     def retrieve_file(self, filename: str, download_filepath: str):
         self._set_binary_mode()
@@ -117,21 +94,19 @@ class SFTPAdapter:
     def __init__(self, hook: SFTPHook, remote_path: str):
         self.hook = hook
         self.remote_path = remote_path
-        self._file_descriptions = hook.describe_directory(remote_path)
+        self._file_descriptions: Optional[dict] = None
+
+    def _descriptions(self) -> dict:
+        if self._file_descriptions is None:
+            self._file_descriptions = self.hook.describe_directory(self.remote_path)
+        return self._file_descriptions
 
     def list_directory(self) -> list[str]:
-        return list(self._file_descriptions.keys())
+        return list(self._descriptions().keys())
 
     def get_mod_time(self, filename: str) -> str:
-        mod_time_str = self._file_descriptions[filename]["modify"]
+        mod_time_str = self._descriptions()[filename]["modify"]
         return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S").isoformat()
-
-    def get_size(self, filename: str) -> int:
-        file_size = self._file_descriptions[filename]["size"]
-        if file_size is None:
-            file_size = 0
-
-        return int(file_size)
 
     def retrieve_file(self, filename: str, download_filepath: str):
         remote_filepath = str(pathlib.Path(self.remote_path) / filename)
@@ -160,17 +135,15 @@ def filter_by_strategy(
     filename_regex: str,
 ) -> dict:
     """
-    Returns a dict of all files from vendor site and files from vendor per filter strategy
+    Returns a dict of files from vendor per filter strategy
     {
-        "all_files": [],
         "filtered_files": []
     }
     """
     hook = create_hook(conn_id)
     adapter = _create_adapter(hook, remote_path)
-    result: dict = {"all_files": [], "filtered_files": []}
+    result: dict = {"filtered_files": []}
     all_filenames = adapter.list_directory()
-    result["all_files"] = all_filenames
     if filename_regex == "CNT-ORD":
         logger.info("Filtered filenames by gobi order strategy")
         result["filtered_files"] = _gobi_order_filter_strategy(all_filenames)
@@ -182,6 +155,12 @@ def filter_by_strategy(
     else:
         logger.info("Filenames not filtered")
         result["filtered_files"] = all_filenames
+
+    logger.info(
+        f"Found {len(all_filenames)} files in {remote_path}, {len(result['filtered_files'])} matched the filter strategy"
+    )
+    if all_filenames and not result["filtered_files"]:
+        logger.warning(f"No files matched; first 20 files: {all_filenames[:20]}")
 
     return result
 
@@ -214,7 +193,12 @@ def filter_by_mod_date(
 ) -> dict:
     """
     Returns a dict of two lists: files inside download window (default 10 days ago)
-    and a list of files to be skipped {"skipped": [], "filtered_files": []}
+    and a list of files to be skipped
+    {
+        "filtered_files": [("filename", "datetimeisoformat"), (), ...],
+        "skipped": [("filename", 0, "datetimeisoformat"), (), ...]
+    }
+    Skipped files aren't downloaded, so their size is recorded as 0.
     """
     result: dict = {"skipped": [], "filtered_files": []}
     download_days_ago = Variable.get("download_days_ago", 10)
@@ -236,10 +220,9 @@ def filter_by_mod_date(
         )
         mod_date_after = mod_date_after.replace(tzinfo=None)
         if mod_time > mod_date_after:
-            result["filtered_files"].append(filename)
+            result["filtered_files"].append((filename, mod_time.isoformat()))
         else:
-            file_size = adapter.get_size(filename)
-            result["skipped"].append((filename, file_size, mod_time.isoformat()))
+            result["skipped"].append((filename, 0, mod_time.isoformat()))
 
     return result
 
@@ -253,7 +236,9 @@ def download_task(
     files_to_download_list: list,
 ) -> dict:
     """
-    Downloads files from FTP/SFTP and returns a dict of files downloaded, or not
+    Downloads files from FTP/SFTP and returns a dict of files downloaded, or not.
+    files_to_download_list is [("filename", "datetimeisoformat"), ...] from filter_by_mod_date.
+    File sizes are taken from the downloaded local files.
     {
         "fetched": [("filename", "filesize", "datetimeisoformat"), (), ...],
         "fetching_error": [("filename", "filesize", "datetimeisoformat"), (), ...],
@@ -267,22 +252,21 @@ def download_task(
         f"Downloading for interface {vendor_interface_name} from {remote_path} with {conn_id}"
     )
 
-    for filename in files_to_download_list:
+    for filename, mod_time in files_to_download_list:
         download_filepath = (
             f"{download_path}/{_filter_remote_path(filename, remote_path)}"
         )
-        mod_time = adapter.get_mod_time(filename)
-        file_size = adapter.get_size(filename)
         try:
             logger.info(f"Downloading {filename} ({mod_time}) to {download_filepath}")
             adapter.retrieve_file(filename, download_filepath)
         except Exception:
             logger.error(f"Failed to download {filename} to {download_filepath}")
-            file_statuses["fetching_error"].append((filename, file_size, mod_time))
+            file_statuses["fetching_error"].append((filename, 0, mod_time))
             raise
         else:
             filename = _filter_remote_path(filename, remote_path)
-            if int(file_size) < 1:
+            file_size = os.path.getsize(download_filepath)
+            if file_size < 1:
                 logger.error(f"File {filename} size is {file_size}")
                 file_statuses["empty_file_error"].append(
                     (filename, file_size, mod_time)
