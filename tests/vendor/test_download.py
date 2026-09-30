@@ -254,24 +254,34 @@ def test_filter_by_mod_date(mock_hook, pg_hook, mocker, caplog):
         "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
     )
     files_not_yet_downloaded = ["3820230411.mrc", "3820230413.mrc"]
-    mod_date_after = datetime.now(timezone.utc) - timedelta(days=int(10))
-    five_days_ago = (
-        (datetime.now(timezone.utc) - timedelta(days=int(5)))
-        .replace(tzinfo=None)
-        .isoformat(timespec="seconds")
-    )
     filtered_by_timestamp = filter_by_mod_date.function(
         "ftp-example.com-user",
         "oclc",
         files_not_yet_downloaded,
     )
-    assert (
-        f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
-        in caplog.text
-    )
-    assert filtered_by_timestamp["filtered_files"] == [
-        ("3820230411.mrc", five_days_ago)
+    assert "Filtering files modified after" in caplog.text
+    [(filename, mod_time)] = filtered_by_timestamp["filtered_files"]
+    assert filename == "3820230411.mrc"
+    five_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=5)
+    assert abs(datetime.fromisoformat(mod_time) - five_days_ago) < timedelta(minutes=1)
+    assert filtered_by_timestamp["skipped"] == [
+        ("3820230413.mrc", 0, "2013-01-01T00:05:23")
     ]
+    assert filtered_by_timestamp["fetching_error"] == []
+
+
+@pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
+def test_filter_by_mod_date_file_not_in_listing(mock_hook, mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.create_hook", return_value=mock_hook
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
+    )
+    filtered_by_timestamp = filter_by_mod_date.function(
+        "ftp-example.com-user", "oclc", ["3820230413.mrc", "gone.mrc"]
+    )
+    assert filtered_by_timestamp["fetching_error"] == [("gone.mrc", 0, None)]
     assert filtered_by_timestamp["skipped"] == [
         ("3820230413.mrc", 0, "2013-01-01T00:05:23")
     ]
@@ -331,7 +341,10 @@ def test_update_vendor_files_table(pg_hook, caplog):
             ("3820230411.mrc", 123, mod_time),
             ("filenameB", 1.3, "2025-11-18T13:55:22"),
         ],
-        "fetching_error": [("blah", 0, "2023-01-01T00:05:23")],
+        "fetching_error": [
+            ("blah", 0, "2023-01-01T00:05:23"),
+            ("no_mod_time", 0, None),
+        ],
         "empty_file_error": [("empty_file.mrc", 0, "2025-01-01T00:05:23")],
         "skipped": [("3820230413.mrc", 678, "2013-01-01T00:05:23")],
     }
@@ -386,6 +399,11 @@ def test_update_vendor_files_table(pg_hook, caplog):
         ).first()
         assert errored_vendor_file.status == FileStatus.fetching_error
         assert errored_vendor_file.filesize == 0
+        no_mod_time_file = session.scalars(
+            select(VendorFile).where(VendorFile.vendor_filename == "no_mod_time")
+        ).first()
+        assert no_mod_time_file.status == FileStatus.fetching_error
+        assert no_mod_time_file.vendor_timestamp is None
         empty_vendor_file = session.scalars(
             select(VendorFile).where(VendorFile.vendor_filename == "empty_file.mrc")
         ).first()
@@ -433,7 +451,38 @@ def test_ftp_adapter_fallback_queries_only_requested_file(mock_no_mlsd_hook):
 def test_ftp_adapter_fallback_mod_time_error(mock_no_mlsd_hook):
     adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
 
-    assert adapter.get_mod_time("bad_file.mrc") == "1970-01-01T00:00:00"
+    assert adapter.get_mod_time("bad_file.mrc") is None
+
+
+def test_filter_by_mod_date_fallback_mod_time_error(mock_no_mlsd_hook, mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.create_hook",
+        return_value=mock_no_mlsd_hook,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
+    )
+    filtered_by_timestamp = filter_by_mod_date.function(
+        "ftp-example.com-user", "/remote/path", ["file1.mrc", "bad_file.mrc"]
+    )
+    assert filtered_by_timestamp["fetching_error"] == [("bad_file.mrc", 0, None)]
+    assert filtered_by_timestamp["skipped"] == [("file1.mrc", 0, "2024-01-15T10:30:00")]
+
+
+@pytest.mark.parametrize("adapter_class", [FTPAdapter, SFTPAdapter])
+def test_adapter_list_directory_excludes_directories(adapter_class, mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.describe_directory.return_value = {
+        ".": {"modify": "20240115103000", "type": "cdir"},
+        "..": {"modify": "20240115103000", "type": "pdir"},
+        "archive": {"modify": "20240115103000", "type": "dir"},
+        "file1.mrc": {"size": "123", "modify": "20240115103000", "type": "file"},
+        "file2.mrc": {"size": "456", "modify": "20240115103000"},
+    }
+
+    adapter = adapter_class(mock_hook, "/remote/path")
+
+    assert adapter.list_directory() == ["file1.mrc", "file2.mrc"]
 
 
 def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
@@ -466,6 +515,7 @@ def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
     adapter = FTPAdapter(mock_hook, "/remote/path")
 
     assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04"
+    assert adapter.get_mod_time("gone.mrc") is None
 
 
 @pytest.mark.parametrize("mock_hook", ["sftp_download"], indirect=True)
@@ -475,6 +525,7 @@ def test_sftp_adapter(mock_hook):
     assert len(list_dir) == 4
     mod_time = adapter.get_mod_time("3820230411.mrc")
     assert mod_time == "2023-01-01T00:05:23"
+    assert adapter.get_mod_time("gone.mrc") is None
 
 
 def test_ftp_adapter_does_not_list_on_init(mocker):

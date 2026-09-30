@@ -53,14 +53,14 @@ class FTPAdapter:
     def list_directory(self) -> list[str]:
         descriptions = self._mlsd_descriptions()
         if descriptions is not None:
-            return list(descriptions.keys())
+            return _files_only(descriptions)
         logger.info("Using fallback method (NLST)")
         return [
             _filter_remote_path(filename, self.remote_path)
             for filename in self.hook.list_directory(self.remote_path)
         ]
 
-    def get_mod_time(self, filename: str) -> str:
+    def get_mod_time(self, filename: str) -> Optional[str]:
         descriptions = self._mlsd_descriptions()
         if descriptions is None:
             # Without MLSD, query only the requested file rather than the whole directory
@@ -69,10 +69,14 @@ class FTPAdapter:
                 mod_time = self.hook.get_mod_time(full_path)
             except ftplib.error_perm as e:
                 logger.warning(f"Failed to get modification time for {full_path}: {e}")
-                mod_time = datetime(1970, 1, 1)
+                return None
             return mod_time.replace(microsecond=0).isoformat()
 
-        mod_time_str = descriptions[filename]["modify"]
+        facts = descriptions.get(filename)
+        if facts is None:
+            logger.warning(f"{filename} not found in {self.remote_path}")
+            return None
+        mod_time_str = facts["modify"]
         # MLSD's "modify" fact optionally includes fractional seconds
         try:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S.%f")
@@ -102,15 +106,27 @@ class SFTPAdapter:
         return self._file_descriptions
 
     def list_directory(self) -> list[str]:
-        return list(self._descriptions().keys())
+        return _files_only(self._descriptions())
 
-    def get_mod_time(self, filename: str) -> str:
-        mod_time_str = self._descriptions()[filename]["modify"]
-        return datetime.strptime(mod_time_str, "%Y%m%d%H%M%S").isoformat()
+    def get_mod_time(self, filename: str) -> Optional[str]:
+        facts = self._descriptions().get(filename)
+        if facts is None:
+            logger.warning(f"{filename} not found in {self.remote_path}")
+            return None
+        return datetime.strptime(facts["modify"], "%Y%m%d%H%M%S").isoformat()
 
     def retrieve_file(self, filename: str, download_filepath: str):
         remote_filepath = str(pathlib.Path(self.remote_path) / filename)
         self.hook.retrieve_file(remote_filepath, download_filepath)
+
+
+def _files_only(descriptions: dict) -> list[str]:
+    """Returns the names in a directory description that aren't directories."""
+    return [
+        name
+        for name, facts in descriptions.items()
+        if facts.get("type") not in ("dir", "cdir", "pdir")
+    ]
 
 
 def create_hook(conn_id: str) -> Union[FTPHook, SFTPHook]:
@@ -192,15 +208,16 @@ def filter_by_mod_date(
     file_list: list,
 ) -> dict:
     """
-    Returns a dict of two lists: files inside download window (default 10 days ago)
-    and a list of files to be skipped
+    Returns a dict of files inside download window (default 10 days ago), files to be
+    skipped, and files whose modification time couldn't be retrieved
     {
         "filtered_files": [("filename", "datetimeisoformat"), (), ...],
-        "skipped": [("filename", 0, "datetimeisoformat"), (), ...]
+        "skipped": [("filename", 0, "datetimeisoformat"), (), ...],
+        "fetching_error": [("filename", 0, None), (), ...]
     }
-    Skipped files aren't downloaded, so their size is recorded as 0.
+    Skipped and errored files aren't downloaded, so their size is recorded as 0.
     """
-    result: dict = {"skipped": [], "filtered_files": []}
+    result: dict = {"skipped": [], "filtered_files": [], "fetching_error": []}
     download_days_ago = Variable.get("download_days_ago", 10)
     mod_date_after = datetime.now(timezone.utc)
     if download_days_ago:
@@ -214,10 +231,12 @@ def filter_by_mod_date(
     adapter = _create_adapter(hook, remote_path)
 
     for filename in file_list:
+        mod_time_str = adapter.get_mod_time(filename)
+        if mod_time_str is None:
+            result["fetching_error"].append((filename, 0, None))
+            continue
         # can't compare offset-naive and offset-aware datetimes; make all timezone-naive just in case
-        mod_time = datetime.fromisoformat((adapter.get_mod_time(filename))).replace(
-            tzinfo=None
-        )
+        mod_time = datetime.fromisoformat(mod_time_str).replace(tzinfo=None)
         mod_date_after = mod_date_after.replace(tzinfo=None)
         if mod_time > mod_date_after:
             result["filtered_files"].append((filename, mod_time.isoformat()))
@@ -285,7 +304,7 @@ def update_vendor_files_table(
     Input:
     {
         "fetched": [("filename", "filesize", "datetimeisoformat"), (), ...],
-        "fetching_error": [("filename", "filesize", "datetimeisoformat"), (), ...],
+        "fetching_error": [("filename", "filesize", "datetimeisoformat" or None), (), ...],
         "empty_file_error": [("filename", "filesize", "datetimeisoformat"), (), ...]
         "skipped": [("filename", "filesize", "datetimeisoformat"), (), ...]
     }
@@ -300,7 +319,7 @@ def update_vendor_files_table(
                 status,
                 vendor_uuid,
                 vendor_interface_uuid,
-                datetime.fromisoformat(mod_time),
+                datetime.fromisoformat(mod_time) if mod_time else None,
                 engine,
             )
 
@@ -317,7 +336,7 @@ def _record_vendor_file(
     status: str,
     vendor_uuid: str,
     vendor_interface_uuid: str,
-    vendor_timestamp: datetime,
+    vendor_timestamp: Optional[datetime],
     engine: Engine,
 ):
     logger.info(
