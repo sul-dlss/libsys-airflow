@@ -127,11 +127,12 @@ with DAG(
 
     vendor_files_entries = add_mod_date_file_statuses(file_statuses, files_by_mod_date)
 
-    update_vendor_files_table(
+    vendor_files_table = update_vendor_files_table(
         vendor_files_entries, params["vendor_uuid"], params["vendor_interface_uuid"]
     )
 
     files_to_archive = archive_downloaded_files(file_statuses)
+    vendor_files_table >> files_to_archive
 
     archive_task(
         files_to_archive,
