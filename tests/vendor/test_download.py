@@ -12,6 +12,8 @@ from libsys_airflow.plugins.vendor.download import (
     filter_by_mod_date,
     download_task,
     update_vendor_files_table,
+    _download_cutoff,
+    _filter_already_downloaded,
     _filter_remote_path,
 )
 from libsys_airflow.plugins.vendor.models import (
@@ -62,6 +64,25 @@ rows = Rows(
         filesize=456,
         status=FileStatus.fetched,
         vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
+    ),
+    VendorFile(
+        created=datetime.now(timezone.utc),
+        updated=datetime.now(timezone.utc),
+        vendor_interface_id=1,
+        vendor_filename="recent_skipped.mrc",
+        filesize=0,
+        status=FileStatus.skipped,
+        vendor_timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
+        - timedelta(days=5),
+    ),
+    VendorFile(
+        created=datetime.now(timezone.utc),
+        updated=datetime.now(timezone.utc),
+        vendor_interface_id=1,
+        vendor_filename="old_skipped.mrc",
+        filesize=0,
+        status=FileStatus.skipped,
+        vendor_timestamp=datetime.fromisoformat("1970-01-01T00:00:00"),
     ),
 )
 
@@ -234,6 +255,9 @@ def test_filter_by_strategy_gobi(mock_hook, mocker, caplog):
 
 
 def test_filter_already_downloaded(pg_hook, mocker, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
+    )
     file_list_by_strategy = ["3820230411.mrc", "3820230412.mrc", "3820230413.mrc"]
     files_not_yet_downloaded = filter_already_downloaded.function(
         "oclc",
@@ -243,6 +267,38 @@ def test_filter_already_downloaded(pg_hook, mocker, caplog):
     )
     assert len(files_not_yet_downloaded) == 2
     assert "Already downloaded 1 files" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "download_days_ago,not_yet_downloaded",
+    [("10", ["recent_skipped.mrc"]), ("3", [])],
+)
+def test_filter_already_downloaded_skipped_files(
+    pg_hook, engine, mocker, download_days_ago, not_yet_downloaded
+):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get",
+        return_value=download_days_ago,
+    )
+    files = _filter_already_downloaded(
+        ["recent_skipped.mrc", "old_skipped.mrc"],
+        "oclc",
+        "43459f05-f98b-43c0-a79d-76a8855dba94",
+        "65d30c15-a560-4064-be92-f90e38eeb351",
+        engine,
+    )
+    assert files["not_yet_downloaded"] == not_yet_downloaded
+    assert "old_skipped.mrc" in files["already_downloaded"]
+
+
+@pytest.mark.parametrize("download_days_ago,days", [(10, 10), ("30", 30), ("0", 0)])
+def test_download_cutoff(mocker, download_days_ago, days):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get",
+        return_value=download_days_ago,
+    )
+    expected = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    assert abs(_download_cutoff() - expected) < timedelta(minutes=1)
 
 
 @pytest.mark.parametrize("mock_hook", ["ftp_download"], indirect=True)
@@ -424,11 +480,17 @@ def mock_no_mlsd_hook(mocker):
     ]
 
     def mock_get_mod_time(path):
-        if "bad_file" in path:
+        if "bad_file" in path or path.endswith("subdir"):
             raise ftplib.error_perm("550 File not found")
         return datetime(2024, 1, 15, 10, 30, 0)
 
+    def mock_cwd(path):
+        if path != "/home/user" and not path.endswith("subdir"):
+            raise ftplib.error_perm("550 Not a directory")
+
     mock_hook.get_mod_time.side_effect = mock_get_mod_time
+    mock_hook.get_conn.return_value.pwd.return_value = "/home/user"
+    mock_hook.get_conn.return_value.cwd.side_effect = mock_cwd
     return mock_hook
 
 
@@ -454,6 +516,27 @@ def test_ftp_adapter_fallback_mod_time_error(mock_no_mlsd_hook):
     assert adapter.get_mod_time("bad_file.mrc") is None
 
 
+def test_ftp_adapter_fallback_reconnects_after_desync(mock_no_mlsd_hook):
+    mock_no_mlsd_hook.get_mod_time.side_effect = [
+        ftplib.error_reply("226 Transfer complete"),
+        datetime(2024, 1, 15, 10, 30, 0),
+    ]
+    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+
+    assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
+    mock_no_mlsd_hook.close_conn.assert_called_once()
+
+
+def test_ftp_adapter_fallback_gives_up_after_second_desync(mock_no_mlsd_hook):
+    mock_no_mlsd_hook.get_mod_time.side_effect = ValueError("bad MDTM reply")
+    mock_no_mlsd_hook.close_conn.side_effect = EOFError
+    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+
+    assert adapter.get_mod_time("file1.mrc") is None
+    assert mock_no_mlsd_hook.get_mod_time.call_count == 2
+    assert mock_no_mlsd_hook.conn is None
+
+
 def test_filter_by_mod_date_fallback_mod_time_error(mock_no_mlsd_hook, mocker):
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.create_hook",
@@ -467,6 +550,32 @@ def test_filter_by_mod_date_fallback_mod_time_error(mock_no_mlsd_hook, mocker):
     )
     assert filtered_by_timestamp["fetching_error"] == [("bad_file.mrc", 0, None)]
     assert filtered_by_timestamp["skipped"] == [("file1.mrc", 0, "2024-01-15T10:30:00")]
+
+
+def test_filter_by_mod_date_fallback_ignores_directories(
+    mock_no_mlsd_hook, mocker, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.create_hook",
+        return_value=mock_no_mlsd_hook,
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
+    )
+    filtered_by_timestamp = filter_by_mod_date.function(
+        "ftp-example.com-user", "/remote/path", ["subdir", "bad_file.mrc"]
+    )
+    assert filtered_by_timestamp == {
+        "filtered_files": [],
+        "skipped": [],
+        "fetching_error": [("bad_file.mrc", 0, None)],
+    }
+    assert "Ignoring directory subdir" in caplog.text
+    assert mock_no_mlsd_hook.get_conn.return_value.cwd.call_args_list == [
+        mocker.call("/remote/path/subdir"),
+        mocker.call("/home/user"),
+        mocker.call("/remote/path/bad_file.mrc"),
+    ]
 
 
 @pytest.mark.parametrize("adapter_class", [FTPAdapter, SFTPAdapter])

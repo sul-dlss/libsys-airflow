@@ -8,7 +8,7 @@ from typing import Union, Optional
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.engine import Engine
 
 from airflow.sdk import task, Variable
@@ -39,6 +39,19 @@ class FTPAdapter:
         except Exception as e:
             logger.warning(f"Failed to set binary mode: {e}")
 
+    def _reconnect(self):
+        """Drops the current connection so the next command opens a new one."""
+        if self.hook.conn is None:
+            return
+        logger.info("Reconnecting to FTP server")
+        try:
+            self.hook.close_conn()
+        except Exception as e:
+            # QUIT can fail on a desynced connection too
+            logger.warning(f"Failed to close FTP connection: {e}")
+            self.hook.conn.close()
+            self.hook.conn = None
+
     def _mlsd_descriptions(self) -> Optional[dict]:
         """Returns MLSD descriptions of remote_path, or None if MLSD is not available."""
         if not self._mlsd_checked:
@@ -65,12 +78,22 @@ class FTPAdapter:
         if descriptions is None:
             # Without MLSD, query only the requested file rather than the whole directory
             full_path = f"{self.remote_path}/{filename}"
-            try:
-                mod_time = self.hook.get_mod_time(full_path)
-            except ftplib.error_perm as e:
-                logger.warning(f"Failed to get modification time for {full_path}: {e}")
-                return None
-            return mod_time.replace(microsecond=0).isoformat()
+            for _ in range(2):
+                try:
+                    mod_time = self.hook.get_mod_time(full_path)
+                except ftplib.error_perm as e:
+                    logger.warning(
+                        f"Failed to get modification time for {full_path}: {e}"
+                    )
+                    return None
+                except (ftplib.error_reply, ValueError) as e:
+                    # The reply belonged to an earlier command, so the control
+                    # connection is out of sync and every later reply would be too
+                    logger.warning(f"Unexpected MDTM reply for {full_path}: {e}")
+                    self._reconnect()
+                else:
+                    return mod_time.replace(microsecond=0).isoformat()
+            return None
 
         facts = descriptions.get(filename)
         if facts is None:
@@ -83,6 +106,20 @@ class FTPAdapter:
         except ValueError:
             mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
         return mod_time.replace(microsecond=0).isoformat()
+
+    def is_directory(self, filename: str) -> bool:
+        descriptions = self._mlsd_descriptions()
+        if descriptions is not None:
+            return descriptions.get(filename, {}).get("type") in DIRECTORY_TYPES
+        # NLST doesn't distinguish folders from files, so try changing into it
+        conn = self.hook.get_conn()
+        original = conn.pwd()
+        try:
+            conn.cwd(f"{self.remote_path}/{filename}")
+        except ftplib.error_perm:
+            return False
+        conn.cwd(original)
+        return True
 
     def retrieve_file(self, filename: str, download_filepath: str):
         self._set_binary_mode()
@@ -115,9 +152,15 @@ class SFTPAdapter:
             return None
         return datetime.strptime(facts["modify"], "%Y%m%d%H%M%S").isoformat()
 
+    def is_directory(self, filename: str) -> bool:
+        return self._descriptions().get(filename, {}).get("type") in DIRECTORY_TYPES
+
     def retrieve_file(self, filename: str, download_filepath: str):
         remote_filepath = str(pathlib.Path(self.remote_path) / filename)
         self.hook.retrieve_file(remote_filepath, download_filepath)
+
+
+DIRECTORY_TYPES = ("dir", "cdir", "pdir")
 
 
 def _files_only(descriptions: dict) -> list[str]:
@@ -125,7 +168,7 @@ def _files_only(descriptions: dict) -> list[str]:
     return [
         name
         for name, facts in descriptions.items()
-        if facts.get("type") not in ("dir", "cdir", "pdir")
+        if facts.get("type") not in DIRECTORY_TYPES
     ]
 
 
@@ -216,16 +259,10 @@ def filter_by_mod_date(
         "fetching_error": [("filename", 0, None), (), ...]
     }
     Skipped and errored files aren't downloaded, so their size is recorded as 0.
+    Directories are left out of all three lists.
     """
     result: dict = {"skipped": [], "filtered_files": [], "fetching_error": []}
-    download_days_ago = Variable.get("download_days_ago", 10)
-    mod_date_after = datetime.now(timezone.utc)
-    if download_days_ago:
-        mod_date_after = mod_date_after - timedelta(days=int(download_days_ago))
-
-    logger.info(
-        f"Filtering files modified after {mod_date_after.isoformat(timespec='seconds')}"
-    )
+    mod_date_after = _download_cutoff()
 
     hook = create_hook(conn_id)
     adapter = _create_adapter(hook, remote_path)
@@ -233,11 +270,13 @@ def filter_by_mod_date(
     for filename in file_list:
         mod_time_str = adapter.get_mod_time(filename)
         if mod_time_str is None:
+            if adapter.is_directory(filename):
+                logger.info(f"Ignoring directory {filename}")
+                continue
             result["fetching_error"].append((filename, 0, None))
             continue
         # can't compare offset-naive and offset-aware datetimes; make all timezone-naive just in case
         mod_time = datetime.fromisoformat(mod_time_str).replace(tzinfo=None)
-        mod_date_after = mod_date_after.replace(tzinfo=None)
         if mod_time > mod_date_after:
             result["filtered_files"].append((filename, mod_time.isoformat()))
         else:
@@ -322,6 +361,18 @@ def update_vendor_files_table(
                 datetime.fromisoformat(mod_time) if mod_time else None,
                 engine,
             )
+
+
+def _download_cutoff() -> datetime:
+    """Returns the naive UTC time before which vendor files are skipped."""
+    download_days_ago = Variable.get("download_days_ago", 10)
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+        days=int(download_days_ago or 0)
+    )
+    logger.info(
+        f"Filtering files modified after {cutoff.isoformat(timespec='seconds')} (download_days_ago: {download_days_ago!r})"
+    )
+    return cutoff
 
 
 def _filter_remote_path(filename: str, remote_path: str) -> str:
@@ -418,8 +469,16 @@ def _vendor_interface_id(
 
 
 def _is_fetched(
-    filename: str, remote_path: str, vendor_interface_id: int, engine: Engine
+    filename: str,
+    remote_path: str,
+    vendor_interface_id: int,
+    cutoff: datetime,
+    engine: Engine,
 ) -> bool:
+    """
+    Skipped files whose recorded timestamp now falls inside the download window
+    aren't considered fetched, so widening the window picks them up.
+    """
     filename = _filter_remote_path(filename, remote_path)
     with Session(engine) as session:
         return session.query(
@@ -427,6 +486,13 @@ def _is_fetched(
             .where(VendorFile.vendor_filename == filename)
             .where(VendorFile.vendor_interface_id == vendor_interface_id)
             .where(VendorFile.status.not_in(("not_fetched", "fetching_error")))
+            .where(
+                or_(
+                    VendorFile.status != "skipped",
+                    VendorFile.vendor_timestamp.is_(None),
+                    VendorFile.vendor_timestamp <= cutoff,  # type: ignore
+                )
+            )
             .exists()
         ).scalar()
 
@@ -448,10 +514,11 @@ def _filter_already_downloaded(
     vendor_interface_id = _vendor_interface_id(
         vendor_uuid, vendor_interface_uuid, engine
     )
+    cutoff = _download_cutoff()
     already_downloaded: list = []
     not_yet_downloaded: list = []
     for f in filenames:
-        if _is_fetched(f, remote_path, vendor_interface_id, engine):
+        if _is_fetched(f, remote_path, vendor_interface_id, cutoff, engine):
             already_downloaded.append(f)
         else:
             not_yet_downloaded.append(f)
