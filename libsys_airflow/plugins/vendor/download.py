@@ -121,14 +121,21 @@ class FTPAdapter:
         conn.cwd(original)
         return True
 
+    def _remote_filepath(self, filename: str) -> str:
+        """Returns filename if the server finds it as-is, otherwise remote_path/filename."""
+        # A failed RETR can leave an extra reply that desyncs the connection,
+        # so check with MDTM, which gets a single reply
+        try:
+            self.hook.get_mod_time(filename)
+            return filename
+        except ftplib.error_perm:
+            return f"{self.remote_path}/{filename}"
+
     def retrieve_file(self, filename: str, download_filepath: str):
         self._set_binary_mode()
-        try:
-            self.hook.retrieve_file(filename, download_filepath)
-        except ftplib.error_perm as e:
-            logger.warning(f"Failed to retrieve {filename}, {e}")
-            logger.info(f"Retrieving file {self.remote_path}/{filename}")
-            self.hook.retrieve_file(f"{self.remote_path}/{filename}", download_filepath)
+        remote_filepath = self._remote_filepath(filename)
+        logger.info(f"Retrieving file {remote_filepath}")
+        self.hook.retrieve_file(remote_filepath, download_filepath)
 
 
 class SFTPAdapter:

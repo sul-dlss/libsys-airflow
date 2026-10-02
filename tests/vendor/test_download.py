@@ -611,6 +611,21 @@ def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
     mock_hook.retrieve_file.assert_called_once_with("file1.mrc", "/downloads/file1.mrc")
 
 
+def test_ftp_adapter_retrieve_file_uses_remote_path_when_bare_name_missing(mocker):
+    mock_hook = mocker.MagicMock()
+    mock_hook.get_mod_time.side_effect = ftplib.error_perm(
+        "550 /file1.mrc: No such file or directory."
+    )
+
+    adapter = FTPAdapter(mock_hook, "/remote/path")
+    adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
+
+    mock_hook.get_mod_time.assert_called_once_with("file1.mrc")
+    mock_hook.retrieve_file.assert_called_once_with(
+        "/remote/path/file1.mrc", "/downloads/file1.mrc"
+    )
+
+
 def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory.return_value = {
