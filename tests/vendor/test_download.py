@@ -186,14 +186,28 @@ def mock_hook(mocker, request):
                 },
             }
 
+    def mock_list_directory(*args):
+        return list(mock_describe_directory())
+
+    def mock_get_mod_time(path):
+        facts = mock_describe_directory().get(path.split("/")[-1])
+        if facts is None:
+            raise ftplib.error_perm("550 No such file or directory")
+        return datetime.strptime(facts["modify"], "%Y%m%d%H%M%S")
+
     def mock_retrieve_file(*args):
         if args[0] == "1220240402_f.mrc":
             raise ftplib.error_perm("550 The system cannot find the file specified.")
         with open(args[1], "wb") as fo:
-            fo.write(b"" if args[0] == "empty.mrc" else b"x" * 123)
+            fo.write(b"" if args[0].endswith("empty.mrc") else b"x" * 123)
 
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory = mock_describe_directory
+    mock_hook.list_directory = mock_list_directory
+    mock_hook.get_mod_time = mock_get_mod_time
+    mock_hook.get_conn.return_value.cwd.side_effect = ftplib.error_perm(
+        "550 Not a directory"
+    )
     mock_hook.retrieve_file = mock_retrieve_file
     return mock_hook
 
@@ -468,11 +482,8 @@ def test_update_vendor_files_table(pg_hook, caplog):
 
 
 @pytest.fixture
-def mock_no_mlsd_hook(mocker):
+def mock_ftp_hook(mocker):
     mock_hook = mocker.MagicMock()
-    mock_hook.describe_directory.side_effect = ftplib.error_perm(
-        "502 MLSD not implemented"
-    )
     mock_hook.list_directory.return_value = [
         "file1.mrc",
         "/remote/path/file2.mrc",
@@ -494,53 +505,39 @@ def mock_no_mlsd_hook(mocker):
     return mock_hook
 
 
-def test_ftp_adapter_fallback_to_list_directory(mock_no_mlsd_hook):
-    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+def test_ftp_adapter_list_directory(mock_ftp_hook):
+    adapter = FTPAdapter(mock_ftp_hook, "/remote/path")
 
     assert adapter.list_directory() == ["file1.mrc", "file2.mrc", "bad_file.mrc"]
-    mock_no_mlsd_hook.get_mod_time.assert_not_called()
+    mock_ftp_hook.get_mod_time.assert_not_called()
 
 
-def test_ftp_adapter_fallback_queries_only_requested_file(mock_no_mlsd_hook):
-    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+def test_ftp_adapter_get_mod_time_queries_only_requested_file(mock_ftp_hook):
+    adapter = FTPAdapter(mock_ftp_hook, "/remote/path")
 
     assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
-    mock_no_mlsd_hook.get_mod_time.assert_called_once_with("/remote/path/file1.mrc")
-    mock_no_mlsd_hook.list_directory.assert_not_called()
-    mock_no_mlsd_hook.describe_directory.assert_called_once()
+    mock_ftp_hook.get_mod_time.assert_called_once_with("/remote/path/file1.mrc")
+    mock_ftp_hook.list_directory.assert_not_called()
 
 
-def test_ftp_adapter_fallback_mod_time_error(mock_no_mlsd_hook):
-    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+def test_ftp_adapter_get_mod_time_error(mock_ftp_hook):
+    adapter = FTPAdapter(mock_ftp_hook, "/remote/path")
 
     assert adapter.get_mod_time("bad_file.mrc") is None
 
 
-def test_ftp_adapter_fallback_reconnects_after_desync(mock_no_mlsd_hook):
-    mock_no_mlsd_hook.get_mod_time.side_effect = [
-        ftplib.error_reply("226 Transfer complete"),
-        datetime(2024, 1, 15, 10, 30, 0),
-    ]
-    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
+def test_ftp_adapter_get_mod_time_drops_fractional_seconds(mock_ftp_hook):
+    mock_ftp_hook.get_mod_time.side_effect = None
+    mock_ftp_hook.get_mod_time.return_value = datetime(2026, 7, 29, 9, 19, 4, 741000)
+    adapter = FTPAdapter(mock_ftp_hook, "/remote/path")
 
-    assert adapter.get_mod_time("file1.mrc") == "2024-01-15T10:30:00"
-    mock_no_mlsd_hook.close_conn.assert_called_once()
+    assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04"
 
 
-def test_ftp_adapter_fallback_gives_up_after_second_desync(mock_no_mlsd_hook):
-    mock_no_mlsd_hook.get_mod_time.side_effect = ValueError("bad MDTM reply")
-    mock_no_mlsd_hook.close_conn.side_effect = EOFError
-    adapter = FTPAdapter(mock_no_mlsd_hook, "/remote/path")
-
-    assert adapter.get_mod_time("file1.mrc") is None
-    assert mock_no_mlsd_hook.get_mod_time.call_count == 2
-    assert mock_no_mlsd_hook.conn is None
-
-
-def test_filter_by_mod_date_fallback_mod_time_error(mock_no_mlsd_hook, mocker):
+def test_filter_by_mod_date_mod_time_error(mock_ftp_hook, mocker):
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.create_hook",
-        return_value=mock_no_mlsd_hook,
+        return_value=mock_ftp_hook,
     )
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
@@ -552,12 +549,10 @@ def test_filter_by_mod_date_fallback_mod_time_error(mock_no_mlsd_hook, mocker):
     assert filtered_by_timestamp["skipped"] == [("file1.mrc", 0, "2024-01-15T10:30:00")]
 
 
-def test_filter_by_mod_date_fallback_ignores_directories(
-    mock_no_mlsd_hook, mocker, caplog
-):
+def test_filter_by_mod_date_ignores_directories(mock_ftp_hook, mocker, caplog):
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.create_hook",
-        return_value=mock_no_mlsd_hook,
+        return_value=mock_ftp_hook,
     )
     mocker.patch(
         "libsys_airflow.plugins.vendor.download.Variable.get", return_value="10"
@@ -571,15 +566,14 @@ def test_filter_by_mod_date_fallback_ignores_directories(
         "fetching_error": [("bad_file.mrc", 0, None)],
     }
     assert "Ignoring directory subdir" in caplog.text
-    assert mock_no_mlsd_hook.get_conn.return_value.cwd.call_args_list == [
+    assert mock_ftp_hook.get_conn.return_value.cwd.call_args_list == [
         mocker.call("/remote/path/subdir"),
         mocker.call("/home/user"),
         mocker.call("/remote/path/bad_file.mrc"),
     ]
 
 
-@pytest.mark.parametrize("adapter_class", [FTPAdapter, SFTPAdapter])
-def test_adapter_list_directory_excludes_directories(adapter_class, mocker):
+def test_sftp_adapter_list_directory_excludes_directories(mocker):
     mock_hook = mocker.MagicMock()
     mock_hook.describe_directory.return_value = {
         ".": {"modify": "20240115103000", "type": "cdir"},
@@ -589,20 +583,13 @@ def test_adapter_list_directory_excludes_directories(adapter_class, mocker):
         "file2.mrc": {"size": "456", "modify": "20240115103000"},
     }
 
-    adapter = adapter_class(mock_hook, "/remote/path")
+    adapter = SFTPAdapter(mock_hook, "/remote/path")
 
     assert adapter.list_directory() == ["file1.mrc", "file2.mrc"]
 
 
 def test_ftp_adapter_retrieve_file_sets_binary_mode(mocker):
     mock_hook = mocker.MagicMock()
-    mock_hook.describe_directory.return_value = {
-        "file1.mrc": {
-            "size": "123",
-            "modify": "20240115103000",
-            "type": "file",
-        }
-    }
 
     adapter = FTPAdapter(mock_hook, "/remote/path")
     adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
@@ -626,22 +613,6 @@ def test_ftp_adapter_retrieve_file_uses_remote_path_when_bare_name_missing(mocke
     )
 
 
-def test_ftp_adapter_get_mod_time_with_fractional_seconds(mocker):
-    mock_hook = mocker.MagicMock()
-    mock_hook.describe_directory.return_value = {
-        "file1.mrc": {
-            "size": "123",
-            "modify": "20260729091904.741",
-            "type": "file",
-        }
-    }
-
-    adapter = FTPAdapter(mock_hook, "/remote/path")
-
-    assert adapter.get_mod_time("file1.mrc") == "2026-07-29T09:19:04"
-    assert adapter.get_mod_time("gone.mrc") is None
-
-
 @pytest.mark.parametrize("mock_hook", ["sftp_download"], indirect=True)
 def test_sftp_adapter(mock_hook):
     adapter = SFTPAdapter(hook=mock_hook, remote_path="oclc")
@@ -658,7 +629,6 @@ def test_ftp_adapter_does_not_list_on_init(mocker):
     adapter = FTPAdapter(mock_hook, "/remote/path")
     adapter.retrieve_file("file1.mrc", "/downloads/file1.mrc")
 
-    mock_hook.describe_directory.assert_not_called()
     mock_hook.list_directory.assert_not_called()
 
 

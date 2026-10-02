@@ -29,8 +29,6 @@ class FTPAdapter:
     def __init__(self, hook: FTPHook, remote_path: str):
         self.hook = hook
         self.remote_path = remote_path
-        self._mlsd_checked = False
-        self._file_descriptions: Optional[dict] = None
 
     def _set_binary_mode(self):
         """Sets the transfer type to binary so downloads aren't mangled."""
@@ -39,78 +37,22 @@ class FTPAdapter:
         except Exception as e:
             logger.warning(f"Failed to set binary mode: {e}")
 
-    def _reconnect(self):
-        """Drops the current connection so the next command opens a new one."""
-        if self.hook.conn is None:
-            return
-        logger.info("Reconnecting to FTP server")
-        try:
-            self.hook.close_conn()
-        except Exception as e:
-            # QUIT can fail on a desynced connection too
-            logger.warning(f"Failed to close FTP connection: {e}")
-            self.hook.conn.close()
-            self.hook.conn = None
-
-    def _mlsd_descriptions(self) -> Optional[dict]:
-        """Returns MLSD descriptions of remote_path, or None if MLSD is not available."""
-        if not self._mlsd_checked:
-            self._mlsd_checked = True
-            try:
-                self._file_descriptions = self.hook.describe_directory(self.remote_path)
-                logger.info(f"Successfully used MLSD for {self.remote_path}")
-            except ftplib.error_perm as e:
-                logger.warning(f"MLSD not available for {self.remote_path}: {e}")
-        return self._file_descriptions
-
     def list_directory(self) -> list[str]:
-        descriptions = self._mlsd_descriptions()
-        if descriptions is not None:
-            return _files_only(descriptions)
-        logger.info("Using fallback method (NLST)")
         return [
             _filter_remote_path(filename, self.remote_path)
             for filename in self.hook.list_directory(self.remote_path)
         ]
 
     def get_mod_time(self, filename: str) -> Optional[str]:
-        descriptions = self._mlsd_descriptions()
-        if descriptions is None:
-            # Without MLSD, query only the requested file rather than the whole directory
-            full_path = f"{self.remote_path}/{filename}"
-            for _ in range(2):
-                try:
-                    mod_time = self.hook.get_mod_time(full_path)
-                except ftplib.error_perm as e:
-                    logger.warning(
-                        f"Failed to get modification time for {full_path}: {e}"
-                    )
-                    return None
-                except (ftplib.error_reply, ValueError) as e:
-                    # The reply belonged to an earlier command, so the control
-                    # connection is out of sync and every later reply would be too
-                    logger.warning(f"Unexpected MDTM reply for {full_path}: {e}")
-                    self._reconnect()
-                else:
-                    return mod_time.replace(microsecond=0).isoformat()
-            return None
-
-        facts = descriptions.get(filename)
-        if facts is None:
-            logger.warning(f"{filename} not found in {self.remote_path}")
-            return None
-        mod_time_str = facts["modify"]
-        # MLSD's "modify" fact optionally includes fractional seconds
+        full_path = f"{self.remote_path}/{filename}"
         try:
-            mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S.%f")
-        except ValueError:
-            mod_time = datetime.strptime(mod_time_str, "%Y%m%d%H%M%S")
+            mod_time = self.hook.get_mod_time(full_path)
+        except ftplib.error_perm as e:
+            logger.warning(f"Failed to get modification time for {full_path}: {e}")
+            return None
         return mod_time.replace(microsecond=0).isoformat()
 
     def is_directory(self, filename: str) -> bool:
-        descriptions = self._mlsd_descriptions()
-        if descriptions is not None:
-            return descriptions.get(filename, {}).get("type") in DIRECTORY_TYPES
         # NLST doesn't distinguish folders from files, so try changing into it
         conn = self.hook.get_conn()
         original = conn.pwd()
