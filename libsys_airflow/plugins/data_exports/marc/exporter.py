@@ -144,6 +144,7 @@ class Exporter(object):
         marc_file = ""
         bucket = Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod")
         full_dump_files = f"/{bucket}/data-export-files/full-dump"
+        vendor = Variable.get("FULL_DUMP_VENDOR", "full-dump")
 
         marc = []
         for row in instance_ids:
@@ -155,9 +156,7 @@ class Exporter(object):
                 logger.warning(e)
                 continue
 
-            if self.exclude_marc_by_vendor(
-                marc21, Variable.get("FULL_DUMP_VENDOR", "full-dump")
-            ):
+            if self.exclude_marc_by_vendor(marc21, vendor):
                 continue
 
             marc.append(marc21)
