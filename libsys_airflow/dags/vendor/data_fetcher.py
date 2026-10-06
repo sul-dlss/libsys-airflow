@@ -88,8 +88,11 @@ with DAG(
         return [f[0] for f in file_statuses["fetched"]]
 
     @task
-    def add_skipped_file_statuses(file_statuses: dict, skipped_files: list) -> dict:
-        file_statuses.update({"skipped": skipped_files})
+    def add_mod_date_file_statuses(
+        file_statuses: dict, files_by_mod_date: dict
+    ) -> dict:
+        file_statuses["skipped"] = files_by_mod_date["skipped"]
+        file_statuses["fetching_error"].extend(files_by_mod_date["fetching_error"])
         return file_statuses
 
     params = setup()
@@ -122,15 +125,14 @@ with DAG(
         files_by_mod_date["filtered_files"],
     )
 
-    vendor_files_entries = add_skipped_file_statuses(
-        file_statuses, files_by_mod_date["skipped"]
-    )
+    vendor_files_entries = add_mod_date_file_statuses(file_statuses, files_by_mod_date)
 
-    update_vendor_files_table(
+    vendor_files_table = update_vendor_files_table(
         vendor_files_entries, params["vendor_uuid"], params["vendor_interface_uuid"]
     )
 
     files_to_archive = archive_downloaded_files(file_statuses)
+    vendor_files_table >> files_to_archive
 
     archive_task(
         files_to_archive,
