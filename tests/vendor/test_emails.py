@@ -12,15 +12,21 @@ from datetime import date, datetime
 from airflow.sdk import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
+from airflow.sdk.exceptions import AirflowSkipException
+
 from libsys_airflow.plugins.vendor.emails import (
     files_fetched_email_task,
+    file_load_error_email_task,
     file_loaded_email_task,
     send_files_fetched_email,
+    send_file_load_error_email,
     send_file_loaded_email,
     send_file_not_loaded_email,
 )
 from libsys_airflow.plugins.vendor.models import (
+    FileStatus,
     Vendor,
+    VendorFile,
     VendorInterface,
 )
 
@@ -60,6 +66,24 @@ rows = Rows(
         processing_delay_in_days=3,
         active=True,
         additional_email_recipients="additional1@stanford.edu, additional2@stanford.edu",
+    ),
+    VendorFile(
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
+        vendor_interface_id=2,
+        vendor_filename="load_error.mrc",
+        filesize=234,
+        status=FileStatus.loading_error,
+        vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
+    ),
+    VendorFile(
+        created=datetime.utcnow(),
+        updated=datetime.utcnow(),
+        vendor_interface_id=2,
+        vendor_filename="loaded.mrc",
+        filesize=234,
+        status=FileStatus.loaded,
+        vendor_timestamp=datetime.fromisoformat("2022-01-01T00:05:23"),
     ),
 )
 
@@ -415,3 +439,78 @@ def test_send_file_not_loaded_email(pg_hook, mocker, mock_folio_variables):
         </p>
         """,
     )
+
+
+def test_send_file_load_error_email(pg_hook, mocker, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_email_with_server_name"
+    )
+
+    send_file_load_error_email(
+        vendor_uuid='375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+        vendor_interface_name='Acme FTP Additional Emails',
+        vendor_code='ACME',
+        vendor_interface_uuid='C803F1CD-9D6C-4074-A8D9-2C23D4B85B07',
+        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2",
+        filename='load_error.mrc',
+        environment='development',
+    )
+
+    mock_send_email.assert_called_once_with(
+        to='test@stanford.edu,additional1@stanford.edu,additional2@stanford.edu',
+        subject="Acme FTP Additional Emails (ACME) - (load_error.mrc) - File Load Report - load error [development]",
+        html_content="""
+        <h5>Acme FTP Additional Emails (ACME) - <a href="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2">C803F1CD-9D6C-4074-A8D9-2C23D4B85B07</a></h5>
+        """,
+    )
+
+
+def _mock_load_error_context(mocker, filename):
+    mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.get_current_context",
+        return_value={
+            "params": {
+                "vendor_uuid": '375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+                "vendor_interface_uuid": 'C803F1CD-9D6C-4074-A8D9-2C23D4B85B07',
+                "filename": filename,
+            }
+        },
+    )
+
+
+def test_file_load_error_email_task(pg_hook, mocker, mock_folio_variables):
+    _mock_load_error_context(mocker, "load_error.mrc")
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.airflow_url",
+        return_value="https://sul-libsys-airflow-stage.stanford.edu/",
+    )
+    mock_send = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_file_load_error_email"
+    )
+
+    file_load_error_email_task.function()
+
+    mock_send.assert_called_once_with(
+        vendor_uuid='375C6E33-2468-40BD-A5F2-73F82FE56DB0',
+        vendor_interface_uuid='C803F1CD-9D6C-4074-A8D9-2C23D4B85B07',
+        filename='load_error.mrc',
+        vendor_interface_name='Acme FTP Additional Emails',
+        vendor_code='ACME',
+        vendor_interface_url="https://sul-libsys-airflow-stage.stanford.edu/vendor_management/interfaces/2",
+        environment='development',
+    )
+
+
+@pytest.mark.parametrize("filename", ["loaded.mrc", "missing.mrc"])
+def test_file_load_error_email_task_skips(
+    pg_hook, mocker, mock_folio_variables, filename
+):
+    _mock_load_error_context(mocker, filename)
+    mock_send = mocker.patch(
+        "libsys_airflow.plugins.vendor.emails.send_file_load_error_email"
+    )
+
+    with pytest.raises(AirflowSkipException):
+        file_load_error_email_task.function()
+
+    mock_send.assert_not_called()

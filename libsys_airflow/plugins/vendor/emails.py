@@ -1,14 +1,16 @@
 from datetime import date
 import logging
+import os
 import pathlib
 
-from airflow.sdk import task, Variable
+from airflow.sdk import get_current_context, task, Variable
+from airflow.sdk.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from sqlalchemy.orm import Session
 from jinja2 import Template
 
-from libsys_airflow.plugins.vendor.models import VendorInterface
+from libsys_airflow.plugins.vendor.models import FileStatus, VendorFile, VendorInterface
 from libsys_airflow.plugins.vendor.marc import (
     is_marc,
     extract_double_zero_one_field_values,
@@ -240,5 +242,60 @@ def _file_not_loaded_html_content(**kwargs):
         <p>
             File processed, but not loaded: {{filename}}
         </p>
+        """
+    ).render(kwargs)
+
+
+@task(trigger_rule="one_failed")
+def file_load_error_email_task():
+    """
+    Uses DAG run params instead of setup() XCom so that this task can still run
+    when an upstream task failed. one_failed also triggers on upstream_failed, so
+    only send when data_import_task's failure callback recorded loading_error.
+    """
+    params = get_current_context()["params"]
+    pg_hook = PostgresHook("vendor_loads")
+    with Session(pg_hook.get_sqlalchemy_engine()) as session:
+        vendor_interface = VendorInterface.load_with_vendor(
+            params["vendor_uuid"], params["vendor_interface_uuid"], session
+        )
+        vendor_file = VendorFile.load_with_vendor_interface(
+            vendor_interface, params["filename"], session
+        )
+        if vendor_file is None or vendor_file.status != FileStatus.loading_error:
+            raise AirflowSkipException(
+                f"{params['filename']} does not have a status of loading_error"
+            )
+        kwargs = {
+            "vendor_uuid": params["vendor_uuid"],
+            "vendor_interface_uuid": params["vendor_interface_uuid"],
+            "filename": params["filename"],
+            "vendor_interface_name": vendor_interface.display_name,  # type: ignore
+            "vendor_code": vendor_interface.vendor.vendor_code_from_folio,  # type: ignore
+            "vendor_interface_url": plugin_app_url(
+                "/vendor_management", "interfaces", vendor_interface.id  # type: ignore
+            ),
+            "environment": os.getenv('HONEYBADGER_ENVIRONMENT', 'development'),
+        }
+    send_file_load_error_email(**kwargs)
+
+
+def send_file_load_error_email(**kwargs):
+    kwargs["interface_additional_emails"] = _additional_email_recipients(
+        kwargs["vendor_interface_uuid"]
+    )
+    send_email_with_server_name(
+        to=_email_recipients(kwargs.get('interface_additional_emails', None)),
+        subject=Template(
+            "{{vendor_interface_name}} ({{vendor_code}}) - ({{filename}}) - File Load Report - load error [{{environment}}]"
+        ).render(kwargs),
+        html_content=_file_load_error_html_content(**kwargs),
+    )
+
+
+def _file_load_error_html_content(**kwargs):
+    return Template(
+        """
+        <h5>{{vendor_interface_name}} ({{vendor_code}}) - <a href="{{vendor_interface_url}}">{{vendor_interface_uuid}}</a></h5>
         """
     ).render(kwargs)

@@ -15,6 +15,7 @@ from libsys_airflow.plugins.folio.data_import import (
     data_import_branch_task,
 )
 from libsys_airflow.plugins.vendor.emails import (
+    file_load_error_email_task,
     file_loaded_email_task,
     file_not_loaded_email_task,
 )
@@ -166,5 +167,8 @@ with DAG(
         params=params,
     )
 
+    file_load_error_email = file_load_error_email_task()
+
     data_import_branch >> data_import >> file_loaded_sensor >> job_summary
+    data_import >> file_load_error_email
     data_import_branch >> file_not_loaded_email
