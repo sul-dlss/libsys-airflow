@@ -333,7 +333,7 @@ def test_exclude_marc_by_vendor_sharevde(mocker):
     assert exporter.exclude_marc_by_vendor(marc_record, 'sharevde')
 
 
-def test_retrieve_marc_for_full_dump_vendor_none(mocker):
+def test_retrieve_marc_for_full_dump_vendor_none(mocker, mock_get_current_context):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mock_variable = mocker.patch(
         'libsys_airflow.plugins.data_exports.marc.exporter.Variable'
@@ -366,6 +366,51 @@ def test_retrieve_marc_for_full_dump_vendor_none(mocker):
     _, _, written_records, _ = mock_write.call_args[0]
     assert len(written_records) == 1
     assert mock_write.call_args.kwargs["as_xml"] is True
+
+
+def test_retrieve_marc_for_full_dump_cc0(mocker, monkeypatch):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    mock_variable = mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.Variable'
+    )
+    mock_variable.get = lambda key, _: (
+        "full-dump" if key == "FULL_DUMP_VENDOR" else "test-bucket"
+    )
+
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {"marc_file_dir": "CC0", "exclude_tags": True}
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.marc.exporter.get_current_context',
+        _context,
+    )
+    mock_write = mocker.patch.object(
+        Exporter, 'write_marc', return_value='/test/0_1.xml'
+    )
+
+    marc_json = {
+        "leader": "01509nam a2200361 a 4500",
+        "fields": [
+            {"001": "a123"},
+            {"598": {"ind1": " ", "ind2": "1", "subfields": [{"a": "a30"}]}},
+        ],
+    }
+    instance_ids = [('uuid-1', 'a123', marc_json)]
+
+    exporter_instance = Exporter()
+    marc_file = exporter_instance.retrieve_marc_for_full_dump("0_1.xml", instance_ids)
+
+    assert marc_file == '/test/0_1.xml'
+    assert mock_write.call_count == 2
+
+    xml_call, mrc_call = mock_write.call_args_list
+    assert xml_call.kwargs["as_xml"] is True
+    assert xml_call.args[2][0].get_fields('598')
+    assert "as_xml" not in mrc_call.kwargs
+    assert mrc_call.args[2][0].get_fields('598') == []
+    assert mrc_call.args[2][0]['001'].value() == 'a123'
 
 
 def test_write_marc_as_xml_oversized_record(mocker, tmp_path, mock_get_current_context):

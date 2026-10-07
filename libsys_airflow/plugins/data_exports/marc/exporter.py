@@ -1,3 +1,4 @@
+import copy
 import csv
 import logging
 import pathlib
@@ -11,6 +12,7 @@ from pymarc import (
     XMLWriter as marcXMLWriter,
 )
 
+from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
@@ -170,6 +172,21 @@ class Exporter(object):
             ".",
             as_xml=True,
         )
+
+        """
+        CC0 also keeps the SRS records as MARC21, before holdings and items are added
+        """
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        if params.get("marc_file_dir") == "CC0":
+            cc0_marc = copy.deepcopy(marc)
+            if params.get("exclude_tags", True):
+                for record in cc0_marc:
+                    record.remove_fields(*excluded_tags)
+            logger.info(f"Saving {len(cc0_marc)} CC0 MARC21 records")
+            self.write_marc(
+                pathlib.Path(marc_filename), S3Path(full_dump_files), cc0_marc, "."
+            )
 
         return marc_file
 
