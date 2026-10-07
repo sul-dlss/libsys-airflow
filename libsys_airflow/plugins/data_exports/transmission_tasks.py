@@ -374,7 +374,7 @@ def vendor_filename_spec(conn_id, filename):
     """
     if conn_id == "gobi":
         # gobi should have "stf" prepended
-        return "stf" + Path(filename).name
+        return "stf_325099_" + Path(filename).name
     elif conn_id == "backstage":
         return "STF" + Path(filename).name
     elif conn_id == "sharevde":

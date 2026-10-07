@@ -279,7 +279,7 @@ def test_transmit_gobi_data_ftp_task(
     transmit_data = transmit_data_ftp_task.function("gobi", marc_files)
     assert len(transmit_data["success"]) == 1
     assert "Start transmission of file" in caplog.text
-    assert "Transmitted file to /remote/path/dir/stf2024030214.txt" in caplog.text
+    assert "Transmitted file to /remote/path/dir/stf_325099_2024030214.txt" in caplog.text
 
 
 @pytest.mark.parametrize("mock_vendor_marc_files", ["backstage"], indirect=True)
