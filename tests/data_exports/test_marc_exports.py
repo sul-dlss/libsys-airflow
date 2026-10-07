@@ -365,3 +365,31 @@ def test_retrieve_marc_for_full_dump_vendor_none(mocker):
 
     _, _, written_records, _ = mock_write.call_args[0]
     assert len(written_records) == 1
+    assert mock_write.call_args.kwargs["as_xml"] is True
+
+
+def test_write_marc_as_xml_oversized_record(mocker, tmp_path, mock_get_current_context):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    record = pymarc.Record()
+    record.add_field(pymarc.Field(tag='001', data='a486841'))
+    for i in range(150):
+        record.add_field(
+            pymarc.Field(
+                tag='950',
+                indicators=[' ', ' '],
+                subfields=[pymarc.Subfield(code='a', value=f"{i} " + "x" * 1000)],
+            )
+        )
+    assert len(record.as_marc()) > 99999
+
+    exporter_instance = Exporter()
+    marc_file = exporter_instance.write_marc(
+        tmp_path / "0_5000.xml", tmp_path, record, "full", as_xml=True
+    )
+
+    assert marc_file.endswith("marc-files/full/0_5000.xml")
+    with open(marc_file, "rb") as fo:
+        records = pymarc.parse_xml_to_array(fo)
+
+    assert len(records) == 1
+    assert len(records[0].get_fields('950')) == 150
