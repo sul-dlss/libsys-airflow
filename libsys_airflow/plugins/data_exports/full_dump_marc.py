@@ -113,7 +113,7 @@ def fetch_full_dump_marc(**kwargs) -> str:
 
     exporter = Exporter()
     marc_file = exporter.retrieve_marc_for_full_dump(
-        f"{offset}_{offset + batch_size}.mrc",
+        f"{offset}_{offset + batch_size}.xml",
         instance_ids=tuples,
     )
 

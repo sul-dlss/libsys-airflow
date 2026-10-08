@@ -1,3 +1,4 @@
+import copy
 import csv
 import logging
 import pathlib
@@ -8,8 +9,11 @@ from pymarc import (
     JSONHandler as marcJson,
     MARCWriter as marcWriter,
     Record as marcRecord,
+    XMLWriter as marcXMLWriter,
 )
 
+from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
+from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
@@ -163,8 +167,27 @@ class Exporter(object):
 
         logger.info(f"Saving {len(marc)} marc records to {marc_filename} in bucket.")
         marc_file = self.write_marc(
-            pathlib.Path(marc_filename), S3Path(full_dump_files), marc, "."
+            pathlib.Path(marc_filename),
+            S3Path(full_dump_files),
+            marc,
+            ".",
+            as_xml=True,
         )
+
+        """
+        CC0 also keeps the SRS records as MARC21, before holdings and items are added
+        """
+        context = get_current_context()
+        params = context.get("params", {})  # type: ignore
+        if params.get("marc_file_dir") == "CC0":
+            cc0_marc = copy.deepcopy(marc)
+            if params.get("exclude_tags", True):
+                for record in cc0_marc:
+                    record.remove_fields(*excluded_tags)
+            logger.info(f"Saving {len(cc0_marc)} CC0 MARC21 records")
+            self.write_marc(
+                pathlib.Path(marc_filename), S3Path(full_dump_files), cc0_marc, "."
+            )
 
         return marc_file
 
@@ -190,9 +213,11 @@ class Exporter(object):
         marc_directory: Union[pathlib.Path, S3Path],
         marc: Union[list[marcRecord], marcRecord],
         kind: str,
+        as_xml: bool = False,
     ) -> str:
         """
         Writes marc record to a file system (local or S3)
+        as_xml writes MARC-XML, which has no record length limit
         """
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
@@ -208,13 +233,15 @@ class Exporter(object):
 
         logger.info(f"Writing to directory: {directory}")
         directory.mkdir(parents=True, exist_ok=True)
-        marc_file = directory / f"{marc_file_name}.mrc"
+        suffix = ".xml" if as_xml else ".mrc"
+        marc_file = directory / f"{marc_file_name}{suffix}"
 
         with marc_file.open(mode) as fo:
-            marc_writer = marcWriter(fo)
+            marc_writer = marcXMLWriter(fo) if as_xml else marcWriter(fo)
             for record in marc:
+                if as_xml:
+                    record = remove_invalid_xml_chars(record)
                 marc_writer.write(record)
-
-        marc_writer.close()
+            marc_writer.close(close_fh=False)
 
         return str(marc_file.absolute())

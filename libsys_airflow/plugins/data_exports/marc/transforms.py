@@ -101,7 +101,10 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
         logger.info(f"Removing MARC fields using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
-        marc_records = [record for record in pymarc.MARCReader(fo)]
+        if full_dump:
+            marc_records = pymarc.parse_xml_to_array(fo)
+        else:
+            marc_records = [record for record in pymarc.MARCReader(fo)]
 
     if exclude_tags:
         logger.info(f"Removing MARC fields for {len(marc_records):,} records")
@@ -116,16 +119,18 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
 
     """
     Writes the records back to the filesystem
+    Full dump files are MARC-XML only, written below
     """
-    try:
-        with marc_path.open("wb") as fo:
-            marc_writer = pymarc.MARCWriter(fo)  # type: ignore
-            for record in marc_records:
-                marc_writer.write(record)
-            marc_writer.close()
+    if not full_dump:
+        try:
+            with marc_path.open("wb") as fo:
+                marc_writer = pymarc.MARCWriter(fo)  # type: ignore
+                for record in marc_records:
+                    marc_writer.write(record)
+                marc_writer.close()
 
-    except pymarc.exceptions.WriteNeedsRecord as e:
-        logger.warning(e)
+        except pymarc.exceptions.WriteNeedsRecord as e:
+            logger.warning(e)
 
     logger.info(f"Serializing {len(marc_records)} MARC records as xml")
     try:

@@ -444,6 +444,73 @@ def test_add_holdings_items_no_items(mocker, mock_marc_dir, mock_folio_client):
     assert field_950s[0].get_subfields('a')[0] == "QA 124378"
 
 
+@pytest.mark.parametrize("mock_marc_dir", ["full-dump"], indirect=True)
+def test_full_dump_oversized_record_xml(mocker, mock_marc_dir, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.S3Path', pathlib.Path
+    )
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transforms.S3Path', pathlib.Path
+    )
+
+    oversized = pymarc.Record()
+    oversized.add_field(pymarc.Field(tag='001', data='a486841'))
+    for i in range(150):
+        oversized.add_field(
+            pymarc.Field(
+                tag='505',
+                indicators=['0', ' '],
+                subfields=[pymarc.Subfield(code='a', value=f"{i} " + "x" * 1000)],
+            )
+        )
+    oversized.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c')
+            ],
+        )
+    )
+    assert len(oversized.as_marc()) > 99999
+
+    following = pymarc.Record()
+    following.add_field(
+        pymarc.Field(tag='001', data='a487849'),
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='c77d294c-4d83-4fe0-87b1-f94a845c0d49')
+            ],
+        ),
+    )
+
+    marc_file = mock_marc_dir / "3900000_3905000.xml"
+    with marc_file.open("wb") as fo:
+        xml_writer = pymarc.XMLWriter(fo)
+        xml_writer.write(oversized)
+        xml_writer.write(following)
+        xml_writer.close()
+
+    transformer = marc_transformer.Transformer(connection=MockPool().getconn())
+    transformer.add_holdings_items(str(marc_file), full_dump=True)
+    marc_clean_serialize(str(marc_file), full_dump=True, exclude_tags=True)
+
+    with marc_file.open('rb') as fo:
+        mod_marc_records = pymarc.parse_xml_to_array(fo)
+
+    assert [r['001'].value() for r in mod_marc_records] == ['a486841', 'a487849']
+    assert len(mod_marc_records[0].get_fields('505')) == 150
+    assert len(mod_marc_records[0].get_fields('950')) == 1
+    assert len(mod_marc_records[1].get_fields('950')) == 1
+    assert not (mock_marc_dir / "3900000_3905000.mrc").exists()
+
+
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_clean_and_serialize_marc_files(mock_marc_dir, caplog):
     marc_file = mock_marc_dir / "20240228.mrc"

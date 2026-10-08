@@ -280,12 +280,12 @@ def test_fetch_full_dump(
     full_dump_marc.fetch_full_dump_marc(
         mat_view="data_export_marc", offset=0, batch_size=3, connection=MockConnection()
     )
-    assert "Saving 3 marc records to 0_3.mrc in bucket" in caplog.text
+    assert "Saving 3 marc records to 0_3.xml in bucket" in caplog.text
 
     full_dump_marc.fetch_full_dump_marc(
         mat_view="data_export_marc", offset=3, batch_size=3, connection=MockConnection()
     )
-    assert "Saving 3 marc records to 3_6.mrc in bucket" in caplog.text
+    assert "Saving 3 marc records to 3_6.xml in bucket" in caplog.text
 
 
 def test_no_recreate_filter_campus_ids(
