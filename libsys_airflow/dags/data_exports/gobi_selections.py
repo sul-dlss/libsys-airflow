@@ -15,7 +15,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 )
 
 from libsys_airflow.plugins.data_exports.email import (
-    generate_oversized_marc_email,
+    oversized_marc_records_email,
     send_confirmation_email,
 )
 from libsys_airflow.plugins.data_exports.marc.gobi import gobi_list_from_marc_files
@@ -32,14 +32,6 @@ default_args = {
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
-
-
-def oversized_marc_records_email(**kwargs):
-    fetched_marc_records: dict = kwargs.get("fetched_marc_records", {})
-    generate_oversized_marc_email.function(
-        dag_run=kwargs["dag_run"],
-        oversized_records=fetched_marc_records.get("oversized", []),
-    )
 
 
 with DAG(
@@ -129,6 +121,7 @@ with DAG(
         op_kwargs={
             "fetched_marc_records": "{{ ti.xcom_pull('fetch_marc_records_from_folio')}}"
         },
+        trigger_rule="all_done",
     )
 
     finish_processing_marc = EmptyOperator(

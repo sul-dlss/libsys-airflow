@@ -206,7 +206,9 @@ with DAG(
         missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True  # type: ignore
     )
 
-    email_marc_oversized = generate_oversized_marc_email(
+    email_marc_oversized = generate_oversized_marc_email.override(
+        trigger_rule="all_done"
+    )(
         oversized_records=fetch_marc_records["oversized"]  # type: ignore
     )
 

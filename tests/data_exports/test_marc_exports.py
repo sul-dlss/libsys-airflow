@@ -484,6 +484,42 @@ def test_retrieve_marc_for_full_dump_cc0(mocker, monkeypatch):
     assert mrc_call.args[2][0]['001'].value() == 'a123'
 
 
+def test_retrieve_marc_for_full_dump_cc0_oversized(mocker, monkeypatch):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    mock_variable = mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.Variable'
+    )
+    mock_variable.get = lambda key, _: (
+        "full-dump" if key == "FULL_DUMP_VENDOR" else "test-bucket"
+    )
+
+    def _context():
+        context = mocker.stub(name="context")
+        context.get = lambda *args: {"marc_file_dir": "CC0", "exclude_tags": True}
+        return context
+
+    monkeypatch.setattr(
+        'libsys_airflow.plugins.data_exports.marc.exporter.get_current_context',
+        _context,
+    )
+    mock_write = mocker.patch.object(
+        Exporter, 'write_marc', return_value='/test/0_2.xml'
+    )
+
+    instance_ids = [
+        ('uuid-big', 'a2', oversized_marc_json("a2", "505", 150, 1000)),
+        ('uuid-small', 'a1', {"leader": "01509nam a2200361 a 4500", "fields": []}),
+    ]
+
+    exporter_instance = Exporter()
+    exporter_instance.retrieve_marc_for_full_dump("0_2.xml", instance_ids)
+
+    xml_call, mrc_call = mock_write.call_args_list
+    assert len(xml_call.args[2]) == 2
+    assert len(mrc_call.args[2]) == 1
+    assert exporter_instance.oversized_records == [{"hrid": "a2", "uuid": "uuid-big"}]
+
+
 def test_write_marc_as_xml_oversized_record(mocker, tmp_path, mock_get_current_context):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     record = pymarc.Record()

@@ -100,7 +100,10 @@ def filter_campus_sql_file(**kwargs) -> Path:
     return sql_path
 
 
-def fetch_full_dump_marc(**kwargs) -> str:
+def fetch_full_dump_marc(**kwargs) -> tuple[str, list]:
+    """
+    Returns the batch's MARC file and any CC0 MARC21 records skipped as oversized
+    """
     offset = kwargs.get("offset")
     batch_size = kwargs.get("batch_size", 1000)
     connection = kwargs.get("connection")
@@ -117,7 +120,7 @@ def fetch_full_dump_marc(**kwargs) -> str:
         instance_ids=tuples,
     )
 
-    return str(marc_file)
+    return str(marc_file), exporter.oversized_records
 
 
 def fetch_number_of_records(**kwargs) -> int:

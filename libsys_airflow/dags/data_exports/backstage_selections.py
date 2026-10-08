@@ -20,7 +20,7 @@ from libsys_airflow.plugins.data_exports.instance_ids import (
 
 from libsys_airflow.plugins.data_exports.email import (
     generate_missing_marc_email,
-    generate_oversized_marc_email,
+    oversized_marc_records_email,
     send_confirmation_email,
 )
 
@@ -44,14 +44,6 @@ def missing_marc_records_email(**kwargs):
     generate_missing_marc_email.function(
         dag_run=kwargs["dag_run"],
         missing_marc_instances=fetched_marc_records["not_found"],
-    )
-
-
-def oversized_marc_records_email(**kwargs):
-    fetched_marc_records: dict = kwargs.get("fetched_marc_records", {})
-    generate_oversized_marc_email.function(
-        dag_run=kwargs["dag_run"],
-        oversized_records=fetched_marc_records.get("oversized", []),
     )
 
 

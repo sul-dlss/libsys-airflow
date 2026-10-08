@@ -13,6 +13,10 @@ from airflow.sdk import (
 )
 from airflow.providers.standard.operators.empty import EmptyOperator
 
+from libsys_airflow.plugins.data_exports.email import (
+    generate_oversized_marc_email,
+    merge_mapped_oversized,
+)
 from libsys_airflow.plugins.data_exports.full_dump_marc import (
     create_materialized_view,
     create_campus_filter_view,
@@ -160,23 +164,34 @@ with DAG(
         mat_view = params.get("mat_view", "data_export_marc")
         _connection = connection_pool.getconn()
         marc_file_list = []
+        oversized_records = []
 
         for offset in range(start, stop, batch_size):
             logger.info(f"fetch_folio_records: from {offset}")
             try:
-                marc = fetch_full_dump_marc(
+                marc, oversized = fetch_full_dump_marc(
                     offset=offset,
                     batch_size=batch_size,
                     connection=_connection,
                     mat_view=mat_view,
                 )
                 marc_file_list.append(marc)
+                oversized_records.extend(oversized)
             except exc.OperationalError as err:
                 logger.warning(f"{err} for offset {offset}")
                 continue
 
         connection_pool.putconn(_connection, close=True)  # type: ignore
+        context["ti"].xcom_push(key="oversized", value=oversized_records)
         return marc_file_list
+
+    @task(trigger_rule="all_done")
+    def email_oversized_marc(**kwargs):
+        pulled = kwargs["ti"].xcom_pull(task_ids="fetch_folio_records", key="oversized")
+        generate_oversized_marc_email.function(
+            dag_run=kwargs["dag_run"],
+            oversized_records=merge_mapped_oversized(pulled),
+        )
 
     @task_group(group_id="transform_marc")
     def marc_transformations(marc_files: list):
@@ -186,9 +201,7 @@ with DAG(
             transformer = Transformer(connection=_connection)
 
             for marc_file in marc_files:
-                transformer.add_holdings_items(
-                    marc_file=marc_file, full_dump=True, as_xml=True
-                )
+                transformer.add_holdings_items(marc_file=marc_file, full_dump=True)
 
             connection_pool.putconn(_connection, close=True)
 
@@ -199,7 +212,7 @@ with DAG(
             exclude_tags = params.get("exclude_tags", True)
             for marc_file in marc_files:
                 marc_clean_serialize(
-                    marc_file, full_dump=True, exclude_tags=exclude_tags, as_xml=True
+                    marc_file, full_dump=True, exclude_tags=exclude_tags
                 )
 
         @task
@@ -247,5 +260,7 @@ with DAG(
         task_id="finish_marc",
     )
 
+    email_marc_oversized = email_oversized_marc()
+
     start >> create_campus_filter >> create_view >> delete_s3_files >> total_records
-    finish_transforms >> finish_processing_marc
+    finish_transforms >> finish_processing_marc >> email_marc_oversized

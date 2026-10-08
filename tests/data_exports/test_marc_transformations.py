@@ -500,8 +500,8 @@ def test_full_dump_oversized_record_xml(mocker, mock_marc_dir, mock_folio_client
         xml_writer.close()
 
     transformer = marc_transformer.Transformer(connection=MockPool().getconn())
-    transformer.add_holdings_items(str(marc_file), full_dump=True, as_xml=True)
-    marc_clean_serialize(str(marc_file), full_dump=True, exclude_tags=True, as_xml=True)
+    transformer.add_holdings_items(str(marc_file), full_dump=True)
+    marc_clean_serialize(str(marc_file), full_dump=True, exclude_tags=True)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = pymarc.parse_xml_to_array(fo)
@@ -660,20 +660,29 @@ def test_change_leader_xml(mock_marc_dir):
     marc_file = mock_marc_dir / "20240509.xml"
 
     record = pymarc.Record()
-    record.add_field(pymarc.Field(tag='001', data='a123'))
+    record.add_field(
+        pymarc.Field(tag='001', data='a123'),
+        pymarc.Field(
+            tag='245',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='A Title')],
+        ),
+    )
 
     with marc_file.open("wb") as fo:
         xml_writer = pymarc.XMLWriter(fo)
         xml_writer.write(record)
         xml_writer.close()
 
-    change_leader_for_deletes({"deletes": [str(marc_file)]}, as_xml=True)
+    # .xml suffix alone selects MARC-XML; no format flag is passed
+    change_leader_for_deletes({"deletes": [str(marc_file)]})
 
     with marc_file.open('rb') as fo:
         modified_marc_records = pymarc.parse_xml_to_array(fo)
 
     assert modified_marc_records[0].leader[5] == 'd'
     assert modified_marc_records[0]['001'].value() == 'a123'
+    assert modified_marc_records[0]['245']['a'] == 'A Title'
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)
@@ -723,8 +732,8 @@ def test_vendor_oversized_record_xml(mocker, mock_marc_dir, mock_folio_client):
         "not_found": [],
         "oversized": [{"hrid": "a1", "uuid": "uuid-1"}],
     }
-    add_holdings_items_to_marc_files(marc_file_list, full_dump=False, as_xml=True)
-    clean_and_serialize_marc_files(marc_file_list, as_xml=True)
+    add_holdings_items_to_marc_files(marc_file_list, full_dump=False)
+    clean_and_serialize_marc_files(marc_file_list)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = pymarc.parse_xml_to_array(fo)

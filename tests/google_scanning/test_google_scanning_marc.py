@@ -59,11 +59,9 @@ def test_generate_shipment_marc_success(mocker):
         instance_files=[mock_save_ids.return_value], as_xml=True
     )
     mock_add_holdings.assert_called_once_with(
-        mock_marc_for_instances.return_value, full_dump=False, as_xml=True
+        mock_marc_for_instances.return_value, full_dump=False
     )
-    mock_clean_serialize.assert_called_once_with(
-        mock_marc_for_instances.return_value, as_xml=True
-    )
+    mock_clean_serialize.assert_called_once_with(mock_marc_for_instances.return_value)
 
     assert result == {
         "filestamp": "stanford_20260810-campus-143022",

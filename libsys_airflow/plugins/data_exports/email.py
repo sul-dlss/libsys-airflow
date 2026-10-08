@@ -454,6 +454,32 @@ def generate_missing_marc_email(**kwargs):
     )
 
 
+def oversized_marc_records_email(**kwargs):
+    """
+    Called by vendor selection DAGs' PythonOperator with the
+    marc_for_instances XCom, which is None if fetching MARC records failed
+    """
+    fetched_marc_records: dict = kwargs.get("fetched_marc_records") or {}
+    generate_oversized_marc_email.function(
+        dag_run=kwargs["dag_run"],
+        oversized_records=fetched_marc_records.get("oversized", []),
+    )
+
+
+def merge_mapped_oversized(pulled) -> list:
+    """
+    Pulling a pushed XCom key from a mapped task returns a list per mapped
+    task, or the single task's list when only one was mapped
+    """
+    oversized_records: list = []
+    for value in pulled or []:
+        if isinstance(value, dict):
+            oversized_records.append(value)
+        elif value:
+            oversized_records.extend(value)
+    return oversized_records
+
+
 @task
 def generate_oversized_marc_email(**kwargs):
     oversized_records = kwargs.get("oversized_records") or []

@@ -4,7 +4,7 @@ import pathlib
 import pymarc
 import re
 
-from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
+from libsys_airflow.plugins.data_exports.marc.marc_io import marc_writer, read_marc
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from s3path import S3Path
 
@@ -90,12 +90,12 @@ class Transformer(object):
 
         return subfields_i
 
-    def add_holdings_items(self, marc_file: str, full_dump: bool, as_xml: bool = False):
+    def add_holdings_items(self, marc_file: str, full_dump: bool):
         """
         Adds FOLIO Holdings and Items information to MARC records
         full_dump reads and writes the file in S3
-        as_xml reads and writes MARC-XML, since records with many 950s can
-        exceed the MARC21 record length limit
+        .xml files are read and written as MARC-XML, since records with many
+        950s can exceed the MARC21 record length limit
         """
         marc_path = pathlib.Path(marc_file)
         if full_dump:
@@ -105,40 +105,30 @@ class Transformer(object):
         marc_records = []
         logger.info(f"Starting MARC processing on {marc_path}")
 
-        with marc_path.open('rb') as fo:
-            if as_xml:
-                reader = pymarc.parse_xml_to_array(fo)
-            else:
-                reader = pymarc.MARCReader(fo)
-            for i, record in enumerate(reader):
-                try:
-                    subfields_i = self.instance_subfields(record)
+        for i, record in enumerate(read_marc(marc_path)):
+            try:
+                subfields_i = self.instance_subfields(record)
 
-                    if subfields_i:
-                        new_950s = self.add_holdings_items_fields(subfields_i)
-                        record.add_field(*new_950s)
-                        marc_records.append(record)
+                if subfields_i:
+                    new_950s = self.add_holdings_items_fields(subfields_i)
+                    record.add_field(*new_950s)
+                    marc_records.append(record)
 
-                    if not i % 100:
-                        logger.info(f"{i:,} processed records")
-                except Exception as e:
-                    logger.warning(e)
-                    continue
+                if not i % 100:
+                    logger.info(f"{i:,} processed records")
+            except Exception as e:
+                logger.warning(e)
+                continue
 
         logger.info(
             f"Writing {len(marc_records):,} modified MARC records to {marc_path}"
         )
 
-        if as_xml:
-            marc_writer = pymarc.XMLWriter(marc_path.open("wb"))
-        else:
-            marc_writer = pymarc.MARCWriter(marc_path.open("wb"))  # type: ignore
-        for record in marc_records:
-            if as_xml:
-                record = remove_invalid_xml_chars(record)
-            marc_writer.write(record)
-
-        marc_writer.close()
+        with marc_path.open("wb") as fo:
+            writer = marc_writer(fo, marc_path)
+            for record in marc_records:
+                writer.write(record)
+            writer.close(close_fh=False)
 
     def add_holdings_items_fields(self, instance_subfields: list) -> list:
         fields = []

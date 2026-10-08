@@ -9,7 +9,9 @@ from libsys_airflow.plugins.data_exports.email import (
     generate_oclc_new_marc_errors_email,
     generate_missing_marc_email,
     generate_oversized_marc_email,
+    merge_mapped_oversized,
     no_files_email,
+    oversized_marc_records_email,
     failed_transmission_email,
     send_confirmation_email,
 )
@@ -411,6 +413,44 @@ def test_generate_oversized_marc_email_none(mocker, mock_dag_run, caplog):
 
     assert not mock_send_email.called
     assert "No oversized MARC records" in caplog.text
+
+
+def test_oversized_marc_records_email(mocker, mock_dag_run, mock_folio_variables):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    oversized_marc_records_email(
+        dag_run=mock_dag_run,
+        fetched_marc_records={
+            "new": [],
+            "oversized": [{"hrid": "a1", "uuid": "uuid-1"}],
+        },
+    )
+
+    assert mock_send_email.called
+
+
+def test_oversized_marc_records_email_failed_fetch(mocker, mock_dag_run, caplog):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.data_exports.email.send_email_with_server_name"
+    )
+
+    oversized_marc_records_email(dag_run=mock_dag_run, fetched_marc_records=None)
+
+    assert not mock_send_email.called
+    assert "No oversized MARC records" in caplog.text
+
+
+def test_merge_mapped_oversized():
+    a1 = {"hrid": "a1", "uuid": "uuid-1"}
+    a2 = {"hrid": "a2", "uuid": "uuid-2"}
+
+    # multiple mapped jobs: one list per job, some empty or missing
+    assert merge_mapped_oversized([[a1], [], None, [a2]]) == [a1, a2]
+    # single mapped job: that job's list
+    assert merge_mapped_oversized([a1, a2]) == [a1, a2]
+    assert merge_mapped_oversized(None) == []
 
 
 def test_generate_missing_marc_email_oclc(mocker, mock_dag_run, mock_folio_variables):

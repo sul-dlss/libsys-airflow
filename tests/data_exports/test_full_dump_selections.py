@@ -277,10 +277,11 @@ def test_fetch_full_dump(
         "full-dump" if key == "FULL_DUMP_VENDOR" else "test-bucket"
     )
 
-    full_dump_marc.fetch_full_dump_marc(
+    marc_file, oversized = full_dump_marc.fetch_full_dump_marc(
         mat_view="data_export_marc", offset=0, batch_size=3, connection=MockConnection()
     )
     assert "Saving 3 marc records to 0_3.xml in bucket" in caplog.text
+    assert oversized == []
 
     full_dump_marc.fetch_full_dump_marc(
         mat_view="data_export_marc", offset=3, batch_size=3, connection=MockConnection()

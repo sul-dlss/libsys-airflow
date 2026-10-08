@@ -7,13 +7,11 @@ import httpx
 
 from pymarc import (
     JSONHandler as marcJson,
-    MARCWriter as marcWriter,
     Record as marcRecord,
-    XMLWriter as marcXMLWriter,
 )
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
-from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
+from libsys_airflow.plugins.data_exports.marc.marc_io import marc_writer, record_hrid
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
@@ -36,6 +34,18 @@ class Exporter(object):
         if any(len(field.as_marc(encoding)) > 9999 for field in marc_record.fields):
             return True
         return len(marc_record.as_marc()) > 99999
+
+    def skip_oversized(self, marc_record: marcRecord, uuid: str) -> bool:
+        """
+        Saves records that exceed the MARC21 limits to oversized_records so
+        they can be reported at the end of the DAG run
+        """
+        if not self.exceeds_marc21_limits(marc_record):
+            return False
+        hrid = record_hrid(marc_record)
+        logger.warning(f"Skipping oversized MARC21 record {hrid} {uuid}")
+        self.oversized_records.append({"hrid": hrid, "uuid": uuid})
+        return True
 
     def check_035(self, field035s: list) -> bool:
         reject = False
@@ -153,10 +163,7 @@ class Exporter(object):
                     marc_records.append(marc_record)
                     continue
 
-                if self.exceeds_marc21_limits(marc_record):
-                    hrid = marc_record['001'].value() if '001' in marc_record else ""
-                    logger.warning(f"Skipping oversized MARC21 record {hrid} {uuid}")
-                    self.oversized_records.append({"hrid": hrid, "uuid": uuid})
+                if self.skip_oversized(marc_record, uuid):
                     continue
 
                 marc_file = self.write_marc(
@@ -181,6 +188,7 @@ class Exporter(object):
         vendor = Variable.get("FULL_DUMP_VENDOR", "full-dump")
 
         marc = []
+        instance_uuids = []
         for row in instance_ids:
             marc_json_handler = marcJson()
             try:
@@ -194,6 +202,7 @@ class Exporter(object):
                 continue
 
             marc.append(marc21)
+            instance_uuids.append(row[0])
 
         logger.info(f"Saving {len(marc)} marc records to {marc_filename} in bucket.")
         marc_file = self.write_marc(
@@ -210,10 +219,14 @@ class Exporter(object):
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
         if params.get("marc_file_dir") == "CC0":
-            cc0_marc = copy.deepcopy(marc)
-            if params.get("exclude_tags", True):
-                for record in cc0_marc:
-                    record.remove_fields(*excluded_tags)
+            cc0_marc = []
+            for uuid, record in zip(instance_uuids, marc):
+                cc0_record = copy.deepcopy(record)
+                if params.get("exclude_tags", True):
+                    cc0_record.remove_fields(*excluded_tags)
+                if self.skip_oversized(cc0_record, uuid):
+                    continue
+                cc0_marc.append(cc0_record)
             logger.info(f"Saving {len(cc0_marc)} CC0 MARC21 records")
             self.write_marc(
                 pathlib.Path(marc_filename), S3Path(full_dump_files), cc0_marc, "."
@@ -268,11 +281,9 @@ class Exporter(object):
         marc_file = directory / f"{marc_file_name}{suffix}"
 
         with marc_file.open(mode) as fo:
-            marc_writer = marcXMLWriter(fo) if as_xml else marcWriter(fo)
+            writer = marc_writer(fo, marc_file)
             for record in marc:
-                if as_xml:
-                    record = remove_invalid_xml_chars(record)
-                marc_writer.write(record)
-            marc_writer.close(close_fh=False)
+                writer.write(record)
+            writer.close(close_fh=False)
 
         return str(marc_file.absolute())
