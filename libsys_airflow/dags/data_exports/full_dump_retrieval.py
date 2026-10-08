@@ -186,7 +186,9 @@ with DAG(
             transformer = Transformer(connection=_connection)
 
             for marc_file in marc_files:
-                transformer.add_holdings_items(marc_file=marc_file, full_dump=True)
+                transformer.add_holdings_items(
+                    marc_file=marc_file, full_dump=True, as_xml=True
+                )
 
             connection_pool.putconn(_connection, close=True)
 
@@ -197,7 +199,7 @@ with DAG(
             exclude_tags = params.get("exclude_tags", True)
             for marc_file in marc_files:
                 marc_clean_serialize(
-                    marc_file, full_dump=True, exclude_tags=exclude_tags
+                    marc_file, full_dump=True, exclude_tags=exclude_tags, as_xml=True
                 )
 
         @task

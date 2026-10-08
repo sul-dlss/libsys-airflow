@@ -25,6 +25,17 @@ logger = logging.getLogger(__name__)
 class Exporter(object):
     def __init__(self):
         self.folio_client = folio_client()
+        self.oversized_records: list = []
+
+    def exceeds_marc21_limits(self, marc_record: marcRecord) -> bool:
+        """
+        MARC21 allows at most 99,999 bytes per record and 9,999 bytes per field;
+        larger records corrupt the binary file for every record after them
+        """
+        encoding = "utf-8" if marc_record.leader[9] == "a" else "iso8859-1"
+        if any(len(field.as_marc(encoding)) > 9999 for field in marc_record.fields):
+            return True
+        return len(marc_record.as_marc()) > 99999
 
     def check_035(self, field035s: list) -> bool:
         reject = False
@@ -80,7 +91,7 @@ class Exporter(object):
                     ]
                 )
 
-            case "oclc" | "pod" | "sharevde" | "full-dump":
+            case "oclc" | "pod" | "full-dump":
                 exclude = any(
                     [
                         self.check_590(marc_record.get_fields("590")),
@@ -98,11 +109,14 @@ class Exporter(object):
         return exclude
 
     def retrieve_marc_for_instances(
-        self, instance_file: pathlib.Path, kind: str
+        self, instance_file: pathlib.Path, kind: str, as_xml: bool = False
     ) -> tuple:
         """
         Called for each instanceid file in vendor directory.
         For each ID row, writes and returns converted MARC from SRS to file system
+        as_xml writes all of the instance file's records to a single MARC-XML file
+        MARC21 records that exceed the format's limits are skipped and saved in
+        oversized_records
         """
         if not instance_file.exists():
             raise ValueError(
@@ -110,8 +124,10 @@ class Exporter(object):
             )
 
         vendor_name = instance_file.parent.parent.parent.name
+        marc_directory = instance_file.parent.parent.parent
 
         marc_file = ""
+        marc_records = []
         not_found_srs_records = []
         with instance_file.open() as fo:
             instance_reader = csv.reader(fo)
@@ -133,10 +149,24 @@ class Exporter(object):
                     logger.info(f"Excluding {vendor_name}")
                     continue
 
-                marc_directory = instance_file.parent.parent.parent
+                if as_xml:
+                    marc_records.append(marc_record)
+                    continue
+
+                if self.exceeds_marc21_limits(marc_record):
+                    hrid = marc_record['001'].value() if '001' in marc_record else ""
+                    logger.warning(f"Skipping oversized MARC21 record {hrid} {uuid}")
+                    self.oversized_records.append({"hrid": hrid, "uuid": uuid})
+                    continue
+
                 marc_file = self.write_marc(
                     instance_file, marc_directory, marc_record, kind
                 )
+
+        if marc_records:
+            marc_file = self.write_marc(
+                instance_file, marc_directory, marc_records, kind, as_xml=True
+            )
 
         return marc_file, not_found_srs_records
 
@@ -227,9 +257,10 @@ class Exporter(object):
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
-            mode = "ab"
-            marc = [marc]  # type: ignore
             directory = directory / kind
+            if not as_xml:
+                mode = "ab"
+                marc = [marc]  # type: ignore
 
         logger.info(f"Writing to directory: {directory}")
         directory.mkdir(parents=True, exist_ok=True)

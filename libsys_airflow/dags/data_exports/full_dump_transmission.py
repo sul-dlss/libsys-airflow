@@ -71,7 +71,7 @@ def http_or_ftp_path(**kwargs):
             "pod",
             type="string",
             description="Send all records to this vendor.",
-            enum=["pod", "sharevde", "backstage", "google"],
+            enum=["pod", "backstage", "google"],
         ),
         "bucket": Param(
             Variable.get("FOLIO_AWS_BUCKET", "folio-data-export-prod"), type="string"

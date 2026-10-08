@@ -90,10 +90,11 @@ class Transformer(object):
 
         return subfields_i
 
-    def add_holdings_items(self, marc_file: str, full_dump: bool):
+    def add_holdings_items(self, marc_file: str, full_dump: bool, as_xml: bool = False):
         """
         Adds FOLIO Holdings and Items information to MARC records
-        Full dump files are MARC-XML, since records with many 950s can
+        full_dump reads and writes the file in S3
+        as_xml reads and writes MARC-XML, since records with many 950s can
         exceed the MARC21 record length limit
         """
         marc_path = pathlib.Path(marc_file)
@@ -105,7 +106,7 @@ class Transformer(object):
         logger.info(f"Starting MARC processing on {marc_path}")
 
         with marc_path.open('rb') as fo:
-            if full_dump:
+            if as_xml:
                 reader = pymarc.parse_xml_to_array(fo)
             else:
                 reader = pymarc.MARCReader(fo)
@@ -128,12 +129,12 @@ class Transformer(object):
             f"Writing {len(marc_records):,} modified MARC records to {marc_path}"
         )
 
-        if full_dump:
+        if as_xml:
             marc_writer = pymarc.XMLWriter(marc_path.open("wb"))
         else:
             marc_writer = pymarc.MARCWriter(marc_path.open("wb"))  # type: ignore
         for record in marc_records:
-            if full_dump:
+            if as_xml:
                 record = remove_invalid_xml_chars(record)
             marc_writer.write(record)
 

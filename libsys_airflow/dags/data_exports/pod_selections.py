@@ -128,6 +128,7 @@ with DAG(
         python_callable=marc_for_instances,
         op_kwargs={
             "instance_files": "{{ ti.xcom_pull('save_ids_to_file') }}",
+            "as_xml": True,
         },
     )
 
@@ -145,6 +146,7 @@ with DAG(
         op_kwargs={
             "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
             "full_dump": False,
+            "as_xml": True,
         },
     )
 
@@ -152,7 +154,8 @@ with DAG(
         task_id="transform_folio_marc_clean_serialize",
         python_callable=clean_and_serialize_marc_files,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
+            "as_xml": True,
         },
     )
 
@@ -160,7 +163,8 @@ with DAG(
         task_id="transform_folio_modify_leader_fields",
         python_callable=change_leader_for_deletes,
         op_kwargs={
-            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}"
+            "marc_file_list": "{{ ti.xcom_pull('fetch_marc_records_from_folio') }}",
+            "as_xml": True,
         },
     )
 

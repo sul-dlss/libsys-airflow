@@ -348,6 +348,34 @@ def _missing_marc_for_instances(**kwargs) -> str:
     )
 
 
+def _oversized_marc_for_instances(**kwargs) -> str:
+    oversized_records: list = kwargs["oversized_records"]
+    dag_run = kwargs["dag_run"]
+    folio_url: str = kwargs["folio_url"]
+
+    template = Template(
+        """
+        <h2>MARC Records Too Large for MARC21</h2>
+        <h3>DAG: {{ dag_id }} Run: <a href="{{ run_url }}">{{ dag_run_id }}</a></h3>
+        <p>These records exceed the MARC21 limits of 99,999 bytes per record or
+        9,999 bytes per field and were not exported.</p>
+        <ul>
+        {% for record in oversized_records %}
+        <li><a href="{{ folio_url }}/inventory/view/{{ record.uuid }}">{{ record.hrid or record.uuid }}</a></li>
+        {% endfor %}
+        </ul>
+        """
+    )
+
+    return template.render(
+        dag_id=dag_run.dag_id,
+        run_url=dag_run_url(dag_run=dag_run),
+        dag_run_id=dag_run.run_id,
+        oversized_records=oversized_records,
+        folio_url=folio_url,
+    )
+
+
 def send_confirmation_email(**kwargs):
     vendor = kwargs["vendor"]
     user_email = kwargs["user_email"]
@@ -422,5 +450,28 @@ def generate_missing_marc_email(**kwargs):
     send_email_with_server_name(
         to=email_addresses,
         subject=f"Instances missing MARC Records for {dag_run.dag_id}",
+        html_content=body,
+    )
+
+
+@task
+def generate_oversized_marc_email(**kwargs):
+    oversized_records = kwargs.get("oversized_records") or []
+
+    if len(oversized_records) < 1:
+        logger.info("No oversized MARC records")
+        return
+
+    dag_run = kwargs["dag_run"]
+
+    body = _oversized_marc_for_instances(
+        oversized_records=oversized_records,
+        dag_run=dag_run,
+        folio_url=Variable.get("FOLIO_URL"),
+    )
+
+    send_email_with_server_name(
+        to=[Variable.get("EMAIL_DEVS")],
+        subject=f"MARC Records too large to export for {dag_run.dag_id}",
         html_content=body,
     )

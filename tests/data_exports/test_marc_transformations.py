@@ -6,6 +6,8 @@ import pathlib
 from unittest.mock import MagicMock
 
 from libsys_airflow.plugins.data_exports.marc.transforms import (
+    add_holdings_items_to_marc_files,
+    change_leader_for_deletes,
     leader_for_deletes,
     clean_and_serialize_marc_files,
     marc_clean_serialize,
@@ -498,8 +500,8 @@ def test_full_dump_oversized_record_xml(mocker, mock_marc_dir, mock_folio_client
         xml_writer.close()
 
     transformer = marc_transformer.Transformer(connection=MockPool().getconn())
-    transformer.add_holdings_items(str(marc_file), full_dump=True)
-    marc_clean_serialize(str(marc_file), full_dump=True, exclude_tags=True)
+    transformer.add_holdings_items(str(marc_file), full_dump=True, as_xml=True)
+    marc_clean_serialize(str(marc_file), full_dump=True, exclude_tags=True, as_xml=True)
 
     with marc_file.open('rb') as fo:
         mod_marc_records = pymarc.parse_xml_to_array(fo)
@@ -581,6 +583,31 @@ def test_marc_clean_serialize(mock_marc_dir):
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
+def test_marc_clean_serialize_invalid_xml_chars(mock_marc_dir):
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(tag='001', data='a123'),
+        pymarc.Field(
+            tag='245',
+            indicators=[' ', ' '],
+            subfields=[pymarc.Subfield(code='a', value='A Title\x0b')],
+        ),
+    )
+    marc_file = mock_marc_dir / "20240228.mrc"
+    with marc_file.open("wb+") as fo:
+        marc_writer = pymarc.MARCWriter(fo)
+        marc_writer.write(record)
+
+    marc_clean_serialize(str(marc_file.absolute()), full_dump=False, exclude_tags=True)
+
+    with (mock_marc_dir / "20240228.xml").open("rb") as fo:
+        xml_records = pymarc.parse_xml_to_array(fo)
+
+    assert len(xml_records) == 1
+    assert xml_records[0]['245']['a'] == 'A Title'
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["vendor"], indirect=True)
 def test_marc_no_clean_serialize(mock_marc_dir):
 
     marc_file = setup_marc_file_for_clean_serialize(mock_marc_dir)
@@ -626,6 +653,86 @@ def test_change_leader(mock_marc_dir):
         modified_marc_record = next(marc_reader)
 
     assert modified_marc_record.leader[5] == 'd'
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)
+def test_change_leader_xml(mock_marc_dir):
+    marc_file = mock_marc_dir / "20240509.xml"
+
+    record = pymarc.Record()
+    record.add_field(pymarc.Field(tag='001', data='a123'))
+
+    with marc_file.open("wb") as fo:
+        xml_writer = pymarc.XMLWriter(fo)
+        xml_writer.write(record)
+        xml_writer.close()
+
+    change_leader_for_deletes({"deletes": [str(marc_file)]}, as_xml=True)
+
+    with marc_file.open('rb') as fo:
+        modified_marc_records = pymarc.parse_xml_to_array(fo)
+
+    assert modified_marc_records[0].leader[5] == 'd'
+    assert modified_marc_records[0]['001'].value() == 'a123'
+
+
+@pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)
+def test_vendor_oversized_record_xml(mocker, mock_marc_dir, mock_folio_client):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transformer.folio_client',
+        return_value=mock_folio_client,
+    )
+    mock_pool = MagicMock()
+    mock_pool.pool.return_value.getconn.return_value = MockConnection()
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.transforms.SQLPool',
+        return_value=mock_pool,
+    )
+
+    oversized = pymarc.Record()
+    oversized.add_field(pymarc.Field(tag='001', data='a486841'))
+    for i in range(150):
+        oversized.add_field(
+            pymarc.Field(
+                tag='505',
+                indicators=['0', ' '],
+                subfields=[pymarc.Subfield(code='a', value=f"{i} " + "x" * 1000)],
+            )
+        )
+    oversized.add_field(
+        pymarc.Field(
+            tag='999',
+            indicators=['f', 'f'],
+            subfields=[
+                pymarc.Subfield(code='i', value='5face3a3-9804-5034-aa02-1eb5db0c191c')
+            ],
+        )
+    )
+    assert len(oversized.as_marc()) > 99999
+
+    marc_file = mock_marc_dir / "202402271159.xml"
+    with marc_file.open("wb") as fo:
+        xml_writer = pymarc.XMLWriter(fo)
+        xml_writer.write(oversized)
+        xml_writer.close()
+
+    marc_file_list = {
+        "new": [],
+        "updates": [str(marc_file)],
+        "deletes": [],
+        "not_found": [],
+        "oversized": [{"hrid": "a1", "uuid": "uuid-1"}],
+    }
+    add_holdings_items_to_marc_files(marc_file_list, full_dump=False, as_xml=True)
+    clean_and_serialize_marc_files(marc_file_list, as_xml=True)
+
+    with marc_file.open('rb') as fo:
+        mod_marc_records = pymarc.parse_xml_to_array(fo)
+
+    assert len(mod_marc_records) == 1
+    assert len(mod_marc_records[0].get_fields('505')) == 150
+    assert len(mod_marc_records[0].get_fields('950')) == 1
+    assert not (mock_marc_dir / "202402271159.mrc").exists()
 
 
 @pytest.mark.parametrize("mock_marc_dir", ["pod"], indirect=True)

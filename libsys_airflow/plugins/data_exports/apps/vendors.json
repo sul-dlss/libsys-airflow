@@ -2,11 +2,7 @@
   "vendors": [
     "backstage",
     "gobi",
-    "google",
-    "hathi",
-    "nielsen",
     "oclc",
-    "pod",
-    "sharevde"
+    "pod"
   ]
 }

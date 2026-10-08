@@ -223,6 +223,86 @@ def test_marc_for_instances(
     assert files["deletes"][0].endswith('202402271159.mrc')
 
     assert not any("updates" in s for s in files["deletes"])
+    assert files["oversized"] == []
+
+
+def test_retrieve_marc_for_instances_as_xml(
+    mocker, mock_folio_client, mock_get_current_context, tmp_path
+):
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
+        return_value=mock_folio_client,
+    )
+
+    instance_file = setup_test_file_updates(tmp_path)
+
+    exporter = Exporter()
+    marc_file, _ = exporter.retrieve_marc_for_instances(
+        instance_file, kind="updates", as_xml=True
+    )
+
+    marc_dir = instance_file.parent.parent.parent / "marc-files/updates"
+    assert marc_file == str(marc_dir / "202402271159.xml")
+    assert not (marc_dir / "202402271159.mrc").exists()
+
+    with open(marc_file, "rb") as fo:
+        marc_records = pymarc.parse_xml_to_array(fo)
+
+    assert [r['001'].value() for r in marc_records] == ['a4232294']
+
+
+def oversized_marc_json(hrid: str, tag: str, count: int, size: int) -> dict:
+    return {
+        "leader": "01509nam a2200361 a 4500",
+        "fields": [{"001": hrid}]
+        + [
+            {tag: {"ind1": " ", "ind2": " ", "subfields": [{"a": "x" * size}]}}
+            for _ in range(count)
+        ],
+    }
+
+
+def test_retrieve_marc_for_instances_skips_oversized(
+    mocker, mock_get_current_context, tmp_path
+):
+    records = {
+        "uuid-small": {
+            "leader": "01509nam a2200361 a 4500",
+            "fields": [{"001": "a1"}],
+        },
+        "uuid-big-record": oversized_marc_json("a2", "505", 150, 1000),
+        "uuid-big-field": oversized_marc_json("a3", "500", 1, 10000),
+        "uuid-after": {
+            "leader": "01509nam a2200361 a 4500",
+            "fields": [{"001": "a4"}],
+        },
+    }
+    mock_client = MagicMock()
+    mock_client.folio_get = lambda path: {
+        "parsedRecord": {"content": records[path.split("/")[3]]}
+    }
+    mocker.patch(
+        'libsys_airflow.plugins.data_exports.marc.exporter.folio_client',
+        return_value=mock_client,
+    )
+
+    instance_file = (
+        tmp_path / "data-export-files/backstage/instanceids/new/202402271159.csv"
+    )
+    instance_file.parent.mkdir(parents=True)
+    instance_file.write_text("\n".join(records.keys()) + "\n")
+
+    exporter = Exporter()
+    marc_file, _ = exporter.retrieve_marc_for_instances(instance_file, kind="new")
+
+    with open(marc_file, "rb") as fo:
+        marc_records = [r for r in pymarc.MARCReader(fo)]
+
+    assert [r['001'].value() for r in marc_records] == ['a1', 'a4']
+    assert exporter.oversized_records == [
+        {"hrid": "a2", "uuid": "uuid-big-record"},
+        {"hrid": "a3", "uuid": "uuid-big-field"},
+    ]
 
 
 field_035 = pymarc.Field(
@@ -324,15 +404,6 @@ def test_exclude_marc_by_vendor_pod(mocker):
     assert exporter.exclude_marc_by_vendor(marc_record, 'pod')
 
 
-def test_exclude_marc_by_vendor_sharevde(mocker):
-    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
-    exporter = Exporter()
-    marc_record = pymarc.Record()
-    marc_record.add_field(field_590, field_915)
-
-    assert exporter.exclude_marc_by_vendor(marc_record, 'sharevde')
-
-
 def test_retrieve_marc_for_full_dump_vendor_none(mocker, mock_get_current_context):
     mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
     mock_variable = mocker.patch(
@@ -429,7 +500,7 @@ def test_write_marc_as_xml_oversized_record(mocker, tmp_path, mock_get_current_c
 
     exporter_instance = Exporter()
     marc_file = exporter_instance.write_marc(
-        tmp_path / "0_5000.xml", tmp_path, record, "full", as_xml=True
+        tmp_path / "0_5000.xml", tmp_path, [record], "full", as_xml=True
     )
 
     assert marc_file.endswith("marc-files/full/0_5000.xml")
@@ -454,7 +525,7 @@ def test_write_marc_as_xml_invalid_chars(mocker, tmp_path, mock_get_current_cont
 
     exporter_instance = Exporter()
     marc_file = exporter_instance.write_marc(
-        tmp_path / "2545000_2550000.xml", tmp_path, record, "full", as_xml=True
+        tmp_path / "2545000_2550000.xml", tmp_path, [record], "full", as_xml=True
     )
 
     with open(marc_file, "rb") as fo:

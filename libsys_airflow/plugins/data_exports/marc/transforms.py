@@ -8,6 +8,7 @@ import xml.etree.ElementTree as etree  # noqa
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
 from libsys_airflow.plugins.data_exports.marc.transformer import Transformer
 from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
+from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
 from libsys_airflow.plugins.data_exports.sql_pool import SQLPool
 from s3path import S3Path
 
@@ -19,13 +20,17 @@ Called by the vendor selection DAGs except oclc and the full record selections
 """
 
 
-def add_holdings_items_to_marc_files(marc_file_list: dict, full_dump: bool):
+def add_holdings_items_to_marc_files(
+    marc_file_list: dict, full_dump: bool, as_xml: bool = False
+):
     connection_pool = SQLPool(conn_id="postgres_folio").pool()
     _connection = connection_pool.getconn()
     transformer = Transformer(connection=_connection)
     new_and_updates = marc_file_list['new'] + marc_file_list['updates']
     for marc_file in new_and_updates:
-        transformer.add_holdings_items(marc_file=marc_file, full_dump=full_dump)
+        transformer.add_holdings_items(
+            marc_file=marc_file, full_dump=full_dump, as_xml=as_xml
+        )
 
     connection_pool.putconn(_connection, close=True)
 
@@ -43,12 +48,12 @@ def divide_into_oclc_libraries(**kwargs):
     return oclc_transformer.no_holdings, oclc_transformer.staff_notices
 
 
-def change_leader_for_deletes(marc_file_list: dict):
+def change_leader_for_deletes(marc_file_list: dict, as_xml: bool = False):
     for file in marc_file_list['deletes']:
-        leader_for_deletes(file, False)
+        leader_for_deletes(file, False, as_xml=as_xml)
 
 
-def leader_for_deletes(marc_file: str, full_dump: bool):
+def leader_for_deletes(marc_file: str, full_dump: bool, as_xml: bool = False):
     """
     Records specified as deleted by using d in position 05 in the MARC Leader
     """
@@ -58,7 +63,10 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
         logger.info(f"Changing leader using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
-        marc_records = [record for record in pymarc.MARCReader(fo)]
+        if as_xml:
+            marc_records = pymarc.parse_xml_to_array(fo)
+        else:
+            marc_records = [record for record in pymarc.MARCReader(fo)]
 
     logger.info(f"Changing leader for {len(marc_records):,} records")
 
@@ -73,27 +81,32 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
 
     try:
         with marc_path.open("wb") as fo:
-            marc_writer = pymarc.MARCWriter(fo)
+            if as_xml:
+                marc_writer = pymarc.XMLWriter(fo)
+            else:
+                marc_writer = pymarc.MARCWriter(fo)  # type: ignore
             for record in marc_records:
                 marc_writer.write(record)
+            marc_writer.close(close_fh=False)
     except pymarc.exceptions.WriteNeedsRecord as e:
         logger.warning(e)
 
 
-def clean_and_serialize_marc_files(marc_file_list: dict):
-    for kind, file_list in marc_file_list.items():
-        if kind.startswith("not_found"):
-            continue
-        for filepath in file_list:
-            marc_clean_serialize(filepath, False, True)
+def clean_and_serialize_marc_files(marc_file_list: dict, as_xml: bool = False):
+    for kind in ["new", "updates", "deletes"]:
+        for filepath in marc_file_list.get(kind, []):
+            marc_clean_serialize(filepath, False, True, as_xml=as_xml)
             logger.info(
                 f"Removed MARC fields and serialized records for '{kind}' files: {filepath}"
             )
 
 
-def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
+def marc_clean_serialize(
+    marc_file: str, full_dump: bool, exclude_tags: bool, as_xml: bool = False
+):
     """
-    Removes MARC fields from export MARC21 file
+    Removes MARC fields from export MARC21 or MARC-XML file
+    full_dump reads and writes the file in S3
     """
     marc_path = pathlib.Path(marc_file)
     if full_dump:
@@ -101,7 +114,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
         logger.info(f"Removing MARC fields using AWS S3 with path: {marc_path}")
 
     with marc_path.open('rb') as fo:
-        if full_dump:
+        if as_xml:
             marc_records = pymarc.parse_xml_to_array(fo)
         else:
             marc_records = [record for record in pymarc.MARCReader(fo)]
@@ -119,9 +132,9 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
 
     """
     Writes the records back to the filesystem
-    Full dump files are MARC-XML only, written below
+    MARC-XML files are only written below
     """
-    if not full_dump:
+    if not as_xml:
         try:
             with marc_path.open("wb") as fo:
                 marc_writer = pymarc.MARCWriter(fo)  # type: ignore
@@ -139,6 +152,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
             xml_writer = pymarc.XMLWriter(fo)
             for record in marc_records:
                 try:
+                    record = remove_invalid_xml_chars(record)
                     xml_element = pymarc.record_to_xml_node(record, namespace=True)
                     etree.fromstring(etree.tostring(xml_element))  # noqa
                     xml_writer.write(record)
