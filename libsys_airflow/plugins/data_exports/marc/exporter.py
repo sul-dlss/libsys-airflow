@@ -13,6 +13,7 @@ from pymarc import (
 )
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
+from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
@@ -238,6 +239,8 @@ class Exporter(object):
         with marc_file.open(mode) as fo:
             marc_writer = marcXMLWriter(fo) if as_xml else marcWriter(fo)
             for record in marc:
+                if as_xml:
+                    record = remove_invalid_xml_chars(record)
                 marc_writer.write(record)
             marc_writer.close(close_fh=False)
 

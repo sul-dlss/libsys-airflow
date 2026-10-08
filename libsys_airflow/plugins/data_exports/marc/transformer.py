@@ -4,6 +4,7 @@ import pathlib
 import pymarc
 import re
 
+from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from s3path import S3Path
 
@@ -132,6 +133,8 @@ class Transformer(object):
         else:
             marc_writer = pymarc.MARCWriter(marc_path.open("wb"))  # type: ignore
         for record in marc_records:
+            if full_dump:
+                record = remove_invalid_xml_chars(record)
             marc_writer.write(record)
 
         marc_writer.close()

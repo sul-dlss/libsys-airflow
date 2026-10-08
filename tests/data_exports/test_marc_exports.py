@@ -438,3 +438,26 @@ def test_write_marc_as_xml_oversized_record(mocker, tmp_path, mock_get_current_c
 
     assert len(records) == 1
     assert len(records[0].get_fields('950')) == 150
+
+
+def test_write_marc_as_xml_invalid_chars(mocker, tmp_path, mock_get_current_context):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    record = pymarc.Record()
+    record.add_field(
+        pymarc.Field(tag='001', data='a2545001'),
+        pymarc.Field(
+            tag='245',
+            indicators=['1', '0'],
+            subfields=[pymarc.Subfield(code='a', value='A Title\x1f')],
+        ),
+    )
+
+    exporter_instance = Exporter()
+    marc_file = exporter_instance.write_marc(
+        tmp_path / "2545000_2550000.xml", tmp_path, record, "full", as_xml=True
+    )
+
+    with open(marc_file, "rb") as fo:
+        records = pymarc.parse_xml_to_array(fo)
+
+    assert records[0]['245']['a'] == 'A Title'
