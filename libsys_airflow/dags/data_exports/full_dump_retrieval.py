@@ -152,8 +152,12 @@ with DAG(
         return math.ceil((total / len(concurrent_jobs)) / shard) * shard
 
     @task(multiple_outputs=True)
-    def calculate_start_stop(div, job):
-        output = {"start": int(div * job), "stop": int((job + 1) * div)}
+    def calculate_start_stop(div, job, total):
+        """
+        div is rounded up, so the last job's stop is capped at the total number
+        of records to avoid fetching empty batches past the end of the view
+        """
+        output = {"start": int(div * job), "stop": int(min((job + 1) * div, total))}
         logger.info(f"Output in calculate_start_stop {output}")
         return output
 
@@ -248,7 +252,9 @@ with DAG(
 
     delete_s3_files = reset_s3_bucket()
 
-    start_stop = calculate_start_stop.partial(div=record_div).expand(job=number_of_jobs)
+    start_stop = calculate_start_stop.partial(
+        div=record_div, total=total_records
+    ).expand(job=number_of_jobs)
 
     marc_file_list = fetch_folio_records.partial(batch_size=batch_size).expand_kwargs(
         start_stop
