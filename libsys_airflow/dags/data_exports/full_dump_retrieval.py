@@ -269,4 +269,6 @@ with DAG(
     email_marc_oversized = email_oversized_marc()
 
     start >> create_campus_filter >> create_view >> delete_s3_files >> total_records
-    finish_transforms >> finish_processing_marc >> email_marc_oversized
+    # The email is its own leaf so a failed run is still marked failed
+    finish_transforms >> finish_processing_marc
+    finish_transforms >> email_marc_oversized

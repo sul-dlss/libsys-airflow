@@ -134,5 +134,6 @@ fetch_folio_record_ids >> save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> fetch_marc_records
 save_ids_to_file >> email_user
 
-fetch_marc_records >> generate_isbn_list >> email_marc_oversized
-email_marc_oversized >> finish_processing_marc
+# The email is its own leaf so a failed run is still marked failed
+fetch_marc_records >> generate_isbn_list >> finish_processing_marc
+generate_isbn_list >> email_marc_oversized
