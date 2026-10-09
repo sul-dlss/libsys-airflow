@@ -27,6 +27,7 @@ default_args = {
     start_date=datetime(2023, 8, 28),
     catchup=False,
     max_active_runs=5,
+    rerun_with_latest_version=True,
     tags=["digital bookplates"],
 )
 def digital_bookplate_979():
