@@ -1,7 +1,10 @@
+import contextlib
 import logging
 import re
 
 import pymarc
+
+from s3path import S3Path
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +81,25 @@ def marc_writer(fo, marc_path) -> pymarc.Writer:
     if is_marc_xml(marc_path):
         return CleanXMLWriter(fo)
     return pymarc.MARCWriter(fo)
+
+
+@contextlib.contextmanager
+def overwrite_marc_file(marc_path):
+    """
+    Opens marc_path for writing so that a task failing mid-write leaves the
+    existing file intact for its retry. Local files are written to a temporary
+    file that replaces marc_path once the write completes; S3 objects are only
+    replaced when their upload completes, so they are written directly.
+    """
+    if isinstance(marc_path, S3Path):
+        with marc_path.open("wb") as fo:
+            yield fo
+        return
+
+    tmp_path = marc_path.with_name(f"{marc_path.name}.tmp")
+    try:
+        with tmp_path.open("wb") as fo:
+            yield fo
+        tmp_path.replace(marc_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)

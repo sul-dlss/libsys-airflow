@@ -11,6 +11,7 @@ from libsys_airflow.plugins.data_exports.marc.oclc import OCLCTransformer
 from libsys_airflow.plugins.data_exports.marc.marc_io import (
     is_marc_xml,
     marc_writer,
+    overwrite_marc_file,
     read_marc,
     remove_invalid_xml_chars,
 )
@@ -77,7 +78,7 @@ def leader_for_deletes(marc_file: str, full_dump: bool):
             continue
 
     try:
-        with marc_path.open("wb") as fo:
+        with overwrite_marc_file(marc_path) as fo:
             writer = marc_writer(fo, marc_path)
             for record in marc_records:
                 writer.write(record)
@@ -124,11 +125,11 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
     """
     if not is_marc_xml(marc_path):
         try:
-            with marc_path.open("wb") as fo:
+            with overwrite_marc_file(marc_path) as fo:
                 writer = marc_writer(fo, marc_path)
                 for record in marc_records:
                     writer.write(record)
-                writer.close()
+                writer.close(close_fh=False)
 
         except pymarc.exceptions.WriteNeedsRecord as e:
             logger.warning(e)
@@ -136,7 +137,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
     logger.info(f"Serializing {len(marc_records)} MARC records as xml")
     try:
         xml_path = marc_path.with_suffix(".xml")
-        with xml_path.open("wb") as fo:
+        with overwrite_marc_file(xml_path) as fo:
             xml_writer = pymarc.XMLWriter(fo)
             for record in marc_records:
                 try:
@@ -154,7 +155,7 @@ def marc_clean_serialize(marc_file: str, full_dump: bool, exclude_tags: bool):
                     )
                     continue
 
-            xml_writer.close()
+            xml_writer.close(close_fh=False)
     except pymarc.exceptions.WriteNeedsRecord as e:
         logger.warning(e)
 

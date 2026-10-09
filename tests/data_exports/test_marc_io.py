@@ -1,17 +1,23 @@
 import io
 import pathlib
 
+from unittest.mock import MagicMock
+
 import pymarc
 import pytest
+
+from s3path import S3Path
 
 from libsys_airflow.plugins.data_exports.marc.marc_io import (
     CleanXMLWriter,
     is_marc_xml,
     marc_writer,
+    overwrite_marc_file,
     read_marc,
     record_hrid,
     remove_invalid_xml_chars,
 )
+from libsys_airflow.plugins.data_exports.marc.transforms import marc_clean_serialize
 
 
 def record_with_invalid_chars():
@@ -114,3 +120,71 @@ def test_marc_writer_read_marc_by_suffix(tmp_path, suffix):
     assert records[0]['245']['c'] == 'Café ☃ 𝄞'
     if suffix == ".xml":
         assert records[0]['245']['a'] == 'A Title with controls'
+
+
+def test_overwrite_marc_file(tmp_path):
+    marc_path = tmp_path / "202610081000.xml"
+    marc_path.write_bytes(b"original")
+
+    with overwrite_marc_file(marc_path) as fo:
+        fo.write(b"new")
+        # the original is untouched until the write completes
+        assert marc_path.read_bytes() == b"original"
+
+    assert marc_path.read_bytes() == b"new"
+    assert not (tmp_path / "202610081000.xml.tmp").exists()
+
+
+def test_overwrite_marc_file_failed_write(tmp_path):
+    marc_path = tmp_path / "202610081000.xml"
+    marc_path.write_bytes(b"original")
+
+    with pytest.raises(RuntimeError):
+        with overwrite_marc_file(marc_path) as fo:
+            fo.write(b"partial")
+            raise RuntimeError("worker died")
+
+    assert marc_path.read_bytes() == b"original"
+    assert not (tmp_path / "202610081000.xml.tmp").exists()
+
+
+def test_overwrite_marc_file_s3():
+    marc_path = MagicMock(spec=S3Path)
+
+    with overwrite_marc_file(marc_path) as fo:
+        fo.write(b"new")
+
+    marc_path.open.assert_called_once_with("wb")
+    marc_path.with_name.assert_not_called()
+
+
+def test_marc_clean_serialize_failed_write_keeps_file(mocker, tmp_path):
+    marc_path = tmp_path / "202610081000.xml"
+    with marc_path.open("wb") as fo:
+        writer = pymarc.XMLWriter(fo)
+        for hrid in ["a1", "a2", "a3"]:
+            record = pymarc.Record()
+            record.add_field(pymarc.Field(tag='001', data=hrid))
+            writer.write(record)
+        writer.close(close_fh=False)
+    original = marc_path.read_bytes()
+
+    record_to_xml_node = pymarc.record_to_xml_node
+    calls = []
+
+    def fail_on_second_record(record, **kwargs):
+        calls.append(record)
+        if len(calls) == 2:
+            raise RuntimeError("worker died")
+        return record_to_xml_node(record, **kwargs)
+
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.marc.transforms.pymarc.record_to_xml_node",
+        side_effect=fail_on_second_record,
+    )
+
+    with pytest.raises(RuntimeError):
+        marc_clean_serialize(str(marc_path), full_dump=False, exclude_tags=True)
+
+    assert marc_path.read_bytes() == original
+    assert [r['001'].value() for r in read_marc(marc_path)] == ["a1", "a2", "a3"]

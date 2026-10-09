@@ -4,7 +4,11 @@ import pathlib
 import pymarc
 import re
 
-from libsys_airflow.plugins.data_exports.marc.marc_io import marc_writer, read_marc
+from libsys_airflow.plugins.data_exports.marc.marc_io import (
+    marc_writer,
+    overwrite_marc_file,
+    read_marc,
+)
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from s3path import S3Path
 
@@ -124,7 +128,7 @@ class Transformer(object):
             f"Writing {len(marc_records):,} modified MARC records to {marc_path}"
         )
 
-        with marc_path.open("wb") as fo:
+        with overwrite_marc_file(marc_path) as fo:
             writer = marc_writer(fo, marc_path)
             for record in marc_records:
                 writer.write(record)
