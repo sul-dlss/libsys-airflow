@@ -315,7 +315,7 @@ def marc_record(leader: str, *values: str) -> pymarc.Record:
         record.add_field(
             pymarc.Field(
                 tag='500',
-                indicators=[' ', ' '],
+                indicators=pymarc.Indicators(' ', ' '),
                 subfields=[pymarc.Subfield(code='a', value=value)],
             )
         )
