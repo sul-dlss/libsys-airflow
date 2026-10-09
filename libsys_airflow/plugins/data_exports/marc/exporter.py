@@ -9,6 +9,7 @@ from pymarc import (
     JSONHandler as marcJson,
     Record as marcRecord,
 )
+from pymarc.constants import END_OF_FIELD
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
 from libsys_airflow.plugins.data_exports.marc.marc_io import marc_writer, record_hrid
@@ -29,11 +30,16 @@ class Exporter(object):
         """
         MARC21 allows at most 99,999 bytes per record and 9,999 bytes per field;
         larger records corrupt the binary file for every record after them
+        Encodes the record the same way MARCWriter does, so any record it can
+        write is checked without encoding errors
         """
-        encoding = "utf-8" if marc_record.leader[9] == "a" else "iso8859-1"
-        if any(len(field.as_marc(encoding)) > 9999 for field in marc_record.fields):
+        marc21 = marc_record.as_marc()
+        if len(marc21) > 99999:
             return True
-        return len(marc_record.as_marc()) > 99999
+        # Each directory entry is 12 bytes unless a field's length needs more than
+        # 4 digits; the directory ends at the first field terminator
+        directory_length = marc21.index(END_OF_FIELD.encode(), 24) - 24
+        return directory_length != 12 * len(marc_record.fields)
 
     def skip_oversized(self, marc_record: marcRecord, uuid: str) -> bool:
         """

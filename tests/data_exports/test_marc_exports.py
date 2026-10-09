@@ -1,3 +1,5 @@
+import io
+
 import httpx
 import pymarc
 import pytest
@@ -303,6 +305,46 @@ def test_retrieve_marc_for_instances_skips_oversized(
         {"hrid": "a2", "uuid": "uuid-big-record"},
         {"hrid": "a3", "uuid": "uuid-big-field"},
     ]
+
+
+def marc_record(leader: str, *values: str) -> pymarc.Record:
+    record = pymarc.Record()
+    record.leader = pymarc.Leader(leader)
+    record.add_field(pymarc.Field(tag='001', data='a1'))
+    for value in values:
+        record.add_field(
+            pymarc.Field(
+                tag='500',
+                indicators=[' ', ' '],
+                subfields=[pymarc.Subfield(code='a', value=value)],
+            )
+        )
+    return record
+
+
+@pytest.mark.parametrize(
+    "leader,values,expected",
+    [
+        # blank leader/09 with non-Latin-1 text: MARCWriter writes it as UTF-8
+        ("00000nam  2200000   4500", ["Москва 東京"], False),
+        ("01509nam a2200361 a 4500", ["A Title"], False),
+        # 2 indicators + delimiter + code + 9,994 bytes + terminator = 9,999
+        ("01509nam a2200361 a 4500", ["x" * 9994], False),
+        ("01509nam a2200361 a 4500", ["x" * 9995], True),
+        ("01509nam a2200361 a 4500", ["x" * 1000] * 100, True),
+    ],
+)
+def test_exceeds_marc21_limits(mocker, leader, values, expected):
+    mocker.patch('libsys_airflow.plugins.data_exports.marc.exporter.folio_client')
+    record = marc_record(leader, *values)
+
+    assert Exporter().exceeds_marc21_limits(record) is expected
+
+    fo = io.BytesIO()
+    pymarc.MARCWriter(fo).write(record)
+    if not expected:
+        written = pymarc.MARCReader(io.BytesIO(fo.getvalue()))
+        assert [r['001'].value() for r in written] == ['a1']
 
 
 field_035 = pymarc.Field(
