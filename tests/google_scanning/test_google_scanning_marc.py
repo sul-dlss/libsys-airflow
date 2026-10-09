@@ -32,11 +32,12 @@ def test_generate_shipment_marc_success(mocker):
         return_value={
             "new": [
                 "/opt/airflow/data-export-files/google_scanning/marc-files/new/"
-                "stanford_20260810-campus-143022.mrc"
+                "stanford_20260810-campus-143022.xml"
             ],
             "updates": [],
             "deletes": [],
             "not_found": ["instance-2"],
+            "oversized": [],
         },
     )
     mock_add_holdings = mocker.patch(
@@ -55,7 +56,7 @@ def test_generate_shipment_marc_success(mocker):
         timestamp="stanford_20260810-campus-143022",
     )
     mock_marc_for_instances.assert_called_once_with(
-        instance_files=[mock_save_ids.return_value]
+        instance_files=[mock_save_ids.return_value], as_xml=True
     )
     mock_add_holdings.assert_called_once_with(
         mock_marc_for_instances.return_value, full_dump=False

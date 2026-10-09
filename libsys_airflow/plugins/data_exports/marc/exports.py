@@ -11,6 +11,7 @@ def marc_for_instances(**kwargs) -> dict:
     Retrieves the converted marc for each instance id file
     """
     instance_files = kwargs.get("instance_files", [])
+    as_xml = kwargs.get("as_xml", False)
     if isinstance(instance_files, str):
         instance_files = ast.literal_eval(instance_files)
 
@@ -19,6 +20,7 @@ def marc_for_instances(**kwargs) -> dict:
         "updates": [],
         "deletes": [],
         "not_found": [],
+        "oversized": [],
     }  # type: dict
 
     exporter = Exporter()
@@ -29,7 +31,7 @@ def marc_for_instances(**kwargs) -> dict:
         file_path = pathlib.Path(file_datename)
         kind = file_path.parent.stem
         marc_file, not_found_marc = exporter.retrieve_marc_for_instances(
-            instance_file=file_path, kind=kind
+            instance_file=file_path, kind=kind, as_xml=as_xml
         )
         if len(not_found_marc) > 0:
             new_updates_deletes["not_found"].extend(not_found_marc)
@@ -41,5 +43,7 @@ def marc_for_instances(**kwargs) -> dict:
             f"Retrieved marc files {marc_file_str} for instance file {file_path}"
         )
         new_updates_deletes[kind].append(marc_file_str)
+
+    new_updates_deletes["oversized"] = exporter.oversized_records
 
     return new_updates_deletes

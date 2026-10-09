@@ -377,8 +377,6 @@ def vendor_filename_spec(conn_id, filename):
         return "stf_325099_" + Path(filename).name
     elif conn_id == "backstage":
         return "STF" + Path(filename).name
-    elif conn_id == "sharevde":
-        return "tbd"
     else:
         return Path(filename).name
 

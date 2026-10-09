@@ -54,7 +54,7 @@ def generate_marc_for_instances(instance_ids: list[str], filestamp: str) -> dict
     if not instanceids_path:
         raise ValueError("No instance ids to generate MARC for")
 
-    marc_file_list = marc_for_instances(instance_files=[instanceids_path])
+    marc_file_list = marc_for_instances(instance_files=[instanceids_path], as_xml=True)
 
     add_holdings_items_to_marc_files(marc_file_list, full_dump=False)
     clean_and_serialize_marc_files(marc_file_list)

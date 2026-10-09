@@ -17,7 +17,8 @@ def test_upload_view():
     response = client.get('/')
     assert response.status_code == 200
 
-    assert 'value="sharevde"' in response.text
+    assert 'value="pod"' in response.text
+    assert 'value="sharevde"' not in response.text
 
 
 def test_create_upload_missing_file():

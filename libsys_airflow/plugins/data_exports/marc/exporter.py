@@ -7,13 +7,12 @@ import httpx
 
 from pymarc import (
     JSONHandler as marcJson,
-    MARCWriter as marcWriter,
     Record as marcRecord,
-    XMLWriter as marcXMLWriter,
 )
+from pymarc.constants import END_OF_FIELD
 
 from libsys_airflow.plugins.data_exports.marc.excluded_tags import excluded_tags
-from libsys_airflow.plugins.data_exports.marc.xml_chars import remove_invalid_xml_chars
+from libsys_airflow.plugins.data_exports.marc.marc_io import marc_writer, record_hrid
 from libsys_airflow.plugins.shared.folio_client import folio_client
 from airflow.sdk import get_current_context, Variable
 from s3path import S3Path
@@ -25,6 +24,34 @@ logger = logging.getLogger(__name__)
 class Exporter(object):
     def __init__(self):
         self.folio_client = folio_client()
+        self.oversized_records: list = []
+
+    def exceeds_marc21_limits(self, marc_record: marcRecord) -> bool:
+        """
+        MARC21 allows at most 99,999 bytes per record and 9,999 bytes per field;
+        larger records corrupt the binary file for every record after them
+        Encodes the record the same way MARCWriter does, so any record it can
+        write is checked without encoding errors
+        """
+        marc21 = marc_record.as_marc()
+        if len(marc21) > 99999:
+            return True
+        # Each directory entry is 12 bytes unless a field's length needs more than
+        # 4 digits; the directory ends at the first field terminator
+        directory_length = marc21.index(END_OF_FIELD.encode(), 24) - 24
+        return directory_length != 12 * len(marc_record.fields)
+
+    def skip_oversized(self, marc_record: marcRecord, uuid: str) -> bool:
+        """
+        Saves records that exceed the MARC21 limits to oversized_records so
+        they can be reported at the end of the DAG run
+        """
+        if not self.exceeds_marc21_limits(marc_record):
+            return False
+        hrid = record_hrid(marc_record)
+        logger.warning(f"Skipping oversized MARC21 record {hrid} {uuid}")
+        self.oversized_records.append({"hrid": hrid, "uuid": uuid})
+        return True
 
     def check_035(self, field035s: list) -> bool:
         reject = False
@@ -80,7 +107,7 @@ class Exporter(object):
                     ]
                 )
 
-            case "oclc" | "pod" | "sharevde" | "full-dump":
+            case "oclc" | "pod" | "full-dump":
                 exclude = any(
                     [
                         self.check_590(marc_record.get_fields("590")),
@@ -98,11 +125,14 @@ class Exporter(object):
         return exclude
 
     def retrieve_marc_for_instances(
-        self, instance_file: pathlib.Path, kind: str
+        self, instance_file: pathlib.Path, kind: str, as_xml: bool = False
     ) -> tuple:
         """
         Called for each instanceid file in vendor directory.
         For each ID row, writes and returns converted MARC from SRS to file system
+        as_xml writes all of the instance file's records to a single MARC-XML file
+        MARC21 records that exceed the format's limits are skipped and saved in
+        oversized_records
         """
         if not instance_file.exists():
             raise ValueError(
@@ -110,8 +140,10 @@ class Exporter(object):
             )
 
         vendor_name = instance_file.parent.parent.parent.name
+        marc_directory = instance_file.parent.parent.parent
 
         marc_file = ""
+        marc_records = []
         not_found_srs_records = []
         with instance_file.open() as fo:
             instance_reader = csv.reader(fo)
@@ -133,10 +165,21 @@ class Exporter(object):
                     logger.info(f"Excluding {vendor_name}")
                     continue
 
-                marc_directory = instance_file.parent.parent.parent
+                if as_xml:
+                    marc_records.append(marc_record)
+                    continue
+
+                if self.skip_oversized(marc_record, uuid):
+                    continue
+
                 marc_file = self.write_marc(
                     instance_file, marc_directory, marc_record, kind
                 )
+
+        if marc_records:
+            marc_file = self.write_marc(
+                instance_file, marc_directory, marc_records, kind, as_xml=True
+            )
 
         return marc_file, not_found_srs_records
 
@@ -151,6 +194,7 @@ class Exporter(object):
         vendor = Variable.get("FULL_DUMP_VENDOR", "full-dump")
 
         marc = []
+        instance_uuids = []
         for row in instance_ids:
             marc_json_handler = marcJson()
             try:
@@ -164,6 +208,7 @@ class Exporter(object):
                 continue
 
             marc.append(marc21)
+            instance_uuids.append(row[0])
 
         logger.info(f"Saving {len(marc)} marc records to {marc_filename} in bucket.")
         marc_file = self.write_marc(
@@ -180,10 +225,14 @@ class Exporter(object):
         context = get_current_context()
         params = context.get("params", {})  # type: ignore
         if params.get("marc_file_dir") == "CC0":
-            cc0_marc = copy.deepcopy(marc)
-            if params.get("exclude_tags", True):
-                for record in cc0_marc:
-                    record.remove_fields(*excluded_tags)
+            cc0_marc = []
+            for uuid, record in zip(instance_uuids, marc):
+                cc0_record = copy.deepcopy(record)
+                if params.get("exclude_tags", True):
+                    cc0_record.remove_fields(*excluded_tags)
+                if self.skip_oversized(cc0_record, uuid):
+                    continue
+                cc0_marc.append(cc0_record)
             logger.info(f"Saving {len(cc0_marc)} CC0 MARC21 records")
             self.write_marc(
                 pathlib.Path(marc_filename), S3Path(full_dump_files), cc0_marc, "."
@@ -227,9 +276,10 @@ class Exporter(object):
         mode = "wb"
 
         if type(marc_directory).__name__ == 'PosixPath':
-            mode = "ab"
-            marc = [marc]  # type: ignore
             directory = directory / kind
+            if not as_xml:
+                mode = "ab"
+                marc = [marc]  # type: ignore
 
         logger.info(f"Writing to directory: {directory}")
         directory.mkdir(parents=True, exist_ok=True)
@@ -237,11 +287,9 @@ class Exporter(object):
         marc_file = directory / f"{marc_file_name}{suffix}"
 
         with marc_file.open(mode) as fo:
-            marc_writer = marcXMLWriter(fo) if as_xml else marcWriter(fo)
+            writer = marc_writer(fo, marc_file)
             for record in marc:
-                if as_xml:
-                    record = remove_invalid_xml_chars(record)
-                marc_writer.write(record)
-            marc_writer.close(close_fh=False)
+                writer.write(record)
+            writer.close(close_fh=False)
 
         return str(marc_file.absolute())

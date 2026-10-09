@@ -128,6 +128,7 @@ with DAG(
         python_callable=marc_for_instances,
         op_kwargs={
             "instance_files": "{{ ti.xcom_pull('save_ids_to_file') }}",
+            "as_xml": True,
         },
     )
 

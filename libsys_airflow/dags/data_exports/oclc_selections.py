@@ -32,6 +32,7 @@ from libsys_airflow.plugins.data_exports.email import (
     generate_multiple_oclc_identifiers_email,
     generate_no_holdings_instances_email,
     generate_missing_marc_email,
+    generate_oversized_marc_email,
 )
 
 from libsys_airflow.plugins.data_exports.oclc_reports import (
@@ -205,6 +206,12 @@ with DAG(
         missing_marc_instances=fetch_marc_records["not_found"], is_oclc=True  # type: ignore
     )
 
+    email_marc_oversized = generate_oversized_marc_email.override(
+        trigger_rule="all_done"
+    )(
+        oversized_records=fetch_marc_records["oversized"]  # type: ignore
+    )
+
     finish_division = EmptyOperator(task_id="finish_division")
 
     multiple_oclc_numbers = multiple_oclc_numbers_group()
@@ -235,6 +242,12 @@ check_record_ids >> save_ids_to_file >> fetch_marc_records
 
 (
     finish_division
-    >> [no_holdings_instances, multiple_oclc_numbers, remove_original_marc, archive_csv]
+    >> [
+        no_holdings_instances,
+        multiple_oclc_numbers,
+        remove_original_marc,
+        archive_csv,
+        email_marc_oversized,
+    ]
     >> finish_processing_marc
 )
