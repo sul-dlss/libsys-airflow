@@ -50,7 +50,7 @@ def sal3_filestamp(date_str: str) -> str:
     """
     Builds this run's file stem for the SAL3 shipment's MARCXML/manifest,
     e.g. "stanford_20260813-sal3". Unlike the on-campus shipment's
-    filestamp, no time suffix is needed since this DAG processes at most
+    filestamp, no sequence number is needed since this DAG processes at most
     one date per run.
     """
     return f"stanford_{date_str}-sal3"

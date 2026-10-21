@@ -1,6 +1,6 @@
 import logging
+import re
 
-from datetime import datetime
 from pathlib import Path
 
 from libsys_airflow.plugins.data_exports.instance_ids import save_ids
@@ -9,6 +9,7 @@ from libsys_airflow.plugins.data_exports.marc.transforms import (
     add_holdings_items_to_marc_files,
     clean_and_serialize_marc_files,
 )
+from libsys_airflow.plugins.google_scanning.constants import TRANSMITTED_FILES_BASE
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +19,18 @@ VENDOR = "google_scanning"
 def shipment_filestamp(shipped_at: str) -> str:
     """
     Builds this run's unique file stem for the shipment's MARCXML/manifest
-    e.g. "stanford_20260810-campus-143022".
-    The current time disambiguates same-day runs.
+    e.g. "stanford_20260810-campus-01". The 2-digit sequence disambiguates
+    same-day batches: one more than the highest already transmitted for
+    that date, so a retry after a failed upload reuses its number.
     """
-    return f"stanford_{shipped_at}-campus-{datetime.now().strftime('%H%M%S')}"
+    pattern = re.compile(rf"stanford_{shipped_at}-campus-(\d{{2}})")
+    sequences = [
+        int(match.group(1))
+        for subdir in ("new", "manifests")
+        for path in (TRANSMITTED_FILES_BASE / subdir).glob("*")
+        if (match := pattern.fullmatch(path.stem))
+    ]
+    return f"stanford_{shipped_at}-campus-{max(sequences, default=0) + 1:02d}"
 
 
 def generate_shipment_marc(instance_ids: list[str], shipped_at: str) -> dict:

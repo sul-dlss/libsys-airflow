@@ -52,8 +52,8 @@ def shipment_result():
             }
         ],
         "not_found_instance_ids": ["8576f36e-0ab5-4146-9b6b-9f0b84f7fc74"],
-        "marc_xml_path": "/opt/airflow/data-export-files/google_scanning/marc-files/new/stanford_20260810-campus-143022.xml",
-        "manifest_path": "/opt/airflow/data-export-files/google_scanning/marc-files/manifests/stanford_20260810-campus-143022.txt",
+        "marc_xml_path": "/opt/airflow/data-export-files/google_scanning/marc-files/new/stanford_20260810-campus-01.xml",
+        "manifest_path": "/opt/airflow/data-export-files/google_scanning/marc-files/manifests/stanford_20260810-campus-01.txt",
     }
 
 
