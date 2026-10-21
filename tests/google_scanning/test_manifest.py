@@ -19,21 +19,23 @@ def mock_marc_files_base(tmp_path, mocker):
 
 def test_manifest_filename():
     assert (
-        manifest_filename("stanford_20260810-campus-143022")
-        == "stanford_20260810-campus-143022.txt"
+        manifest_filename("stanford_20260810-campus-01")
+        == "stanford_20260810-campus-01.txt"
     )
 
 
-def test_generate_manifest_orders_by_cart_then_barcode(mock_marc_files_base):
-    pairs = [("222", "cart-2"), ("111", "cart-1"), ("333", "cart-1")]
+def test_generate_manifest_writes_cart_then_barcode_in_given_order(
+    mock_marc_files_base,
+):
+    pairs = [("222", "cart-2"), ("333", "cart-1"), ("111", "cart-1")]
 
-    manifest_path = generate_manifest(pairs, "stanford_20260810-campus-143022")
+    manifest_path = generate_manifest(pairs, "stanford_20260810-campus-01")
 
     assert manifest_path == str(
-        mock_marc_files_base / "manifests" / "stanford_20260810-campus-143022.txt"
+        mock_marc_files_base / "manifests" / "stanford_20260810-campus-01.txt"
     )
     content = pathlib.Path(manifest_path).read_text()
-    assert content == "111\tcart-1\n333\tcart-1\n222\tcart-2\n"
+    assert content == "cart-2\t222\ncart-1\t333\ncart-1\t111\n"
 
 
 def test_generate_manifest_creates_manifests_directory(mock_marc_files_base):

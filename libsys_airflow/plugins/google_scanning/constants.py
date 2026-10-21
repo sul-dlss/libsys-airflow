@@ -7,9 +7,14 @@ STAGED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/staged"
 ARCHIVED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/archived")
 
 # The shipment's manifest is written alongside it under "manifests" (see
-# manifest.py::generate_manifest). Both are moved into a sibling
-# "transmitted" directory (archive_transmitted_data_task) once uploaded.
+# manifest.py::generate_manifest).
 MARC_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/marc-files")
+
+# Sibling of MARC_FILES_BASE. archive_transmitted_data_task moves the
+# MARCXML (new/) and manifest (manifests/) here once uploaded.
+TRANSMITTED_FILES_BASE = Path(
+    "/opt/airflow/data-export-files/google_scanning/transmitted"
+)
 
 STAGE_CART_ITEMS_DAG_ID = "stage_cart_items"
 ON_CAMPUS_SHIPMENT_DAG_ID = "on_campus_shipment"
