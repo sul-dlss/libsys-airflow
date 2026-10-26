@@ -12,6 +12,8 @@ from libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view imp
     app,
 )
 
+VIEW = "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view"
+
 authenticated = authenticated_app_fixture(app)
 client = csrf_test_client(app, follow_redirects=False)
 
@@ -37,6 +39,42 @@ def mock_list_shipped_carts(mocker):
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_shipped_carts",
         return_value=[],
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_is_cart_staged(mocker):
+    return mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.is_cart_staged",
+        return_value=False,
+    )
+
+
+@pytest.fixture(autouse=True)
+def mock_other_date_conflicts(mocker):
+    return mocker.patch(
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.other_date_conflicts",
+        return_value=[],
+    )
+
+
+def _shipped_cart(**overrides) -> dict:
+    cart = {
+        "cart_name": "cart-3",
+        "shipped_at": "20260807",
+        "status": {"status": "shipped"},
+        "files": [
+            {
+                "path": "archived/cart-3/20260807T210000/barcodes.txt",
+                "download_filename": "barcodes.csv",
+            },
+            {
+                "path": "archived/cart-3/20260807T210000/stanford_20260807-oncampus.xml",
+                "download_filename": "stanford_20260807-oncampus.xml",
+            },
+        ],
+    }
+    cart.update(overrides)
+    return cart
 
 
 def test_home_renders_staged_carts():
@@ -112,15 +150,7 @@ def test_home_omits_counts_when_status_has_no_totals():
 def test_home_renders_shared_table_search(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_shipped_carts",
-        return_value=[
-            {
-                "cart_name": "cart-3",
-                "filename": "barcodes.txt",
-                "download_filename": "barcodes.csv",
-                "shipped_at": "20260807",
-                "status": {"status": "shipped"},
-            }
-        ],
+        return_value=[_shipped_cart()],
     )
 
     response = client.get("/")
@@ -153,15 +183,7 @@ def test_home_renders_unknown_status_when_status_missing(mocker):
 def test_home_renders_shipped_carts(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_shipped_carts",
-        return_value=[
-            {
-                "cart_name": "cart-3",
-                "filename": "barcodes.txt",
-                "download_filename": "barcodes.csv",
-                "shipped_at": "20260807",
-                "status": {"status": "shipped"},
-            }
-        ],
+        return_value=[_shipped_cart()],
     )
 
     response = client.get("/")
@@ -170,22 +192,17 @@ def test_home_renders_shipped_carts(mocker):
     assert "cart-3" in response.text
     assert "20260807" in response.text
     assert "Shipped" in response.text
-    assert 'href="download/cart-3/barcodes.txt"' in response.text
+    assert (
+        'href="download/archived/cart-3/20260807T210000/barcodes.txt"' in response.text
+    )
     assert ">barcodes.csv</a>" in response.text
+    assert ">stanford_20260807-oncampus.xml</a>" in response.text
 
 
 def test_home_renders_unknown_status_for_shipped_cart_missing_status(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.list_shipped_carts",
-        return_value=[
-            {
-                "cart_name": "cart-3",
-                "filename": "barcodes.txt",
-                "download_filename": "barcodes.csv",
-                "shipped_at": None,
-                "status": {},
-            }
-        ],
+        return_value=[_shipped_cart(shipped_at=None, status={})],
     )
 
     response = client.get("/")
@@ -342,6 +359,79 @@ def test_stage_cart_success(mocker):
     assert 'alert-success">Staged cart-2.' in followed.text
 
 
+def test_stage_cart_rejects_reserved_sal3_name(mocker):
+    mock_save = mocker.patch(f"{VIEW}.save_staged_file")
+
+    response = client.post(
+        "/stage",
+        data={"cart_name": "SAL3"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    assert "is reserved" in response.text
+    mock_save.assert_not_called()
+
+
+def test_stage_cart_already_staged_requires_confirmation(mocker, mock_is_cart_staged):
+    mock_is_cart_staged.return_value = True
+    mocker.patch(f"{VIEW}.cart_has_active_run", return_value=False)
+    mock_save = mocker.patch(f"{VIEW}.save_staged_file")
+
+    response = client.post(
+        "/stage",
+        data={"cart_name": "cart-1"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    assert "cart-1 is already staged. Confirm to replace its file." in response.text
+    mock_save.assert_not_called()
+
+
+def test_stage_cart_replaces_when_confirmed(mocker, mock_is_cart_staged):
+    mock_is_cart_staged.return_value = True
+    mocker.patch(f"{VIEW}.cart_has_active_run", return_value=False)
+    mock_save = mocker.patch(
+        f"{VIEW}.save_staged_file",
+        return_value="/opt/airflow/data-export-files/google_scanning/staged/cart-1/b.txt",
+    )
+    mocker.patch(f"{VIEW}.trigger_stage_cart_items_dag", return_value="run-123")
+
+    response = client.post(
+        "/stage",
+        data={"cart_name": "cart-1", "confirm_replace": "true"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 303
+    assert "Replaced staged cart-1" in unquote_plus(response.headers["location"])
+    mock_save.assert_called_once_with("cart-1", "barcodes.txt", b"12345\n")
+
+
+def test_stage_cart_blocks_replace_while_processing(mocker, mock_is_cart_staged):
+    mock_is_cart_staged.return_value = True
+    mocker.patch(f"{VIEW}.cart_has_active_run", return_value=True)
+    mock_save = mocker.patch(f"{VIEW}.save_staged_file")
+
+    response = client.post(
+        "/stage",
+        data={"cart_name": "cart-1", "confirm_replace": "true"},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    assert "cart-1 is currently processing" in response.text
+    mock_save.assert_not_called()
+
+
+def test_home_embeds_staged_cart_names_for_confirm():
+    response = client.get("/")
+
+    assert 'var stagedCartNames = ["cart-1"];' in response.text
+    assert 'name="confirm_replace"' in response.text
+
+
 def test_stage_cart_dag_trigger_failure(mocker):
     mocker.patch(
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.save_staged_file",
@@ -401,6 +491,26 @@ def test_ship_success(mocker):
 
     followed = client.get(response.headers["location"])
     assert "alert-success" in followed.text
+
+
+def test_ship_rejects_cart_waiting_under_another_date(
+    mocker, mock_other_date_conflicts
+):
+    mock_other_date_conflicts.return_value = [
+        "cart-1 is waiting in the stanford_20260805-oncampus shipment; "
+        "ship it with that date."
+    ]
+    mock_trigger = mocker.patch(f"{VIEW}.trigger_on_campus_shipment_dag")
+
+    response = client.post(
+        "/ship",
+        data={"selected_carts": ["cart-1/barcodes.txt"], "shipped_at": "2026-08-06"},
+    )
+
+    assert response.status_code == 200
+    assert "stanford_20260805-oncampus" in response.text
+    mock_other_date_conflicts.assert_called_once_with(["cart-1"], "20260806")
+    mock_trigger.assert_not_called()
 
 
 def test_ship_dag_trigger_failure(mocker):
@@ -494,11 +604,11 @@ def test_download_shipped_file(mocker, tmp_path):
     file_path = tmp_path / "barcodes.txt"
     file_path.write_bytes(b"12345\n67890\n")
     mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.shipped_file_path",
         return_value=file_path,
     )
 
-    response = client.get("/download/cart-1/barcodes.txt")
+    response = client.get("/download/archived/cart-1/20260807T210000/barcodes.txt")
 
     assert response.status_code == 200
     assert response.content == b"12345\n67890\n"
@@ -507,22 +617,22 @@ def test_download_shipped_file(mocker, tmp_path):
 
 def test_download_shipped_file_invalid_path(mocker):
     mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
-        side_effect=ValueError("Invalid archived file path"),
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.shipped_file_path",
+        side_effect=ValueError("Invalid shipped file path"),
     )
 
-    response = client.get("/download/cart-1/barcodes.txt")
+    response = client.get("/download/archived/cart-1/../../../etc/passwd")
 
     assert response.status_code == 404
 
 
 def test_download_shipped_file_missing(mocker, tmp_path):
     mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.archived_file_path",
+        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.shipped_file_path",
         return_value=tmp_path / "does-not-exist.txt",
     )
 
-    response = client.get("/download/cart-1/does-not-exist.txt")
+    response = client.get("/download/archived/cart-1/ts/does-not-exist.txt")
 
     assert response.status_code == 404
 

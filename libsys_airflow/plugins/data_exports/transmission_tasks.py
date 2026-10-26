@@ -57,7 +57,12 @@ def gather_files_task(**kwargs) -> dict:
         )
     marc_filelist = []
 
-    for f in sorted(marc_filepath.glob(file_glob_pattern)):
+    if isinstance(file_glob_pattern, str):
+        file_glob_pattern = (file_glob_pattern,)
+    marc_files = [
+        f for pattern in file_glob_pattern for f in marc_filepath.glob(pattern)
+    ]
+    for f in sorted(marc_files):
         if f.stat().st_size in [0, 112]:
             continue
         marc_filelist.append(str(f))
@@ -361,7 +366,8 @@ def move_transmitted_data_task(files):
 
 def vendor_fileformat_spec(vendor):
     """
-    Returns file glob pattern depending on vendor's requirement for uncompressed or compressed MARCXML or text files
+    Returns file glob pattern(s) depending on vendor's requirement for uncompressed or compressed MARCXML or text files
+    A tuple of patterns is returned for vendors sending more than one kind of file
     """
     match vendor:
         case "pod":
@@ -370,6 +376,9 @@ def vendor_fileformat_spec(vendor):
             return "**/*.txt"
         case "backstage":
             return "**/*.mrc"
+        case "google_scanning":
+            # Each shipment is a MARCXML file plus its cart-level manifest
+            return ("new/*.xml", "manifests/*.txt")
         case _:
             return "**/*.xml"
 

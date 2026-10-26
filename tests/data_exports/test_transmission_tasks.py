@@ -216,6 +216,24 @@ def test_gather_gobi_files(tmp_path, mock_vendor_marc_files):
     assert len(marc_files["file_list"]) == 1
 
 
+def test_gather_google_scanning_files(tmp_path):
+    airflow = tmp_path / "airflow"
+    marc_files_dir = airflow / "data-export-files/google_scanning/marc-files"
+    (marc_files_dir / "new").mkdir(parents=True)
+    (marc_files_dir / "manifests").mkdir(parents=True)
+    xml_file = marc_files_dir / "new" / "stanford_20260810-oncampus.xml"
+    mrc_file = marc_files_dir / "new" / "stanford_20260810-oncampus.mrc"
+    manifest_file = marc_files_dir / "manifests" / "stanford_20260810-oncampus.txt"
+    for file in (xml_file, mrc_file, manifest_file):
+        file.write_text("content")
+
+    marc_files = gather_files_task.function(airflow=airflow, vendor="google_scanning")
+
+    assert sorted(marc_files["file_list"]) == sorted(
+        [str(xml_file), str(manifest_file)]
+    )
+
+
 def test_check_no_file_list_task():
     marcfile_list = []
     branch = check_file_list_task.function(marcfile_list)

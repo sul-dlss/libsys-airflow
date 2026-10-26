@@ -196,24 +196,6 @@ def test_generate_sal3_manifest_calls_generate_manifest(dag, mocker):
     assert result == "manifest.txt"
 
 
-def test_combine_upload_files(dag):
-    result = dag.task_dict["combine_upload_files"].python_callable(
-        {"marc_xml_path": "x.xml"}, "manifest.txt"
-    )
-
-    assert result == ["x.xml", "manifest.txt"]
-
-
-def test_check_upload_success(dag):
-    result = dag.task_dict["check_upload"].python_callable({"failures": []})
-    assert result == ["move_transmitted_data_task", "build_sal3_result"]
-
-
-def test_check_upload_failure(dag):
-    result = dag.task_dict["check_upload"].python_callable({"failures": ["x.xml"]})
-    assert result == "mark_failed_status"
-
-
 def test_build_sal3_result(dag):
     result = dag.task_dict["build_sal3_result"].python_callable(
         {"pairs": [("111", "BIN-1"), ("222", "BIN-2")], "shipment_numbers": ["SHIP-1"]},
@@ -234,29 +216,21 @@ def test_build_sal3_result(dag):
     }
 
 
-def test_mark_failed_status(dag):
-    result = dag.task_dict["mark_failed_status"].python_callable(
-        {"failures": ["x.xml"]}
-    )
-
-    assert result == "Failed to upload files to Google Drive: ['x.xml']"
-
-
-def test_raise_shipment_failure(dag):
-    with pytest.raises(AirflowException, match="boom"):
-        dag.task_dict["raise_shipment_failure"].python_callable("boom")
-
-
-def test_check_upload_branch_wiring(dag):
-    downstream_ids = {t.task_id for t in dag.get_task("check_upload").downstream_list}
-    assert downstream_ids == {
-        "move_transmitted_data_task",
+def test_dag_no_longer_uploads(dag):
+    assert set(dag.task_dict) == {
+        "fetch_manifest",
+        "check_shipments",
+        "no_shipments",
+        "gather_barcodes",
+        "resolve_instances",
+        "generate_marc",
+        "generate_sal3_manifest",
         "build_sal3_result",
-        "mark_failed_status",
+        "sal3_confirmation_email",
     }
 
 
-def test_failure_callback_attached_only_upstream_of_branch(dag):
+def test_failure_callback_attached_while_building_files(dag):
     from libsys_airflow.dags.google_scanning.caiasoft_sal3 import _notify_failure
 
     for task_id in [
@@ -266,13 +240,10 @@ def test_failure_callback_attached_only_upstream_of_branch(dag):
         "resolve_instances",
         "generate_marc",
         "generate_sal3_manifest",
-        "combine_upload_files",
-        "upload_to_drive_task",
     ]:
         assert _notify_failure in dag.get_task(task_id).on_failure_callback
 
     assert not dag.get_task("build_sal3_result").on_failure_callback
-    assert not dag.get_task("mark_failed_status").on_failure_callback
 
 
 def test_notify_failure_sends_email(mocker):

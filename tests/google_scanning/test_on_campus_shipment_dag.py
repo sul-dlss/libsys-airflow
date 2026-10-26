@@ -4,11 +4,6 @@ from unittest.mock import MagicMock
 
 from airflow.exceptions import AirflowException
 
-from libsys_airflow.plugins.google_scanning.constants import (
-    STAGED_FILES_BASE,
-    STATUS_SHIPPED,
-)
-
 
 @pytest.fixture(scope="module")
 def dag():
@@ -58,16 +53,36 @@ def test_setup_raises_when_shipped_at_missing(dag, mocker):
         dag.task_dict["setup"].python_callable()
 
 
+def test_plan_calls_plan_shipment(dag, mocker):
+    mock_plan = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.plan_shipment",
+        return_value={"stem": "stamp", "rebuild": False, "carts": []},
+    )
+    mock_dag_run = MagicMock()
+    mock_dag_run.run_id = "run-123"
+
+    result = dag.task_dict["plan"].python_callable(
+        {"selected_carts": [{"cart_name": "cart-1"}], "shipped_at": "20260810"},
+        dag_run=mock_dag_run,
+    )
+
+    mock_plan.assert_called_once_with([{"cart_name": "cart-1"}], "20260810", "run-123")
+    assert result == {"stem": "stamp", "rebuild": False, "carts": []}
+
+
 def test_gather_barcodes_returns_to_ship_and_skipped(dag, mocker):
-    mocker.patch(
+    mock_barcodes = mocker.patch(
         "libsys_airflow.dags.google_scanning.on_campus_shipment.barcodes_for_shipment",
         return_value=([("111", "cart-1")], []),
     )
 
     result = dag.task_dict["gather_barcodes"].python_callable(
-        {"selected_carts": [{"cart_name": "cart-1", "filename": "b.txt"}]}
+        {"carts": [{"cart_name": "cart-1", "filename": "b.txt"}]}
     )
 
+    mock_barcodes.assert_called_once_with(
+        [{"cart_name": "cart-1", "filename": "b.txt"}]
+    )
     assert result == {"to_ship": [("111", "cart-1")], "skipped": []}
 
 
@@ -78,7 +93,7 @@ def test_gather_barcodes_raises_when_nothing_to_ship(dag, mocker):
     )
 
     with pytest.raises(AirflowException, match="No barcodes available to ship"):
-        dag.task_dict["gather_barcodes"].python_callable({"selected_carts": []})
+        dag.task_dict["gather_barcodes"].python_callable({"carts": []})
 
 
 def test_resolve_instances_returns_instance_ids_and_failures(dag, mocker):
@@ -120,9 +135,9 @@ def test_resolve_instances_raises_when_none_resolved(dag, mocker):
         )
 
 
-def test_generate_marc_calls_generate_shipment_marc(dag, mocker):
+def test_generate_marc_uses_planned_stem(dag, mocker):
     mock_generate = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.generate_shipment_marc",
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.generate_marc_for_instances",
         return_value={
             "filestamp": "stamp",
             "marc_xml_path": "x.xml",
@@ -132,10 +147,12 @@ def test_generate_marc_calls_generate_shipment_marc(dag, mocker):
 
     result = dag.task_dict["generate_marc"].python_callable(
         {"instance_ids": {"111": "instance-1", "222": "instance-1"}},
-        {"shipped_at": "20260810"},
+        {"stem": "stanford_20260810-oncampus"},
     )
 
-    mock_generate.assert_called_once_with(["instance-1", "instance-1"], "20260810")
+    mock_generate.assert_called_once_with(
+        ["instance-1", "instance-1"], "stanford_20260810-oncampus"
+    )
     assert result == {
         "filestamp": "stamp",
         "marc_xml_path": "x.xml",
@@ -159,90 +176,33 @@ def test_generate_shipment_manifest_calls_generate_manifest(dag, mocker):
     assert result == "manifest.txt"
 
 
-def test_combine_upload_files(dag):
-    result = dag.task_dict["combine_upload_files"].python_callable(
-        {"marc_xml_path": "x.xml"}, "manifest.txt"
-    )
-
-    assert result == ["x.xml", "manifest.txt"]
-
-
-def test_check_upload_success(dag):
-    result = dag.task_dict["check_upload"].python_callable({"failures": []})
-    assert result == ["archive_and_mark_shipped", "move_transmitted_data_task"]
-
-
-def test_check_upload_failure(dag):
-    result = dag.task_dict["check_upload"].python_callable({"failures": ["x.xml"]})
-    assert result == "mark_failed_status"
-
-
-def test_archive_and_mark_shipped(dag, mocker):
-    mock_update_status = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.update_cart_status"
-    )
-    mock_archive = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.archive_shipped_cart"
+def test_queue_carts_queues_carts_with_shipped_barcodes(dag, mocker):
+    mock_queue = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.queue_shipment",
+        return_value=["cart-1", "cart-2"],
     )
     mock_dag_run = MagicMock()
     mock_dag_run.run_id = "run-123"
+    shipment_plan = {"stem": "stamp", "carts": []}
 
-    result = dag.task_dict["archive_and_mark_shipped"].python_callable(
-        {"to_ship": [("111", "cart-1"), ("222", "cart-2")]},
-        {
-            "selected_carts": [{"cart_name": "cart-1"}, {"cart_name": "cart-2"}],
-            "shipped_at": "20260810",
-        },
+    result = dag.task_dict["queue_carts"].python_callable(
+        shipment_plan,
+        {"to_ship": [("222", "cart-2"), ("111", "cart-1"), ("112", "cart-1")]},
+        {"shipped_at": "20260810"},
+        "manifest.txt",
         dag_run=mock_dag_run,
     )
 
+    mock_queue.assert_called_once_with(
+        shipment_plan, ["cart-1", "cart-2"], "20260810", "run-123"
+    )
     assert result == ["cart-1", "cart-2"]
-    assert mock_update_status.call_count == 2
-    mock_update_status.assert_any_call(
-        "cart-1",
-        STAGED_FILES_BASE,
-        status=STATUS_SHIPPED,
-        shipped_at="20260810",
-        shipment_dag_run_id="run-123",
-    )
-    assert mock_archive.call_count == 2
-    mock_archive.assert_any_call("cart-1")
-    mock_archive.assert_any_call("cart-2")
-
-
-def test_archive_and_mark_shipped_skips_carts_with_no_shipped_barcodes(dag, mocker):
-    mock_update_status = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.update_cart_status"
-    )
-    mock_archive = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.archive_shipped_cart"
-    )
-    mock_dag_run = MagicMock()
-    mock_dag_run.run_id = "run-123"
-
-    result = dag.task_dict["archive_and_mark_shipped"].python_callable(
-        {"to_ship": [("111", "cart-1")]},
-        {
-            "selected_carts": [{"cart_name": "cart-1"}, {"cart_name": "cart-2"}],
-            "shipped_at": "20260810",
-        },
-        dag_run=mock_dag_run,
-    )
-
-    assert result == ["cart-1"]
-    mock_update_status.assert_called_once_with(
-        "cart-1",
-        STAGED_FILES_BASE,
-        status=STATUS_SHIPPED,
-        shipped_at="20260810",
-        shipment_dag_run_id="run-123",
-    )
-    mock_archive.assert_called_once_with("cart-1")
 
 
 def test_build_shipment_result(dag):
     result = dag.task_dict["build_shipment_result"].python_callable(
         ["cart-1", "cart-2"],
+        {"stem": "stanford_20260810-oncampus", "rebuild": True},
         {"to_ship": [("111", "cart-1"), ("222", "cart-2")], "skipped": []},
         {"instance_id_failures": []},
         {"not_found_instance_ids": [], "marc_xml_path": "x.xml"},
@@ -251,6 +211,8 @@ def test_build_shipment_result(dag):
 
     assert result == {
         "shipped_carts": ["cart-1", "cart-2"],
+        "rebuild": True,
+        "stem": "stanford_20260810-oncampus",
         "shipped_barcode_count": 2,
         "skipped": [],
         "instance_id_failures": [],
@@ -260,54 +222,34 @@ def test_build_shipment_result(dag):
     }
 
 
-def test_mark_failed_status(dag, mocker):
-    mock_mark_carts_failed = mocker.patch(
-        "libsys_airflow.dags.google_scanning.on_campus_shipment.mark_carts_failed"
-    )
-    mock_dag_run = MagicMock()
-    mock_dag_run.run_id = "run-123"
-
-    result = dag.task_dict["mark_failed_status"].python_callable(
-        {"failures": ["x.xml"]},
-        {"selected_carts": [{"cart_name": "cart-1"}]},
-        dag_run=mock_dag_run,
-    )
-
-    mock_mark_carts_failed.assert_called_once_with([{"cart_name": "cart-1"}], "run-123")
-    assert result == "Failed to upload files to Google Drive: ['x.xml']"
-
-
-def test_raise_shipment_failure(dag):
-    with pytest.raises(AirflowException, match="boom"):
-        dag.task_dict["raise_shipment_failure"].python_callable("boom")
-
-
-def test_check_upload_branch_wiring(dag):
-    downstream_ids = {t.task_id for t in dag.get_task("check_upload").downstream_list}
-    assert downstream_ids == {
-        "archive_and_mark_shipped",
-        "move_transmitted_data_task",
-        "mark_failed_status",
+def test_dag_no_longer_uploads(dag):
+    assert set(dag.task_dict) == {
+        "setup",
+        "plan",
+        "gather_barcodes",
+        "resolve_instances",
+        "generate_marc",
+        "generate_shipment_manifest",
+        "queue_carts",
+        "build_shipment_result",
+        "shipment_confirmation_email",
     }
 
 
-def test_failure_callback_attached_only_upstream_of_branch(dag):
+def test_failure_callback_attached_after_setup(dag):
     from libsys_airflow.dags.google_scanning.on_campus_shipment import (
         _mark_failed_and_notify,
     )
 
     for task_id in [
+        "plan",
         "gather_barcodes",
         "resolve_instances",
         "generate_marc",
         "generate_shipment_manifest",
-        "combine_upload_files",
-        "upload_to_drive_task",
+        "queue_carts",
     ]:
         assert _mark_failed_and_notify in dag.get_task(task_id).on_failure_callback
-
-    assert not dag.get_task("archive_and_mark_shipped").on_failure_callback
-    assert not dag.get_task("mark_failed_status").on_failure_callback
 
 
 def test_mark_failed_and_notify_marks_carts_and_sends_email(mocker):
@@ -347,6 +289,37 @@ def test_mark_failed_and_notify_marks_carts_and_sends_email(mocker):
     assert "boom" in reason
     assert dag_run is mock_dag_run
     assert user_email == "staff@example.com"
+
+
+def test_mark_failed_and_notify_mentions_unsent_shipment(mocker):
+    from libsys_airflow.dags.google_scanning.on_campus_shipment import (
+        _mark_failed_and_notify,
+    )
+
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.mark_carts_failed"
+    )
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.read_shipment",
+        return_value={"status": "building"},
+    )
+    mock_send_email = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.send_shipment_failure_email"
+    )
+    mock_ti = MagicMock()
+    mock_ti.task_id = "generate_marc"
+
+    _mark_failed_and_notify(
+        {
+            "task_instance": mock_ti,
+            "dag_run": None,
+            "params": {"shipped_at": "20260810"},
+            "exception": ValueError("boom"),
+        }
+    )
+
+    reason = mock_send_email.call_args[0][0]
+    assert "stanford_20260810-oncampus shipment won't be sent" in reason
 
 
 def test_mark_failed_and_notify_defaults_selected_carts_and_user_email(mocker):

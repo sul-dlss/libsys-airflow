@@ -49,8 +49,8 @@ def barcode_bin_pairs(shipments: list[dict]) -> list[tuple[str, str]]:
 def sal3_filestamp(date_str: str) -> str:
     """
     Builds this run's file stem for the SAL3 shipment's MARCXML/manifest,
-    e.g. "stanford_20260813-sal3". Unlike the on-campus shipment's
-    filestamp, no sequence number is needed since this DAG processes at most
-    one date per run.
+    e.g. "stanford_20260813-sal3". Like the on-campus shipment's
+    filestamp, there's one per date; this DAG processes at most one date
+    per run.
     """
     return f"stanford_{date_str}-sal3"

@@ -7,5 +7,6 @@
     "transmit_oclc": "30 3 * * FRI",
     "select_pod": "0 22 * * *",
     "transmit_pod": "0 0 * * *",
-    "google_scanning_caiasoft_check": "0 6 * * *"
+    "google_scanning_caiasoft_check": "0 6 * * *",
+    "transmit_google_scanning": "0 21 * * *"
 }

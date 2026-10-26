@@ -1,20 +1,24 @@
 import logging
 import re
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from libsys_airflow.plugins.google_scanning.constants import SAL3_ARCHIVE_NAME
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
     active_dag_runs,
-    archived_file_path,
+    cart_has_active_run,
     download_filename,
+    is_cart_staged,
     list_shipped_carts,
     list_staged_carts,
+    other_date_conflicts,
     save_staged_file,
+    shipped_file_path,
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
@@ -81,9 +85,14 @@ def stage_cart(
     request: Request,
     cart_name: str = Form(...),  # noqa: B008
     barcode_file: UploadFile | None = File(default=None),  # noqa: B008
+    confirm_replace: str = Form(default=""),  # noqa: B008
 ):
     if not cart_name.strip():
         return _render_home(request, error="Cart name is required.")
+    if cart_name.lower() == SAL3_ARCHIVE_NAME:
+        return _render_home(
+            request, error=f'"{cart_name}" is reserved; use another cart name.'
+        )
     if not barcode_file or not barcode_file.filename:
         return _render_home(request, error="A barcode file is required.")
 
@@ -107,6 +116,26 @@ def stage_cart(
             error=f"Barcode file contains invalid line(s): {', '.join(invalid[:5])}",
         )
 
+    replacing = is_cart_staged(cart_name)
+    if replacing:
+        try:
+            has_active_run = cart_has_active_run(cart_name)
+        except Exception as e:
+            logger.error(f"Error checking active DAG runs for {cart_name}: {e}")
+            return _render_home(
+                request, error=f"Could not check whether {cart_name} is processing."
+            )
+        if has_active_run:
+            return _render_home(
+                request,
+                error=f"{cart_name} is currently processing; try again once it finishes.",
+            )
+        if confirm_replace != "true":
+            return _render_home(
+                request,
+                error=f"{cart_name} is already staged. Confirm to replace its file.",
+            )
+
     staged_file_path = save_staged_file(cart_name, barcode_file.filename, contents)
 
     try:
@@ -117,7 +146,8 @@ def stage_cart(
             warning=f"Staged {cart_name}, but failed to start item processing."
         )
 
-    return _redirect_home(success=f"Staged {cart_name}.")
+    verb = "Replaced staged" if replacing else "Staged"
+    return _redirect_home(success=f"{verb} {cart_name}.")
 
 
 @app.post("/ship", dependencies=[Depends(csrf_protect)])
@@ -137,6 +167,13 @@ def trigger_shipment(
 
     shipped_at = shipped_at or date.today().isoformat()
 
+    conflicts = other_date_conflicts(
+        [cart["cart_name"] for cart in carts],
+        datetime.strptime(shipped_at, "%Y-%m-%d").strftime("%Y%m%d"),
+    )
+    if conflicts:
+        return _render_home(request, error=" ".join(conflicts))
+
     try:
         dag_run_id = trigger_on_campus_shipment_dag(carts, user_email, shipped_at)
     except Exception as e:
@@ -155,14 +192,14 @@ def dag_run_progress():
         raise HTTPException(status_code=502, detail="Could not fetch DAG run progress")
 
 
-@app.get("/download/{cart_name}/{filename}")
-async def download_shipped_file(cart_name: str, filename: str):
+@app.get("/download/{rel_path:path}")
+async def download_shipped_file(rel_path: str):
     try:
-        file_path = archived_file_path(cart_name, filename)
+        file_path = shipped_file_path(rel_path)
     except ValueError:
         raise HTTPException(status_code=404, detail="File not found")
 
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(file_path, filename=download_filename(filename))
+    return FileResponse(file_path, filename=download_filename(file_path))

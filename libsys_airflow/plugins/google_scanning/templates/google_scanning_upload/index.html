@@ -26,8 +26,9 @@
   {% endif %}
 
   <h2>Stage a Cart</h2>
-  <form enctype="multipart/form-data" method="post" action="stage">
+  <form id="stage-form" enctype="multipart/form-data" method="post" action="stage">
     {{ csrf_field(request) }}
+    <input type="hidden" id="confirm_replace" name="confirm_replace" value="">
     <div class="form-row">
       <label for="cart_name">Cart Name</label>
       <input type="text" id="cart_name" name="cart_name" required>
@@ -109,7 +110,7 @@
     <thead>
       <tr>
         <th>Cart Name</th>
-        <th>Filename</th>
+        <th>Files</th>
         <th>Shipped At</th>
         <th>Status</th>
       </tr>
@@ -118,7 +119,11 @@
       {% for cart in shipped_carts %}
       <tr class="filterable-row">
         <td>{{ cart.cart_name }}</td>
-        <td><a href="download/{{ cart.cart_name | urlencode }}/{{ cart.filename | urlencode }}">{{ cart.download_filename }}</a></td>
+        <td>
+          {% for file in cart.files %}
+          <a href="download/{{ file.path | urlencode }}">{{ file.download_filename }}</a>{% if not loop.last %}<br>{% endif %}
+          {% endfor %}
+        </td>
         <td>{{ cart.shipped_at | default("Unknown", true) }}</td>
         <td>
           {{ cart.status.status | default("unknown", true) | capitalize }}
@@ -139,6 +144,23 @@
 
 {% block extra_scripts %}
   <script>
+    // Cart names are unique among staged carts, so confirm before
+    // re-staging one replaces its barcode file.
+    var stagedCartNames = {{ staged_carts | map(attribute="cart_name") | list | tojson }};
+    document.getElementById("stage-form").addEventListener("submit", function (event) {
+      var cartName = document.getElementById("cart_name").value;
+      var confirmReplace = document.getElementById("confirm_replace");
+      confirmReplace.value = "";
+      if (stagedCartNames.indexOf(cartName) === -1) {
+        return;
+      }
+      if (window.confirm("Cart " + cartName + " is already staged. Replace its barcode file and re-run item processing?")) {
+        confirmReplace.value = "true";
+      } else {
+        event.preventDefault();
+      }
+    });
+
     document.getElementById("table-search").addEventListener("input", function () {
       var query = this.value.trim().toLowerCase();
       document.querySelectorAll(".filterable-row").forEach(function (row) {

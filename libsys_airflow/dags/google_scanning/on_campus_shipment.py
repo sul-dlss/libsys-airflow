@@ -5,28 +5,21 @@ from datetime import datetime
 from airflow.sdk import dag, task, get_current_context
 from airflow.exceptions import AirflowException
 
-from libsys_airflow.plugins.google_scanning.constants import (
-    STAGED_FILES_BASE,
-    STATUS_SHIPPED,
-)
-from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    move_transmitted_data_task,
-)
-from libsys_airflow.plugins.google_scanning.drive import upload_to_drive_task
 from libsys_airflow.plugins.google_scanning.email import (
     send_shipment_failure_email,
     shipment_confirmation_email,
-    shipment_failure_email,
 )
 from libsys_airflow.plugins.google_scanning.manifest import generate_manifest
-from libsys_airflow.plugins.google_scanning.marc import generate_shipment_marc
+from libsys_airflow.plugins.google_scanning.marc import generate_marc_for_instances
 from libsys_airflow.plugins.google_scanning.shipment import (
-    archive_shipped_cart,
     barcodes_for_shipment,
     mark_carts_failed,
+    plan_shipment,
+    queue_shipment,
+    read_shipment,
     resolve_instance_ids,
-    update_cart_status,
 )
+from libsys_airflow.plugins.google_scanning.staging import shipment_filestamp
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -34,11 +27,12 @@ logger = logging.getLogger(__name__)
 
 def _mark_failed_and_notify(context: dict) -> None:
     """
-    on_failure_callback for tasks that can fail before the check_upload
-    branch runs. If there are no barcodes available in FOLIO or none that
-    resolve to an instance, marks every selected cart failed, since barcodes
-    from all selected carts are merged together before this point, so there
-    is no way to tell which one(s) actually caused the failure.
+    on_failure_callback for every task after setup. If there are no barcodes
+    available in FOLIO or none that resolve to an instance, marks every
+    selected cart failed, since barcodes from all selected carts are merged
+    together before this point, so there is no way to tell which one(s)
+    actually caused the failure. A shipment left "building" (see
+    shipment.py::plan_shipment) isn't sent until it's triggered again.
     """
     ti = context["task_instance"]
     dag_run = context.get("dag_run")
@@ -49,6 +43,13 @@ def _mark_failed_and_notify(context: dict) -> None:
     )
 
     reason = f"{ti.task_id} failed: {context.get('exception')}"
+    if shipped_at := params.get("shipped_at"):
+        stem = shipment_filestamp(shipped_at)
+        if read_shipment(stem):
+            reason += (
+                f" The {stem} shipment won't be sent to Google Drive until "
+                "it's triggered again."
+            )
     send_shipment_failure_email(reason, dag_run, params.get("user_email"))
 
 
@@ -75,8 +76,16 @@ def on_campus_shipment():
         }
 
     @task(on_failure_callback=_mark_failed_and_notify)
-    def gather_barcodes(init_params: dict) -> dict:
-        to_ship, skipped = barcodes_for_shipment(init_params["selected_carts"])
+    def plan(init_params: dict, **kwargs) -> dict:
+        return plan_shipment(
+            init_params["selected_carts"],
+            init_params["shipped_at"],
+            kwargs["dag_run"].run_id,
+        )
+
+    @task(on_failure_callback=_mark_failed_and_notify)
+    def gather_barcodes(shipment_plan: dict) -> dict:
+        to_ship, skipped = barcodes_for_shipment(shipment_plan["carts"])
         if not to_ship:
             raise AirflowException(
                 "No barcodes available to ship after excluding barcodes "
@@ -98,9 +107,9 @@ def on_campus_shipment():
         return {"instance_ids": instance_ids, "instance_id_failures": failures}
 
     @task(on_failure_callback=_mark_failed_and_notify)
-    def generate_marc(resolved: dict, init_params: dict) -> dict:
-        return generate_shipment_marc(
-            list(resolved["instance_ids"].values()), init_params["shipped_at"]
+    def generate_marc(resolved: dict, shipment_plan: dict) -> dict:
+        return generate_marc_for_instances(
+            list(resolved["instance_ids"].values()), shipment_plan["stem"]
         )
 
     @task(on_failure_callback=_mark_failed_and_notify)
@@ -115,44 +124,41 @@ def on_campus_shipment():
         return generate_manifest(shipped_pairs, marc_result["filestamp"])
 
     @task(on_failure_callback=_mark_failed_and_notify)
-    def combine_upload_files(marc_result: dict, manifest_path: str) -> list:
-        return [marc_result["marc_xml_path"], manifest_path]
-
-    @task.branch
-    def check_upload(upload_result: dict) -> list[str] | str:
-        if upload_result["failures"]:
-            return "mark_failed_status"
-        return ["archive_and_mark_shipped", "move_transmitted_data_task"]
-
-    @task
-    def archive_and_mark_shipped(gathered: dict, init_params: dict, **kwargs) -> list:
-        dag_run = kwargs["dag_run"]
+    def queue_carts(
+        shipment_plan: dict,
+        gathered: dict,
+        init_params: dict,
+        manifest_path: str,
+        **kwargs,
+    ) -> list:
+        # manifest_path is only taken so this runs after the manifest is
+        # written, since the shipment is marked "ready" here.
         shipped_cart_names = sorted({cart_name for _, cart_name in gathered["to_ship"]})
-        for cart in init_params["selected_carts"]:
-            cart_name = cart["cart_name"]
-            if cart_name not in shipped_cart_names:
-                continue
-            update_cart_status(
-                cart_name,
-                STAGED_FILES_BASE,
-                status=STATUS_SHIPPED,
-                shipped_at=init_params["shipped_at"],
-                shipment_dag_run_id=dag_run.run_id,
-            )
-            archive_shipped_cart(cart_name)
-        logger.info(f"Archived {len(shipped_cart_names)} shipped cart(s)")
-        return shipped_cart_names
+        shipment_carts = queue_shipment(
+            shipment_plan,
+            shipped_cart_names,
+            init_params["shipped_at"],
+            kwargs["dag_run"].run_id,
+        )
+        logger.info(
+            f"Queued {shipment_plan['stem']} with {len(shipment_carts)} cart(s) "
+            "for the send_google_scanning_files DAG"
+        )
+        return shipment_carts
 
     @task
     def build_shipment_result(
-        shipped_carts: list,
+        shipment_carts: list,
+        shipment_plan: dict,
         gathered: dict,
         resolved: dict,
         marc_result: dict,
         manifest_path: str,
     ) -> dict:
         return {
-            "shipped_carts": shipped_carts,
+            "shipped_carts": shipment_carts,
+            "rebuild": shipment_plan["rebuild"],
+            "stem": shipment_plan["stem"],
             "shipped_barcode_count": len(gathered["to_ship"]),
             "skipped": gathered["skipped"],
             "instance_id_failures": resolved["instance_id_failures"],
@@ -161,40 +167,17 @@ def on_campus_shipment():
             "manifest_path": manifest_path,
         }
 
-    @task
-    def mark_failed_status(upload_result: dict, init_params: dict, **kwargs) -> str:
-        dag_run = kwargs["dag_run"]
-        mark_carts_failed(init_params["selected_carts"], dag_run.run_id)
-        return f"Failed to upload files to Google Drive: {upload_result['failures']}"
-
-    @task
-    def raise_shipment_failure(reason: str) -> None:
-        raise AirflowException(reason)
-
     init_params = setup()
-    gathered = gather_barcodes(init_params)
+    shipment_plan = plan(init_params)
+    gathered = gather_barcodes(shipment_plan)
     resolved = resolve_instances(gathered)
-    marc_result = generate_marc(resolved, init_params)
+    marc_result = generate_marc(resolved, shipment_plan)
     manifest_path = generate_shipment_manifest(gathered, resolved, marc_result)
-    files_to_upload = combine_upload_files(marc_result, manifest_path)
-    upload_result = upload_to_drive_task.override(
-        on_failure_callback=_mark_failed_and_notify
-    )(files_to_upload)
-
-    upload_branch = check_upload(upload_result)
-
-    shipped_carts = archive_and_mark_shipped(gathered, init_params)
-    archived_shipment_files = move_transmitted_data_task(upload_result["success"])
+    shipment_carts = queue_carts(shipment_plan, gathered, init_params, manifest_path)
     shipment_result = build_shipment_result(
-        shipped_carts, gathered, resolved, marc_result, manifest_path
+        shipment_carts, shipment_plan, gathered, resolved, marc_result, manifest_path
     )
     shipment_confirmation_email(shipment_result)
-
-    failure_reason = mark_failed_status(upload_result, init_params)
-    shipment_failure_email(failure_reason)
-    raise_shipment_failure(failure_reason)
-
-    upload_branch >> [shipped_carts, archived_shipment_files, failure_reason]
 
 
 on_campus_shipment()
