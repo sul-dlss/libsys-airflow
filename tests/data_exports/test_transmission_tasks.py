@@ -19,7 +19,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     transmit_data_http_task,
     transmit_data_ftp_task,
     oclc_connections,
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
     consolidate_oclc_archive_files,
     delete_from_oclc_task,
     filter_new_marc_records_task,
@@ -471,12 +471,12 @@ def test_consolidate_oclc_archive_files_task():
     )
 
 
-def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):
+def test_move_transmitted_data_task(mock_file_system, mock_marc_files):
     instance_id_dir = mock_file_system[2]
     instance_id_file1 = instance_id_dir / "2024022914.csv"
     instance_id_file1.touch()
     mock_marc_file_list = mock_marc_files["file_list"]
-    archive_transmitted_data_task.function(mock_marc_file_list)
+    move_transmitted_data_task.function(mock_marc_file_list)
     assert not instance_id_file1.exists()
     transmitted_dir = mock_file_system[-1]
     for x in mock_marc_file_list:
@@ -486,52 +486,56 @@ def test_archive_transmitted_data_task(mock_file_system, mock_marc_files):
 
 
 @pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
-def test_archive_gobi_files(tmp_path, mock_vendor_marc_files):
+def test_move_gobi_files(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     vendor_dir = airflow / "data-export-files/gobi/"
     instance_id_dir = vendor_dir / "instanceids" / "updates"
     instance_id_dir.mkdir(parents=True)
     instance_id_file1 = instance_id_dir / "2024030214.csv"
     instance_id_file1.touch()
-    archive_dir = vendor_dir / "transmitted" / "updates"
-    archive_dir.mkdir(parents=True)
+    transmitted_dir = vendor_dir / "transmitted" / "updates"
+    transmitted_dir.mkdir(parents=True)
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="gobi")
     assert len(transmitted_files["file_list"]) == 1
-    archive_transmitted_data_task.function(transmitted_files["file_list"])
+    move_transmitted_data_task.function(transmitted_files["file_list"])
     base_file_name = (
         pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
     )
     related_marc_file = base_file_name + ".mrc"
-    assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
-    assert (archive_dir / pathlib.Path(related_marc_file)).exists()
-    assert (archive_dir / instance_id_file1.name).exists()
+    assert (
+        transmitted_dir / pathlib.Path(transmitted_files["file_list"][0]).name
+    ).exists()
+    assert (transmitted_dir / pathlib.Path(related_marc_file)).exists()
+    assert (transmitted_dir / instance_id_file1.name).exists()
 
 
 @pytest.mark.parametrize("mock_vendor_marc_files", ["pod"], indirect=True)
-def test_archive_pod_files(tmp_path, mock_vendor_marc_files):
+def test_move_pod_files(tmp_path, mock_vendor_marc_files):
     airflow = tmp_path / "airflow"
     vendor_dir = airflow / "data-export-files/pod/"
     instance_id_dir = vendor_dir / "instanceids" / "updates"
     instance_id_dir.mkdir(parents=True)
     instance_id_file1 = instance_id_dir / "2024020314.csv"
     instance_id_file1.touch()
-    archive_dir = vendor_dir / "transmitted" / "updates"
-    archive_dir.mkdir(parents=True)
+    transmitted_dir = vendor_dir / "transmitted" / "updates"
+    transmitted_dir.mkdir(parents=True)
     transmitted_files = gather_files_task.function(airflow=airflow, vendor="pod")
     assert len(transmitted_files["file_list"]) == 1
-    archive_transmitted_data_task.function(transmitted_files["file_list"])
+    move_transmitted_data_task.function(transmitted_files["file_list"])
     base_file_name = (
         pathlib.Path(transmitted_files["file_list"][0]).with_suffix('').stem
     )
     related_marc_file = base_file_name + ".mrc"
-    assert (archive_dir / pathlib.Path(transmitted_files["file_list"][0]).name).exists()
-    assert (archive_dir / pathlib.Path(related_marc_file)).exists()
-    assert (archive_dir / instance_id_file1.name).exists()
+    assert (
+        transmitted_dir / pathlib.Path(transmitted_files["file_list"][0]).name
+    ).exists()
+    assert (transmitted_dir / pathlib.Path(related_marc_file)).exists()
+    assert (transmitted_dir / instance_id_file1.name).exists()
 
 
-def test_archive_transmitted_data_task_no_files(caplog):
-    archive_transmitted_data_task.function([])
-    assert "No files to archive" in caplog.text
+def test_move_transmitted_data_task_no_files(caplog):
+    move_transmitted_data_task.function([])
+    assert "No files to move" in caplog.text
 
 
 def test_gather_oclc_files_task(tmp_path, caplog):

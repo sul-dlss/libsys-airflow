@@ -10,7 +10,7 @@ ARCHIVED_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/archi
 # manifest.py::generate_manifest).
 MARC_FILES_BASE = Path("/opt/airflow/data-export-files/google_scanning/marc-files")
 
-# Sibling of MARC_FILES_BASE. archive_transmitted_data_task moves the
+# Sibling of MARC_FILES_BASE. move_transmitted_data_task moves the
 # MARCXML (new/) and manifest (manifests/) here once uploaded.
 TRANSMITTED_FILES_BASE = Path(
     "/opt/airflow/data-export-files/google_scanning/transmitted"

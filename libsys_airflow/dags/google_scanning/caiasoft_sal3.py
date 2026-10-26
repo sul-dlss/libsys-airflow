@@ -8,7 +8,7 @@ from airflow.exceptions import AirflowException
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
 )
 from libsys_airflow.plugins.google_scanning.caiasoft_api import CaiaSoftAPIWrapper
 from libsys_airflow.plugins.google_scanning.caiasoft_shipment import (
@@ -126,7 +126,7 @@ def google_scanning_caiasoft_sal3():
     def check_upload(upload_result: dict) -> list[str] | str:
         if upload_result["failures"]:
             return "mark_failed_status"
-        return ["archive_transmitted_data_task", "build_sal3_result"]
+        return ["move_transmitted_data_task", "build_sal3_result"]
 
     @task
     def build_sal3_result(
@@ -169,7 +169,7 @@ def google_scanning_caiasoft_sal3():
 
     upload_branch = check_upload(upload_result)
 
-    archived = archive_transmitted_data_task(upload_result["success"])
+    archived = move_transmitted_data_task(upload_result["success"])
     sal3_result = build_sal3_result(
         gathered, resolved, marc_result, manifest_path, fetched
     )

@@ -295,36 +295,38 @@ def consolidate_oclc_archive_files(gathered_oclc_files: dict) -> list:
 
 
 @task
-def archive_transmitted_data_task(files):
+def move_transmitted_data_task(files):
     """
     Given a list of successfully transmitted files, move files to
-    'transmitted' folder under each data-export-files/{vendor}.
+    'transmitted' folder under each data-export-files/{vendor}, so
+    gather_files_task doesn't send them again. Files in 'transmitted' are
+    purged by the data_export_purge_archived_files DAG.
     Also moves the instanceid file with the same vendor and filename
     Also moves the xml or gz files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
-    logger.info("Moving transmitted files to archive directory")
+    logger.info("Moving transmitted files to transmitted directory")
 
     if len(files) < 1:
-        logger.warning("No files to archive")
+        logger.warning("No files to move")
         return
 
-    archive_dir = Path(files[0]).parent.parent.parent / "transmitted"
-    archive_dir.mkdir(exist_ok=True)
+    transmitted_dir = Path(files[0]).parent.parent.parent / "transmitted"
+    transmitted_dir.mkdir(exist_ok=True)
     for x in files:
         kind = Path(x).parent.name
         # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.xml|*.gz|*.txt
         original_transmitted_file_path = Path(x)
 
-        # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
-        archive_path = archive_dir / kind
-        archive_path.mkdir(exist_ok=True)
-        archive_path = archive_path / original_transmitted_file_path.name
+        # transmitted_path = data-export-files/{vendor}/transmitted/new|updates|deletes
+        transmitted_path = transmitted_dir / kind
+        transmitted_path.mkdir(exist_ok=True)
+        transmitted_path = transmitted_path / original_transmitted_file_path.name
 
         # move transmitted files (for GOBI this will be *.txt files; for POD this will be *.gz files)
         logger.info(
-            f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
+            f"Moving transmitted file {original_transmitted_file_path} to {transmitted_path}"
         )
-        original_transmitted_file_path.replace(archive_path)
+        original_transmitted_file_path.replace(transmitted_path)
 
         # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
         # with_suffix('') will remove multiple extentions, e.g. .xml.gz
@@ -332,25 +334,27 @@ def archive_transmitted_data_task(files):
             original_transmitted_file_path.parent.parent.parent
             / f"instanceids/{kind}/{original_transmitted_file_path.with_suffix('').stem}.csv"
         )
-        instance_archive_path = archive_dir / kind / instance_path.name
+        instance_transmitted_path = transmitted_dir / kind / instance_path.name
 
         # move instance id files with same stem as transmitted filename
         if instance_path.exists():
             logger.info(
-                f"Moving related instanceid file {instance_path} to {instance_archive_path}"
+                f"Moving related instanceid file {instance_path} to {instance_transmitted_path}"
             )
-            instance_path.replace(instance_archive_path)
+            instance_path.replace(instance_transmitted_path)
 
         marc_path = (
             original_transmitted_file_path.parent
             / f"{original_transmitted_file_path.with_suffix('').stem}.mrc"
         )
-        marc_archive_path = archive_dir / kind / marc_path.name
+        marc_transmitted_path = transmitted_dir / kind / marc_path.name
 
         # move marc files with same stem as transmitted filename (when transmitted file is not *.xml)
         if marc_path.exists():
-            logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
-            marc_path.replace(marc_archive_path)
+            logger.info(
+                f"Moving related marc file {marc_path} to {marc_transmitted_path}"
+            )
+            marc_path.replace(marc_transmitted_path)
 
 
 def vendor_fileformat_spec(vendor):

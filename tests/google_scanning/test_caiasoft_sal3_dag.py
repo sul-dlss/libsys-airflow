@@ -206,7 +206,7 @@ def test_combine_upload_files(dag):
 
 def test_check_upload_success(dag):
     result = dag.task_dict["check_upload"].python_callable({"failures": []})
-    assert result == ["archive_transmitted_data_task", "build_sal3_result"]
+    assert result == ["move_transmitted_data_task", "build_sal3_result"]
 
 
 def test_check_upload_failure(dag):
@@ -250,7 +250,7 @@ def test_raise_shipment_failure(dag):
 def test_check_upload_branch_wiring(dag):
     downstream_ids = {t.task_id for t in dag.get_task("check_upload").downstream_list}
     assert downstream_ids == {
-        "archive_transmitted_data_task",
+        "move_transmitted_data_task",
         "build_sal3_result",
         "mark_failed_status",
     }

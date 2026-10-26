@@ -10,7 +10,7 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_SHIPPED,
 )
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
 )
 from libsys_airflow.plugins.google_scanning.drive import upload_to_drive_task
 from libsys_airflow.plugins.google_scanning.email import (
@@ -122,7 +122,7 @@ def on_campus_shipment():
     def check_upload(upload_result: dict) -> list[str] | str:
         if upload_result["failures"]:
             return "mark_failed_status"
-        return ["archive_and_mark_shipped", "archive_transmitted_data_task"]
+        return ["archive_and_mark_shipped", "move_transmitted_data_task"]
 
     @task
     def archive_and_mark_shipped(gathered: dict, init_params: dict, **kwargs) -> list:
@@ -184,7 +184,7 @@ def on_campus_shipment():
     upload_branch = check_upload(upload_result)
 
     shipped_carts = archive_and_mark_shipped(gathered, init_params)
-    archived_shipment_files = archive_transmitted_data_task(upload_result["success"])
+    archived_shipment_files = move_transmitted_data_task(upload_result["success"])
     shipment_result = build_shipment_result(
         shipped_carts, gathered, resolved, marc_result, manifest_path
     )
