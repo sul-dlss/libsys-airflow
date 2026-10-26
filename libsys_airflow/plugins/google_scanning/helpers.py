@@ -13,6 +13,8 @@ from libsys_airflow.plugins.google_scanning.constants import (
 
 logger = logging.getLogger(__name__)
 
+STAGING_NOTE_PREFIX = "Sent for Google scanning/"
+
 
 def _lookup_by_barcode(
     endpoint: str, key: str, barcode: str, folio_client: FolioClient
@@ -66,10 +68,16 @@ def _apply_staging_updates(item: dict, **kwargs) -> dict:
     item["temporaryLocation"] = {"id": temp_location_id}
     if digi_sent_id not in item["statisticalCodeIds"]:
         item["statisticalCodeIds"].append(digi_sent_id)
+    # Re-staging a cart re-runs these updates; the note is date-only, so
+    # keep the first one rather than adding another.
+    if any(
+        note.get("note", "").startswith(STAGING_NOTE_PREFIX) for note in item["notes"]
+    ):
+        return item
     item["notes"].append(
         {
             "itemNoteTypeId": note_type_id,
-            "note": f"Sent for Google scanning/{date}",
+            "note": f"{STAGING_NOTE_PREFIX}{date}",
             "staffOnly": True,
         }
     )
