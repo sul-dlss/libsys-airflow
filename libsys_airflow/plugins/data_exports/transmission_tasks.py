@@ -131,7 +131,9 @@ def gather_oclc_files_task(**kwargs) -> dict:
 @task
 def transmit_data_http_task(gather_files, **kwargs) -> dict:
     if not is_production():
-        return return_success_test_instance(gather_files)
+        return return_success_test_instance(
+            gather_files, kwargs.get("params", {}).get("vendor")
+        )
     """
     Transmit the data via http
     Returns lists of files successfully transmitted and failures
@@ -173,7 +175,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
 @task
 def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     if not is_production():
-        return return_success_test_instance(gather_files)
+        return return_success_test_instance(gather_files, conn_id)
     """
     Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
@@ -398,8 +400,16 @@ def vendor_url_params(conn_id, is_s3_path) -> dict:
     return url_params
 
 
-def return_success_test_instance(files) -> dict:
+def return_success_test_instance(files, conn_id=None) -> dict:
+    """
+    Stands in for a transmission outside production, logging the filename
+    each file would be sent to the vendor as, per vendor_filename_spec.
+    """
     logger.info("SKIPPING TRANSMISSION")
+    for f in files["file_list"]:
+        logger.info(
+            f"Would transmit {f} to {conn_id} as {vendor_filename_spec(conn_id, f)}"
+        )
     return {"success": files["file_list"], "failures": []}
 
 

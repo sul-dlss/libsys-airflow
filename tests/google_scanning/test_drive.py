@@ -43,6 +43,10 @@ def test_upload_to_drive_task_skips_when_not_production(mocker, mock_files, capl
 
     assert result == {"success": mock_files, "failures": []}
     assert "SKIPPING GOOGLE DRIVE UPLOAD" in caplog.text
+    for f in mock_files:
+        assert f"Would upload {f} to Google Drive as" in caplog.text
+    assert "as stanford_20260101-campus.xml" in caplog.text
+    assert "as stanford_20260101-campus.txt" in caplog.text
 
 
 def test_upload_to_drive_task_success(mocker, mock_files, caplog):

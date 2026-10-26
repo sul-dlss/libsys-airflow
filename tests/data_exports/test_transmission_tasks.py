@@ -309,6 +309,48 @@ def test_transmit_backstage_data_ftp_task(
     assert "Transmitted file to /remote/path/dir/STF2024020314.mrc" in caplog.text
 
 
+@pytest.mark.parametrize("mock_vendor_marc_files", ["gobi"], indirect=True)
+def test_transmit_data_ftp_task_logs_vendor_filenames_when_not_production(
+    mocker, mock_vendor_marc_files, tmp_path, caplog
+):
+    mock_hook = mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.FTPHook"
+    )
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=False,
+    )
+
+    airflow = tmp_path / "airflow"
+    marc_files = gather_files_task.function(airflow=airflow, vendor="gobi")
+    transmit_data = transmit_data_ftp_task.function("gobi", marc_files)
+
+    assert transmit_data == {"success": marc_files["file_list"], "failures": []}
+    assert "SKIPPING TRANSMISSION" in caplog.text
+    assert (
+        f"Would transmit {marc_files['file_list'][0]} to gobi as "
+        "stf_325099_2024030214.txt"
+    ) in caplog.text
+    mock_hook.assert_not_called()
+
+
+def test_transmit_data_http_task_logs_filenames_when_not_production(
+    mocker, mock_marc_files, caplog
+):
+    mocker.patch(
+        "libsys_airflow.plugins.data_exports.transmission_tasks.is_production",
+        return_value=False,
+    )
+
+    transmit_data = transmit_data_http_task.function(
+        mock_marc_files, params={"vendor": "pod"}
+    )
+
+    assert transmit_data == {"success": mock_marc_files["file_list"], "failures": []}
+    for f in mock_marc_files["file_list"]:
+        assert f"Would transmit {f} to pod as {pathlib.Path(f).name}" in caplog.text
+
+
 def test_transmit_data_task(
     mocker, mock_httpx_connection, mock_httpx_success, mock_marc_files, caplog
 ):

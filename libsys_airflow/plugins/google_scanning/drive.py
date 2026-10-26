@@ -50,6 +50,8 @@ def upload_to_drive_task(file_list: list) -> dict:
     """
     if not is_production():
         logger.info("SKIPPING GOOGLE DRIVE UPLOAD")
+        for f in file_list:
+            logger.info(f"Would upload {f} to Google Drive as {Path(f).name}")
         return {"success": file_list, "failures": []}
 
     uploaded: list[tuple[str, str]] = []
