@@ -219,7 +219,11 @@ def _shipped_cart_row(cart_name: str, cart_dir: Path, shipment_dir: Path) -> dic
     archived folder once it has been.
     """
     status = cart_status_in(cart_dir)
-    files = [cart_dir / barcode_filename(cart_dir)]
+    files = []
+    try:
+        files.append(cart_dir / barcode_filename(cart_dir))
+    except FileNotFoundError:
+        logger.warning(f"No barcode file in {cart_dir}")
     if stem := status.get("shipment_stem"):
         if shipment_dir == MARC_FILES_BASE:
             files.append(MARC_FILES_BASE / "new" / f"{stem}.xml")
@@ -255,7 +259,12 @@ def list_shipped_carts() -> list[dict]:
 
     if CARTS_WAITING_BASE.exists():
         for shipment_dir in sorted(CARTS_WAITING_BASE.iterdir()):
-            for cart_dir in sorted(shipment_dir.iterdir()):
+            try:
+                cart_dirs = sorted(shipment_dir.iterdir())
+            except FileNotFoundError:
+                # Removed by archive_sent_shipments while the page loads
+                continue
+            for cart_dir in cart_dirs:
                 if not cart_dir.is_dir():
                     continue
                 rows[cart_dir.name] = _shipped_cart_row(

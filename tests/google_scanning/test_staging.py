@@ -231,6 +231,17 @@ def test_list_shipped_carts_waiting_cart_links_queued_files(mock_bases):
     ]
 
 
+def test_list_shipped_carts_lists_cart_missing_its_barcode_file(mock_bases):
+    cart_dir = mock_bases / "carts-waiting" / STEM / "cart-1"
+    cart_dir.mkdir(parents=True)
+    (cart_dir / "status.json").write_text(json.dumps(_shipped_status()))
+
+    carts = list_shipped_carts()
+
+    assert [cart["cart_name"] for cart in carts] == ["cart-1"]
+    assert carts[0]["files"] == []
+
+
 def test_list_shipped_carts_shows_latest_archived_shipment(mock_bases):
     old_stem = "stanford_20260801-oncampus"
     for ts, stem in (("20260801T210000", old_stem), ("20260807T210000", STEM)):
