@@ -2,6 +2,8 @@ import json
 
 import pytest  # noqa
 
+from datetime import date, datetime
+
 from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_SHIPPED,
     STATUS_STAGED,
@@ -16,10 +18,12 @@ from libsys_airflow.plugins.google_scanning.staging import (
     list_shipped_carts,
     list_staged_carts,
     other_date_conflicts,
+    pacific_today,
     save_staged_file,
     shipment_filestamp,
     shipped_file_path,
     staged_cart_status,
+    stem_ship_date,
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
     waiting_shipment_for,
@@ -163,6 +167,20 @@ def test_waiting_shipment_for(mock_bases):
 
 def test_shipment_filestamp():
     assert shipment_filestamp("20260810") == "stanford_20260810-oncampus"
+
+
+def test_stem_ship_date():
+    assert stem_ship_date("stanford_20260810-oncampus") == "20260810"
+    assert stem_ship_date("stanford_20260809-sal3") == "20260809"
+    assert stem_ship_date("something-else") is None
+
+
+def test_pacific_today(mocker):
+    mock_datetime = mocker.patch(f"{STAGING}.datetime")
+    mock_datetime.now.return_value = datetime(2026, 8, 6, 18, 0)
+
+    assert pacific_today() == date(2026, 8, 6)
+    assert str(mock_datetime.now.call_args[0][0]) == "America/Los_Angeles"
 
 
 def test_other_date_conflicts(mock_bases):

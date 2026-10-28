@@ -1,5 +1,7 @@
 import pytest
 
+from datetime import date
+
 
 @pytest.fixture(scope="module")
 def dag():
@@ -40,12 +42,16 @@ def test_select_sendable_files(dag, mocker):
         "libsys_airflow.dags.google_scanning.send_google_scanning_files.sendable_shipment_files",
         return_value={"file_list": ["a.xml", "a.txt"], "skipped": []},
     )
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.send_google_scanning_files.pacific_today",
+        return_value=date(2026, 8, 10),
+    )
 
     result = dag.task_dict["select_sendable_files"].python_callable(
         {"file_list": ["a.xml", "a.txt"], "s3": False}
     )
 
-    mock_sendable.assert_called_once_with(["a.xml", "a.txt"])
+    mock_sendable.assert_called_once_with(["a.xml", "a.txt"], "20260810")
     assert result == {"file_list": ["a.xml", "a.txt"], "skipped": []}
 
 

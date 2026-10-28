@@ -11,6 +11,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
 )
 from libsys_airflow.plugins.google_scanning.drive import upload_to_drive_task
 from libsys_airflow.plugins.google_scanning.email import transmission_failure_email
+from libsys_airflow.plugins.google_scanning.staging import pacific_today
 from libsys_airflow.plugins.google_scanning.transmission import (
     archive_sent_shipments,
     sendable_shipment_files,
@@ -49,7 +50,9 @@ def send_google_scanning_files():
 
     @task
     def select_sendable_files(gathered: dict) -> dict:
-        return sendable_shipment_files(gathered["file_list"])
+        return sendable_shipment_files(
+            gathered["file_list"], pacific_today().strftime("%Y%m%d")
+        )
 
     # Only skip the upload, so transmission_failure_email still reports any
     # skipped shipments.

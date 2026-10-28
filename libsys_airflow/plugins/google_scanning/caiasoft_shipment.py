@@ -54,3 +54,7 @@ def sal3_filestamp(date_str: str) -> str:
     per run.
     """
     return f"stanford_{date_str}-sal3"
+
+
+def is_sal3_stem(stem: str) -> bool:
+    return stem.endswith("-sal3")

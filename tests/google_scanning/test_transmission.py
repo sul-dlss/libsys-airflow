@@ -10,6 +10,7 @@ from libsys_airflow.plugins.google_scanning.transmission import (
 
 CAMPUS_STEM = "stanford_20260810-oncampus"
 SAL3_STEM = "stanford_20260809-sal3"
+SEND_DATE = "20260810"
 
 
 @pytest.fixture(autouse=True)
@@ -58,10 +59,39 @@ def test_sendable_shipment_files_keeps_ready_pairs(mock_bases):
     sal3_files = _shipment_files(mock_bases, SAL3_STEM)
     _waiting_shipment(mock_bases, CAMPUS_STEM, ["cart-1"])
 
-    result = sendable_shipment_files(campus_files + sal3_files)
+    result = sendable_shipment_files(campus_files + sal3_files, SEND_DATE)
 
     assert sorted(result["file_list"]) == sorted(campus_files + sal3_files)
+    assert result["held"] == []
     assert result["skipped"] == []
+
+
+def test_sendable_shipment_files_holds_future_shipments(mock_bases):
+    campus_files = _shipment_files(mock_bases, CAMPUS_STEM)
+    _waiting_shipment(mock_bases, CAMPUS_STEM, ["cart-1"])
+    future_stem = "stanford_20260811-oncampus"
+    future_files = _shipment_files(mock_bases, future_stem)
+    _waiting_shipment(mock_bases, future_stem, ["cart-2"])
+
+    result = sendable_shipment_files(campus_files + future_files, SEND_DATE)
+
+    assert sorted(result["file_list"]) == sorted(campus_files)
+    assert result["held"] == [future_stem]
+    assert result["skipped"] == []
+
+
+def test_sendable_shipment_files_skips_campus_stem_without_shipment(mock_bases):
+    files = _shipment_files(mock_bases, CAMPUS_STEM)
+
+    result = sendable_shipment_files(files, SEND_DATE)
+
+    assert result["file_list"] == []
+    assert result["skipped"] == [
+        {
+            "stem": CAMPUS_STEM,
+            "reason": "has no waiting shipment; it may already have been sent",
+        }
+    ]
 
 
 def test_sendable_shipment_files_skips_incomplete_and_building(mock_bases):
@@ -70,7 +100,9 @@ def test_sendable_shipment_files_skips_incomplete_and_building(mock_bases):
     xml_only = _shipment_files(mock_bases, "stanford_20260801-oncampus")[:1]
     manifest_only = _shipment_files(mock_bases, SAL3_STEM)[1:]
 
-    result = sendable_shipment_files(building_files + xml_only + manifest_only)
+    result = sendable_shipment_files(
+        building_files + xml_only + manifest_only, SEND_DATE
+    )
 
     assert result["file_list"] == []
     assert {skip["stem"]: skip["reason"] for skip in result["skipped"]} == {
@@ -130,3 +162,21 @@ def test_archive_sent_shipments_copies_sal3_shipment(mock_bases):
         f"{SAL3_STEM}.txt",
         f"{SAL3_STEM}.xml",
     ]
+
+
+def test_archive_sent_shipments_resumes_after_failure(mock_bases):
+    archived_stem = "stanford_20260809-oncampus"
+    archived_files = _shipment_files(mock_bases, archived_stem)
+    files = _shipment_files(mock_bases, CAMPUS_STEM)
+    _waiting_shipment(mock_bases, CAMPUS_STEM, ["cart-1", "cart-2"])
+    # An earlier attempt archived archived_stem and cart-1, then failed
+    earlier = mock_bases / "archived" / "cart-1" / "20260810T205900"
+    earlier.parent.mkdir(parents=True)
+    (mock_bases / "carts-waiting" / CAMPUS_STEM / "cart-1").rename(earlier)
+
+    archived = archive_sent_shipments(archived_files + files)
+
+    assert archived == [str(mock_bases / "archived" / "cart-2" / "20260810T210000")]
+    assert not (mock_bases / "archived" / "sal3").exists()
+    assert not (mock_bases / "carts-waiting" / CAMPUS_STEM).exists()
+    assert sorted(path.name for path in earlier.parent.iterdir()) == ["20260810T205900"]

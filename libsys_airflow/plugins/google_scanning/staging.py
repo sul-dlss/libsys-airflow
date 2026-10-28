@@ -1,9 +1,11 @@
 import json
 import logging
+import re
 import shutil
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from airflow_client.client import DagRunApi, TriggerDAGRunPostBody
 
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 GOOGLE_SCANNING_BASE = STAGED_FILES_BASE.parent
 
 TIMESTAMP_FORMAT = "%Y%m%dT%H%M%S"
+
+SHIPMENT_STEM_PATTERN = re.compile(r"^stanford_(\d{8})-")
 
 
 def timestamp() -> str:
@@ -117,6 +121,19 @@ def shipment_filestamp(shipped_at: str) -> str:
     rebuilds that shipment (see shipment.py::plan_shipment).
     """
     return f"stanford_{shipped_at}-oncampus"
+
+
+def stem_ship_date(stem: str) -> str | None:
+    """
+    Returns the YYYYMMDD ship date from an on-campus or SAL3 shipment's
+    file stem (see shipment_filestamp and caiasoft_shipment.py::sal3_filestamp).
+    """
+    match = SHIPMENT_STEM_PATTERN.match(stem)
+    return match.group(1) if match else None
+
+
+def pacific_today() -> date:
+    return datetime.now(ZoneInfo("America/Los_Angeles")).date()
 
 
 def other_date_conflicts(cart_names: list[str], shipped_at: str) -> list[str]:
