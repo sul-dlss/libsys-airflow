@@ -109,7 +109,13 @@ def test_clean_csv_file(tmp_path):
     test_csv_path = uploads_path / "test.csv"
 
     with test_csv_path.open("w+") as fo:
-        for field001_value in ["001s", "n\\79000500\\", "n 79045242", "n79044348"]:
+        for field001_value in [
+            "001s",
+            "n\\79000500\\",
+            "n 79045242",
+            "n79044348",
+            300195187,
+        ]:
             fo.write(f"{field001_value}\n")
 
     updated_csv_file = clean_csv_file(
@@ -121,9 +127,10 @@ def test_clean_csv_file(tmp_path):
 
     updated_001s = updated_001s_df.to_dict(orient='records')
 
-    assert len(updated_001s) == 3
+    assert len(updated_001s) == 4
     assert updated_001s[0]['001s'] == "n79000500"
     assert updated_001s[1]['001s'] == "n79045242"
+    assert updated_001s[3]['001s'] == "300195187"
 
 
 def test_clean_up(mocker, tmp_path):
