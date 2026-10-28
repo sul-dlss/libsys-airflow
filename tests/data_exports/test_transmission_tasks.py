@@ -1,4 +1,6 @@
 import pytest  # noqa
+import gzip
+import io
 import pathlib
 
 import httpx
@@ -231,6 +233,41 @@ def test_gather_google_scanning_files(tmp_path):
 
     assert sorted(marc_files["file_list"]) == sorted(
         [str(xml_file), str(manifest_file)]
+    )
+
+
+def test_gather_files_skips_empty_marcxml(tmp_path):
+    airflow = tmp_path / "airflow"
+    marc_files_dir = airflow / "data-export-files/google_scanning/marc-files"
+    (marc_files_dir / "new").mkdir(parents=True)
+    (marc_files_dir / "manifests").mkdir(parents=True)
+
+    empty_xml = io.BytesIO()
+    writer = pymarc.XMLWriter(empty_xml)
+    writer.close(close_fh=False)
+    (marc_files_dir / "new" / "empty.xml").write_bytes(empty_xml.getvalue())
+    (marc_files_dir / "new" / "empty.xml.gz").write_bytes(
+        gzip.compress(empty_xml.getvalue())
+    )
+
+    record_xml = io.BytesIO()
+    writer = pymarc.XMLWriter(record_xml)
+    record = pymarc.Record()
+    record.add_field(pymarc.Field(tag="001", data="a123"))
+    writer.write(record)
+    writer.close(close_fh=False)
+    record_file = marc_files_dir / "new" / "stanford_20260810-oncampus.xml"
+    record_file.write_bytes(record_xml.getvalue())
+
+    # 4 lines of 28 bytes: the size the old 112-byte check skipped
+    manifest_file = marc_files_dir / "manifests" / "stanford_20260810-oncampus.txt"
+    manifest_file.write_text("Stanford0001\t36105012345678\n" * 4)
+    assert manifest_file.stat().st_size == 112
+
+    marc_files = gather_files_task.function(airflow=airflow, vendor="google_scanning")
+
+    assert sorted(marc_files["file_list"]) == sorted(
+        [str(record_file), str(manifest_file)]
     )
 
 

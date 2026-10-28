@@ -1,4 +1,5 @@
 import copy
+import gzip
 import logging
 
 import httpx
@@ -21,6 +22,29 @@ from libsys_airflow.plugins.data_exports.oclc_api import (
 from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
+
+# Larger .xml/.gz files are assumed to hold records and aren't read
+EMPTY_CHECK_MAX_BYTES = 1024
+
+
+def is_empty_marc_file(path: Union[Path, S3Path]) -> bool:
+    """
+    Whether a gathered file has nothing to send: it's 0 bytes, or it's a
+    small .xml or .xml.gz MARCXML collection with no records, e.g. a
+    full-dump batch whose records were all excluded.
+    """
+    size = path.stat().st_size
+    if size == 0:
+        return True
+    if path.suffix not in (".xml", ".gz") or size > EMPTY_CHECK_MAX_BYTES:
+        return False
+    contents = path.read_bytes()
+    if path.suffix == ".gz":
+        try:
+            contents = gzip.decompress(contents)
+        except (OSError, EOFError):
+            return False
+    return b"<collection" in contents and b"<record" not in contents
 
 
 @task
@@ -63,7 +87,7 @@ def gather_files_task(**kwargs) -> dict:
         f for pattern in file_glob_pattern for f in marc_filepath.glob(pattern)
     ]
     for f in sorted(marc_files):
-        if f.stat().st_size in [0, 112]:
+        if is_empty_marc_file(f):
             continue
         marc_filelist.append(str(f))
 
