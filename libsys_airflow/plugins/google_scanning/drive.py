@@ -26,7 +26,11 @@ def _rollback_uploads(hook: GoogleDriveHook, uploaded: list[tuple[str, str]]) ->
     with at least one failure, so a partial failure doesn't leave an
     orphaned file behind in Drive.
     """
-    service = hook.get_conn()
+    try:
+        service = hook.get_conn()
+    except Exception as e:
+        logger.error(f"Failed to roll back {len(uploaded)} partial upload(s): {e}")
+        return
     for f, file_id in uploaded:
         try:
             service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
@@ -47,6 +51,8 @@ def upload_to_drive_task(file_list: list) -> dict:
     transmit-data task shape in plugins/data_exports/transmission_tasks.py.
     If any file in the batch fails, rolls back any files from this batch
     that already uploaded, so success is all-or-nothing for the batch.
+    Errors are logged rather than raised, so transmission_failure_email
+    always gets the failures.
     """
     if not is_production():
         logger.info("SKIPPING GOOGLE DRIVE UPLOAD")
@@ -56,8 +62,12 @@ def upload_to_drive_task(file_list: list) -> dict:
 
     uploaded: list[tuple[str, str]] = []
     failures = []
-    folder_id = drive_folder_id()
-    hook = GoogleDriveHook(gcp_conn_id=DRIVE_CONN_ID)
+    try:
+        folder_id = drive_folder_id()
+        hook = GoogleDriveHook(gcp_conn_id=DRIVE_CONN_ID)
+    except Exception as e:
+        logger.error(f"Error setting up Google Drive upload: {e}")
+        return {"success": [], "failures": file_list}
     for f in file_list:
         remote_location = Path(f).name
         try:

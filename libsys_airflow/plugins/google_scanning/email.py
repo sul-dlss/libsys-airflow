@@ -231,7 +231,8 @@ def _transmission_failure_email_body(**kwargs) -> str:
         {% if failures %}
         <h3>Files that failed to upload</h3>
         <p>Nothing from this run was left in Google Drive. These files stay
-        queued and will be retried on the next run.</p>
+        queued and will be sent with the next nightly run, or clear this
+        DAG run to send them now.</p>
         <ul>
         {% for file in failures %}
         <li>{{ file }}</li>
