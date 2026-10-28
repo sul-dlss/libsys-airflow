@@ -329,7 +329,7 @@ def trigger_on_campus_shipment_dag(
     """
     Triggers the on_campus_shipment DAG for the selected staged carts.
     shipped_at (YYYYMMDD) is the shipment's date: today, from the upload
-    page. The send DAG holds shipments dated after the day it runs.
+    page. The send DAG sends each date's shipment after that date ends.
     """
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)

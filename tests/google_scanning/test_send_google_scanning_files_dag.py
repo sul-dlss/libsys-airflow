@@ -51,7 +51,7 @@ def test_select_sendable_files(dag, mocker):
         {"file_list": ["a.xml", "a.txt"], "s3": False}
     )
 
-    mock_sendable.assert_called_once_with(["a.xml", "a.txt"], "20260810")
+    mock_sendable.assert_called_once_with(["a.xml", "a.txt"], "20260809")
     assert result == {"file_list": ["a.xml", "a.txt"], "skipped": []}
 
 

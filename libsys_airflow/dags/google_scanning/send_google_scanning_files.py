@@ -32,7 +32,7 @@ default_args = {
 @dag(
     default_args=default_args,
     schedule=CronDataIntervalTimetable(
-        cron=Variable.get("transmit_google_scanning", "0 21 * * *"),
+        cron=Variable.get("transmit_google_scanning", "0 2 * * *"),
         timezone="America/Los_Angeles",
     ),
     start_date=datetime(2026, 10, 26),
@@ -50,8 +50,11 @@ def send_google_scanning_files():
 
     @task
     def select_sendable_files(gathered: dict) -> dict:
+        # Send shipments dated yesterday or earlier, so a day's shipment
+        # goes out once that day is over
+        yesterday = pacific_today() - timedelta(days=1)
         return sendable_shipment_files(
-            gathered["file_list"], pacific_today().strftime("%Y%m%d")
+            gathered["file_list"], yesterday.strftime("%Y%m%d")
         )
 
     # Only skip the upload, so transmission_failure_email still reports any
