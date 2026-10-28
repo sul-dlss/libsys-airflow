@@ -22,6 +22,7 @@ from libsys_airflow.plugins.google_scanning.staging import (
     save_staged_file,
     shipment_filestamp,
     shipped_file_path,
+    staged_barcode_filename,
     staged_cart_status,
     stem_ship_date,
     trigger_on_campus_shipment_dag,
@@ -183,6 +184,20 @@ def test_pacific_today(mocker):
     assert str(mock_datetime.now.call_args[0][0]) == "America/Los_Angeles"
 
 
+def test_staged_barcode_filename(mock_staged_files_base):
+    _write_cart(mock_staged_files_base / "cart-1", status={"status": STATUS_STAGED})
+
+    assert staged_barcode_filename("cart-1") == "barcodes.txt"
+
+
+@pytest.mark.parametrize("cart_name", ["cart-2", "../carts-waiting", "a/b"])
+def test_staged_barcode_filename_not_staged(mock_staged_files_base, cart_name):
+    (mock_staged_files_base / "a" / "b").mkdir(parents=True)
+
+    with pytest.raises(FileNotFoundError):
+        staged_barcode_filename(cart_name)
+
+
 def test_other_date_conflicts(mock_bases):
     _write_cart(mock_bases / "carts-waiting" / "stanford_20260806-oncampus" / "cart-1")
     _write_cart(mock_bases / "carts-waiting" / STEM / "cart-2")
@@ -190,8 +205,8 @@ def test_other_date_conflicts(mock_bases):
     conflicts = other_date_conflicts(["cart-1", "cart-2", "cart-3"], "20260807")
 
     assert conflicts == [
-        "cart-1 is waiting in the stanford_20260806-oncampus shipment; "
-        "ship it with that date."
+        "cart-1 is waiting in the stanford_20260806-oncampus shipment, "
+        "which hasn't been sent to Google Drive yet."
     ]
 
 
@@ -361,7 +376,7 @@ def test_trigger_on_campus_shipment_dag(mocker):
 
     selected_carts = [{"cart_name": "cart-1", "filename": "barcodes.txt"}]
     dag_run_id = trigger_on_campus_shipment_dag(
-        selected_carts, "staff@example.com", "2026-08-07"
+        selected_carts, "staff@example.com", "20260807"
     )
 
     assert dag_run_id == "run-456"

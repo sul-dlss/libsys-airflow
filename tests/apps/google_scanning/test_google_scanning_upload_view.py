@@ -1,3 +1,4 @@
+from datetime import date
 from urllib.parse import unquote_plus
 
 import pytest  # noqa
@@ -47,6 +48,16 @@ def mock_is_cart_staged(mocker):
         "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.is_cart_staged",
         return_value=False,
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_staged_barcode_filename(mocker):
+    return mocker.patch(f"{VIEW}.staged_barcode_filename", return_value="barcodes.txt")
+
+
+@pytest.fixture(autouse=True)
+def mock_pacific_today(mocker):
+    return mocker.patch(f"{VIEW}.pacific_today", return_value=date(2026, 8, 6))
 
 
 @pytest.fixture(autouse=True)
@@ -234,16 +245,12 @@ def test_home_renders_error_from_redirect_query_param():
     assert 'alert-error">Cart name is required.' in response.text
 
 
-def test_home_renders_shipped_at_defaulting_to_today(mocker):
-    mock_date = mocker.patch(
-        "libsys_airflow.plugins.google_scanning.apps.google_scanning_upload_view.date"
-    )
-    mock_date.today.return_value.isoformat.return_value = "2026-08-07"
-
+def test_home_has_no_ship_date_picker():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'id="shipped_at" name="shipped_at" value="2026-08-07"' in response.text
+    assert 'name="shipped_at"' not in response.text
+    assert 'name="selected_carts" value="cart-1"' in response.text
 
 
 def test_stage_cart_missing_cart_name():
@@ -474,9 +481,8 @@ def test_ship_success(mocker):
     response = client.post(
         "/ship",
         data={
-            "selected_carts": ["cart-1/barcodes.txt"],
+            "selected_carts": ["cart-1"],
             "user_email": "staff@example.com",
-            "shipped_at": "2026-08-06",
         },
     )
 
@@ -486,30 +492,49 @@ def test_ship_success(mocker):
     mock_trigger.assert_called_once_with(
         [{"cart_name": "cart-1", "filename": "barcodes.txt"}],
         "staff@example.com",
-        "2026-08-06",
+        "20260806",
     )
 
+    mocker.patch(
+        "libsys_airflow.plugins.shared.utils.airflow_url",
+        return_value="https://airflow.example.edu/",
+    )
     followed = client.get(response.headers["location"])
     assert "alert-success" in followed.text
+    assert (
+        'Started shipment DAG run <a href="https://airflow.example.edu/dags/'
+        'on_campus_shipment/runs/run-456">run-456</a>.'
+    ) in followed.text
 
 
 def test_ship_rejects_cart_waiting_under_another_date(
     mocker, mock_other_date_conflicts
 ):
     mock_other_date_conflicts.return_value = [
-        "cart-1 is waiting in the stanford_20260805-oncampus shipment; "
-        "ship it with that date."
+        "cart-1 is waiting in the stanford_20260805-oncampus shipment, "
+        "which hasn't been sent to Google Drive yet."
     ]
     mock_trigger = mocker.patch(f"{VIEW}.trigger_on_campus_shipment_dag")
 
     response = client.post(
         "/ship",
-        data={"selected_carts": ["cart-1/barcodes.txt"], "shipped_at": "2026-08-06"},
+        data={"selected_carts": ["cart-1"]},
     )
 
     assert response.status_code == 200
     assert "stanford_20260805-oncampus" in response.text
     mock_other_date_conflicts.assert_called_once_with(["cart-1"], "20260806")
+    mock_trigger.assert_not_called()
+
+
+def test_ship_rejects_cart_no_longer_staged(mocker, mock_staged_barcode_filename):
+    mock_staged_barcode_filename.side_effect = FileNotFoundError("cart-1")
+    mock_trigger = mocker.patch(f"{VIEW}.trigger_on_campus_shipment_dag")
+
+    response = client.post("/ship", data={"selected_carts": ["cart-1"]})
+
+    assert response.status_code == 200
+    assert "cart-1 is no longer staged." in response.text
     mock_trigger.assert_not_called()
 
 
@@ -521,7 +546,7 @@ def test_ship_dag_trigger_failure(mocker):
 
     response = client.post(
         "/ship",
-        data={"selected_carts": ["cart-1/barcodes.txt"]},
+        data={"selected_carts": ["cart-1"]},
     )
 
     assert response.status_code == 303
@@ -716,7 +741,7 @@ def test_trigger_shipment_with_csrf_token_from_the_form(mocker):
 
     response = fresh_client.post(
         "/ship",
-        data={"selected_carts": ["cart-1/barcodes.txt"], CSRF_FIELD_NAME: token},
+        data={"selected_carts": ["cart-1"], CSRF_FIELD_NAME: token},
     )
 
     assert response.status_code == 303
@@ -729,7 +754,7 @@ def test_trigger_shipment_without_csrf_token(mocker):
     )
 
     response = TestClient(app, follow_redirects=False).post(
-        "/ship", data={"selected_carts": ["cart-1/barcodes.txt"]}
+        "/ship", data={"selected_carts": ["cart-1"]}
     )
 
     assert response.status_code == 403

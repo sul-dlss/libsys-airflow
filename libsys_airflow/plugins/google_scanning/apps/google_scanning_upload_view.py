@@ -1,13 +1,16 @@
 import logging
 import re
 
-from datetime import date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from libsys_airflow.plugins.google_scanning.constants import SAL3_ARCHIVE_NAME
+from libsys_airflow.plugins.google_scanning.constants import (
+    ON_CAMPUS_SHIPMENT_DAG_ID,
+    SAL3_ARCHIVE_NAME,
+)
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
     active_dag_runs,
@@ -17,8 +20,10 @@ from libsys_airflow.plugins.google_scanning.staging import (
     list_shipped_carts,
     list_staged_carts,
     other_date_conflicts,
+    pacific_today,
     save_staged_file,
     shipped_file_path,
+    staged_barcode_filename,
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
@@ -26,6 +31,7 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
 from libsys_airflow.plugins.shared.utils import (
+    dag_run_url,
     plugin_templates,
     redirect_with_query_params,
 )
@@ -51,7 +57,9 @@ def _render_home(
     error: str | None = None,
     warning: str | None = None,
     success: str | None = None,
+    dag_run_id: str | None = None,
 ):
+    shipment_run = SimpleNamespace(dag_id=ON_CAMPUS_SHIPMENT_DAG_ID, run_id=dag_run_id)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -61,7 +69,8 @@ def _render_home(
             "error": error,
             "warning": warning,
             "success": success,
-            "today": date.today().isoformat(),
+            "dag_run_id": dag_run_id,
+            "dag_run_url": dag_run_url(dag_run=shipment_run) if dag_run_id else None,
         },
     )
 
@@ -73,6 +82,7 @@ def home(request: Request):
         error=request.query_params.get("error"),
         warning=request.query_params.get("warning"),
         success=request.query_params.get("success"),
+        dag_run_id=request.query_params.get("dag_run_id"),
     )
 
 
@@ -155,22 +165,23 @@ def trigger_shipment(
     request: Request,
     selected_carts: list[str] = Form(default=[]),  # noqa: B008
     user_email: str | None = Form(default=None),  # noqa: B008
-    shipped_at: str = Form(default=""),  # noqa: B008
 ):
     if not selected_carts:
         return _render_home(request, error="Select at least one staged cart to ship.")
 
+    # Look up each cart's file now, so a page loaded before a re-stage
+    # ships whatever is staged now
     carts = []
-    for selected_cart in selected_carts:
-        cart_name, _, filename = selected_cart.partition("/")
+    for cart_name in selected_carts:
+        try:
+            filename = staged_barcode_filename(cart_name)
+        except FileNotFoundError:
+            return _render_home(request, error=f"{cart_name} is no longer staged.")
         carts.append({"cart_name": cart_name, "filename": filename})
 
-    shipped_at = shipped_at or date.today().isoformat()
+    shipped_at = pacific_today().strftime("%Y%m%d")
 
-    conflicts = other_date_conflicts(
-        [cart["cart_name"] for cart in carts],
-        datetime.strptime(shipped_at, "%Y-%m-%d").strftime("%Y%m%d"),
-    )
+    conflicts = other_date_conflicts([cart["cart_name"] for cart in carts], shipped_at)
     if conflicts:
         return _render_home(request, error=" ".join(conflicts))
 
@@ -180,7 +191,7 @@ def trigger_shipment(
         logger.error(f"Error triggering on-campus shipment DAG run: {e}")
         return _redirect_home(warning="Failed to start shipment.")
 
-    return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")
+    return _redirect_home(success="Started shipment DAG run", dag_run_id=dag_run_id)
 
 
 @app.get("/progress")

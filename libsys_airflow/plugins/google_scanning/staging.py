@@ -78,6 +78,16 @@ def barcode_filename(cart_dir: Path) -> str:
     raise FileNotFoundError(f"No barcode file in {cart_dir}")
 
 
+def staged_barcode_filename(cart_name: str) -> str:
+    """
+    Returns a staged cart's barcode filename, raising FileNotFoundError if
+    the cart isn't staged (or its name points outside staged/).
+    """
+    if Path(cart_name).name != cart_name:
+        raise FileNotFoundError(f"Invalid cart name {cart_name}")
+    return barcode_filename(STAGED_FILES_BASE / cart_name)
+
+
 def cart_status_in(cart_dir: Path) -> dict:
     """
     Returns the processing outcome for a cart directory (staged,
@@ -139,8 +149,8 @@ def pacific_today() -> date:
 def other_date_conflicts(cart_names: list[str], shipped_at: str) -> list[str]:
     """
     Returns an error message for each cart that's already waiting in a
-    different ship date's shipment. Such a cart can only be re-shipped with
-    that shipment's date, since there's one on-campus shipment per date.
+    different ship date's shipment. Such a cart can't be re-shipped until
+    that shipment is sent, since there's one on-campus shipment per date.
     """
     stem = shipment_filestamp(shipped_at)
     conflicts = []
@@ -148,8 +158,8 @@ def other_date_conflicts(cart_names: list[str], shipped_at: str) -> list[str]:
         waiting_stem = waiting_shipment_for(cart_name)
         if waiting_stem and waiting_stem != stem:
             conflicts.append(
-                f"{cart_name} is waiting in the {waiting_stem} shipment; "
-                "ship it with that date."
+                f"{cart_name} is waiting in the {waiting_stem} shipment, "
+                "which hasn't been sent to Google Drive yet."
             )
     return conflicts
 
@@ -318,9 +328,8 @@ def trigger_on_campus_shipment_dag(
 ) -> str:
     """
     Triggers the on_campus_shipment DAG for the selected staged carts.
-    shipped_at is the staff-chosen ship date from the UI datepicker since
-    a shipment may be triggered on a different date than when the carts
-    were actually staged, reformatted to YYYYMMDD.
+    shipped_at (YYYYMMDD) is the shipment's date: today, from the upload
+    page. The send DAG holds shipments dated after the day it runs.
     """
     with api_client() as airflow_api_client:
         api_instance = DagRunApi(airflow_api_client)
@@ -328,9 +337,7 @@ def trigger_on_campus_shipment_dag(
             conf={
                 "selected_carts": selected_carts,
                 "user_email": user_email,
-                "shipped_at": datetime.strptime(shipped_at, "%Y-%m-%d").strftime(
-                    "%Y%m%d"
-                ),
+                "shipped_at": shipped_at,
             }
         )
         api_response = api_instance.trigger_dag_run(
