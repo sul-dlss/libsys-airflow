@@ -23,8 +23,14 @@ db_clean.dow.on('SUN')
 db_clean.hour.on(0)
 db_clean.minute.on(0)
 
+# The Google scanning archive records every shipped cart and is kept
+# indefinitely for auditing.
 data_export_files = cron.new(
-    command=f'find /home/libsys/libsys-airflow/shared/data-export-files -type f -mtime +{max_age_days} -delete'
+    command=(
+        'find /home/libsys/libsys-airflow/shared/data-export-files '
+        f'-type f -mtime +{max_age_days} '
+        "-not -path '*/google_scanning/archived/*' -delete"
+    )
 )
 data_export_files.dow.on('SUN')
 data_export_files.hour.on(0)
