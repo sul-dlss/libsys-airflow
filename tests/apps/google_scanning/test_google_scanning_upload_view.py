@@ -270,7 +270,7 @@ def test_stage_cart_missing_cart_name():
         "../cart-2",
         "../../cart-2",
         "~cart-2",
-        "/tmp/cart-2",
+        "/srv/cart-2",
         "a/b",
         "..",
         "cart 2",

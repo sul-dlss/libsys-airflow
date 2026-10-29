@@ -60,9 +60,7 @@ def is_staged_file_path(staged_file_path: str) -> bool:
     Whether a path is a file in a cart directory directly under staged/,
     as save_staged_file writes.
     """
-    return (
-        Path(staged_file_path).resolve().parent.parent == STAGED_FILES_BASE.resolve()
-    )
+    return Path(staged_file_path).resolve().parent.parent == STAGED_FILES_BASE.resolve()
 
 
 def save_staged_file(cart_name: str, filename: str, contents: bytes) -> Path:

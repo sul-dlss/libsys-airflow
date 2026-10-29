@@ -39,7 +39,7 @@ def test_setup_returns_cart_name_and_staged_file_path(dag, mocker):
         "/opt/airflow/data-export-files/google_scanning/staged/../cart-1/barcodes.txt",
         "/opt/airflow/data-export-files/google_scanning/staged/../../cart-1/barcodes.txt",
         "/opt/airflow/data-export-files/google_scanning/staged/barcodes.txt",
-        "/tmp/cart-1/barcodes.txt",
+        "/srv/cart-1/barcodes.txt",
     ],
 )
 def test_setup_rejects_path_outside_staged(dag, mocker, staged_file_path):

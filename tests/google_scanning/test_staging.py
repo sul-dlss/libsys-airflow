@@ -90,7 +90,7 @@ def test_save_staged_file_replaces_existing_cart(mock_staged_files_base):
 
 
 @pytest.mark.parametrize(
-    "cart_name", ["../cart-1", "../../cart-1", "/tmp/cart-1", "a/b", ".", ".."]
+    "cart_name", ["../cart-1", "../../cart-1", "/srv/cart-1", "a/b", ".", ".."]
 )
 def test_save_staged_file_rejects_path_outside_staged(mock_bases, cart_name):
     (mock_bases / "pod").mkdir()
