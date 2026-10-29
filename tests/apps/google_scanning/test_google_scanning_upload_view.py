@@ -264,6 +264,34 @@ def test_stage_cart_missing_cart_name():
     assert "Cart name is required." in response.text
 
 
+@pytest.mark.parametrize(
+    "cart_name",
+    [
+        "../cart-2",
+        "../../cart-2",
+        "~cart-2",
+        "/tmp/cart-2",
+        "a/b",
+        "..",
+        "cart 2",
+        " cart-2",
+        "-cart-2",
+    ],
+)
+def test_stage_cart_rejects_invalid_cart_name(mocker, cart_name):
+    mock_save = mocker.patch(f"{VIEW}.save_staged_file")
+
+    response = client.post(
+        "/stage",
+        data={"cart_name": cart_name},
+        files={"barcode_file": ("barcodes.txt", b"12345\n", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    assert "Cart names can only use letters, digits, - and _" in response.text
+    mock_save.assert_not_called()
+
+
 def test_stage_cart_missing_file():
     response = client.post(
         "/stage",

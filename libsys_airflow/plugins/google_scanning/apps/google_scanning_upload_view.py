@@ -46,6 +46,8 @@ install_login_redirect(app)
 app.add_middleware(CSRFCookieMiddleware)
 
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+# Cart names become directory names under staged/
+CART_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 templates = plugin_templates(
     Path(__file__).resolve().parent.parent, "google_scanning_upload"
@@ -99,6 +101,12 @@ def stage_cart(
 ):
     if not cart_name.strip():
         return _render_home(request, error="Cart name is required.")
+    if not CART_NAME_PATTERN.fullmatch(cart_name):
+        return _render_home(
+            request,
+            error="Cart names can only use letters, digits, - and _, "
+            "starting with a letter or digit.",
+        )
     if cart_name.lower() == SAL3_ARCHIVE_NAME:
         return _render_home(
             request, error=f'"{cart_name}" is reserved; use another cart name.'

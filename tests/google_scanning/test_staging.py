@@ -89,6 +89,18 @@ def test_save_staged_file_replaces_existing_cart(mock_staged_files_base):
     ]
 
 
+@pytest.mark.parametrize(
+    "cart_name", ["../cart-1", "../../cart-1", "/tmp/cart-1", "a/b", ".", ".."]
+)
+def test_save_staged_file_rejects_path_outside_staged(mock_bases, cart_name):
+    (mock_bases / "pod").mkdir()
+
+    with pytest.raises(ValueError, match="Invalid cart name"):
+        save_staged_file(cart_name, "barcodes.txt", b"12345\n")
+
+    assert sorted(path.name for path in mock_bases.iterdir()) == ["pod"]
+
+
 def test_is_cart_staged(mock_staged_files_base):
     assert not is_cart_staged("cart-1")
     save_staged_file("cart-1", "barcodes.txt", b"12345\n")

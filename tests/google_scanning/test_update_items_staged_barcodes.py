@@ -19,8 +19,8 @@ def test_setup_returns_cart_name_and_staged_file_path(dag, mocker):
         "libsys_airflow.dags.google_scanning.update_items_staged_barcodes.get_current_context",
         return_value={
             "params": {
-                "cart_name": "Cart 1",
-                "staged_file_path": "/opt/airflow/data-export-files/google_scanning/staged/cart-1.txt",
+                "cart_name": "cart-1",
+                "staged_file_path": "/opt/airflow/data-export-files/google_scanning/staged/cart-1/barcodes.txt",
             }
         },
     )
@@ -28,9 +28,30 @@ def test_setup_returns_cart_name_and_staged_file_path(dag, mocker):
     result = dag.task_dict["setup"].python_callable()
 
     assert result == {
-        "cart_name": "Cart 1",
-        "staged_file_path": "/opt/airflow/data-export-files/google_scanning/staged/cart-1.txt",
+        "cart_name": "cart-1",
+        "staged_file_path": "/opt/airflow/data-export-files/google_scanning/staged/cart-1/barcodes.txt",
     }
+
+
+@pytest.mark.parametrize(
+    "staged_file_path",
+    [
+        "/opt/airflow/data-export-files/google_scanning/staged/../cart-1/barcodes.txt",
+        "/opt/airflow/data-export-files/google_scanning/staged/../../cart-1/barcodes.txt",
+        "/opt/airflow/data-export-files/google_scanning/staged/barcodes.txt",
+        "/tmp/cart-1/barcodes.txt",
+    ],
+)
+def test_setup_rejects_path_outside_staged(dag, mocker, staged_file_path):
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.update_items_staged_barcodes.get_current_context",
+        return_value={
+            "params": {"cart_name": "cart-1", "staged_file_path": staged_file_path}
+        },
+    )
+
+    with pytest.raises(ValueError, match="isn't a staged cart's barcode file"):
+        dag.task_dict["setup"].python_callable()
 
 
 def test_setup_raises_when_staged_file_path_missing(dag, mocker):
