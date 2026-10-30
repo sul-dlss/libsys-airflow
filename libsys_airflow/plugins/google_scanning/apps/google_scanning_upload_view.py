@@ -1,20 +1,29 @@
 import logging
 import re
 
-from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from libsys_airflow.plugins.google_scanning.constants import (
+    ON_CAMPUS_SHIPMENT_DAG_ID,
+    SAL3_ARCHIVE_NAME,
+)
 from libsys_airflow.plugins.google_scanning.helpers import parse_barcodes
 from libsys_airflow.plugins.google_scanning.staging import (
     active_dag_runs,
-    archived_file_path,
+    cart_has_active_run,
     download_filename,
+    is_cart_staged,
     list_shipped_carts,
     list_staged_carts,
+    other_date_conflicts,
+    pacific_today,
     save_staged_file,
+    shipped_file_path,
+    staged_barcode_filename,
     trigger_on_campus_shipment_dag,
     trigger_stage_cart_items_dag,
 )
@@ -22,6 +31,7 @@ from libsys_airflow.plugins.shared.auth import require_view_access
 from libsys_airflow.plugins.shared.csrf import CSRFCookieMiddleware, csrf_protect
 from libsys_airflow.plugins.shared.login_redirect import install_login_redirect
 from libsys_airflow.plugins.shared.utils import (
+    dag_run_url,
     plugin_templates,
     redirect_with_query_params,
 )
@@ -36,6 +46,8 @@ install_login_redirect(app)
 app.add_middleware(CSRFCookieMiddleware)
 
 BARCODE_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+# Cart names become directory names under staged/
+CART_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 templates = plugin_templates(
     Path(__file__).resolve().parent.parent, "google_scanning_upload"
@@ -47,7 +59,9 @@ def _render_home(
     error: str | None = None,
     warning: str | None = None,
     success: str | None = None,
+    dag_run_id: str | None = None,
 ):
+    shipment_run = SimpleNamespace(dag_id=ON_CAMPUS_SHIPMENT_DAG_ID, run_id=dag_run_id)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -57,7 +71,8 @@ def _render_home(
             "error": error,
             "warning": warning,
             "success": success,
-            "today": date.today().isoformat(),
+            "dag_run_id": dag_run_id,
+            "dag_run_url": dag_run_url(dag_run=shipment_run) if dag_run_id else None,
         },
     )
 
@@ -69,6 +84,7 @@ def home(request: Request):
         error=request.query_params.get("error"),
         warning=request.query_params.get("warning"),
         success=request.query_params.get("success"),
+        dag_run_id=request.query_params.get("dag_run_id"),
     )
 
 
@@ -81,9 +97,20 @@ def stage_cart(
     request: Request,
     cart_name: str = Form(...),  # noqa: B008
     barcode_file: UploadFile | None = File(default=None),  # noqa: B008
+    confirm_replace: str = Form(default=""),  # noqa: B008
 ):
     if not cart_name.strip():
         return _render_home(request, error="Cart name is required.")
+    if not CART_NAME_PATTERN.fullmatch(cart_name):
+        return _render_home(
+            request,
+            error="Cart names can only use letters, digits, - and _, "
+            "starting with a letter or digit.",
+        )
+    if cart_name.lower() == SAL3_ARCHIVE_NAME:
+        return _render_home(
+            request, error=f'"{cart_name}" is reserved; use another cart name.'
+        )
     if not barcode_file or not barcode_file.filename:
         return _render_home(request, error="A barcode file is required.")
 
@@ -107,6 +134,26 @@ def stage_cart(
             error=f"Barcode file contains invalid line(s): {', '.join(invalid[:5])}",
         )
 
+    replacing = is_cart_staged(cart_name)
+    if replacing:
+        try:
+            has_active_run = cart_has_active_run(cart_name)
+        except Exception as e:
+            logger.error(f"Error checking active DAG runs for {cart_name}: {e}")
+            return _render_home(
+                request, error=f"Could not check whether {cart_name} is processing."
+            )
+        if has_active_run:
+            return _render_home(
+                request,
+                error=f"{cart_name} is currently processing; try again once it finishes.",
+            )
+        if confirm_replace != "true":
+            return _render_home(
+                request,
+                error=f"{cart_name} is already staged. Confirm to replace its file.",
+            )
+
     staged_file_path = save_staged_file(cart_name, barcode_file.filename, contents)
 
     try:
@@ -117,7 +164,8 @@ def stage_cart(
             warning=f"Staged {cart_name}, but failed to start item processing."
         )
 
-    return _redirect_home(success=f"Staged {cart_name}.")
+    verb = "Replaced staged" if replacing else "Staged"
+    return _redirect_home(success=f"{verb} {cart_name}.")
 
 
 @app.post("/ship", dependencies=[Depends(csrf_protect)])
@@ -125,17 +173,25 @@ def trigger_shipment(
     request: Request,
     selected_carts: list[str] = Form(default=[]),  # noqa: B008
     user_email: str | None = Form(default=None),  # noqa: B008
-    shipped_at: str = Form(default=""),  # noqa: B008
 ):
     if not selected_carts:
         return _render_home(request, error="Select at least one staged cart to ship.")
 
+    # Look up each cart's file now, so a page loaded before a re-stage
+    # ships whatever is staged now
     carts = []
-    for selected_cart in selected_carts:
-        cart_name, _, filename = selected_cart.partition("/")
+    for cart_name in selected_carts:
+        try:
+            filename = staged_barcode_filename(cart_name)
+        except FileNotFoundError:
+            return _render_home(request, error=f"{cart_name} is no longer staged.")
         carts.append({"cart_name": cart_name, "filename": filename})
 
-    shipped_at = shipped_at or date.today().isoformat()
+    shipped_at = pacific_today().strftime("%Y%m%d")
+
+    conflicts = other_date_conflicts([cart["cart_name"] for cart in carts], shipped_at)
+    if conflicts:
+        return _render_home(request, error=" ".join(conflicts))
 
     try:
         dag_run_id = trigger_on_campus_shipment_dag(carts, user_email, shipped_at)
@@ -143,7 +199,7 @@ def trigger_shipment(
         logger.error(f"Error triggering on-campus shipment DAG run: {e}")
         return _redirect_home(warning="Failed to start shipment.")
 
-    return _redirect_home(success=f"Started shipment DAG run {dag_run_id}.")
+    return _redirect_home(success="Started shipment DAG run", dag_run_id=dag_run_id)
 
 
 @app.get("/progress")
@@ -155,14 +211,14 @@ def dag_run_progress():
         raise HTTPException(status_code=502, detail="Could not fetch DAG run progress")
 
 
-@app.get("/download/{cart_name}/{filename}")
-async def download_shipped_file(cart_name: str, filename: str):
+@app.get("/download/{rel_path:path}")
+async def download_shipped_file(rel_path: str):
     try:
-        file_path = archived_file_path(cart_name, filename)
+        file_path = shipped_file_path(rel_path)
     except ValueError:
         raise HTTPException(status_code=404, detail="File not found")
 
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(file_path, filename=download_filename(filename))
+    return FileResponse(file_path, filename=download_filename(file_path))

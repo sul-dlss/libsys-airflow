@@ -12,6 +12,7 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     read_staged_barcode_files,
     write_status_json,
 )
+from libsys_airflow.plugins.google_scanning.staging import is_staged_file_path
 from libsys_airflow.plugins.shared.folio_client import folio_client
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,11 @@ def stage_cart_items():
             raise ValueError("Missing staged_file_path")
         if "cart_name" not in params:
             raise ValueError("Missing cart name")
+        # This DAG writes status.json next to the staged file, so keep it in staged/
+        if not is_staged_file_path(params["staged_file_path"]):
+            raise ValueError(
+                f"{params['staged_file_path']} isn't a staged cart's barcode file"
+            )
         return {
             "cart_name": params["cart_name"],
             "staged_file_path": params["staged_file_path"],

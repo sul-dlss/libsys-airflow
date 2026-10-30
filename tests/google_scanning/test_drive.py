@@ -43,6 +43,10 @@ def test_upload_to_drive_task_skips_when_not_production(mocker, mock_files, capl
 
     assert result == {"success": mock_files, "failures": []}
     assert "SKIPPING GOOGLE DRIVE UPLOAD" in caplog.text
+    for f in mock_files:
+        assert f"Would upload {f} to Google Drive as" in caplog.text
+    assert "as stanford_20260101-campus.xml" in caplog.text
+    assert "as stanford_20260101-campus.txt" in caplog.text
 
 
 def test_upload_to_drive_task_success(mocker, mock_files, caplog):
@@ -86,6 +90,22 @@ def test_upload_to_drive_task_failure(mocker, mock_files, caplog):
     assert result["success"] == []
     assert result["failures"] == mock_files
     assert "Error uploading" in caplog.text
+
+
+def test_upload_to_drive_task_setup_failure(mocker, mock_files, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.drive.is_production",
+        return_value=True,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.__init__",
+        side_effect=Exception("bad connection"),
+    )
+
+    result = upload_to_drive_task.function(mock_files)
+
+    assert result == {"success": [], "failures": mock_files}
+    assert "Error setting up Google Drive upload" in caplog.text
 
 
 def test_upload_to_drive_task_partial_failure_rolls_back_uploaded_file(
@@ -142,3 +162,27 @@ def test_upload_to_drive_task_rollback_failure_is_logged(mocker, mock_files, cap
     assert result["success"] == []
     assert result["failures"] == [mock_files[1]]
     assert "Failed to roll back" in caplog.text
+
+
+def test_upload_to_drive_task_rollback_connection_failure(mocker, mock_files, caplog):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.drive.is_production",
+        return_value=True,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.__init__",
+        return_value=None,
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.upload_file",
+        side_effect=["file-id-1", Exception("boom")],
+    )
+    mocker.patch(
+        "airflow.providers.google.suite.hooks.drive.GoogleDriveHook.get_conn",
+        side_effect=Exception("no connection"),
+    )
+
+    result = upload_to_drive_task.function(mock_files)
+
+    assert result == {"success": [], "failures": [mock_files[1]]}
+    assert "Failed to roll back 1 partial upload(s)" in caplog.text
