@@ -36,9 +36,15 @@ STATUS_SHIPPED = "shipped"
 STATUS_FAILED = "failed"
 
 # Valid values for a waiting shipment's shipment.json "status" field.
-# The send DAG only uploads "ready" shipments.
+# The send DAG only uploads "ready" shipments. queue_shipment marks a
+# shipment "building" only while it moves carts and files into place.
 SHIPMENT_BUILDING = "building"
 SHIPMENT_READY = "ready"
+
+# The on_campus_shipment DAG writes a shipment's MARCXML, manifest and
+# instance ids under "{stem}-building" until queue_shipment renames them
+# into place, so a failed build leaves the earlier build's files intact.
+BUILDING_SUFFIX = "-building"
 
 # Used only by when status.json is missing or unreadable not written by processing DAGs.
 STATUS_UNKNOWN = "unknown"

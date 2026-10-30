@@ -113,6 +113,16 @@ def test_sendable_shipment_files_skips_incomplete_and_building(mock_bases):
     }
 
 
+def test_sendable_shipment_files_ignores_building_files(mock_bases):
+    files = _shipment_files(mock_bases, CAMPUS_STEM)
+    _waiting_shipment(mock_bases, CAMPUS_STEM, ["cart-1"])
+    building = _shipment_files(mock_bases, f"{CAMPUS_STEM}-building")
+
+    result = sendable_shipment_files(files + building, SEND_DATE)
+
+    assert result == {"file_list": files, "held": [], "skipped": []}
+
+
 def test_archive_sent_shipments_archives_each_campus_cart(mock_bases):
     files = _shipment_files(mock_bases, CAMPUS_STEM)
     _waiting_shipment(mock_bases, CAMPUS_STEM, ["cart-1", "cart-2"])

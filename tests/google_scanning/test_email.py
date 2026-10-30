@@ -330,6 +330,16 @@ def test_transmission_failure_email_skipped_upload(mocker, mock_dag_run):
     assert mock_send_email.called
 
 
+def test_transmission_failure_email_without_sendable_files(mocker, mock_dag_run):
+    mock_send_email = mocker.patch(
+        "libsys_airflow.plugins.google_scanning.email.send_email_with_server_name"
+    )
+
+    transmission_failure_email.function(None, None, dag_run=mock_dag_run)
+
+    mock_send_email.assert_not_called()
+
+
 def test_transmission_failure_email_nothing_to_report(mocker, mock_dag_run):
     mock_send_email = mocker.patch(
         "libsys_airflow.plugins.google_scanning.email.send_email_with_server_name"

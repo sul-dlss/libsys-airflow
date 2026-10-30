@@ -7,6 +7,7 @@ from pathlib import Path
 from libsys_airflow.plugins.google_scanning.caiasoft_shipment import is_sal3_stem
 from libsys_airflow.plugins.google_scanning.constants import (
     ARCHIVED_FILES_BASE,
+    BUILDING_SUFFIX,
     CARTS_WAITING_BASE,
     SAL3_ARCHIVE_NAME,
     SHIPMENT_READY,
@@ -23,8 +24,9 @@ def sendable_shipment_files(file_list: list[str], send_date: str) -> dict:
     to send: both the MARCXML (new/) and manifest (manifests/) are present,
     and, for on-campus shipments, shipment.json is "ready" -- so a
     shipment that's being rebuilt, or whose rebuild failed, is never sent
-    half-written. Shipments dated after send_date (YYYYMMDD) are held
-    until then. Returns the files to upload, the held stems, and the
+    half-written. Files a build is still writing, or that a failed build
+    left, under "{stem}-building" are ignored. Shipments dated after
+    send_date (YYYYMMDD) are held until then. Returns the files to upload, the held stems, and the
     skipped shipments and why, for the failure email.
     """
     by_stem: dict[str, dict[str, str]] = defaultdict(dict)
@@ -36,6 +38,8 @@ def sendable_shipment_files(file_list: list[str], send_date: str) -> dict:
     held: list[str] = []
     skipped: list[dict] = []
     for stem, files in sorted(by_stem.items()):
+        if stem.endswith(BUILDING_SUFFIX):
+            continue
         ship_date = stem_ship_date(stem)
         if ship_date and ship_date > send_date:
             logger.info(f"Holding {stem} until {ship_date}")

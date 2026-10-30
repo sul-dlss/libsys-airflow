@@ -5,6 +5,7 @@ from datetime import datetime
 from airflow.sdk import dag, task, get_current_context
 from airflow.exceptions import AirflowException
 
+from libsys_airflow.plugins.google_scanning.constants import SHIPMENT_BUILDING
 from libsys_airflow.plugins.google_scanning.email import (
     send_shipment_failure_email,
     shipment_confirmation_email,
@@ -13,11 +14,13 @@ from libsys_airflow.plugins.google_scanning.manifest import generate_manifest
 from libsys_airflow.plugins.google_scanning.marc import generate_marc_for_instances
 from libsys_airflow.plugins.google_scanning.shipment import (
     barcodes_for_shipment,
+    building_filestamp,
     mark_carts_failed,
     plan_shipment,
     queue_shipment,
     read_shipment,
     resolve_instance_ids,
+    shipment_files,
 )
 from libsys_airflow.plugins.google_scanning.staging import shipment_filestamp
 from libsys_airflow.plugins.shared.folio_client import folio_client
@@ -31,8 +34,9 @@ def _mark_failed_and_notify(context: dict) -> None:
     available in FOLIO or none that resolve to an instance, marks every
     selected cart failed, since barcodes from all selected carts are merged
     together before this point, so there is no way to tell which one(s)
-    actually caused the failure. A shipment left "building" (see
-    shipment.py::plan_shipment) isn't sent until it's triggered again.
+    actually caused the failure. A waiting shipment is still sent as it
+    was, unless queue_carts failed partway and left it "building" (see
+    shipment.py::queue_shipment).
     """
     ti = context["task_instance"]
     dag_run = context.get("dag_run")
@@ -45,7 +49,8 @@ def _mark_failed_and_notify(context: dict) -> None:
     reason = f"{ti.task_id} failed: {context.get('exception')}"
     if shipped_at := params.get("shipped_at"):
         stem = shipment_filestamp(shipped_at)
-        if read_shipment(stem):
+        shipment = read_shipment(stem)
+        if shipment and shipment.get("status") == SHIPMENT_BUILDING:
             reason += (
                 f" The {stem} shipment won't be sent to Google Drive until "
                 "it's triggered again."
@@ -76,12 +81,8 @@ def on_campus_shipment():
         }
 
     @task(on_failure_callback=_mark_failed_and_notify)
-    def plan(init_params: dict, **kwargs) -> dict:
-        return plan_shipment(
-            init_params["selected_carts"],
-            init_params["shipped_at"],
-            kwargs["dag_run"].run_id,
-        )
+    def plan(init_params: dict) -> dict:
+        return plan_shipment(init_params["selected_carts"], init_params["shipped_at"])
 
     @task(on_failure_callback=_mark_failed_and_notify)
     def gather_barcodes(shipment_plan: dict) -> dict:
@@ -109,7 +110,8 @@ def on_campus_shipment():
     @task(on_failure_callback=_mark_failed_and_notify)
     def generate_marc(resolved: dict, shipment_plan: dict) -> dict:
         return generate_marc_for_instances(
-            list(resolved["instance_ids"].values()), shipment_plan["stem"]
+            list(resolved["instance_ids"].values()),
+            building_filestamp(shipment_plan["stem"]),
         )
 
     @task(on_failure_callback=_mark_failed_and_notify)
@@ -153,8 +155,9 @@ def on_campus_shipment():
         gathered: dict,
         resolved: dict,
         marc_result: dict,
-        manifest_path: str,
     ) -> dict:
+        # queue_carts renamed the build's files to the stem
+        marc_xml_path, manifest_path, _ = shipment_files(shipment_plan["stem"])
         return {
             "shipped_carts": shipment_carts,
             "rebuild": shipment_plan["rebuild"],
@@ -163,8 +166,8 @@ def on_campus_shipment():
             "skipped": gathered["skipped"],
             "instance_id_failures": resolved["instance_id_failures"],
             "not_found_instance_ids": marc_result["not_found_instance_ids"],
-            "marc_xml_path": marc_result["marc_xml_path"],
-            "manifest_path": manifest_path,
+            "marc_xml_path": str(marc_xml_path),
+            "manifest_path": str(manifest_path),
         }
 
     init_params = setup()
@@ -175,7 +178,7 @@ def on_campus_shipment():
     manifest_path = generate_shipment_manifest(gathered, resolved, marc_result)
     shipment_carts = queue_carts(shipment_plan, gathered, init_params, manifest_path)
     shipment_result = build_shipment_result(
-        shipment_carts, shipment_plan, gathered, resolved, marc_result, manifest_path
+        shipment_carts, shipment_plan, gathered, resolved, marc_result
     )
     shipment_confirmation_email(shipment_result)
 

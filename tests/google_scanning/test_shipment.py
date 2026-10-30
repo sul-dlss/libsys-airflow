@@ -5,11 +5,13 @@ import pytest
 from libsys_airflow.plugins.google_scanning.constants import STATUS_FAILED
 from libsys_airflow.plugins.google_scanning.shipment import (
     barcodes_for_shipment,
+    building_filestamp,
     mark_carts_failed,
     plan_shipment,
     queue_shipment,
     read_shipment,
     resolve_instance_ids,
+    shipment_files,
     update_cart_status,
     write_shipment,
 )
@@ -46,6 +48,21 @@ def mock_carts_waiting_base(tmp_path, mocker):
         "libsys_airflow.plugins.google_scanning.staging.CARTS_WAITING_BASE", waiting
     )
     return waiting
+
+
+@pytest.fixture(autouse=True)
+def mock_marc_files_base(tmp_path, mocker):
+    marc_files = tmp_path / "marc-files"
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.shipment.MARC_FILES_BASE", marc_files
+    )
+    return marc_files
+
+
+def _write_shipment_files(filestamp: str, contents: str) -> None:
+    for path in shipment_files(filestamp):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(contents)
 
 
 def _stage_cart(base, cart_name: str, barcodes: str, status: dict | None = None):
@@ -308,7 +325,7 @@ def test_plan_shipment_new(mock_staged_files_base):
     _stage_cart(mock_staged_files_base, "cart-1", "111\n")
 
     plan = plan_shipment(
-        [{"cart_name": "cart-1", "filename": "barcodes.txt"}], "20260810", "run-1"
+        [{"cart_name": "cart-1", "filename": "barcodes.txt"}], "20260810"
     )
 
     assert plan == {
@@ -323,13 +340,7 @@ def test_plan_shipment_new(mock_staged_files_base):
             }
         ],
     }
-    assert read_shipment(STEM) == {
-        "stem": STEM,
-        "shipped_at": "20260810",
-        "carts": ["cart-1"],
-        "status": "building",
-        "dag_run_id": "run-1",
-    }
+    assert read_shipment(STEM) is None
 
 
 def test_plan_shipment_rebuilds_waiting_shipment_in_order(
@@ -337,7 +348,8 @@ def test_plan_shipment_rebuilds_waiting_shipment_in_order(
 ):
     for cart_name in ("cart-a", "cart-b"):
         _stage_cart(mock_carts_waiting_base / STEM, cart_name, "1\n")
-    write_shipment(STEM, {"stem": STEM, "carts": ["cart-a", "cart-b"]})
+    shipment = {"stem": STEM, "carts": ["cart-a", "cart-b"], "status": "ready"}
+    write_shipment(STEM, shipment)
     _stage_cart(mock_staged_files_base, "cart-a", "2\n")
     _stage_cart(mock_staged_files_base, "cart-c", "3\n")
 
@@ -347,7 +359,6 @@ def test_plan_shipment_rebuilds_waiting_shipment_in_order(
             {"cart_name": "cart-a", "filename": "barcodes.txt"},
         ],
         "20260810",
-        "run-2",
     )
 
     assert plan["rebuild"] is True
@@ -359,7 +370,8 @@ def test_plan_shipment_rebuilds_waiting_shipment_in_order(
     assert plan["carts"][1]["cart_dir"] == str(
         mock_carts_waiting_base / STEM / "cart-b"
     )
-    assert read_shipment(STEM)["status"] == "building"
+    # The waiting shipment stays ready until queue_shipment replaces it
+    assert read_shipment(STEM) == shipment
 
 
 def test_plan_shipment_skips_carts_from_failed_build(
@@ -370,7 +382,7 @@ def test_plan_shipment_skips_carts_from_failed_build(
     _stage_cart(mock_staged_files_base, "cart-b", "2\n")
 
     plan = plan_shipment(
-        [{"cart_name": "cart-b", "filename": "barcodes.txt"}], "20260810", "run-3"
+        [{"cart_name": "cart-b", "filename": "barcodes.txt"}], "20260810"
     )
 
     assert [cart["cart_name"] for cart in plan["carts"]] == ["cart-a", "cart-b"]
@@ -382,9 +394,7 @@ def test_plan_shipment_rejects_cart_waiting_under_another_date(
     _stage_cart(mock_carts_waiting_base / "stanford_20260809-oncampus", "cart-1", "1\n")
 
     with pytest.raises(ValueError, match="stanford_20260809-oncampus"):
-        plan_shipment(
-            [{"cart_name": "cart-1", "filename": "barcodes.txt"}], "20260810", "run-1"
-        )
+        plan_shipment([{"cart_name": "cart-1", "filename": "barcodes.txt"}], "20260810")
 
 
 def test_queue_shipment_moves_staged_carts_and_marks_ready(
@@ -395,7 +405,9 @@ def test_queue_shipment_moves_staged_carts_and_marks_ready(
     _stage_cart(waiting, "cart-b", "1\n")
     _stage_cart(mock_staged_files_base, "cart-a", "new\n", status={"status": "staged"})
     _stage_cart(mock_staged_files_base, "cart-c", "3\n", status={"status": "staged"})
-    write_shipment(STEM, {"stem": STEM, "status": "building"})
+    write_shipment(STEM, {"stem": STEM, "status": "ready"})
+    _write_shipment_files(STEM, "old build")
+    _write_shipment_files(building_filestamp(STEM), "new build")
     plan = {
         "stem": STEM,
         "carts": [
@@ -416,6 +428,37 @@ def test_queue_shipment_moves_staged_carts_and_marks_ready(
     # cart-c had no shippable barcodes, so it stays staged
     assert (mock_staged_files_base / "cart-c").exists()
     assert not (waiting / "cart-c").exists()
+    for path in shipment_files(STEM):
+        assert path.read_text() == "new build"
+    for path in shipment_files(building_filestamp(STEM)):
+        assert not path.exists()
     shipment = read_shipment(STEM)
     assert shipment["status"] == "ready"
     assert shipment["carts"] == ["cart-a", "cart-b"]
+    assert shipment["dag_run_id"] == "run-2"
+
+
+def test_queue_shipment_keeps_earlier_copy_when_move_fails(
+    mock_staged_files_base, mock_carts_waiting_base, mocker
+):
+    waiting = mock_carts_waiting_base / STEM
+    _stage_cart(waiting, "cart-a", "old\n")
+    _stage_cart(mock_staged_files_base, "cart-a", "new\n", status={"status": "staged"})
+    write_shipment(STEM, {"stem": STEM, "status": "ready"})
+    _write_shipment_files(STEM, "old build")
+    _write_shipment_files(building_filestamp(STEM), "new build")
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.shipment.shutil.move",
+        side_effect=OSError("disk full"),
+    )
+    plan = {"stem": STEM, "carts": [{"cart_name": "cart-a", "source": "staged"}]}
+
+    with pytest.raises(OSError):
+        queue_shipment(plan, ["cart-a"], "20260810", "run-2")
+
+    assert (waiting / "cart-a" / "barcodes.txt").read_text() == "old\n"
+    assert not (waiting / ".cart-a.replaced").exists()
+    assert (mock_staged_files_base / "cart-a").exists()
+    for path in shipment_files(STEM):
+        assert path.read_text() == "old build"
+    assert read_shipment(STEM)["status"] == "building"

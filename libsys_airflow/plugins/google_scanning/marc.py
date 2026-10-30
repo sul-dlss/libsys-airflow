@@ -17,7 +17,7 @@ VENDOR = "google_scanning"
 def generate_marc_for_instances(instance_ids: list[str], filestamp: str) -> dict:
     """
     Generates a shipment's MARCXML from the resolved instance ids and its
-    filestamp (staging.py::shipment_filestamp or
+    filestamp (shipment.py::building_filestamp or
     caiasoft_shipment.py::sal3_filestamp).
     Must run inside a task context, since retrieve_marc_for_instances
     reads Airflow params via get_current_context().

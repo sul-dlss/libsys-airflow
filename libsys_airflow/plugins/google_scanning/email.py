@@ -254,16 +254,17 @@ def _transmission_failure_email_body(**kwargs) -> str:
 
 @task(trigger_rule="all_done")
 def transmission_failure_email(
-    upload_result: dict | None, sendable: dict, **kwargs
+    upload_result: dict | None, sendable: dict | None, **kwargs
 ) -> None:
     """
     Notifies EMAIL_DEVS and the Google scanning list when the
     send_google_scanning_files DAG couldn't upload a shipment's files, or
     skipped a shipment that's incomplete or still being built. Sends
-    nothing when every shipment went out.
+    nothing when every shipment went out, or when select_sendable_files
+    failed, since email_on_failure already reports that.
     """
     failures = (upload_result or {}).get("failures", [])
-    skipped = sendable.get("skipped", [])
+    skipped = (sendable or {}).get("skipped", [])
     if not failures and not skipped:
         logger.info("No upload failures or skipped shipments to report")
         return

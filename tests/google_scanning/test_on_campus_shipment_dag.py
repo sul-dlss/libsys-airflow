@@ -58,15 +58,12 @@ def test_plan_calls_plan_shipment(dag, mocker):
         "libsys_airflow.dags.google_scanning.on_campus_shipment.plan_shipment",
         return_value={"stem": "stamp", "rebuild": False, "carts": []},
     )
-    mock_dag_run = MagicMock()
-    mock_dag_run.run_id = "run-123"
 
     result = dag.task_dict["plan"].python_callable(
-        {"selected_carts": [{"cart_name": "cart-1"}], "shipped_at": "20260810"},
-        dag_run=mock_dag_run,
+        {"selected_carts": [{"cart_name": "cart-1"}], "shipped_at": "20260810"}
     )
 
-    mock_plan.assert_called_once_with([{"cart_name": "cart-1"}], "20260810", "run-123")
+    mock_plan.assert_called_once_with([{"cart_name": "cart-1"}], "20260810")
     assert result == {"stem": "stamp", "rebuild": False, "carts": []}
 
 
@@ -135,7 +132,7 @@ def test_resolve_instances_raises_when_none_resolved(dag, mocker):
         )
 
 
-def test_generate_marc_uses_planned_stem(dag, mocker):
+def test_generate_marc_writes_under_building_filestamp(dag, mocker):
     mock_generate = mocker.patch(
         "libsys_airflow.dags.google_scanning.on_campus_shipment.generate_marc_for_instances",
         return_value={
@@ -151,7 +148,7 @@ def test_generate_marc_uses_planned_stem(dag, mocker):
     )
 
     mock_generate.assert_called_once_with(
-        ["instance-1", "instance-1"], "stanford_20260810-oncampus"
+        ["instance-1", "instance-1"], "stanford_20260810-oncampus-building"
     )
     assert result == {
         "filestamp": "stamp",
@@ -199,14 +196,17 @@ def test_queue_carts_queues_carts_with_shipped_barcodes(dag, mocker):
     assert result == ["cart-1", "cart-2"]
 
 
-def test_build_shipment_result(dag):
+def test_build_shipment_result(dag, tmp_path, mocker):
+    mocker.patch(
+        "libsys_airflow.plugins.google_scanning.shipment.MARC_FILES_BASE",
+        tmp_path / "marc-files",
+    )
     result = dag.task_dict["build_shipment_result"].python_callable(
         ["cart-1", "cart-2"],
         {"stem": "stanford_20260810-oncampus", "rebuild": True},
         {"to_ship": [("111", "cart-1"), ("222", "cart-2")], "skipped": []},
         {"instance_id_failures": []},
-        {"not_found_instance_ids": [], "marc_xml_path": "x.xml"},
-        "manifest.txt",
+        {"not_found_instance_ids": [], "marc_xml_path": "x-building.xml"},
     )
 
     assert result == {
@@ -217,8 +217,12 @@ def test_build_shipment_result(dag):
         "skipped": [],
         "instance_id_failures": [],
         "not_found_instance_ids": [],
-        "marc_xml_path": "x.xml",
-        "manifest_path": "manifest.txt",
+        "marc_xml_path": str(
+            tmp_path / "marc-files" / "new" / "stanford_20260810-oncampus.xml"
+        ),
+        "manifest_path": str(
+            tmp_path / "marc-files" / "manifests" / "stanford_20260810-oncampus.txt"
+        ),
     }
 
 
@@ -307,7 +311,7 @@ def test_mark_failed_and_notify_mentions_unsent_shipment(mocker):
         "libsys_airflow.dags.google_scanning.on_campus_shipment.send_shipment_failure_email"
     )
     mock_ti = MagicMock()
-    mock_ti.task_id = "generate_marc"
+    mock_ti.task_id = "queue_carts"
 
     _mark_failed_and_notify(
         {
@@ -320,6 +324,37 @@ def test_mark_failed_and_notify_mentions_unsent_shipment(mocker):
 
     reason = mock_send_email.call_args[0][0]
     assert "stanford_20260810-oncampus shipment won't be sent" in reason
+
+
+def test_mark_failed_and_notify_omits_warning_for_ready_shipment(mocker):
+    from libsys_airflow.dags.google_scanning.on_campus_shipment import (
+        _mark_failed_and_notify,
+    )
+
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.mark_carts_failed"
+    )
+    mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.read_shipment",
+        return_value={"status": "ready"},
+    )
+    mock_send_email = mocker.patch(
+        "libsys_airflow.dags.google_scanning.on_campus_shipment.send_shipment_failure_email"
+    )
+    mock_ti = MagicMock()
+    mock_ti.task_id = "resolve_instances"
+
+    _mark_failed_and_notify(
+        {
+            "task_instance": mock_ti,
+            "dag_run": None,
+            "params": {"shipped_at": "20260810"},
+            "exception": ValueError("boom"),
+        }
+    )
+
+    reason = mock_send_email.call_args[0][0]
+    assert "won't be sent" not in reason
 
 
 def test_mark_failed_and_notify_defaults_selected_carts_and_user_email(mocker):

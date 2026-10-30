@@ -6,7 +6,9 @@ import shutil
 from folioclient import FolioClient
 
 from libsys_airflow.plugins.google_scanning.constants import (
+    BUILDING_SUFFIX,
     CARTS_WAITING_BASE,
+    MARC_FILES_BASE,
     SHIPMENT_BUILDING,
     SHIPMENT_FILENAME,
     SHIPMENT_READY,
@@ -19,6 +21,7 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     _lookup_by_barcode,
     read_staged_barcode_files,
 )
+from libsys_airflow.plugins.google_scanning.manifest import manifest_filename
 from libsys_airflow.plugins.google_scanning.staging import (
     barcode_filename,
     cart_status_in,
@@ -185,17 +188,53 @@ def write_shipment(stem: str, shipment: dict) -> None:
         json.dump(shipment, fo, indent=2)
 
 
-def plan_shipment(
-    selected_carts: list[dict], shipped_at: str, dag_run_id: str | None
-) -> dict:
+def building_filestamp(stem: str) -> str:
+    """
+    Returns the filestamp a build writes its MARCXML, manifest and
+    instance ids under, until queue_shipment renames them to the stem.
+    """
+    return f"{stem}{BUILDING_SUFFIX}"
+
+
+def shipment_files(filestamp: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
+    """
+    Returns the MARCXML, manifest and instance ids paths that
+    marc.py::generate_marc_for_instances and manifest.py::generate_manifest
+    write for a filestamp.
+    """
+    return (
+        MARC_FILES_BASE / "new" / f"{filestamp}.xml",
+        MARC_FILES_BASE / "manifests" / manifest_filename(filestamp),
+        MARC_FILES_BASE.parent / "instanceids" / "new" / f"{filestamp}.csv",
+    )
+
+
+def _move_cart_into_shipment(cart_name: str, dest_dir: pathlib.Path) -> None:
+    """
+    Moves a staged cart to dest_dir, replacing a re-shipped cart's earlier
+    copy only once the move succeeds, so a failed move leaves it in place.
+    """
+    replaced_dir = dest_dir.with_name(f".{cart_name}.replaced")
+    if dest_dir.exists():
+        dest_dir.rename(replaced_dir)
+    try:
+        shutil.move(STAGED_FILES_BASE / cart_name, dest_dir)
+    except Exception:
+        if replaced_dir.exists():
+            replaced_dir.rename(dest_dir)
+        raise
+    if replaced_dir.exists():
+        shutil.rmtree(replaced_dir)
+
+
+def plan_shipment(selected_carts: list[dict], shipped_at: str) -> dict:
     """
     Works out which carts go into the ship date's on-campus shipment.
     There's one per date, so if that date's shipment is still waiting to
     be sent, this rebuilds it: its carts keep their order, any that are
     being re-shipped point at their new staged/ copy, and newly selected
-    carts go on the end. Marks the shipment "building" so the send DAG
-    skips it until queue_shipment marks it "ready" -- or indefinitely if
-    this run fails, until the shipment is triggered again.
+    carts go on the end. Changes nothing on disk, so if the build fails,
+    a waiting shipment is still sent as it was.
     """
     conflicts = other_date_conflicts(
         [cart["cart_name"] for cart in selected_carts], shipped_at
@@ -234,16 +273,6 @@ def plan_shipment(
         )
     shipment_carts.extend(staged.values())
 
-    write_shipment(
-        stem,
-        {
-            "stem": stem,
-            "shipped_at": shipped_at,
-            "carts": [cart["cart_name"] for cart in shipment_carts],
-            "status": SHIPMENT_BUILDING,
-            "dag_run_id": dag_run_id,
-        },
-    )
     return {"stem": stem, "rebuild": existing is not None, "carts": shipment_carts}
 
 
@@ -255,12 +284,24 @@ def queue_shipment(
 ) -> list[str]:
     """
     Moves each staged cart that shipped into carts-waiting/{stem}/{cart}/,
-    replacing a re-shipped cart's earlier copy, then marks the shipment
-    "ready" for the send DAG. A staged cart with no shippable barcodes is
-    left staged and dropped from the shipment (along with any earlier
-    copy). Returns the shipment's cart names.
+    replacing a re-shipped cart's earlier copy, renames the build's files
+    from building_filestamp to the stem, then marks the shipment "ready"
+    for the send DAG. The shipment is "building" while this runs, so the
+    send DAG skips it if this fails partway, until it's triggered again.
+    A staged cart with no shippable barcodes is left staged and dropped
+    from the shipment (along with any earlier copy). Returns the
+    shipment's cart names.
     """
     stem = plan["stem"]
+    shipment = {
+        "stem": stem,
+        "shipped_at": shipped_at,
+        "carts": [cart["cart_name"] for cart in plan["carts"]],
+        "status": SHIPMENT_BUILDING,
+        "dag_run_id": dag_run_id,
+    }
+    write_shipment(stem, shipment)
+
     shipment_cart_names = []
     for cart in plan["carts"]:
         cart_name = cart["cart_name"]
@@ -268,9 +309,9 @@ def queue_shipment(
             shipment_cart_names.append(cart_name)
             continue
         dest_dir = CARTS_WAITING_BASE / stem / cart_name
-        if dest_dir.exists():
-            shutil.rmtree(dest_dir)
         if cart_name not in shipped_cart_names:
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir)
             continue
         update_cart_status(
             cart_name,
@@ -280,17 +321,14 @@ def queue_shipment(
             shipment_stem=stem,
             shipment_dag_run_id=dag_run_id,
         )
-        shutil.move(STAGED_FILES_BASE / cart_name, dest_dir)
+        _move_cart_into_shipment(cart_name, dest_dir)
         shipment_cart_names.append(cart_name)
 
-    shipment = read_shipment(stem) or {"stem": stem}
-    shipment.update(
-        {
-            "shipped_at": shipped_at,
-            "carts": shipment_cart_names,
-            "status": SHIPMENT_READY,
-            "dag_run_id": dag_run_id,
-        }
-    )
+    for built, final in zip(
+        shipment_files(building_filestamp(stem)), shipment_files(stem)
+    ):
+        built.replace(final)
+
+    shipment.update({"carts": shipment_cart_names, "status": SHIPMENT_READY})
     write_shipment(stem, shipment)
     return shipment_cart_names
