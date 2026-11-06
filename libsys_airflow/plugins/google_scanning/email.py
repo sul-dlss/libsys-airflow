@@ -46,13 +46,16 @@ def _confirmation_email_body(**kwargs) -> str:
         """
         <h2>Google Scanning On-Campus Shipment</h2>
         <h3>DAG Run: <a href="{{ dag_run_url }}">{{ dag_run_id }}</a></h3>
+        {% if rebuild %}
+        <p>Rebuilt the {{ stem }} shipment, which hadn't been sent yet.</p>
+        {% endif %}
         <p>Shipped {{ shipped_barcode_count }} barcode(s) from {{ shipped_carts|length }} cart(s):</p>
         <ul>
         {% for cart_name in shipped_carts %}
         <li>{{ cart_name }}</li>
         {% endfor %}
         </ul>
-        <p>Files uploaded to Google Drive:</p>
+        <p>Files submitted for upload to Google Drive:</p>
         <ul>
         <li>{{ marc_xml_path }}</li>
         <li>{{ manifest_path }}</li>
@@ -85,7 +88,7 @@ def shipment_confirmation_email(shipment_result: dict, **kwargs) -> None:
     summarizing what shipped and what was skipped or unresolved, and
     linking to the dag run. shipment_result is assembled by the DAG from
     barcodes_for_shipment/resolve_instance_ids (shipment.py),
-    generate_shipment_marc (marc.py), and generate_manifest (manifest.py).
+    generate_marc_for_instances (marc.py), and generate_manifest (manifest.py).
     """
     dag_run = kwargs["dag_run"]
     params = kwargs.get("params", {})
@@ -120,11 +123,8 @@ def _failure_email_body(**kwargs) -> str:
 def send_shipment_failure_email(reason: str, dag_run, user_email: str | None) -> None:
     """
     Sends the on-campus shipment failure notification to EMAIL_DEVS (and
-    the triggering staff member, if known). Used both by the
-    shipment_failure_email task below (Drive upload failures, handled by
-    the check_upload branch in on_campus_shipment.py) and by that DAG's
-    on-failure callback for tasks upstream of that branch (e.g. no
-    barcodes resolving to an instance).
+    the triggering staff member, if known). Used by the on_campus_shipment
+    DAG's on-failure callback.
     """
     to_emails = _to_addresses(user_email)
 
@@ -142,18 +142,6 @@ def send_shipment_failure_email(reason: str, dag_run, user_email: str | None) ->
     )
 
 
-@task
-def shipment_failure_email(reason: str, **kwargs) -> None:
-    """
-    Sends a failure notification when the on-campus shipment DAG fails
-    after uploading to Drive was attempted. Selected carts are left in
-    staged/ (not archived) so staff can retry once the issue's fixed.
-    """
-    dag_run = kwargs["dag_run"]
-    params = kwargs.get("params", {})
-    send_shipment_failure_email(reason, dag_run, params.get("user_email"))
-
-
 def _sal3_confirmation_email_body(**kwargs) -> str:
     template = Template(
         """
@@ -166,7 +154,7 @@ def _sal3_confirmation_email_body(**kwargs) -> str:
         <li>{{ shipment_number }}</li>
         {% endfor %}
         </ul>
-        <p>Files uploaded to Google Drive:</p>
+        <p>Files submitted for upload to Google Drive:</p>
         <ul>
         <li>{{ marc_xml_path }}</li>
         <li>{{ manifest_path }}</li>
@@ -217,9 +205,7 @@ def _sal3_failure_email_body(**kwargs) -> str:
 def send_sal3_failure_email(reason: str, dag_run) -> None:
     """
     Sends the CaiaSoft SAL3 shipment failure notification to EMAIL_DEVS.
-    Used both by the sal3_failure_email task below (Drive upload failures)
-    and by the caiasoft_sal3 DAG's on-failure callback for tasks upstream
-    of the upload step.
+    Used by the caiasoft_sal3 DAG's on-failure callback.
     """
     to_emails = _to_addresses(None)
 
@@ -237,11 +223,64 @@ def send_sal3_failure_email(reason: str, dag_run) -> None:
     )
 
 
-@task
-def sal3_failure_email(reason: str, **kwargs) -> None:
+def _transmission_failure_email_body(**kwargs) -> str:
+    template = Template(
+        """
+        <h2>Google Scanning Drive Upload Problems</h2>
+        <h3>DAG Run: <a href="{{ dag_run_url }}">{{ dag_run_id }}</a></h3>
+        {% if failures %}
+        <h3>Files that failed to upload</h3>
+        <p>Nothing from this run was left in Google Drive. These files stay
+        queued and will be sent with the next nightly run, or clear this
+        DAG run to send them now.</p>
+        <ul>
+        {% for file in failures %}
+        <li>{{ file }}</li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        {% if skipped %}
+        <h3>Shipments not sent</h3>
+        <ul>
+        {% for skip in skipped %}
+        <li>{{ skip.stem }}: {{ skip.reason }}</li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        """
+    )
+    return template.render(**kwargs)
+
+
+@task(trigger_rule="all_done")
+def transmission_failure_email(
+    upload_result: dict | None, sendable: dict | None, **kwargs
+) -> None:
     """
-    Sends a failure notification when the caiasoft_sal3 DAG fails after
-    uploading to Drive was attempted.
+    Notifies EMAIL_DEVS and the Google scanning list when the
+    send_google_scanning_files DAG couldn't upload a shipment's files, or
+    skipped a shipment that's incomplete or still being built. Sends
+    nothing when every shipment went out, or when select_sendable_files
+    failed, since email_on_failure already reports that.
     """
+    failures = (upload_result or {}).get("failures", [])
+    skipped = (sendable or {}).get("skipped", [])
+    if not failures and not skipped:
+        logger.info("No upload failures or skipped shipments to report")
+        return
+
     dag_run = kwargs["dag_run"]
-    send_sal3_failure_email(reason, dag_run)
+    to_emails = _to_addresses(None)
+    html_content = _transmission_failure_email_body(
+        dag_run_url=dag_run_url(dag_run=dag_run),
+        dag_run_id=dag_run.run_id,
+        failures=failures,
+        skipped=skipped,
+    )
+
+    logger.info(f"Sending Drive upload problems email to {to_emails}")
+    send_email_with_server_name(
+        to=to_emails,
+        subject="Google Scanning Drive Upload Problems",
+        html_content=html_content,
+    )

@@ -493,6 +493,6 @@ SFTP connections may have a password or a key file. The key files should be name
 
 ## Cleanup of Logs and Workfiles
 
-Edit `plugins/remove_old_files_cron.py` to set the days and times to execute the removal of old files. Set the `mtime` flag to the maximum number of days for file retention. The same crontab runs `airflow db clean` on that retention window to prune the Airflow metadata database.
+Edit `plugins/remove_old_files_cron.py` to set the days and times to execute the removal of old files. Set the `mtime` flag to the maximum number of days for file retention. The same crontab runs `airflow db clean` on that retention window to prune the Airflow metadata database. Files under `data-export-files/google_scanning/archived` are excluded and kept indefinitely for auditing.
 
-On the deployment server run `cap {stage} write_crontab` or on the airflow server, `source virtual-env/bin/activate`, then from within the current project directory run `crontab -r` and then `poetry run python plugins/remove_old_files_cron.py`. Do `crontab -l` to check the crontab.
+Every `cap {stage} deploy` installs the crontab: `config/deploy.rb` runs the `write_crontab` task after `deploy:published`, which clears the existing crontab, regenerates it, and prints `crontab -l`. To reinstall it without deploying, run `cap {stage} write_crontab` from the deployment server, or on the airflow server `source virtual-env/bin/activate`, then from within the current project directory run `crontab -r` and `poetry run python plugins/remove_old_files_cron.py`.

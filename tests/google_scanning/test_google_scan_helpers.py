@@ -143,6 +143,28 @@ def test_sets_temp_location_stat_code_and_note(mock_folio_client):
     )
 
 
+def test_restaging_keeps_existing_note(mock_folio_client):
+    existing_note = {
+        "itemNoteTypeId": NOTE_TYPE_ID,
+        "note": "Sent for Google scanning/2026-08-01",
+        "staffOnly": True,
+    }
+    item = _item(notes=[existing_note])
+
+    _update_item_for_staging(
+        item=item,
+        folio_client=mock_folio_client,
+        temp_location_id=TEMP_LOCATION_ID,
+        digi_sent_id=DIGI_SENT_ID,
+        note_type_id=NOTE_TYPE_ID,
+        date="2026-08-06",
+    )
+
+    assert item["notes"] == [existing_note]
+    assert item["temporaryLocation"] == {"id": TEMP_LOCATION_ID}
+    mock_folio_client.folio_put.assert_called_once()
+
+
 def test_temp_location_sent_as_nested_object_not_flat_id(mock_folio_client):
     """
     mod-inventory's PUT /inventory/items reads temporaryLocation.id and

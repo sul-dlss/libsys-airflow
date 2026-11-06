@@ -12,7 +12,7 @@ from libsys_airflow.plugins.data_exports.transmission_tasks import (
     gather_files_task,
     check_file_list_task,
     transmit_data_ftp_task,
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
 )
 
 from libsys_airflow.plugins.data_exports.email import (
@@ -57,13 +57,13 @@ def send_gobi_records():
 
     transmit_data = transmit_data_ftp_task("gobi", gather_files)
 
-    archive_data = archive_transmitted_data_task(transmit_data['success'])
+    move_data = move_transmitted_data_task(transmit_data['success'])
 
     email_failures = failed_transmission_email(transmit_data["failures"])
 
     start >> gather_files >> check_file_list >> [continue_op, no_files_found_email]
     no_files_found_email >> end
-    continue_op >> transmit_data >> [archive_data, email_failures] >> end
+    continue_op >> transmit_data >> [move_data, email_failures] >> end
 
 
 send_gobi_records()

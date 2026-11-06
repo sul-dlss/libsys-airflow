@@ -1,4 +1,5 @@
 import copy
+import gzip
 import logging
 
 import httpx
@@ -21,6 +22,29 @@ from libsys_airflow.plugins.data_exports.oclc_api import (
 from libsys_airflow.plugins.shared.utils import is_production
 
 logger = logging.getLogger(__name__)
+
+# Larger .xml/.gz files are assumed to hold records and aren't read
+EMPTY_CHECK_MAX_BYTES = 1024
+
+
+def is_empty_marc_file(path: Union[Path, S3Path]) -> bool:
+    """
+    Whether a gathered file has nothing to send: it's 0 bytes, or it's a
+    small .xml or .xml.gz MARCXML collection with no records, e.g. a
+    full-dump batch whose records were all excluded.
+    """
+    size = path.stat().st_size
+    if size == 0:
+        return True
+    if path.suffix not in (".xml", ".gz") or size > EMPTY_CHECK_MAX_BYTES:
+        return False
+    contents = path.read_bytes()
+    if path.suffix == ".gz":
+        try:
+            contents = gzip.decompress(contents)
+        except (OSError, EOFError):
+            return False
+    return b"<collection" in contents and b"<record" not in contents
 
 
 @task
@@ -57,8 +81,13 @@ def gather_files_task(**kwargs) -> dict:
         )
     marc_filelist = []
 
-    for f in sorted(marc_filepath.glob(file_glob_pattern)):
-        if f.stat().st_size in [0, 112]:
+    if isinstance(file_glob_pattern, str):
+        file_glob_pattern = (file_glob_pattern,)
+    marc_files = [
+        f for pattern in file_glob_pattern for f in marc_filepath.glob(pattern)
+    ]
+    for f in sorted(marc_files):
+        if is_empty_marc_file(f):
             continue
         marc_filelist.append(str(f))
 
@@ -131,7 +160,9 @@ def gather_oclc_files_task(**kwargs) -> dict:
 @task
 def transmit_data_http_task(gather_files, **kwargs) -> dict:
     if not is_production():
-        return return_success_test_instance(gather_files)
+        return return_success_test_instance(
+            gather_files, kwargs.get("params", {}).get("vendor")
+        )
     """
     Transmit the data via http
     Returns lists of files successfully transmitted and failures
@@ -173,7 +204,7 @@ def transmit_data_http_task(gather_files, **kwargs) -> dict:
 @task
 def transmit_data_ftp_task(conn_id, gather_files) -> dict:
     if not is_production():
-        return return_success_test_instance(gather_files)
+        return return_success_test_instance(gather_files, conn_id)
     """
     Transmit the data via ftp
     Returns lists of files successfully transmitted and failures
@@ -295,36 +326,38 @@ def consolidate_oclc_archive_files(gathered_oclc_files: dict) -> list:
 
 
 @task
-def archive_transmitted_data_task(files):
+def move_transmitted_data_task(files):
     """
     Given a list of successfully transmitted files, move files to
-    'transmitted' folder under each data-export-files/{vendor}.
+    'transmitted' folder under each data-export-files/{vendor}, so
+    gather_files_task doesn't send them again. Files in 'transmitted' are
+    purged by the data_export_purge_archived_files DAG.
     Also moves the instanceid file with the same vendor and filename
     Also moves the xml or gz files with the same filename as what was transmitted (i.e. GOBI txt files)
     """
-    logger.info("Moving transmitted files to archive directory")
+    logger.info("Moving transmitted files to transmitted directory")
 
     if len(files) < 1:
-        logger.warning("No files to archive")
+        logger.warning("No files to move")
         return
 
-    archive_dir = Path(files[0]).parent.parent.parent / "transmitted"
-    archive_dir.mkdir(exist_ok=True)
+    transmitted_dir = Path(files[0]).parent.parent.parent / "transmitted"
+    transmitted_dir.mkdir(exist_ok=True)
     for x in files:
         kind = Path(x).parent.name
         # original_transmitted_file_path = data-export-files/{vendor}/marc-files/new|updates|deletes/*.xml|*.gz|*.txt
         original_transmitted_file_path = Path(x)
 
-        # archive_path = data-export-files/{vendor}/transmitted/new|updates|deletes
-        archive_path = archive_dir / kind
-        archive_path.mkdir(exist_ok=True)
-        archive_path = archive_path / original_transmitted_file_path.name
+        # transmitted_path = data-export-files/{vendor}/transmitted/new|updates|deletes
+        transmitted_path = transmitted_dir / kind
+        transmitted_path.mkdir(exist_ok=True)
+        transmitted_path = transmitted_path / original_transmitted_file_path.name
 
         # move transmitted files (for GOBI this will be *.txt files; for POD this will be *.gz files)
         logger.info(
-            f"Moving transmitted file {original_transmitted_file_path} to {archive_path}"
+            f"Moving transmitted file {original_transmitted_file_path} to {transmitted_path}"
         )
-        original_transmitted_file_path.replace(archive_path)
+        original_transmitted_file_path.replace(transmitted_path)
 
         # instance_path = data-export-files/{vendor}/instanceids/new|updates|deletes/*.csv
         # with_suffix('') will remove multiple extentions, e.g. .xml.gz
@@ -332,30 +365,33 @@ def archive_transmitted_data_task(files):
             original_transmitted_file_path.parent.parent.parent
             / f"instanceids/{kind}/{original_transmitted_file_path.with_suffix('').stem}.csv"
         )
-        instance_archive_path = archive_dir / kind / instance_path.name
+        instance_transmitted_path = transmitted_dir / kind / instance_path.name
 
         # move instance id files with same stem as transmitted filename
         if instance_path.exists():
             logger.info(
-                f"Moving related instanceid file {instance_path} to {instance_archive_path}"
+                f"Moving related instanceid file {instance_path} to {instance_transmitted_path}"
             )
-            instance_path.replace(instance_archive_path)
+            instance_path.replace(instance_transmitted_path)
 
         marc_path = (
             original_transmitted_file_path.parent
             / f"{original_transmitted_file_path.with_suffix('').stem}.mrc"
         )
-        marc_archive_path = archive_dir / kind / marc_path.name
+        marc_transmitted_path = transmitted_dir / kind / marc_path.name
 
         # move marc files with same stem as transmitted filename (when transmitted file is not *.xml)
         if marc_path.exists():
-            logger.info(f"Moving related marc file {marc_path} to {marc_archive_path}")
-            marc_path.replace(marc_archive_path)
+            logger.info(
+                f"Moving related marc file {marc_path} to {marc_transmitted_path}"
+            )
+            marc_path.replace(marc_transmitted_path)
 
 
 def vendor_fileformat_spec(vendor):
     """
-    Returns file glob pattern depending on vendor's requirement for uncompressed or compressed MARCXML or text files
+    Returns file glob pattern(s) depending on vendor's requirement for uncompressed or compressed MARCXML or text files
+    A tuple of patterns is returned for vendors sending more than one kind of file
     """
     match vendor:
         case "pod":
@@ -364,6 +400,9 @@ def vendor_fileformat_spec(vendor):
             return "**/*.txt"
         case "backstage":
             return "**/*.mrc"
+        case "google_scanning":
+            # Each shipment is a MARCXML file plus its cart-level manifest
+            return ("new/*.xml", "manifests/*.txt")
         case _:
             return "**/*.xml"
 
@@ -394,8 +433,16 @@ def vendor_url_params(conn_id, is_s3_path) -> dict:
     return url_params
 
 
-def return_success_test_instance(files) -> dict:
+def return_success_test_instance(files, conn_id=None) -> dict:
+    """
+    Stands in for a transmission outside production, logging the filename
+    each file would be sent to the vendor as, per vendor_filename_spec.
+    """
     logger.info("SKIPPING TRANSMISSION")
+    for f in files["file_list"]:
+        logger.info(
+            f"Would transmit {f} to {conn_id} as {vendor_filename_spec(conn_id, f)}"
+        )
     return {"success": files["file_list"], "failures": []}
 
 

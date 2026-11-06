@@ -13,7 +13,7 @@ from libsys_airflow.plugins.data_exports.sal3_items import (
     pick_success_files,
 )
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
     transmit_data_ftp_task,
 )
 
@@ -82,7 +82,7 @@ with DAG(
 
     archive_file = PythonOperator(
         task_id="archive_csv_file",
-        python_callable=archive_transmitted_data_task.function,
+        python_callable=move_transmitted_data_task.function,
         op_args=["{{ ti.xcom_pull('pick_files_to_archive') }}"],
     )
 

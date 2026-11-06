@@ -7,7 +7,7 @@ from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.timetables.interval import CronDataIntervalTimetable
 
 from libsys_airflow.plugins.data_exports.transmission_tasks import (
-    archive_transmitted_data_task,
+    move_transmitted_data_task,
     consolidate_oclc_archive_files,
     delete_from_oclc_task,
     filter_new_marc_records_task,
@@ -129,13 +129,13 @@ def send_oclc_records():
 
     archive_files = consolidate_oclc_archive_files(gather_files)
 
-    archive_data = archive_transmitted_data_task(archive_files)
+    move_data = move_transmitted_data_task(archive_files)
 
-    set_holdings_for_records >> archive_data
+    set_holdings_for_records >> move_data
 
     start >> gather_files >> filtered_errors
 
-    [reports_email(), archive_data] >> end
+    [reports_email(), move_data] >> end
 
 
 send_oclc_records()
