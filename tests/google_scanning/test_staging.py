@@ -296,6 +296,27 @@ def test_list_shipped_carts_shows_latest_archived_shipment(mock_bases):
     ]
 
 
+@pytest.mark.parametrize(
+    "cart_dir,manifest_dir",
+    [
+        (f"carts-waiting/{STEM}/cart-1", "marc-files/manifests"),
+        ("archived/cart-1/20260807T210000", "archived/cart-1/20260807T210000"),
+    ],
+)
+def test_list_shipped_carts_links_manifest_by_manifest_filename(
+    mock_bases, mocker, cart_dir, manifest_dir
+):
+    mocker.patch(f"{STAGING}.manifest_filename", return_value=f"{STEM}_manifest.tsv")
+    _write_cart(mock_bases / cart_dir, status=_shipped_status())
+    manifest = mock_bases / manifest_dir / f"{STEM}_manifest.tsv"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text("manifest")
+
+    paths = [file["path"] for file in list_shipped_carts()[0]["files"]]
+
+    assert f"{manifest_dir}/{STEM}_manifest.tsv" in paths
+
+
 def test_list_shipped_carts_prefers_waiting_over_archived(mock_bases):
     _write_cart(
         mock_bases / "archived" / "cart-1" / "20260801T210000",

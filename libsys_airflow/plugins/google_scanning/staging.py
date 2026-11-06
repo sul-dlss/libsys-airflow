@@ -20,6 +20,7 @@ from libsys_airflow.plugins.google_scanning.constants import (
     STATUS_FILENAME,
     STATUS_UNKNOWN,
 )
+from libsys_airflow.plugins.google_scanning.manifest import manifest_filename
 from libsys_airflow.plugins.shared.airflow_api_client import api_client
 from libsys_airflow.plugins.shared.dag_runs import (
     active_dag_runs as shared_active_dag_runs,
@@ -154,6 +155,19 @@ def shipment_filestamp(shipped_at: str) -> str:
     return f"stanford_{shipped_at}-oncampus"
 
 
+def shipment_files(filestamp: str) -> tuple[Path, Path, Path]:
+    """
+    Returns the MARCXML, manifest and instance ids paths that
+    marc.py::generate_marc_for_instances and manifest.py::generate_manifest
+    write for a filestamp.
+    """
+    return (
+        MARC_FILES_BASE / "new" / f"{filestamp}.xml",
+        MARC_FILES_BASE / "manifests" / manifest_filename(filestamp),
+        MARC_FILES_BASE.parent / "instanceids" / "new" / f"{filestamp}.csv",
+    )
+
+
 def stem_ship_date(stem: str) -> str | None:
     """
     Returns the YYYYMMDD ship date from an on-campus or SAL3 shipment's
@@ -256,12 +270,14 @@ def _shipped_cart_row(cart_name: str, cart_dir: Path, shipment_dir: Path) -> dic
     except FileNotFoundError:
         logger.warning(f"No barcode file in {cart_dir}")
     if stem := status.get("shipment_stem"):
+        marc_xml_path, manifest_path, _ = shipment_files(stem)
         if shipment_dir == MARC_FILES_BASE:
-            files.append(MARC_FILES_BASE / "new" / f"{stem}.xml")
-            files.append(MARC_FILES_BASE / "manifests" / f"{stem}.txt")
+            files.extend([marc_xml_path, manifest_path])
         else:
-            files.append(shipment_dir / f"{stem}.xml")
-            files.append(shipment_dir / f"{stem}.txt")
+            # archive_sent_shipments copies them in under the same names
+            files.extend(
+                [shipment_dir / marc_xml_path.name, shipment_dir / manifest_path.name]
+            )
     return {
         "cart_name": cart_name,
         "shipped_at": status.get("shipped_at"),

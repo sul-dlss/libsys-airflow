@@ -8,7 +8,6 @@ from folioclient import FolioClient
 from libsys_airflow.plugins.google_scanning.constants import (
     BUILDING_SUFFIX,
     CARTS_WAITING_BASE,
-    MARC_FILES_BASE,
     SHIPMENT_BUILDING,
     SHIPMENT_FILENAME,
     SHIPMENT_READY,
@@ -21,12 +20,12 @@ from libsys_airflow.plugins.google_scanning.helpers import (
     _lookup_by_barcode,
     read_staged_barcode_files,
 )
-from libsys_airflow.plugins.google_scanning.manifest import manifest_filename
 from libsys_airflow.plugins.google_scanning.staging import (
     barcode_filename,
     cart_status_in,
     other_date_conflicts,
     shipment_filestamp,
+    shipment_files,
 )
 
 logger = logging.getLogger(__name__)
@@ -194,19 +193,6 @@ def building_filestamp(stem: str) -> str:
     instance ids under, until queue_shipment renames them to the stem.
     """
     return f"{stem}{BUILDING_SUFFIX}"
-
-
-def shipment_files(filestamp: str) -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
-    """
-    Returns the MARCXML, manifest and instance ids paths that
-    marc.py::generate_marc_for_instances and manifest.py::generate_manifest
-    write for a filestamp.
-    """
-    return (
-        MARC_FILES_BASE / "new" / f"{filestamp}.xml",
-        MARC_FILES_BASE / "manifests" / manifest_filename(filestamp),
-        MARC_FILES_BASE.parent / "instanceids" / "new" / f"{filestamp}.csv",
-    )
 
 
 def _move_cart_into_shipment(cart_name: str, dest_dir: pathlib.Path) -> None:

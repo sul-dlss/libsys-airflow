@@ -198,7 +198,7 @@ def test_queue_carts_queues_carts_with_shipped_barcodes(dag, mocker):
 
 def test_build_shipment_result(dag, tmp_path, mocker):
     mocker.patch(
-        "libsys_airflow.plugins.google_scanning.shipment.MARC_FILES_BASE",
+        "libsys_airflow.plugins.google_scanning.staging.MARC_FILES_BASE",
         tmp_path / "marc-files",
     )
     result = dag.task_dict["build_shipment_result"].python_callable(

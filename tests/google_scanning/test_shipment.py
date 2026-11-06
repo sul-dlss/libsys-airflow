@@ -54,7 +54,7 @@ def mock_carts_waiting_base(tmp_path, mocker):
 def mock_marc_files_base(tmp_path, mocker):
     marc_files = tmp_path / "marc-files"
     mocker.patch(
-        "libsys_airflow.plugins.google_scanning.shipment.MARC_FILES_BASE", marc_files
+        "libsys_airflow.plugins.google_scanning.staging.MARC_FILES_BASE", marc_files
     )
     return marc_files
 
